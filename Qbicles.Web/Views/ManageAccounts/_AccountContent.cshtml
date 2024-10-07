@@ -1,0 +1,316 @@
+﻿@using Qbicles.Models;
+@using CleanBooksData;
+@using Qbicles.BusinessRules;
+@using System.Globalization;
+@model List<accountgroup>
+@{
+    var dataManager = (IEnumerable<ApplicationUser>)ViewBag.DataManager;
+    var frequencys = (IEnumerable<accountupdatefrequency>)ViewBag.accountupdatefrequency;
+    var uploadfieldsData = HelperClass.uploadFielsData();
+
+    var memberAccount = (bool)ViewBag.MemberAccount;
+    var memberAccountData = (bool)ViewBag.MemberAccountData;
+    var dateFormat = (string)ViewBag.CurrentDateFormat;
+}
+
+
+@if (memberAccountData || memberAccount)
+{
+    try
+    {
+        <div class="app_general account-view" id="grid_view">
+            @foreach (var accountgroup in Model)
+            {
+                <h5><span id="account-group-name-grid-@accountgroup.Id">@accountgroup.Name</span></h5>
+                <hr />
+
+                if (memberAccount)
+                {
+                    <button id="button_edit_group_grid" onclick="EditGroup('@accountgroup.Id','button_edit_group_grid')" class="btn btn-warning"><i class="fa fa-pencil"></i> &nbsp; Edit group</button>
+                    <button id="button_add_account_grid" class="btn btn-success" onclick="AddAccount('@accountgroup.Id','button_add_account_grid')"><i class="fa fa-plus"></i> &nbsp; Add an account</button>
+                }
+
+                <br /><br />
+
+                <ul id="ul-account-@accountgroup.Id" class="grid-list">
+                    @foreach (var account in accountgroup.Accounts)
+                    {
+                        var accountRoles = account.DomainRoles.Select(n => n.Name).ToList();
+
+                        //var role3 = UserRoles.Intersect(accountRoles).Any();
+                        //if (!role3)
+                        //{
+                        //    continue;
+                        //}
+                        <li class="grid-list-item" id="account-@account.Id">
+                            <div class="grid-list-content">
+                                <div class="cb-grid-heading">
+                                    <h4><a href="javascript:void(0)">@account.Name</a></h4>
+                                    <h6>@account.Number</h6>
+                                </div>
+                                <div class="cb-grid-details">
+                                    @{
+                                        var dataManageName = dataManager.FirstOrDefault(e => e.Id == account.DataManagerId)?.GetFullName();
+                                    }
+                                    <div class="additional-details"><span><i class="fa fa-user"></i></span>@dataManageName </div>
+
+                                    <div class="row">
+                                        <div class="col-xs-12">
+                                            <span>Balance</span>
+
+                                            @{
+
+                                                if (account.LastBalance == null)
+                                                {
+                                                    <h2>
+                                                        <span style="font-size:40px;" id='last-balance-before-@account.Id'>0.</span><span id='last-balance-after-@account.Id'>00</span>
+                                                    </h2>
+                                                }
+                                                else
+                                                {
+                                                    var accountBalance = HelperClass.Converter.Obj2Decimal(account.LastBalance);
+
+                                                    var displayBalance = accountBalance.ToString("#,##0.00", CultureInfo.InvariantCulture.NumberFormat);
+                                                    if (displayBalance.Contains("."))
+                                                    {
+                                                        var balanceBeforeDecimalPoint = displayBalance.Split('.')[0];
+                                                        var balanceAfterDecimalPoint = '.' + displayBalance.Split('.')[1];
+
+                                                        if (accountBalance < 0)
+                                                        {
+                                                            <h2>
+                                                                <span style="font-size: 40px; color: indianred;" id='last-balance-before-@account.Id'>@balanceBeforeDecimalPoint</span>
+                                                                <span id='last-balance-after-@account.Id' style='color: indianred'>@balanceAfterDecimalPoint</span>
+                                                            </h2>
+                                                        }
+                                                        else
+                                                        {
+                                                            <h2>
+                                                                <span style="font-size: 40px;" id='last-balance-before-@account.Id'>@balanceBeforeDecimalPoint</span>
+                                                                <span id='last-balance-after-@account.Id'>@balanceAfterDecimalPoint</span>
+                                                            </h2>
+                                                        }
+                                                    }
+                                                    else
+                                                    {
+                                                        if (accountBalance < 0)
+                                                        {
+                                                            <h2><span style="font-size:40px;color:indianred;" id='last-balance-before-@account.Id'>displayBalance</span><span id='last-balance-after-@account.Id'></span></h2>
+                                                        }
+                                                        else
+                                                        {
+                                                            <h2><span style="font-size:40px;" id='last-balance-before-@account.Id'>displayBalance</span><span id='last-balance-after-@account.Id'></span></h2>
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        </div>
+                                    </div>
+                                    <div class="row substats">
+                                        <div class="col-xs-12 col-sm-4">
+                                            <span>Linked Tasks</span>
+                                            <h2>@account.taskaccounts.Count</h2>
+                                        </div>
+                                        <div class="col-xs-12 col-sm-8">
+                                            <span>Last Updated</span>
+                                            @{
+                                                var lastUpdated = account.uploads.OrderByDescending(e => e.CreatedDate).FirstOrDefault();
+                                                if (lastUpdated != null)
+                                                {
+                                                    <h2><span id="last-update-@account.Id">@(lastUpdated.CreatedDate.Value.ToString(dateFormat+" hh:mmtt"))</span></h2>
+                                                }
+                                                else
+                                                {
+                                                    <h2><span id="last-update-@account.Id"></span></h2>
+                                                }
+                                            }
+
+                                        </div>
+                                    </div>
+                                    @if (account.BookkeepingAccount != null)
+                                    {
+                                        var bkAccountName = "";
+                                        if (account.BookkeepingAccount != null)
+                                        {
+                                            bkAccountName = $"{account.BookkeepingAccount.Number}-{account.BookkeepingAccount.Name}";
+                                        }
+                                        <div class="row substats">
+                                            <div class="col-xs-12">
+                                                <span>Linked Bookkeeping Account</span>
+                                                <h2>
+                                                    @bkAccountName
+                                                </h2>
+                                            </div>
+                                        </div>
+                                    }
+                                    <div class="btn-group options">
+                                        <button type="button" class="btn btn-success dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                            <i class="fa fa-cog"></i>
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-right drop-up" style="right: 0;">
+                                            @if (memberAccount)
+                                            {
+                                                <li><a href="javascript:void(0)" onclick="EditCbAccount('@account.Id')">Edit</a></li>
+                                            }
+                                            @if (memberAccountData)
+                                            {
+                                                <li>
+                                                    <a href="javascript:void(0)" onclick="ShowUploadHistory(@account.Id)">Upload history</a>
+                                                </li>
+                                                if (account.BookkeepingAccount != null)
+                                                {
+                                                    <li>
+                                                        <a href="javascript:void(0)" onclick="ShowImportFromBookkeeping(@account.Id);">Import from Bookkeeping</a>
+                                                    </li>
+                                                }
+                                                else
+                                                {
+                                                    <li>
+                                                        <a href="javascript:void(0)" onclick="AddNewUpload(@account.GroupId, @account.Id, '@account.Name', '@account.Number', '@account.LastBalance', this)">New upload</a>
+                                                    </li>
+                                                }
+                                            }
+
+
+                                            @if (memberAccount)
+                                            {
+                                                <li><a href="javascript:void(0)" onclick="DeleteAccount('@account.Id', '@account.Name', '@account.Number', '@account.CreatedById','@account.CreatedDate', '@account.DataManagerId',this)">Delete</a></li>
+                                            }
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </li>
+                    }
+                </ul>
+            }
+        </div>
+        <div class="app_general account-view" id="list_view" style="display: none" hidden="">
+            @foreach (var accountgroup in Model)
+            {
+                <h5><span id="account-group-name-list-@accountgroup.Id">@accountgroup.Name</span></h5>
+
+
+                if (memberAccount)
+                {
+                    <button id="button_edit_group_list" onclick="EditGroup('@accountgroup.Id','button_edit_group_list')" class="btn btn-warning"><i class="fa fa-pencil"></i> &nbsp; Edit group</button>
+                    <button id="button_add_account_list" class="btn btn-success" onclick="AddAccount('@accountgroup.Id','button_add_account_list')"><i class="fa fa-plus"></i> &nbsp; Add an account</button>
+                }
+
+
+
+                <table id="tableList-@accountgroup.Id" class="accgroup-table table table-hover t1style valignm custome-table" style="width:100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th data-priority="1">Name</th>
+                            <th data-priority="1">Last Updated</th>
+                            <th data-priority="1">Balance</th>
+                            <th data-priority="1">Data Manager</th>
+                            <th data-priority="1">Linked Tasks</th>
+                            <th data-priority="2" data-orderable="false">Options</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var account in accountgroup.Accounts)
+                        {
+                            //var accountRoles = account.DomainRoles.Select(n => n.Name).ToList();
+
+                            //var role3 = UserRoles.Intersect(accountRoles).Any();
+                            //if (!role3)
+                            //{
+                            //    continue;
+                            //}
+                            <tr id="account-tr-@account.Id">
+                                <td>@account.Name</td>
+                                @{var lastUpdated = account.uploads.OrderByDescending(e => e.CreatedDate).FirstOrDefault();
+                                    if (lastUpdated != null)
+                                    {
+                                        <td><span id="last-update-tr-@account.Id">@(lastUpdated.CreatedDate.Value.ToString(dateFormat+" hh:mmtt"))</span></td>
+                                    }
+                                    else
+                                    {
+                                        <td><span id="last-update-tr-@account.Id"></span></td>
+                                    }
+                                }
+                                <td><span id="last-balance-tr-@account.Id">@(HelperClass.Converter.Obj2Decimal(account.LastBalance).ToString("#,###.##", CultureInfo.InvariantCulture.NumberFormat))</span></td>
+                                @{
+                                    var dataManage = dataManager.FirstOrDefault(e => e.Id == account.DataManagerId);
+                                }
+                                <td><a href="mailto:@dataManage?.Email">@dataManage?.GetFullName()</a></td>
+                                <td>@account.taskaccounts.Count</td>
+                                <td>
+                                    <div class="btn-group options">
+                                        <button type="button" class="btn-account dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                            <i class="fa fa-cog"></i> &nbsp; Actions
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-right drop-up" style="right: 0;">
+                                            @if (memberAccount)
+                                            {
+                                                <li>
+                                                    <a href="javascript:void(0)" onclick="EditAccount('@account.uploads.Count()', '@account.Id', '@accountgroup.Id', this)">Edit</a>
+                                                </li>
+                                            }
+                                            @if (memberAccountData)
+                                            {
+                                                <li><a href="javascript:void(0)" onclick="ShowUploadHistory(@account.Id)">Upload history</a></li>
+                                                if (account.BookkeepingAccount != null)
+                                                {
+                                                    <li>
+                                                        <a href="javascript:void(0)" onclick="ShowImportFromBookkeeping(@account.Id);">Import from Bookkeeping</a>
+                                                    </li>
+                                                }
+                                                else
+                                                {
+                                                    <li>
+                                                        <a href="javascript:void(0)" onclick="AddNewUpload(@account.GroupId, @account.Id, '@account.Name', '@account.Number', '@account.LastBalance', this)">New upload</a>
+                                                    </li>
+                                                }
+                                            }
+                                            @if (memberAccount)
+                                            {
+                                                <li>
+                                                    <a href="javascript:void(0)"
+                                                       onclick="DeleteAccount('@account.Id', '@account.Name', '@account.Number', '@account.CreatedById', '@account.CreatedDate', '@account.DataManagerId', this)">Delete</a>
+                                                </li>
+
+                                            }
+
+                                        </ul>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+                <br /><br />
+            }
+        </div>
+    }
+    catch (Exception ex)
+    {
+
+        throw ex;
+    }
+
+}
+
+
+
+
+
+<!-- /.modal -->
+
+<script>
+
+    $(document).ready(function () {
+        $('.accgroup-table').DataTable({
+            responsive: true,
+            "lengthChange": false,
+            "pageLength": 10,
+            "order": []
+        });
+
+        $('.accgroup-table').show();
+    });
+
+</script>

@@ -1,0 +1,67 @@
+﻿@using Qbicles.BusinessRules;
+@using Qbicles.Models.Trader;
+@using Qbicles.Models;
+@{
+
+    var lstContactGroups = (List<TraderContactGroup>)ViewBag.LstContactGroups;
+    var dateFormat = (string)ViewBag.CurrentDateFormat;
+    var timezone = (string)ViewBag.CurrentTimeZone;
+    var currentDomainPlan = (DomainPlan)ViewBag.CurrentDomainPlan;
+}
+<table class="table-hover datatable" data-order='[[ 1, "desc" ]]' style="width: 100%; background: #fff;">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Created</th>
+            <th>Creator</th>
+            <th>Members</th>
+            <th data-orderable="false">Options</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in lstContactGroups)
+        {
+            var deleteContactGroup = "";
+            if (item.Contacts.Any())
+            {
+                deleteContactGroup = "disabled";
+            }
+            <tr id="tr_contact_group_@item.Id">
+                <td class="td_contact_group_name">@item.Name</td>
+
+                @if (item.CreatedDate != null)
+                {
+                    <td data-sort="@item.CreatedDate.ToString("yyyy-MM-dd hh:mm")">@item.CreatedDate.ConvertTimeFromUtc(timezone).ToString(dateFormat) </td>
+                }
+                else
+                {
+                    <td></td>
+                }
+                @if (item.Creator != null)
+                {
+                    <td>@HelperClass.GetFullNameOfUser(item.Creator)</td>
+                }
+                else
+                {
+                    <td></td>
+                }
+                <td>
+                    <button data-toggle="modal" data-target="#group-items-view" onclick="ShowGroupMemberContact(@item.Id)" class="btn btn-info"><i class="fa fa-cube"></i> &nbsp; @item.Contacts.Count members</button>
+                </td>
+                <td>
+                    <button class="btn btn-warning" data-toggle="modal" data-target="#app-contact-group-edit" onclick="editContactGroup(@item.Id, '@item.Name')"><i class="fa fa-pencil"></i></button>
+                    <button @deleteContactGroup class="btn btn-danger" data-toggle="modal" data-target="#app-contact-group-confirm" onclick="confirmDeleteContactGroup(@item.Id, '@item.Name')"><i class="fa fa-trash"></i></button>
+                </td>
+            </tr>
+        }
+
+    </tbody>
+</table>
+<script>
+    $('.groups-contacts-dynamiccontent .datatable').DataTable({
+        responsive: true,
+        "lengthChange": true,
+        "pageLength": 10,
+        "order": []
+    });
+</script>

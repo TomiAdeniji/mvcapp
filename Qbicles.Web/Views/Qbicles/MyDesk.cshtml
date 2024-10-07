@@ -1,0 +1,1263 @@
+﻿@using Qbicles.BusinessRules;
+@using Qbicles.Models;
+@model MyDesk
+
+@{
+    ViewBag.Title = ViewBag.PageTitle;
+    var currentUserId = (string)ViewBag.CurrentUserId;
+    var timezone = (string)ViewBag.CurrentTimeZone;
+    var pinnedEvents = (List<QbicleActivity>)ViewBag.myPinnedEvents;
+    var pinnedTasks = (List<QbicleActivity>)ViewBag.myPinnedTasks;
+    var lstWeek = (List<QbicleActivity>)ViewBag.lstWeek;
+    var api = (string)ViewBag.DocRetrievalUrl;
+
+    var lstUiSetting = (List<UiSetting>)ViewBag.UiSetting ?? new List<UiSetting>();
+    var tabIndex = lstUiSetting.FirstOrDefault(s => s.Key == MyDeskKeyStoredUiSettings.tabIndex);
+
+    var pinned = (List<QbicleActivity>)ViewBag.myPinned;
+    var dateFormat = (string)ViewBag.CurrentDateFormat;
+    var _qbicle = new Qbicle();
+
+    //var lstStoreTypes = HelperClass.EnumModel.GetEnumValuesAndDescriptions<StoreType>();
+}
+
+<input type="hidden" name="active_page" id="active_page" value="#dashboard">
+<input type="hidden" name="MyDeskId" id="MyDeskId" value="@ViewBag.MyDeskId">
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail mdv2-wrapper">
+
+
+    <!-- Main content -->
+    <section class="mdv2 desk mydeskr1" data-tooltip-color="teal" data-tooltip-delay="300" data-tooltip-animate-function="spin">
+
+
+        <!-- App bar -->
+        <div class="mdv2-col-app">
+
+            <div data-spy="affix" class="contained-sidebar">
+
+                <ul class="subapps-nav" role="navigation" data-tooltip-stickto="bottom" style="display:none">
+                    <li class="active">
+                        <a href="#" data-toggle="tab" data-target="#subapp-schedule" data-tooltip="My schedule" onclick="$('.pseudotab').hide(); $('#main').show();">
+                            <i class="fa fa-home"></i>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" data-toggle="tab" data-target="#subapp-community" data-tooltip="Community" onclick="$('.pseudotab').hide(); $('#community').show();LoadCommunityTab();">
+                            <i class="fa fa-users"></i>
+                        </a>
+                    </li>
+                </ul>
+
+                <div class="subapp-tabs tab-content">
+
+
+                    <!-- Schedule -->
+                    <div class="tab-pane fade in active" id="subapp-schedule">
+
+                        <div class="activity-overview plain company-overview welcome-info" style="flex: none; margin: 30px 0 15px 0; padding: 20px 20px 15px 20px; text-align: left;">
+
+                            <div class="section-detail intro-home">
+                                <h2 style="font-weight: 500;">MyDesk Home</h2>
+                                <p style="color: rgba(0, 0, 0, 0.5);">Track your Activites across your Domains and check your schedule.</p>
+                            </div>
+
+                        </div>
+                        <ul class="community-v2-nav mydesk-alt " style="padding-left: 15px; padding-right: 15px;">
+                            <li class="@(tabIndex==null||(tabIndex!=null&&tabIndex.Value=="1")?"active":"")"><a href="#" onclick="ActiveTable(this,1)" data-toggle="tab" data-target="#activity-pins" id="show-pinned">Pinned</a></li>
+                            <li class="@((tabIndex!=null&&tabIndex.Value=="2")?"active":"")"><a href="#" onclick="ActiveTable(this,2)" data-toggle="tab" data-target="#activity-tasks">Tasks</a></li>
+                            <li class="@((tabIndex!=null&&tabIndex.Value=="3")?"active":"")"><a href="#" onclick="ActiveTable(this,3)" data-toggle="tab" data-target="#activity-events">Events</a></li>
+                            <li class="@((tabIndex!=null&&tabIndex.Value=="4")?"active":"")"><a href="#" onclick="ActiveTable(this,4)" data-toggle="tab" data-target="#activity-media">Media</a></li>
+                            <li class="@((tabIndex!=null&&tabIndex.Value=="5")?"active":"")"><a href="#" onclick="ActiveTable(this,5)" data-toggle="tab" data-target="#activity-links">Links</a></li>
+                            <li class="@((tabIndex!=null&&tabIndex.Value=="7")?"active":"")"><a href="#" onclick="ActiveTable(this,7)" data-toggle="tab" data-target="#activity-discussions">Discussions</a></li>
+                            <li class="@((tabIndex!=null&&tabIndex.Value=="6")?"active":"")"><a href="#" onclick="ActiveTable(this,6)" data-toggle="tab" data-target="#activity-processes">Processes</a></li>
+                            <li></li>
+                        </ul>
+
+
+                        <div style="padding: 0 20px 20px 20px;">
+                            <button class="btn btn-info community-button" data-toggle="modal" data-target="#my-schedule" onclick="CalDotActive(null, null);" style="margin: 0 0 3px 0;">
+                                <i class="fa fa-calendar"></i> &nbsp; My Schedule
+                            </button>
+                            <button class="btn btn-primary community-button" onclick="TagsTableLoad();" data-toggle="modal" data-target="#mydesk-tags" style="margin: 0 0 10px 0;">
+                                <i class="fa fa-tag"></i> &nbsp; My Tags
+                            </button>
+                        </div>
+                    </div>
+                    <!-- END Schedule -->
+                    <!-- Community -->
+                    <div class="tab-pane fade" id="subapp-community">
+
+                        <div class="activity-overview plain company-overview welcome-info" style="flex: none; margin: 30px 0 15px 0; padding: 20px 20px 15px 20px; text-align: left;">
+
+                            <div class="section-detail intro-home">
+                                <h2 style="font-weight: 500;">Community</h2>
+                                <p style="color: rgba(0, 0, 0, 0.5);">News, events, jobs, knowledge and more.</p>
+                            </div>
+
+                        </div>
+
+
+                        <div style="padding: 0 15px;">
+
+                            <ul class="community-v2-nav mydesk-alt" style="margin: 0 0 20px 0;">
+                                <li class="active"><a href="#" data-toggle="tab" data-target="#community-contacts" onclick="$('.community-sub').hide(); $('#community-sub-contacts').show();">Contacts</a></li>
+                                <li><a href="#" data-toggle="tab" data-target="#community-news" onclick="$('.community-sub').hide(); $('#community-sub-news').show();">Articles</a></li>
+                                <li><a href="#" data-toggle="tab" data-target="#community-services" onclick="$('.community-sub').hide(); $('#community-sub-services').show();">Services</a></li>
+                                <li><a href="#" data-toggle="tab" data-target="#community-events" onclick="$('.community-sub').hide(); $('#community-sub-events').show();">Events</a></li>
+                                <li><a href="#" data-toggle="tab" data-target="#community-jobs" onclick="$('.community-sub').hide(); $('#community-sub-jobs').show();">Jobs</a></li>
+                                <li><a href="#" data-toggle="tab" data-target="#community-knowledge" onclick="$('.community-sub').hide(); $('#community-sub-knowledge').show();">Knowledge</a></li>
+                                <li><a href="#" data-toggle="tab" data-target="#community-rfqs" onclick="$('.community-sub').hide(); $('#community-sub-rfqs').show();">RFQs</a></li>
+                                <li><a href="#" data-toggle="tab" data-target="#community-inquiry" onclick="$('.community-sub').hide(); $('#community-sub-inquiry').show();">Process or Inquiry</a></li>
+                                <li></li>
+                            </ul>
+
+                            <br />
+
+                            <!-- Contact list -->
+                            <div class="contact-list community-sub" id="community-sub-contacts">
+
+                                <div class="well custom">
+                                    <div class="form-group" style="margin: 0;">
+                                        <label for="search-contacts">Search Contacts</label>
+                                        <input type="text" name="search-contacts" class="form-control">
+                                    </div>
+                                </div>
+
+                                <br />
+
+                            </div>
+                            <!-- END Contact list -->
+                            <!-- Community News nav -->
+                            <div class="community-sub" id="community-sub-news" style="display: none;">
+
+                                <div class="well custom" style="margin-bottom: 30px;">
+                                    <div class="form-group" style="margin: 0;">
+                                        <label for="search-articles">Search articles</label>
+                                        <input type="text" name="search-articles" class="form-control">
+                                    </div>
+                                </div>
+
+                                <a href="#article-filters" data-toggle="modal" class="btn btn-info community-button" style="margin-bottom: 3px;"><i class="fa fa-sliders"></i> &nbsp; Filter articles</a>
+                                <a href="my-profile-editable.php" class="btn btn-warning community-button"><i class="fa fa-id-card"></i> &nbsp; Manage my interests</a>
+
+                            </div>
+                            <!-- END Community News nav -->
+                            <!-- Community Events nav -->
+                            <div class="community-sub" id="community-sub-events" style="display: none;">
+
+                                <button class="btn btn-success community-button" data-toggle="modal" data-target="#app-community-event-add" style="margin: 10px 0 30px 0;">
+                                    <i class="fa fa-plus"></i> &nbsp; Post an Event
+                                </button>
+
+                                <div class="well custom" style="margin-bottom: 30px;">
+                                    <div class="row">
+                                        <div class="col-xs-12">
+                                            <div class="form-group">
+                                                <label for="types">Search for something</label>
+                                                <input type="text" name="search" class="form-control" value="Search for...">
+                                            </div>
+                                        </div>
+                                        <div class="col-xs-12">
+                                            <div class="form-group">
+                                                <label for="topics">Limit to a date range</label>
+                                                <input type="text" name="daterange" class="form-control daterange">
+                                            </div>
+                                        </div>
+                                        <div class="col-xs-12">
+                                            <div class="form-group">
+                                                <label for="location">Location</label>
+                                                <select name="location" class="form-control select2" style="width: 100%;" data-placeholder="Choose a location">
+                                                    <option value=""></option>
+                                                    <option value="1">Location 1</option>
+                                                    <option value="2">Location 2</option>
+                                                    <option value="3">Location 3</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="col-xs-12">
+                                            <div class="form-group">
+                                                <label for="category">Category</label>
+                                                <select name="category" class="form-control select2" style="width: 100%;">
+                                                    <option value="0" selected>Show all</option>
+                                                    <option value="1">Nature</option>
+                                                    <option value="2">Environment</option>
+                                                    <option value="3">Sport</option>
+                                                    <option value="4">Travel</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="col-xs-12">
+                                            <div class="form-group" style="margin: 0;">
+                                                <label for="category">Limit by tag(s)</label>
+                                                <select name="category" class="form-control select2" style="width: 100%;" multiple>
+                                                    <option value="1">Adventure</option>
+                                                    <option value="2">CO2</option>
+                                                    <option value="3">Conservation</option>
+                                                    <option value="4">Holiday</option>
+                                                    <option value="5">Travel</option>
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                    </div>
+                                </div>
+
+                            </div>
+                            <!-- END Community News nav -->
+                            <!-- Services -->
+                            <div class="community-sub" id="community-sub-services" style="display: none;">
+
+
+                                <button class="btn btn-success community-button" data-toggle="modal" data-target="#mydesk-service-provider-add" style="margin: 10px 0 30px 0;"><i class="fa fa-plus"></i> &nbsp; Add a Provider</button>
+
+
+                                <div class="well custom">
+                                    <div class="form-group" style="margin: 0;">
+                                        <label for="search">Search for a service</label>
+                                        <input type="text" name="search" class="form-control">
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- END Services -->
+                            <!-- Community Jobs nav -->
+                            <div class="community-sub" id="community-sub-jobs" style="display: none;">
+
+                                <button class="btn btn-success community-button" data-toggle="modal" data-target="#app-community-event-add" style="margin: 10px 0 30px 0;">
+                                    <i class="fa fa-plus"></i> &nbsp; Advertise a Position
+                                </button>
+
+                                <div class="well custom" style="margin-bottom: 30px;">
+                                    <div class="row">
+                                        <div class="col-xs-12">
+                                            <div class="form-group">
+                                                <label for="types">Search for a position</label>
+                                                <input type="text" name="search" class="form-control" placeholder="e.g. Engineer">
+                                            </div>
+                                        </div>
+                                        <div class="col-xs-12">
+                                            <div class="form-group">
+                                                <label for="salary">Salary (monthly)</label>
+                                                <input type="text" class="salary-range" name="my_range" value="" />
+                                            </div>
+                                        </div>
+                                        <div class="col-xs-12">
+                                            <div class="form-group">
+                                                <label for="categories">Location</label>
+                                                <select name="categories" class="form-control select2" style="width: 100%;">
+                                                    <option value=""></option>
+                                                    <optgroup label="Nigeria">
+                                                        <option value="1">Abuja</option>
+                                                        <option value="2">Lekki Phase 1</option>
+                                                    </optgroup>
+                                                    <optgroup label="United Kingdom">
+                                                        <option value="1">Dagenham</option>
+                                                        <option value="2">Glasgow</option>
+                                                        <option value="3">Greater London</option>
+                                                    </optgroup>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="col-xs-12">
+                                            <div class="form-group">
+                                                <label for="categories">Category</label>
+                                                <select name="categories" class="form-control select2" style="width: 100%;" data-placeholder="Choose a category">
+                                                    <option value=""></option>
+                                                    <option value="1">Category 1</option>
+                                                    <option value="2">Category 2</option>
+                                                    <option value="3">Category 3</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="col-xs-12">
+                                            <div class="form-group" style="margin: 0;">
+                                                <label for="category">Limit by tag(s)</label>
+                                                <select name="category" class="form-control select2" style="width: 100%;" multiple>
+                                                    <option value="1">Adventure</option>
+                                                    <option value="2">CO2</option>
+                                                    <option value="3">Conservation</option>
+                                                    <option value="4">Holiday</option>
+                                                    <option value="5">Travel</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+                            <!-- END Community Jobs nav -->
+                            <!-- Community Knowledge nav -->
+                            <div class="community-sub" id="community-sub-knowledge" style="display: none;">
+
+                                <button class="btn btn-success community-button" data-toggle="modal" data-target="#app-community-event-add" style="margin: 10px 0 30px 0;">
+                                    <i class="fa fa-lightbulb"></i> &nbsp; Share Knowledge
+                                </button>
+
+                                <div class="well custom" style="margin-bottom: 30px;">
+                                    <div class="row">
+                                        <div class="col-xs-12">
+                                            <div class="form-group">
+                                                <label for="category">Category</label>
+                                                <select name="category" class="form-control select2" style="width: 100%;">
+                                                    <option value="0" selected>Show all</option>
+                                                    <option value="1">General</option>
+                                                    <option value="2">Oil &amp; Gas</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="col-xs-12">
+                                            <div class="form-group" style="margin: 0;">
+                                                <label for="category">Limit by tag(s)</label>
+                                                <select name="category" class="form-control select2" style="width: 100%;" multiple>
+                                                    <option value="1">General</option>
+                                                    <option value="2">Patents</option>
+                                                    <option value="3">Planning</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+                            <!-- END Community Knowledge nav -->
+                            <!-- Community Drafts nav -->
+                            <div class="community-sub" id="community-sub-drafts" style="display: none;">
+
+                                <button class="btn btn-success community-button" data-toggle="modal" data-target="#app-community-event-add" style="margin: 10px 0 30px 0;">
+                                    <i class="fa fa-plus"></i> &nbsp; Create a new
+                                </button>
+
+                                <div class="well custom" style="margin-bottom: 30px;">
+                                    <div class="row">
+                                        <div class="col-xs-12">
+                                            <div class="form-group">
+                                                <label for="types">Search for something</label>
+                                                <input type="text" name="search" class="form-control" value="Search for...">
+                                            </div>
+                                        </div>
+                                        <div class="col-xs-12">
+                                            <div class="form-group">
+                                                <label for="category">Limit by type(s)</label>
+                                                <select name="category" class="form-control select2" multiple style="width: 100%;display:none;">
+                                                    <option value="1">Event</option>
+                                                    <option value="2">Job Opening</option>
+                                                    <option value="3">Task</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="col-xs-12">
+                                            <div class="form-group" style="margin: 0;">
+                                                <label for="category">Limit by tag(s)</label>
+                                                <select name="category" class="form-control select2" style="width: 100%;display:none;" multiple>
+                                                    <option value="1">Adventure</option>
+                                                    <option value="2">CO2</option>
+                                                    <option value="3">Conservation</option>
+                                                    <option value="4">Holiday</option>
+                                                    <option value="5">Travel</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+                            <!-- END Community Drafts nav -->
+                            <!-- Community Process/Inquiry nav -->
+                            <div class="community-sub" id="community-sub-inquiry" style="display: none;">
+
+                                <div class="well custom" style="margin-bottom: 30px;">
+                                    <div class="row">
+                                        <div class="col-xs-12">
+                                            <div class="form-group">
+                                                <label for="types">Search for something</label>
+                                                <input type="text" name="search" class="form-control" value="Search for...">
+                                            </div>
+                                        </div>
+                                        <div class="col-xs-12">
+                                            <div class="form-group">
+                                                <label for="category">Limit by provider(s)</label>
+                                                <select name="category" class="form-control select2" multiple style="width: 100%;display:none;">
+                                                    <option value="0">Show all</option>
+                                                    <option value="1">Arnold Clark</option>
+                                                    <option value="2">RoadChef</option>
+                                                    <option value="3">Walmart</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="col-xs-12">
+                                            <div class="form-group" style="margin: 0;">
+                                                <label for="category">Limit by tag(s)</label>
+                                                <select name="category" class="form-control select2" style="width: 100%;display:none;" multiple>
+                                                    <option value="0">Show all</option>
+                                                    <option value="1">Adventure</option>
+                                                    <option value="2">CO2</option>
+                                                    <option value="3">Conservation</option>
+                                                    <option value="4">Holiday</option>
+                                                    <option value="5">Travel</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+                            <!-- END Community Process/Inquiry tab -->
+
+                        </div>
+
+                    </div>
+                    <!-- END Community -->
+                </div> <!-- ./tab-content -->
+
+            </div>
+
+        </div>
+        <!-- END App bar -->
+        <!-- Main area -->
+        <div class="mdv2-col-dash" style="min-width: 0;">
+            <!-- Main tab -->
+            <div id="main" class="pseudotab" style="min-height: 100%;background: #f5f5f5;">
+                <div class="tab-content">
+                    <!-- Pinned -->
+                    <div class="tab-pane fade in active" id="activity-pins">
+                        @Html.Partial("_FilterMyActivity", "1")
+                        <div class="records-h" id="lstPin" style="min-height:70px">
+                        </div>
+                    </div>
+                    <!-- END Pinned -->
+                    <!-- Tasks -->
+                    <div class="tab-pane fade" id="activity-tasks">
+                        @Html.Partial("_FilterMyActivity", "2")
+                        <div class="records-h" id="lstTask" style="min-height:70px">
+                        </div>
+                    </div>
+                    <!-- END Tasks -->
+                    <!-- Events -->
+                    <div class="tab-pane fade" id="activity-events">
+                        @Html.Partial("_FilterMyActivity", "3")
+                        <div class="records-h" id="lstEvent" style="min-height:70px">
+                        </div>
+                    </div>
+                    <!-- END Events -->
+                    <!-- Media -->
+                    <div class="tab-pane fade" id="activity-media">
+                        @Html.Partial("_FilterMyActivity", "4")
+                        <div class="records-h" id="lstMedia" style="min-height:70px">
+                        </div>
+                    </div>
+                    <!-- END Media -->
+                    <!-- Links -->
+                    <div class="tab-pane fade" id="activity-links">
+                        @Html.Partial("_FilterMyActivity", "5")
+                        <div class="records-h" id="lstLink" style="min-height:70px">
+                        </div>
+                    </div>
+                    <!-- END Links -->
+                    <!-- Events -->
+                    <div class="tab-pane fade" id="activity-discussions">
+                        @Html.Partial("_FilterMyActivity", "7")
+                        <div class="records-h" id="lstDiscussion" style="min-height:70px">
+                        </div>
+                    </div>
+                    <!-- END Events -->
+                    <!-- Processes -->
+                    <div class="tab-pane fade" id="activity-processes">
+                        @Html.Partial("_FilterMyActivity", "6")
+                        <div class="records-h processes" id="lstProcess" style="min-height:70px">
+                        </div>
+                    </div>
+                    <!-- END Processes -->
+
+
+
+                </div> <!-- ./tab-content -->
+
+
+            </div>
+            <!-- END Main tab -->
+
+
+
+
+
+            <div id="community" style="display: none;" class="pseudotab" mydesk-reprise>
+
+                <div class="tab-content">
+                    <!-- Contacts -->
+                    <div class="tab-pane fade in active" id="community-contacts">
+                        <div class="tab-content">
+                            <!-- My Contacts -->
+                            <div class="tab-pane fade in active" id="my-contacts">
+                                <div id="lstMyDeskContact" class="flex-grid-quarters-lg gridfix from-community c1" style="width: 100%;"></div>
+                            </div>
+
+                        </div> <!-- ./tab-content -->
+
+                    </div>
+                    <!-- END Contacts -->
+
+                </div> <!-- ./tab-content -->
+
+            </div>
+            <!-- END Community tab -->
+            <!-- Rewards -->
+            <div id="rewards" style="display: none;" class="pseudotab">
+
+                <div class="well custom" style="padding-bottom: 5px;">
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-6 col-lg-4">
+                            <div class="form-group">
+                                <label for="search">Search for offers</label>
+                                <input type="text" name="search" class="form-control" placeholder="Search for...">
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-sm-6 col-lg-3">
+                            <div class="form-group">
+                                <label for="search">Retailers</label><br />
+                                <select name="retailers" class="form-control select2" style="width: 100%;">
+                                    <option value="0" selected>Show all</option>
+                                    <option value="1">RoadChef</option>
+                                    <option value="2">Steam</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <br />
+                <div class="flex-grid-thirds-lg from-community c1" style="width: 100%;">
+
+                    <div class="col">
+                        <a href="#" class="article-feature" onclick="alert('Modal to display voucher/QR code or direct link to website');">
+                            <div class="article-feature-img" style="background: url('dist/img/burger.jpg');">
+                                <span class="label label-lg label-primary">Today 6am-12pm</span>
+                                <div class="store-logo" style="background-image: url('dist/img/sm-logo-roadchef.png');"></div>
+                            </div>
+                            <div class="info">
+                                <smaller>RoadChef</smaller>
+                                <h1>Free coffee with every order this morning</h1>
+                                <p>Grab a hot coffee free with any order placed before 12 today in RoadChef DriveThrus across Nigeria.</p>
+                            </div>
+                        </a>
+                    </div>
+
+                    <div class="col">
+                        <a href="#" class="article-feature" onclick="alert('Modal to display voucher/QR code or direct link to website');">
+                            <div class="article-feature-img" style="background: url('dist/img/apps/marketing/promo-1.jpg');">
+                                <span class="label label-lg label-primary">June 21st - July 25th, 2019</span>
+                                <div class="store-logo" style="background-image: url('dist/img/community/logos/6.jpg');"></div>
+                            </div>
+                            <div class="info">
+                                <smaller>Steam</smaller>
+                                <h1>Intergalactic summer sale</h1>
+                                <p>Grab a bargain with 25% off all games this Friday in the Steam Store with any eligible voucher code.</p>
+                            </div>
+                        </a>
+                    </div>
+
+                </div>
+
+            </div>
+            <!-- END Rewards -->
+
+        </div>
+        <!-- END Main area -->
+    </section>
+    <!-- ./content -->
+</div>
+<!-- /.content-wrapper -->
+<div class="modal fade left" id="mydesk-tags" role="dialog" aria-labelledby="mydesk-tags">
+    <div class="modal-dialog modal-xl" role="document">
+        <div class="modal-content">
+            <div class="modal-header" style="padding-bottom: 0;">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">My Tags</h5>
+            </div>
+            <div class="modal-body">
+
+                <br />
+                <div class="row">
+                    <div class="col-xs-12 col-sm-4 col-lg-3">
+
+                        <div class="activity-overview generic help-text animated bounce">
+                            <i class="fa fa-info-circle"></i>
+                            <p>
+                                MyDesk Tags allow you to group content for quick retrieval and ease-of-view. You can create as many Tags as you like, and start tagging your MyDesk content
+                                right away!
+                            </p>
+                        </div>
+
+                        <button class="btn btn-success community-button" data-toggle="modal" data-target="#tag-add" style="margin: 0 0 30px 0;">
+                            <i class="fa fa-plus"></i> &nbsp; Add a Tag
+                        </button>
+
+                        <div class="well custom" style="padding-bottom: 5px; margin-bottom: 40px;">
+                            <div class="row">
+                                <div class="col-xs-12">
+                                    <div class="form-group">
+                                        <label for="search_dt">Search Tags</label>
+                                        <input type="text" name="search_dt" id="search_dt" class="form-control">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+
+                    </div>
+                    <div class="col-xs-12 col-sm-8 col-lg-9">
+                        <table class="table-hover table-striped datatable" id="tags-table" style="width: 100%; background: #fff;">
+                            <thead>
+                                <tr>
+                                    <th>Tag</th>
+                                    <th>Created</th>
+                                    <th>Creator</th>
+                                    <th>Instances</th>
+                                    <th>Options</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+
+                </div>
+
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+<div class="modal fade left" id="my-schedule" role="dialog" aria-labelledby="my-schedule" style="display: none; padding-right: 17px;">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header" style="padding-bottom: 0;">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+                <h5 class="modal-title"></h5>
+            </div>
+            <div class="modal-body">
+                <!-- Schedule -->
+                <div id="subapp-schedule">
+                    <div class="calendar-view" data-language='en'></div>
+
+
+                    <div class="date-schedule">
+
+                        <h5>To-dos <span class="selected-date">today</span></h5>
+                        <div id="lblToDay" class="records-h"></div>
+                        <br /><br />
+                        <h5>Due soon</h5>
+                        <div id="lblWeeks" class="records-h">
+                            @if (lstWeek != null && lstWeek.Any())
+                            {
+                                foreach (var item in lstWeek)
+                                {
+                                    _qbicle = item.Qbicle != null ? item.Qbicle : new Qbicle();
+                                    if (item.ActivityType == QbicleActivity.ActivityTypeEnum.TaskActivity)
+                                    {
+                                        var QbTask = (QbicleTask)item;
+                                        var taskStatus = 0;
+                                        if (!QbTask.isComplete && QbTask.ActualStart == null && QbTask.ProgrammedEnd >= DateTime.UtcNow)
+                                        { taskStatus = 0; }
+                                        else if (!QbTask.isComplete && QbTask.ActualStart != null && QbTask.ProgrammedEnd >= DateTime.UtcNow)
+                                        { taskStatus = 1; }
+                                        else if (!QbTask.isComplete && QbTask.ProgrammedEnd < DateTime.UtcNow)
+                                        { taskStatus = 2; }
+                                        else if (QbTask.isComplete)
+                                        { taskStatus = 3; }
+
+                                        <article class="@(taskStatus == 0 ? "pending" : (taskStatus == 1 ? "started" : (taskStatus == 2 ? "overdue" : (taskStatus == 3 ? "complete" : ""))))">
+                                            <div class="record">
+                                                <div class="col" style="flex: 0 1 40px;">
+                                                    <div class="dropdown">
+                                                        <button class="btn btn-default dropdown-toggle more" type="button" data-toggle="dropdown" style="padding: 0;">
+                                                            <i class="fa fa-ellipsis-v"></i>
+                                                        </button>
+                                                        <ul class="dropdown-menu">
+                                                            @{var isPinned = (pinned != null && pinned.Any(e => e.Id == QbTask.Id)) ? true : false;}
+                                                            @if (isPinned)
+                                                            {
+                                                                <li><a href="javascript:void(0);" onclick="UnPinnedActivity('@QbTask.Id',false, event)" id="textPin-@QbTask.Id"><span id="textPin-@QbTask.Id"> Unpin this</span></a></li>
+
+                                                            }
+                                                            else
+                                                            {
+                                                                <li><a href="javascript:void(0);" onclick="MydeskPinnedActivity('@QbTask.Id',false,event)" id="textPin-@QbTask.Id"><span id="textPin-@QbTask.Id"> Pin this</span></a></li>
+                                                            }
+                                                        </ul>
+                                                    </div>
+
+                                                </div>
+                                                <div class="col titleblock">
+                                                    <a href="#" data-toggle="modal" data-target="#task-more" onclick="LoadTaskMoreModal('@QbTask.Key')">
+                                                        <p class="tasktitle">
+                                                            @if (ViewBag.TabType == 1)
+                                                            {
+                                                                <span class="label label-lg label-soft">Task</span>
+                                                            }
+                                                            else
+                                                            {
+                                                                if (taskStatus == 0)
+                                                                {
+                                                                    <span class="label label-lg label-warning">Pending</span>
+                                                                }
+                                                                else if (taskStatus == 1)
+                                                                {
+                                                                    <span class="label label-lg label-success">In progress</span>
+                                                                }
+                                                                else if (taskStatus == 2)
+                                                                {
+                                                                    <span class="label label-lg label-danger">Overdue</span>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <span class="label label-lg label-soft">Complete</span>
+                                                                }
+                                                            }
+
+                                                            &nbsp;@QbTask.Id - @QbTask.Name
+                                                        </p>
+                                                    </a>
+                                                </div>
+                                                <div class="col dueblock hidden-xs">
+                                                    <p>
+                                                        @if (QbTask.ProgrammedEnd != null)
+                                                        {
+                                                            if (taskStatus == 0)
+                                                            {
+                                                                <i class="fa fa-calendar iconlb"></i><span>&nbsp; @QbTask.ProgrammedEnd.Value.ToString(dateFormat + " hh:mmtt").ToLower()</span>
+                                                            }
+                                                            else if (taskStatus == 1)
+                                                            {
+                                                                <i class="fa fa-calendar iconlb"></i><span>&nbsp; @QbTask.ProgrammedEnd.Value.ToString(dateFormat + " hh:mmtt").ToLower()</span>
+                                                            }
+                                                            else if (taskStatus == 2)
+                                                            {
+
+                                                                <i class="fa fa-calendar iconlb"></i><span class="red">&nbsp; @QbTask.ProgrammedEnd.Value.ToString(dateFormat + " hh:mmtt").ToLower()</span>
+                                                            }
+                                                            else if (taskStatus == 3)
+                                                            {
+                                                                <i class="fa fa-calendar iconlb"></i><span>&nbsp;Completed @(QbTask.ActualEnd?.ToString(dateFormat + " hh:mmtt").ToLower()?? "")</span>
+                                                            }
+                                                        }
+
+                                                    </p>
+                                                </div>
+                                                <div class="col taglist text-right hidden-xs hidden-sm">
+                                                </div>
+                                            </div>
+                                        </article>
+                                    }
+                                    else if (item.ActivityType == QbicleActivity.ActivityTypeEnum.EventActivity)
+                                    {
+                                        var QbEvent = (QbicleEvent)item;
+
+                                        <article>
+                                            <div class="record">
+                                                <div class="col" style="flex: 0 1 40px;">
+                                                    <div class="dropdown">
+                                                        <button class="btn btn-default dropdown-toggle more" type="button" data-toggle="dropdown" style="padding: 0;">
+                                                            <i class="fa fa-ellipsis-v"></i>
+                                                        </button>
+                                                        <ul class="dropdown-menu">
+                                                            <li>
+                                                                @{var isPinned = (pinned != null && pinned.Any(e => e.Id == QbEvent.Id)) ? true : false;}
+                                                                @if (isPinned)
+                                                                {
+                                                                    <a class="dropdown-item" href="javascript:void(0);" onclick="UnPinnedActivity('@QbEvent.Id',false, event)">
+                                                                        <span id="textPin-@QbEvent.Id">&nbsp; Unpin this</span>
+                                                                    </a>
+
+                                                                }
+                                                                else
+                                                                {
+                                                                    <a class="dropdown-item" href="javascript:void(0);" onclick="MydeskPinnedActivity('@QbEvent.Id',false,event)">
+                                                                        <span id="textPin-@QbEvent.Id">&nbsp; Pin this</span>
+                                                                    </a>
+                                                                }
+                                                            </li>
+                                                        </ul>
+                                                    </div>
+
+                                                </div>
+                                                <div class="col titleblock">
+                                                    <a href="#" data-toggle="modal" data-target="#event-more" onclick="LoadEventMoreModal('@QbEvent.Key')">
+                                                        <p class="tasktitle">
+                                                            @if (ViewBag.TabType == 1)
+                                                            {
+                                                                <span class="label label-lg label-soft">Event</span>
+                                                            }
+                                                            else
+                                                            {
+                                                                <span class="label label-lg label-soft">@QbEvent.EventType</span>
+                                                            }
+
+                                                            &nbsp;@QbEvent.Name
+                                                        </p>
+                                                    </a>
+                                                </div>
+                                                <div class="col dueblock hidden-xs">
+                                                    <p><i class="fa fa-calendar iconlb"></i> @QbEvent.Start.ToString(dateFormat + " hh:mmtt").ToLower()</p>
+                                                </div>
+                                                <div class="col taglist text-right hidden-xs hidden-sm">
+                                                </div>
+                                            </div>
+                                        </article>
+                                    }
+                                    else if (item.ActivityType == QbicleActivity.ActivityTypeEnum.MediaActivity)
+                                    {
+                                        var QbMedia = (QbicleMedia)item;
+                                        var mediaLastupdate = QbMedia.VersionedFiles.Where(e => !e.IsDeleted).OrderByDescending(x => x.UploadedDate).FirstOrDefault();
+                                        var fileType = mediaLastupdate != null ? Utility.GetFileTypeDescription(mediaLastupdate.FileType.Extension) : "";
+
+                                        <article>
+                                            <div class="record">
+                                                <div class="col" style="flex: 0 1 40px;">
+                                                    <div class="dropdown">
+                                                        <button class="btn btn-default dropdown-toggle more" type="button" data-toggle="dropdown" style="padding: 0;">
+                                                            <i class="fa fa-ellipsis-v"></i>
+                                                        </button>
+                                                        <ul class="dropdown-menu">
+                                                            <li>
+                                                                @{var isPinned = (pinned != null && pinned.Any(e => e.Id == QbMedia.Id)) ? true : false;}
+                                                                @if (isPinned)
+                                                                {
+                                                                    <a class="dropdown-item" href="javascript:void(0);" onclick="UnPinnedActivity('@QbMedia.Id',false, event)">
+                                                                        <span id="textPin-@QbMedia.Id">&nbsp; Unpin this</span>
+                                                                    </a>
+
+                                                                }
+                                                                else
+                                                                {
+                                                                    <a class="dropdown-item" href="javascript:void(0);" onclick="MydeskPinnedActivity('@QbMedia.Id',false,event)">
+                                                                        <span id="textPin-@QbMedia.Id">&nbsp; Pin this</span>
+                                                                    </a>
+                                                                }
+                                                            </li>
+                                                        </ul>
+                                                    </div>
+
+                                                </div>
+                                                <div class="col titleblock">
+                                                    <a href="#" data-toggle="modal" data-target="#media-more" onclick="LoadMediaMoreModal('@QbMedia.Key')">
+                                                        <p class="tasktitle">
+                                                            @if (ViewBag.TabType == 1)
+                                                            {
+                                                                <span class="label label-lg label-soft">Media</span>
+                                                            }
+                                                            else
+                                                            {
+                                                                <span class="label label-lg label-soft">@fileType.ToUpper()</span>
+                                                            }
+                                                            &nbsp;@QbMedia.Name
+                                                        </p>
+                                                    </a>
+                                                </div>
+                                                <div class="col dueblock hidden-xs">
+                                                    <p><i class="fa fa-calendar iconlb"></i> &nbsp; @QbMedia.StartedDate.ToString(dateFormat + " hh:mmtt").ToLower()</p>
+                                                </div>
+                                                <div class="col taglist text-right hidden-xs hidden-sm">
+                                                </div>
+                                            </div>
+                                        </article>
+
+                                    }
+                                    else if (item.ActivityType == QbicleActivity.ActivityTypeEnum.ApprovalRequest)
+                                    {
+                                        var QbApproval = (ApprovalReq)item;
+                                        var manuJob = QbApproval.Manufacturingjobs.FirstOrDefault();
+                                        var PriorityName = "";
+                                        var cssStatus = "";
+                                        switch (QbApproval.RequestStatus)
+                                        {
+                                            case ApprovalReq.RequestStatusEnum.Pending:
+                                                cssStatus = "review";
+                                                PriorityName = "Awaiting Review";
+                                                break;
+                                            case ApprovalReq.RequestStatusEnum.Reviewed:
+                                                cssStatus = "pending";
+                                                PriorityName = "Awaiting Approval";
+
+                                                break;
+                                            case ApprovalReq.RequestStatusEnum.Approved:
+                                                cssStatus = "complete";
+                                                PriorityName = ApprovalReq.RequestStatusEnum.Approved.ToString();
+                                                break;
+                                            case ApprovalReq.RequestStatusEnum.Denied:
+                                            case ApprovalReq.RequestStatusEnum.Discarded:
+                                                cssStatus = "complete";
+                                                PriorityName = ApprovalReq.RequestStatusEnum.Discarded.ToString();
+                                                break;
+                                        }
+
+                                        <article class="@cssStatus">
+                                            <div class="record">
+                                                <div class="col" style="flex: 0 1 40px;">
+                                                    <div class="dropdown">
+                                                        <button class="btn btn-default dropdown-toggle more" type="button" data-toggle="dropdown" style="padding: 0;">
+                                                            <i class="fa fa-ellipsis-v"></i>
+                                                        </button>
+                                                        <ul class="dropdown-menu">
+                                                            <li>
+                                                                @{var isPinned = (pinned != null && pinned.Any(e => e.Id == QbApproval.Id)) ? true : false;}
+                                                                @if (isPinned)
+                                                                {
+                                                                    <a href="javascript:void(0);" onclick="UnPinnedActivity('@QbApproval.Id',false, event)" id="textPin-@QbApproval.Id"><span id="textPin-@QbApproval.Id"> Unpin this</span></a>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <a href="javascript:void(0);" onclick="MydeskPinnedActivity('@QbApproval.Id',false, event)" id="textPin-@QbApproval.Id"><span id="textPin-@QbApproval.Id"> Pin this</span></a>
+                                                                }
+                                                            </li>
+                                                        </ul>
+                                                    </div>
+
+                                                </div>
+                                                <div class="col titleblock">
+                                                    <a href="#" data-toggle="modal" data-target="#process-more" onclick="LoadProcessMoreModal('@QbApproval.Key')">
+                                                        <p class="tasktitle">
+                                                            @if (ViewBag.TabType == 1)
+                                                            {
+                                                                <span class="label label-lg label-soft">Process</span>
+                                                            }
+                                                            else
+                                                            {
+                                                                if (QbApproval.RequestStatus == ApprovalReq.RequestStatusEnum.Pending)
+                                                                {
+                                                                    <span class="label label-lg label-info">@PriorityName</span>
+                                                                }
+                                                                else if (QbApproval.RequestStatus == ApprovalReq.RequestStatusEnum.Approved)
+                                                                {
+                                                                    <span class="label label-lg label-success">@PriorityName</span>
+                                                                }
+                                                                else if (QbApproval.RequestStatus == ApprovalReq.RequestStatusEnum.Denied)
+                                                                {
+                                                                    <span class="label label-lg label-danger">@PriorityName</span>
+                                                                }
+                                                                else if (QbApproval.RequestStatus == ApprovalReq.RequestStatusEnum.Reviewed)
+                                                                {
+                                                                    <span class="label label-lg label-warning">@PriorityName</span>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <span class="label label-lg label-danger">@PriorityName</span>
+                                                                }
+                                                            }
+
+                                                            &nbsp;@(QbApproval.Manufacturingjobs.Count() <= 0 ? QbApproval.Name : ("Compound Item Assembly: " + (manuJob?.Reference?.FullRef ?? "") + " " + (manuJob?.Product?.Name ?? "")))
+                                                        </p>
+                                                    </a>
+                                                </div>
+                                                @{
+                                                    var source = "";
+                                                    if (QbApproval.JournalEntries.Any() || QbApproval.BKAccounts.Any())
+                                                    {
+                                                        source = "Bookkeeping";
+                                                    }
+                                                    else if (QbApproval.EmailPostApproval.Any() || QbApproval.CampaigPostApproval.Any())
+                                                    {
+                                                        source = "Sales & Marketing";
+                                                    }
+                                                    //else if (QbApproval.Sale.Any() || QbApproval.Purchase.Any() || QbApproval.Transfer.Any() || QbApproval.TraderContact.Any() || QbApproval.Invoice.Any()
+                                                    //    || QbApproval.Payments.Any() || QbApproval.SpotCounts.Any() || QbApproval.WasteReports.Any() || QbApproval.CreditNotes.Any()
+                                                    //    || QbApproval.StockAudits.Any() || QbApproval.BudgetScenarioItemGroups.Any())
+                                                    //{
+                                                    //    source = "Trader";
+                                                    //}
+                                                    else
+                                                    {
+                                                        source = "Trader";
+                                                    }
+                                                }
+                                                <div class="col dueblock hidden-xs">
+                                                    <p><i class="fa fa-calendar iconlb"></i> &nbsp; @source, @QbApproval.StartedDate.ToString(dateFormat + " hh:mmtt").ToLower()</p>
+                                                </div>
+                                                <div class="col taglist text-right hidden-xs hidden-sm">
+                                                </div>
+                                            </div>
+                                        </article>
+                                    }
+                                    else if (item.ActivityType == QbicleActivity.ActivityTypeEnum.ApprovalRequestApp)
+                                    {
+                                        var QbApprovalApp = (ApprovalReq)item;
+                                        var PriorityName = "";
+                                        var cssStatus = "";
+                                        switch (QbApprovalApp.RequestStatus)
+                                        {
+                                            case ApprovalReq.RequestStatusEnum.Pending:
+                                                cssStatus = "review";
+                                                PriorityName = "Awaiting Review";
+                                                break;
+                                            case ApprovalReq.RequestStatusEnum.Reviewed:
+                                                cssStatus = "pending";
+                                                PriorityName = "Awaiting Approval";
+
+                                                break;
+                                            case ApprovalReq.RequestStatusEnum.Approved:
+                                                cssStatus = "complete";
+                                                PriorityName = ApprovalReq.RequestStatusEnum.Approved.ToString();
+                                                break;
+                                            case ApprovalReq.RequestStatusEnum.Denied:
+                                            case ApprovalReq.RequestStatusEnum.Discarded:
+                                                cssStatus = "complete";
+                                                PriorityName = ApprovalReq.RequestStatusEnum.Discarded.ToString();
+                                                break;
+                                        }
+
+
+                                        <article class="@cssStatus">
+                                            <div class="record">
+                                                <div class="col" style="flex: 0 1 40px;">
+                                                    <div class="dropdown">
+                                                        <button class="btn btn-default dropdown-toggle more" type="button" data-toggle="dropdown" style="padding: 0;">
+                                                            <i class="fa fa-ellipsis-v"></i>
+                                                        </button>
+                                                        <ul class="dropdown-menu">
+                                                            <li>
+                                                                @{var isPinned = (pinned != null && pinned.Any(e => e.Id == QbApprovalApp.Id)) ? true : false;}
+                                                                @if (isPinned)
+                                                                {
+                                                                    <a href="javascript:void(0);" onclick="UnPinnedActivity('@QbApprovalApp.Id',false, event)" id="textPin-@QbApprovalApp.Id"><span id="textPin-@QbApprovalApp.Id"> Unpin this</span></a>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <a href="javascript:void(0);" onclick="MydeskPinnedActivity('@QbApprovalApp.Id',false, event)" id="textPin-@QbApprovalApp.Id"><span id="textPin-@QbApprovalApp.Id"> Pin this</span></a>
+                                                                }
+                                                            </li>
+                                                        </ul>
+                                                    </div>
+
+                                                </div>
+                                                <div class="col titleblock">
+                                                    <a href="#" data-toggle="modal" data-target="#process-more" onclick="LoadProcessMoreModal('@QbApprovalApp.Key')">
+                                                        <p class="tasktitle">
+                                                            @if (ViewBag.TabType == 1)
+                                                            {
+                                                                <span class="label label-lg label-soft">Process</span>
+                                                            }
+                                                            else
+                                                            {
+                                                                if (QbApprovalApp.RequestStatus == ApprovalReq.RequestStatusEnum.Pending)
+                                                                {
+                                                                    <span class="label label-lg label-info">@PriorityName</span>
+                                                                }
+                                                                else if (QbApprovalApp.RequestStatus == ApprovalReq.RequestStatusEnum.Approved)
+                                                                {
+                                                                    <span class="label label-lg label-success">@PriorityName</span>
+                                                                }
+                                                                else if (QbApprovalApp.RequestStatus == ApprovalReq.RequestStatusEnum.Denied)
+                                                                {
+                                                                    <span class="label label-lg label-danger">@PriorityName</span>
+                                                                }
+                                                                else if (QbApprovalApp.RequestStatus == ApprovalReq.RequestStatusEnum.Reviewed)
+                                                                {
+                                                                    <span class="label label-lg label-warning">@PriorityName</span>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <span class="label label-lg label-danger">@PriorityName</span>
+                                                                }
+                                                            }
+
+                                                            &nbsp;@QbApprovalApp.Name
+                                                        </p>
+                                                    </a>
+                                                </div>
+                                                @{
+                                                    var source = "";
+                                                    if (QbApprovalApp.JournalEntries.Any() || QbApprovalApp.BKAccounts.Any())
+                                                    {
+                                                        source = "Bookkeeping";
+                                                    }
+                                                    else if (QbApprovalApp.EmailPostApproval.Any() || QbApprovalApp.CampaigPostApproval.Any())
+                                                    {
+                                                        source = "Sales & Marketing";
+                                                    }
+                                                    //else if (QbApprovalApp.Sale.Any() || QbApprovalApp.Purchase.Any() || QbApprovalApp.Transfer.Any() || QbApprovalApp.TraderContact.Any() || QbApprovalApp.Invoice.Any()
+                                                    //    || QbApprovalApp.Payments.Any() || QbApprovalApp.SpotCounts.Any() || QbApprovalApp.WasteReports.Any() || QbApprovalApp.CreditNotes.Any()
+                                                    //    || QbApprovalApp.StockAudits.Any() || QbApprovalApp.BudgetScenarioItemGroups.Any())
+                                                    //{
+                                                    //    source = "Trader";
+                                                    //}
+                                                    else
+                                                    {
+                                                        source = "Trader";
+                                                    }
+                                                }
+                                                <div class="col dueblock hidden-xs">
+                                                    <p><i class="fa fa-calendar iconlb"></i> &nbsp; @source, @QbApprovalApp.StartedDate.ToString(dateFormat + " hh:mmtt").ToLower()</p>
+                                                </div>
+                                                <div class="col taglist text-right hidden-xs hidden-sm">
+                                                </div>
+                                            </div>
+                                        </article>
+                                    }
+                                    else if (item.ActivityType == QbicleActivity.ActivityTypeEnum.Link)
+                                    {
+                                        var qbLink = (QbicleLink)item;
+                                        var mediaLinkupdate = qbLink.FeaturedImage != null ? qbLink.FeaturedImage.VersionedFiles.Where(e => !e.IsDeleted).OrderByDescending(x => x.UploadedDate).FirstOrDefault() : null;
+
+                                        <article>
+                                            <div class="record">
+                                                <div class="col" style="flex: 0 1 40px;">
+                                                    <div class="dropdown">
+                                                        <button class="btn btn-default dropdown-toggle more" type="button" data-toggle="dropdown" style="padding: 0;">
+                                                            <i class="fa fa-ellipsis-v"></i>
+                                                        </button>
+                                                        <ul class="dropdown-menu">
+                                                            @{var isPinned = (pinned != null && pinned.Any(e => e.Id == qbLink.Id)) ? true : false;}
+                                                            <li>
+                                                                @if (isPinned)
+                                                                {
+                                                                    <a href="javascript:void(0);" onclick="UnPinnedActivity('@qbLink.Id',false, event)" id="textPin-@qbLink.Id"><span id="textPin-@qbLink.Id"> Unpin this</span></a>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <a href="javascript:void(0);" onclick="MydeskPinnedActivity('@qbLink.Id',false, event)" id="textPin-@qbLink.Id"><span id="textPin-@qbLink.Id"> Pin this</span></a>
+                                                                }
+                                                            </li>
+                                                        </ul>
+                                                    </div>
+
+                                                </div>
+                                                <div class="col titleblock">
+                                                    <a href="#" data-toggle="modal" data-target="#link-more" onclick="LoadLinkMoreModal(@qbLink.Id)">
+                                                        <p class="tasktitle">
+                                                            @if (ViewBag.TabType == 1)
+                                                            {
+                                                                <span class="label label-lg label-soft">Task</span>
+                                                            }
+                                                            &nbsp;@qbLink.Name
+                                                        </p>
+                                                    </a>
+                                                </div>
+                                                <div class="col dueblock hidden-xs">
+                                                    <p><a href="@qbLink.URL" target="_blank"><i class="fa fa-external-link iconlb"></i> &nbsp; @qbLink.URL</a></p>
+                                                </div>
+                                                <div class="col taglist text-right hidden-xs hidden-sm">
+                                                </div>
+                                            </div>
+                                        </article>
+
+                                    }
+                                    else if (item.ActivityType == QbicleActivity.ActivityTypeEnum.DiscussionActivity)
+                                    {
+                                        var qbDiscussion = (QbicleDiscussion)item;
+                                        var isActive = true;
+                                        if (qbDiscussion.DiscussionType == QbicleDiscussion.DiscussionTypeEnum.IdeaDiscussion || qbDiscussion.DiscussionType == QbicleDiscussion.DiscussionTypeEnum.PlaceDiscussion || qbDiscussion.DiscussionType == QbicleDiscussion.DiscussionTypeEnum.QbicleDiscussion)
+                                        {
+                                            if (qbDiscussion.ExpiryDate != null && qbDiscussion.ExpiryDate <= DateTime.UtcNow) { isActive = false; }
+                                            else { isActive = true; }
+
+                                            <article class="@(isActive ? "started" : "complete discussed")">
+                                                <div class="record">
+                                                    <div class="col" style="flex: 0 1 40px;">
+                                                        <div class="dropdown">
+                                                            <button class="btn btn-default dropdown-toggle more" type="button" data-toggle="dropdown" style="padding: 0;">
+                                                                <i class="fa fa-ellipsis-v"></i>
+                                                            </button>
+                                                            <ul class="dropdown-menu">
+                                                                <li>
+                                                                    @{var isPinned = (pinned != null && pinned.Any(e => e.Id == qbDiscussion.Id)) ? true : false;}
+                                                                    @if (isPinned)
+                                                                    {
+                                                                        <a href="javascript:void(0);" onclick="UnPinnedActivity('@qbDiscussion.Id',false, event)" id="textPin-@qbDiscussion.Id"><span id="textPin-@qbDiscussion.Id"> Unpin this</span></a>
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <a href="javascript:void(0);" onclick="MydeskPinnedActivity('@qbDiscussion.Id',false, event)" id="textPin-@qbDiscussion.Id"><span id="textPin-@qbDiscussion.Id"> Pin this</span></a>
+                                                                    }
+                                                                </li>
+                                                            </ul>
+                                                        </div>
+
+                                                    </div>
+                                                    <div class="col titleblock">
+                                                        <a href="#" data-toggle="modal" data-target="#discussion-more" onclick="LoadDiscussionMoreModal(@qbDiscussion.Id)">
+                                                            <p class="tasktitle">
+                                                                @if (ViewBag.TabType == 1)
+                                                                {
+                                                                    <span class="label label-lg label-soft">Discussion</span>
+                                                                }
+                                                                else
+                                                                {
+                                                                    if (isActive)
+                                                                    {
+                                                                        <span class="label label-lg label-success">Active</span>
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <span class="label label-lg label-danger">Expired</span>
+                                                                    }
+                                                                }
+                                                                &nbsp;@qbDiscussion.Name
+                                                            </p>
+                                                        </a>
+                                                    </div>
+                                                    <div class="col dueblock hidden-xs">
+                                                        <p>
+                                                            <i class="fa fa-user iconlb"></i> &nbsp;
+                                                            @qbDiscussion.ActivityMembers.Count() participants
+                                                        </p>
+                                                    </div>
+                                                    <div class="col taglist text-right hidden-xs hidden-sm">
+                                                    </div>
+                                                </div>
+                                            </article>
+                                        }
+                                    }
+                                }
+                            }
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+<div class="modal fade left" id="task-more" role="dialog" aria-labelledby="task-more"></div>
+<div class="modal fade left" id="event-more" role="dialog" aria-labelledby="event-more"></div>
+<div class="modal fade left" id="link-more" role="dialog" aria-labelledby="link-more"></div>
+<div class="modal fade left" id="media-more" role="dialog" aria-labelledby="media-more"></div>
+<div class="modal fade left" id="discussion-more" role="dialog" aria-labelledby="discussion-more"></div>
+<div class="modal fade left" id="process-more" role="dialog" aria-labelledby="process-more"></div>
+@Html.Partial("_AddOrEditTags")
+@Html.Partial("_TagsManager")
+<script>
+    var myDeskPageSize =@HelperClass.myDeskPageSize
+    var cdate= new Date('@(DateTime.Now.ToString("yyyy-MM-dd"))');
+    var _tab='@Request["tab"]';
+    $(document).ready(function () {        
+        if(_tab&&_tab === "subapp-community")
+        {
+            $('a[data-target=#subapp-community]').trigger("click");
+            LoadCommunityTab();
+            window.history.pushState("object or string", "Title", window.location.href.split("?")[0]);
+        }
+        $('#task-1').countdown('2019/06/20', function (event) {
+            $(this).html(event.strftime('%-ww %-Dd %-Hh'));
+        });
+
+        $('#task-2').countdown('2019/05/29', function (event) {
+            $(this).html(event.strftime('%-Hh %-Mm %Ss'));
+        });
+
+    });
+</script>
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Content/DesignStyle/js/bootstrap-multiselect.js"></script>
+        <script src="~/Scripts/dev/qbicles.MyDesk.js"></script>
+        @*<script src="~/Content/DesignStyle/js/pagination.js"></script>
+        <link href="/Content/DesignStyle/css/pagination.css" rel="stylesheet">*@
+    }
+    else
+    {
+        <script src="~/Content/DesignStyle/js/bootstrap-multiselect.min.js"></script>
+        <script src="~/Scripts/dev/qbicles.MyDesk.js"></script>
+        @*<script src="~/Content/DesignStyle/js/pagination.min.js"></script>
+        <link href="~/Content/DesignStyle/css/pagination.min.css" rel="stylesheet">*@
+    }
+}
+

@@ -1,0 +1,163 @@
+﻿@using Qbicles.Models.SalesMkt;
+@model Segment
+@{
+    var api = (string)ViewBag.DocRetrievalUrl;
+}
+<div class="content-wrapper qbicle-detail mdv2-wrapper" style="position: relative; min-height: 574px;">
+    @if (Model != null)
+    {
+        <!-- Main content -->
+        <section class="mdv2 dash" data-tooltip-color="teal" data-tooltip-delay="300" data-tooltip-animate-function="spin" style="border-top: 1px solid #f1f1f1;">
+            <!-- App bar -->
+            <div class="mdv2-col-app" style="margin-bottom: 0;">
+
+                <div data-spy="affix" class="contained-sidebar affix">
+
+                    <div class="activity-overview plain company-overview welcome-info" style="text-align: left !important; flex: none; margin: 0; padding-top: 30px; padding-bottom: 0;">
+
+                        <div class="pull-left" style="margin-bottom: 15px;">
+                            <a href="/SalesMarketing/SMApps" class="btn btn-info"><i class="fa fa-angle-left"></i> &nbsp; Segments</a>
+                            <a href="#app-marketing-segment-add" data-toggle="modal" class="btn btn-warning" onclick="LoadModalSegment(@Model.Id)"><i class="fa fa-pencil"></i> &nbsp; Edit</a>
+                            <input type="hidden" id="hdfIdSm" value="@Model.Id" />
+                        </div>
+                        <div class="clearfix"></div>
+
+                        <br>
+
+                        <h1 style="line-height: 1.2;">@Model.Name</h1>
+                        <span class="label label-lg label-primary">@Model.Type.ToString()</span>
+
+                        <div class="clearfix"></div>
+                        <br><br>
+
+                        <p style="color: rgba(0, 0, 0, 0.5);">@Model.Summary</p>
+
+                        <br>
+
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <label>Criteria</label>
+                                <ul style="padding-left: 10px; color: rgba(0, 0, 0, 0.5);">
+                                    @if (Model.Clauses.Count > 0)
+                                    {
+                                        foreach (var item in Model.Clauses)
+                                        {
+                                            <li>@item.CriteriaDefinition.Label</li>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <li><i>None specified</i></li>
+                                    }
+                                </ul>
+                            </div>
+                        </div>
+                        <br>
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <label>Total Contacts</label>
+                                <p>@(Model.Contacts.Any() ? Model.Contacts.Count().ToString("N0") : "0")</p>
+                            </div>
+                        </div>
+
+
+                        <br>
+                        <div class="activity-overview generic help-text animated bounce" style="margin: 0;">
+                            <p>Have you added new Contacts recently? If so, be sure to refresh below so this Segment can catch anyone who falls into its criteria!</p>
+
+                            <button type="button" onclick="SocialRefreshContacts();" class="btn btn-info community-button" style="margin: 5px 0 5px 0;">
+                                Refresh Contact List
+                            </button>
+                        </div>
+
+                    </div>
+
+
+                    <div class="spacing" style="padding-top: 0;">
+
+                    </div>
+
+
+                </div>
+            </div>
+            <!-- END App bar -->
+            <!-- Main area -->
+            <div class="mdv2-col-dash">
+
+                <div class="spacing">
+
+                    <h5>Contacts in this segment</h5>
+                    <br>
+
+                    <table class="datatable table-striped table-hover" id="community-list" style="width: 100%; background: #fff;">
+                        <thead>
+                            <tr>
+                                <th style="width: 40px;"></th>
+                                <th>Name</th>
+                                <th>Age</th>
+                                @*<th>Dual HH Income</th>*@
+                                <th>Email</th>
+                                <th>Segment(s)</th>
+                                <th>Receive emails</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (Model.Contacts.Any())
+                            {
+                                foreach (var item in Model.Contacts)
+                                {
+                                    <tr>
+                                        <td><div class="table-avatar mini" style="background-image: url('@(api+item.AvatarUri + "&size=T")');"></div></td>
+                                        <td>@item.Name</td>
+                                        <td>
+                                            @{
+                                                var criteriaValue = item.CriteriaValues.FirstOrDefault(s => s.Criteria.IsAgeRange);
+                                            }
+                                            @(criteriaValue != null ? criteriaValue.Option?.Label : "")
+                                        </td>
+                                        <td><a href="mailto:@(item.Email)">@item.Email</a></td>
+                                        <td>
+                                            @if (item.Segments != null && item.Segments.Any())
+                                            {
+                                                foreach (var sg in item.Segments)
+                                                {
+                                                    <span class="label label-lg label-primary">@sg.Name</span>
+                                                }
+                                            }
+                                        </td>
+                                        <td>
+                                            @if (item.IsSubscribed)
+                                            {
+                                                <span class="label label-lg label-success">Yes</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="label label-lg label-danger">No</span>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <!-- END Main area -->
+        </section>
+        <!-- ./content -->
+    }
+</div>
+<div class="modal fade left" id="app-marketing-segment-add" role="dialog" aria-labelledby="app-marketing-segment-add" style="display: none;"></div>
+@if (Model != null)
+{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Content/DesignStyle/js/bootstrap-multiselect.js"></script>
+        <script src="~/Scripts/dev/salesmarketing.segmentdetail.js"></script>
+    }
+    else
+    {
+        <script src="~/Content/DesignStyle/js/bootstrap-multiselect.min.js"></script>
+        <script src="~/Scripts/dev/salesmarketing.segmentdetail.min.js"></script>
+    }
+}

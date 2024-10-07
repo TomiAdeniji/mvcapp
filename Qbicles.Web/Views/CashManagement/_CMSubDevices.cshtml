@@ -1,0 +1,165 @@
+﻿@using System.Diagnostics
+@using Qbicles.Models.Trader
+@using Qbicles.Models.Trader.DDS
+@using Qbicles.Models;
+@using Qbicles.BusinessRules;
+@using System.Globalization;
+@{
+    ViewBag.Title = "Pos > Cash management";
+    var delivery = (DeliveryQueue)ViewBag.DeliveryQueue;
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+}
+<input type="hidden" id="cashmanagement_safe-id" value="@(ViewBag.Safe?.Id ?? 0)" />
+<input type="hidden" value="false" id="isReloadPageNeeded" />
+<!-- Devices -->
+<div class="tab-pane fade in active" id="tab-cash-devices">
+
+    <div class="well custom" style="padding-bottom: 10px;">
+        <div class="row">
+            <div class="col-xs-12 col-sm-3">
+                <div class="form-group">
+                    <label for="search">Search</label>
+                    <input type="text" id="key-search" value="@(ViewBag.Key ?? "")" onchange="FilterCMDeviceTab()" name="search" class="form-control">
+                </div>
+            </div>
+            <div class="col-xs-12 col-sm-3 col-lg-2">
+                <div class="form-group">
+                    <label for="status">Limit by type</label>
+                    <select name="status" id="show-type" onchange="FilterCMDeviceTab()" class="form-control select2" style="width: 100%;">
+                        @{
+                            var showSafe = "";
+                            var showTill = "";
+                            var showAll = "";
+                            if (ViewBag.ShowSafe && !ViewBag.ShowTill)
+                            {
+                                showSafe = "selected";
+                            } else if (!ViewBag.ShowSafe && ViewBag.ShowTill)
+                            {
+                                showTill = "selected";
+                            }
+                            else
+                            {
+                                showAll = "selected";
+                            }
+                        }
+                        <option value="0" @showAll>Show all</option>
+                        <option value="1" @showSafe>Safes</option>
+                        <option value="2" @showTill>Virtual Tills</option>
+                    </select>
+                </div>
+            </div>
+            <div class="col-xs-12 col-sm-6">
+                <label for="">Options</label><br />
+                @if (!ViewBag.isSafeNull)
+                {
+                    <button class="btn btn-success" onclick="TillAddEdit(0)"><i class="fa fa-plus"></i> &nbsp; Add a Virtual Till</button>
+                }
+                else
+                {
+                    <button class="btn btn-success" onclick='SafeAddEdit()'><i class="fa fa-plus"></i> &nbsp; Add a Safe</button>
+                }
+            </div>
+        </div>
+    </div>
+
+    <br />
+
+    <div class="flex-grid-thirds-lg qbicles-dash-grid pos-devices">
+
+        @foreach (var tillItem in ViewBag.Tills)
+        {
+            <article class="col">
+                <div class="qbicle-opts dropdown">
+                    <a href="#" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        <i class="fa fa-cog"></i>
+                    </a>
+                    <ul class="dropdown-menu primary dropdown-menu-right" style="right: 0;">
+                        <li><a href="javascript:void(0)" onclick="TillAddEdit('@tillItem.Id')">Edit</a></li>
+                        <li><a href="javascript:void(0)" onclick="TillDelete('@tillItem.Id')">Delete</a></li>
+                    </ul>
+                </div>
+                <a href="javascript:void(0)" onclick="TillAddEdit('@tillItem.Id')">
+                    <div class="avatar" style="background-image: url('/Content/DesignStyle/img/icon_ipad.png');">&nbsp;</div>
+                    <h1 style="color: #333;">@(tillItem?.Name ?? "")</h1>
+                </a>
+
+                <br />
+                <p class="qbicle-detail">
+                    <label style="color: #333;">Device type</label><br>
+                    Virtual Till
+                </p>
+
+                <br />
+                <p class="qbicle-detail">
+                    <label style="color: #333;">Linked POS Devices</label><br>
+                    @{
+                        var PosDevicesString = "";
+                        foreach (var posDeviceItem in tillItem.PosDevices)
+                        {
+                            if (PosDevicesString == "")
+                            {
+                                PosDevicesString = posDeviceItem.Name ?? "";
+                            }
+                            else
+                            {
+                                PosDevicesString += ", " + posDeviceItem.Name ?? "";
+                            }
+                        }
+                    }
+                    @PosDevicesString
+                </p>
+
+            </article>
+        }
+
+        @if (ViewBag.Safe != null && ViewBag.Safe.Id > 0)
+        {
+            <article class="col">
+                <div class="qbicle-opts dropdown">
+                    <a href="#" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        <i class="fa fa-cog"></i>
+                    </a>
+                    <ul class="dropdown-menu primary dropdown-menu-right" style="right: 0;">
+                        <li><a href="javascript:void(0)" onclick='SafeAddEdit()'>Edit</a></li>
+                    </ul>
+                </div>
+                <a href="javascript:void(0)" onclick='SafeAddEdit()'>
+                    <div class="avatar" style="background-image: url('/Content/DesignStyle/img/icon_app_bankmate.png');">&nbsp;</div>
+                    <h1 style="color: #333;">@(ViewBag.Safe?.Name ?? "")</h1>
+                </a>
+
+                <br />
+
+                <p class="qbicle-detail">
+                    <label style="color: #333;">Device type</label><br>
+                    Safe
+                </p>
+
+                <br />
+                <div class="row">
+                    <div class="col-xs-12 col-sm-6">
+                        <p class="qbicle-detail">
+                            <label style="color: #333;">Cash &amp; Bank</label><br>
+                            @(ViewBag.Safe?.CashAndBankAccount?.Name ?? "")
+                        </p>
+                    </div>
+                    <div class="col-xs-12 col-sm-6">
+                        <p class="qbicle-detail">
+                            <label style="color: #333;">Balance</label><br>
+                            @(currencySettings.CurrencySymbol ?? "")@(ViewBag.SafeBalance)
+                        </p>
+                    </div>
+                </div>
+
+
+            </article>
+        }
+
+    </div>
+
+</div>
+<!-- END Devices -->
+<script>
+    $("#show-type").select2();
+</script>

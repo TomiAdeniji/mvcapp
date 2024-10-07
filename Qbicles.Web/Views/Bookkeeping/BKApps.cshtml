@@ -1,0 +1,231 @@
+﻿@using Qbicles.BusinessRules;
+@{
+    ViewBag.Title = "Bookkeeping - Chart or Accounts";
+    char decimalSymbol = Convert.ToChar(System.Threading.Thread.CurrentThread.CurrentCulture.NumberFormat.NumberDecimalSeparator);
+    var userRoleRights = (List<string>)ViewBag.UserRoleRights;
+    var rightCreateJournalEntry = (bool)ViewBag.rightCreateJournalEntry;
+    var rightShowJournalTab = (bool)ViewBag.rightShowJournalTab;
+    var rightShowAccountTab = (bool)ViewBag.rightShowAccountTab;
+    var rightShowReportsTab = (bool)ViewBag.rightShowReportsTab;
+    var rightShowConfigurationTab = userRoleRights.Any(r => r == RightPermissions.BKManageAppSettings);
+}
+
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail">
+
+    <!-- Main content -->
+    <section class="content">
+
+        <br />
+        <br />
+        <div class="mod_title">
+            <h5>Bookkeeping</h5>
+            <h4>Chart of accounts</h4>
+        </div>
+
+        @Html.Partial("_BookkeepingNavigatePartial", new ViewDataDictionary
+        {
+            {"tabSelected", 1 },
+            { "rightShowJournalTab", rightShowJournalTab },
+            { "rightShowAccountTab", rightShowAccountTab },
+            { "rightShowReportsTab", rightShowReportsTab },
+            { "rightShowConfigurationTab", rightShowConfigurationTab }
+        })
+        <div class="row">
+            <div class="col-xs-12">
+                <div class="app_filter">
+                    <div class="row">
+                        <div class="col-xs-9">
+                            <a href="/Apps/AppManagement" class="btn btn-info"><i class="fa fa-th"></i> &nbsp; All apps</a>
+                            @if (rightShowAccountTab)
+                            {
+                                <a href="/Bookkeeping/BKApps" class="btn btn-info"><i class="fa fa-home"></i> &nbsp; App home</a>
+                            }
+                            @if (rightShowAccountTab)
+                            {
+                                <button class="btn btn-primary" onclick="CloseBook()">
+                                    <i class="fa fa-book"></i> &nbsp; Close Books
+                                </button>
+                            }
+                        </div>
+                        <div class="col-xs-3 text-right">
+                            <p style="font-size: 12px; position: relative; top: 8px; right: 5px;"><strong>Last closed:</strong> &nbsp; <span style="color: red" id="close-date-home">@ViewBag.CloseBook</span></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-content app_general" id="grid_view">
+
+            <br /><br />
+
+            <div class="row">
+                <div class="col-xs-12 col-md-5">
+
+                    <div class="activity-overview generic treeview">
+
+                        <h5>Navigate your Chart of Accounts</h5>
+                        <p>Use this widget to quickly find and view accounts within your Chart of Accounts. You can search by account name or number too.</p>
+
+                        <div class="form-group" style="padding-top: 10px;">
+                            <input type="text" name="search-tree" class="search-tree form-control" placeholder="Search for...">
+                        </div>
+                        <div id="bkaccount-tree">
+                            @{Html.RenderAction("TreeViewGroupChartPartial");}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-xs-12 col-md-7">
+
+                    <div id="content" tabindex="1">
+
+                        <div class="activity-overview alert-detail" style="display: inline-block;">
+                            <p style="margin: 0;">Welcome to your Chart of Accounts. Navigate using the tree and your selections will appear here.
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+        <!-- ./content -->
+
+    </section>
+</div>
+<!-- /.content-wrapper -->
+
+
+<div class="modal fade" id="app-coa-account-merge" role="dialog" aria-labelledby="app-coa-account-merge">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Merge transactions from another account</h5>
+            </div>
+            <div id="merge-account-select-manage" class="modal-body">
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+
+<div class="modal fade" id="confirm-merge" role="dialog" aria-labelledby="confirm-merge">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-body">
+
+                <div class="activity-overview generic help-text" style="margin: 0;">
+                    <i class="fa fa-info-circle"></i>
+                    <p>
+                        You are about to merge transactions from <strong class="account-2-name">Account 2</strong> into <strong class="account-1-name">Account 1</strong>.
+                        <br />This operation will delete
+                        <strong class="account-2-name">Account 2</strong> once complete and cannot be undone. <br />If you are sure you wish to proceed, please confirm below...
+                    </p>
+
+
+                    <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                    <button class="btn btn-success" onclick="ConfirmMergeAccount()">Confirm</button>
+                </div>
+
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+
+
+<div class="modal fade" id="confirm-delete" role="dialog" aria-labelledby="confirm-delete">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-body">
+
+                <div class="activity-overview generic help-text" style="margin: 0;">
+                    <i class="fa fa-info-circle"></i>
+                    <p>You are about to delete this <strong class="account-1-name">&lt;element&gt;</strong> permanently. This action cannot be undone. If you are sure you wish to proceed, please confirm below...</p>
+
+
+                    <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                    <button class="btn btn-success" onclick="ConfirmDeleteAccount()">Confirm &amp; Delete</button>
+                </div>
+
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+
+<div class="modal fade" id="confirm-delete-bksubgroup" role="dialog" aria-labelledby="confirm-delete-bksubgroup">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-body">
+
+                <div class="activity-overview generic help-text" style="margin: 0;">
+                    <i class="fa fa-info-circle"></i>
+                    <p>You are about to delete this <strong class="subgroup-1-name">&lt;element&gt;</strong> permanently. This action cannot be undone. If you are sure you wish to proceed, please confirm below...</p>
+
+
+                    <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                    <button class="btn btn-success" onclick="ConfirmDeleteGroup()">Confirm &amp; Delete</button>
+                </div>
+
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+
+
+<div class="modal fade left" id="app-coa-account-add" role="dialog" aria-labelledby="app-coa-account-add">
+
+</div> <!-- /.modal -->
+
+<div class="modal fade left" id="app-coa-account-edit" role="dialog" aria-labelledby="app-coa-account-edit">
+
+</div> <!-- /.modal -->
+
+<div class="modal fade left" id="app-coa-account-close" role="dialog" aria-labelledby="app-coa-account-close">
+    <!-- /.modal-dialog -->
+</div> <!-- /.modal -->
+<div class="modal fade" id="app-coa-account-close-confirm" role="dialog" aria-labelledby="app-coa-account-close-confirm">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Are you sure?</h5>
+            </div>
+            <div class="modal-body">
+
+                <div class="activity-overview generic help-text animated bounce" style="margin-bottom: 20px;">
+                    <i class="fa fa-info-circle"></i>
+                    <p>
+                        You're about to close the books for this account on <strong style="color: red" id="close-date-confirm">@ViewBag.CloseBook</strong>. Please note that this action will prevent transactions
+                        being added to the account prior to this date &amp; time.
+                    </p>
+                </div>
+
+                <button class="btn btn-danger" data-dismiss="modal" data-toggle="modal" data-target="#app-coa-account-close">Cancel</button>
+                <button class="btn btn-success" onclick="CloseBookSave()">Confirm &amp; Close</button>
+
+
+            </div>
+        </div> <!-- /.modal-content -->
+    </div> <!-- /.modal-dialog -->
+</div> <!-- /.modal -->
+@{
+
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/bookkeeping-app.js"></script>
+        <script src="~/Scripts/dev/trader.domain.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/bookkeeping-app.min.js"></script>
+        <script src="~/Scripts/dev/trader.domain.min.js"></script>
+    }
+}
+

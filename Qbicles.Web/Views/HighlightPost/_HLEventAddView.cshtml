@@ -1,0 +1,142 @@
+﻿@using Qbicles.Models.Highlight
+@using Qbicles.Models.Qbicles
+@using Qbicles.BusinessRules
+@using Qbicles.BusinessRules.Model
+@model EventListingHighlight
+@{
+    var timezone = (string)ViewBag.CurrentTimeZone;
+    var dateformat = (string)ViewBag.CurrentDateFormat;
+    var listCountries = (List<Country>)ViewBag.ListCountries;
+    var listLocations = (List<Select2Option>)ViewBag.ListLocations;
+    var lstTags = (List<string>)ViewBag.ListTags;
+}
+<div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+            <h5 class="modal-title">@(Model == null ? "Add an Event" : "Edit Event")</h5>
+        </div>
+        <div class="modal-body">
+            <form id="event-form">
+                <div class="well custom" style="padding-bottom: 5px;">
+                    <input type="hidden" id="listing-event-id" value="@(Model?.Id ?? 0)" />
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group">
+                                <label for="country">Country</label>
+                                <select name="country" id="listing-event-country" onchange="CheckShowingAreaSelection(this, 'area-event')" class="form-control select2" style="width: 100%;">
+                                    @{
+                                        var isAllListingCountriesSelected = (Model == null || Model.Country == null) ? "selected" : "";
+                                        var lstCountryCommonNames = listCountries.Select(p => p.CommonName).ToList();
+                                    }
+                                    <option value="" @isAllListingCountriesSelected>Available everywhere</option>
+                                    @foreach (var countryItem in lstCountryCommonNames)
+                                    {
+                                        var isCountrySelected = Model != null && Model.Country != null && Model.Country.CommonName == countryItem ? "selected" : "";
+                                        <option value="@countryItem" @isCountrySelected>@countryItem</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                        @if (listLocations.Count <= 1)
+                        {
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group" id="area-event" style="display: none;">
+                                    <label for="location">Area</label>
+                                    <select name="location" class="form-control select2" id="listing-event-location" style="width: 100%;"></select>
+                                </div>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group" id="area-event">
+                                    <label for="location">Area</label>
+                                    <select name="location" class="form-control select2" id="listing-event-location" style="width: 100%;">
+                                        @{ var chosenLocationId = Model?.ListingLocation?.Id ?? 0;}
+                                        @foreach (var locationItem in listLocations)
+                                        {
+                                            var isSelected = locationItem.id == chosenLocationId.ToString() ? "selected" : "";
+                                            <option @isSelected value="@locationItem.id">@locationItem.text</option>
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+                        }
+                    </div>
+
+
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group">
+                                <label for="reference">Reference</label>
+                                <input type="text" name="reference" id="event-ref" class="form-control" value="@(Model?.Reference ?? "")">
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group">
+                                <label for="title">Title</label>
+                                <input type="text" name="title" id="event-title" value="@(Model?.Title ?? "")" class="form-control">
+                            </div>
+                        </div>
+                        <div class="col-xs-12">
+                            <div class="form-group">
+                                <label for="tags">Tags (optional)</label><br>
+                                <select name="tags" id="event-tag" class="form-control select2tag" style="width: 100%;" multiple placeholder="Type a tag and hit enter to add it">
+                                    @foreach (var tagItem in lstTags)
+                                    {
+                                        var isSelected = (Model != null && Model.Tags != null && Model.Tags.Select(t => t.Name).ToList().Contains(tagItem)) ? "selected" : "";
+                                        <option value="@tagItem" @isSelected>@tagItem</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group">
+                                <label for="where">Where is the event happening?</label>
+                                <input type="text" id="event-location" value="@(Model?.EventLocation ?? "")" name="where" class="form-control">
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group">
+                                <label for="image">Featured image</label>
+                                <input type="file" id="event-img" name="image" class="form-control">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-6">
+                            <label for="starts">Starts</label>
+                            <div class="input-group" style="margin-bottom: 15px;">
+                                <input type="text" id="event-startdate" name="start-date" value="@(Model == null ? "" : Model.StartDate.ConvertTimeFromUtc(timezone).ToString($"{dateformat} HH:mm"))" class="form-control singledateandtime">
+                                <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-sm-6">
+                            <label for="ends">Ends</label>
+                            <div class="input-group" style="margin-bottom: 15px;">
+                                <input type="text" id="event-enddate" name="end-date" value="@(Model == null ? "" : Model.EndDate.ConvertTimeFromUtc(timezone).ToString($"{dateformat} HH:mm"))" class="form-control singledateandtime">
+                                <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-xs-12">
+                            <div class="form-group">
+                                <label for="summary">Summary</label>
+                                <textarea name="summary" id="event-summary" class="form-control" style="max-width: 100%; height: 120px;">@(Model?.Content ?? "")</textarea>
+                            </div>
+                        </div>
+                    </div>
+
+
+                </div>
+
+
+                <br />
+                <button class="btn btn-danger" type="button" data-dismiss="modal">Cancel</button>
+                <button class="btn btn-success" type="submit">Confirm</button>
+            </form>
+        </div>
+    </div><!-- /.modal-content -->
+</div><!-- /.modal-dialog -->

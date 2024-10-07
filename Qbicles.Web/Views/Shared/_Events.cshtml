@@ -1,0 +1,63 @@
+﻿@using Qbicles.BusinessRules;
+@using Qbicles.Models;
+@model List<QbicleActivity>
+@{
+    var currentUserId = (string)ViewBag.CurrentUserId;
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var createByName = "";
+}
+@foreach (var evac in Model)
+{
+    var ev = (QbicleEvent)evac;
+    createByName = ev.StartedBy.Id == currentUserId ? "Me" : HelperClass.GetFullNameOfUser(ev.StartedBy);
+    <article id="activity-@ev.Id" class="activity event_snippet">
+        <div class="activity-avatar" style="background-image: url('@api@ev.StartedBy.ProfilePic');"></div>
+        <div class="activity-detail">
+            <div class="activity-meta">
+                <h4>@createByName</h4>
+                <small>@ev.TimeLineDate.ToString("dd MMM yyyy, hh:mmtt")</small>
+                <br class="visible-xs">
+                @if (ev.Topic != null)
+                {
+                    <a href="javascript:void(0);" class="topic-label"><span class="label label-info">@ev.Topic.Name</span></a>
+                }
+                <span class="label label-info @(ev.UpdateReason == QbicleActivity.ActivityUpdateReasonEnum.NoUpdates ?"update-reason-hide":"")">@ev.UpdateReason.GetDescription()</span>
+                @if (ev.StartedBy.Id != currentUserId)
+                {
+                    if (ev.ActivityMembers.Any(u => u.Id == currentUserId) == true)
+                    {
+                        <span class="label label-trans"><i class="fa fa-check green"></i> &nbsp; I'm attending</span>
+                    }
+                }
+            </div>
+
+            <a href="javascript:void(0);" onclick="ShowEventPage('@ev.Key',false);">
+                <div class="activity-overview event-detail">
+                    <h5><span>Event /</span> @ev.Name</h5>
+                    <p>
+                        @Html.Raw(ev.Description.Replace(Environment.NewLine, "<br/>"))
+                    </p>
+                </div>
+                <div class="activity-specifics">
+                    <ul>
+                        @if (@ev.Start.Date == @ev.End.Date)
+                        {
+                            <li><i class="fa fa-calendar"></i> @ev.Start.ToString("dd/MM/yyyy")</li>
+                            <li><i class="fa fa-clock-o"></i> @(ev.Start.ToString("hh:mmtt") + " - " + ev.End.ToString("hh:mmtt"))</li>
+                        }
+                        else
+                        {
+                            <li><i class="fa fa-calendar"></i> @(ev.Start.ToString("dd/MM/yyyy") + " - " + ev.End.ToString("dd/MM/yyyy"))</li>
+                            <li><i class="fa fa-clock-o"></i> @(ev.Start.ToString("dd/MM/yyyy hh:mmtt") + " - " + ev.End.ToString("dd/MM/yyyy hh:mmtt"))</li>
+                        }
+                        @if (!string.IsNullOrEmpty(ev.Location))
+                        {
+                            <li><i class="fa fa-map-marker"></i> @ev.Location</li>
+                        }
+                    </ul>
+                </div>
+            </a>
+        </div>
+        <div class="clearfix"></div>
+    </article>
+}

@@ -1,0 +1,849 @@
+﻿@using CleanBooksData;
+@using Qbicles.BusinessRules;
+@using Qbicles.Models;
+
+@{
+    ViewBag.Title = "Cleanbooks - Tasks - Transaction Matching";
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var timeZone = (string)ViewBag.CurrentTimeZone;
+}
+@if (TempData["taskIdMatching"] == null)
+{
+    HttpContext.Current.Server.ClearError();
+    HttpContext.Current.Response.Redirect("/Apps/Tasks", false);
+
+    if (!Response.IsRequestBeingRedirected)
+    {
+        Response.Redirect("/Apps/Tasks");
+    }
+}
+
+@{
+    var taskname = TempData["taskNameMatching"] as string;
+    var taskid = (int)TempData["taskIdMatching"];
+    var taskKey = (string)TempData["taskKeyMatching"];
+    var accountId = (int)TempData["accountIdMatching"];
+    var accountName = TempData["accountNameMatching"] as string;
+    var accountId2 = (int)TempData["accountIdMatching2"];
+    var accountName2 = TempData["accountNameMatching2"] as string;
+    var transactionMatchingTypeId = (int)TempData["transactionMatchingTypeId"];
+    var transactionmatchingtaskId = (int)TempData["transactionmatchingtaskId"];
+    var taskInstanceId = (int)TempData["taskInstanceId"];
+
+    var dateFormat = "dd/MM/yyyy";
+    var dateRangeFormat = "DD/MM/YYYY";
+
+    var startdate = ViewBag.startdate != null ? ((DateTime)ViewBag.startdate).ToString(dateFormat) + "" : "";
+    var enddate = ViewBag.enddate != null ? ((DateTime)ViewBag.enddate).ToString(dateFormat) + "" : "";
+    var IsDateVarianceVisible = (int)ViewBag.IsDateVarianceVisible;
+    var IsAmountVarianceVisible = (int)ViewBag.IsAmountVarianceVisible;
+    var datecheck = IsDateVarianceVisible == 1 ? "" : "disabled";
+    var amouncheck = IsAmountVarianceVisible == 1 ? "" : "disabled";
+    var lstAmount = (List<transactionmatchingamountvariancevalue>)ViewBag.amountvance;
+    var lstDate = (List<transactionmatchingdatevariancevalue>)ViewBag.datevance;
+    var ruler = (transactionmatchingrule)ViewBag.ruler;
+    var currentUserId = (string)ViewBag.CurrentUserId;
+    var qb_task = (QbicleTask)ViewBag.QbTask;
+    var dateFormatUser = (string)ViewBag.CurrentDateFormat;
+    var isMemberQbicles = qb_task.Qbicle == null ? false : qb_task.Qbicle.Members.Any(u => u.Id == currentUserId);
+}
+
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail cleanbooks">
+
+
+    <!-- Main content -->
+    <section class="content app_general" style="min-height: 0;">
+        <input type="hidden" id="TaskId" value="@taskid" />
+        <input type="hidden" id="TaskInstanceId" value="@taskInstanceId" />
+        <input type="hidden" id="accountId" value="@accountId" />
+        <input type="hidden" id="accountId2" value="@accountId2" />
+        <input type="hidden" id="transactionMatchingTypeId" value="@transactionMatchingTypeId" />
+        <input type="hidden" id="transMatchingTaskId" value="@transactionmatchingtaskId" />
+        <input type="hidden" id="hdContinute" value="0" />
+        <br /><br />
+
+
+        <div class="alert_matches">
+            <p></p>
+            <button id="reconcile_button" onclick="ReconcileNow()" class="btn btn-success">Manual match</button>
+        </div>
+
+
+        <div class="mod_title">
+            <img src="~/Content/DesignStyle/images/cleanbooks_logo.png" style="width: 200px; height: auto; margin-bottom: 30px;">
+        </div>
+
+        <div class="row">
+            <div class="col-xs-12">
+                <div class="app_filter">
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-4 col-lg-4">
+                            <a href="/Apps/Accounts" class="btn btn-info"><i class="fa fa-home"></i> &nbsp; App home</a>
+                            <a href="/Apps/Tasks" class="btn btn-info"><i class="fa fa-angle-up"></i> &nbsp; All tasks</a>
+                            <a href="javascript:void(0)" onclick="ShowTaskPage('@taskKey',false);" class="btn btn-primary"><i class="fa fa-eye"></i> &nbsp; View in Qbicles</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <br /><br />
+
+        <div class="mod_title">
+            <h5>Transaction Matching</h5>
+            <h4>@accountName vs @accountName2</h4>
+        </div>
+
+
+        <div class="row" id="run_task" @(transactionmatchingtaskId > 0 ? "style=display:none" : "")>
+            <div class="col-xs-12">
+                <div class="activity-overview alert-detail" style="padding: 20px;">
+                    <p style="margin: 10px 0;">This analysis will use <strong id="lblaccountname1">@accountName</strong> and <strong id="lblaccountname2">@accountName2</strong></p>
+                </div>
+
+                <br />
+
+                <div id="dateRangeGroup" class="activity-overview task" style="padding: 20px; max-width: 600px;">
+                    <div class="form-group">
+                        <label for="dates">Select date range for analysis</label>
+                        <div class="input-group">
+                            <span id="lblStartDate" class="input-group-addon"></span>
+                            <input id="daterange" name="daterange" type="text" class="form-control singledate">
+                            <input type="hidden" id="hddaterang" stardate="@startdate" enddate="@enddate" dateformat="@dateRangeFormat" />
+                        </div>
+                    </div>
+                    <button id="button_ViewRules" class="btn btn-info configure_rules" data-toggle="modal" data-target="#modal-rules-view"><i class="fa fa-cog"></i> &nbsp; Configure automatic matching rules</button>
+                    <button style="display:none;" id="button_RunTask" class="btn btn-success switcher" data-tohide="#run_task" data-toshow="#task_output" disabled><i class="fa fa-play"></i> &nbsp; Run task</button>
+
+                </div>
+            </div>
+        </div>
+
+
+        <div class="row" id="task_output" style="display: none;">
+            <div class="col-xs-12">
+                <div class="activity-overview alert-detail">
+                    <div class="task_progress">
+                        <label>Reconciliation Progress</label>
+                        <div id="progressMatching" class="progress" style="margin-bottom: 5px;">
+
+                        </div>
+                    </div>
+                </div>
+
+
+                <br />
+
+                <!-- Table -->
+                <div id="task-tm-stats">
+                    <div id="table_Reconciled" class="row">
+
+                    </div>
+
+                    <br />
+                    <button class="btn btn-info" id="btnRevise" onclick="Revise()">
+                        Revise
+                    </button>
+                    <button class="btn btn-primary" id="btnSaveandContinue" onclick="SaveAndContinue()">
+                        Save &amp; continue
+                    </button>
+                    <button class="btn btn-danger @*trigger_load*@" id="btnDeleteMatch" onclick="DeleteMatch()">
+                        Delete match
+                    </button>
+                    <button id="finish_button1" class="btn btn-success" onclick="FinishRemaining()">
+                        Close period
+                    </button>
+                </div>
+
+            </div>
+        </div>
+
+
+
+
+        <div id="manual_match" style="display: none;">
+
+            <br /><br />
+
+            <div id="panelClear" class="activity-overview task">
+                <button onclick="btnClearFillter()" class="btn btn-warning">Clear Filter</button>
+            </div>
+
+            <div class="row" id="creditAdebitB">
+                <input hidden id="sumDebitAmount" />
+                <input hidden id="sumCreditAmount" />
+                <div class="col-md-6 col-lg-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-title">
+                                <label class="lblAccount1">Unmatched Credits</label>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div id="div_creditA" class="row scroller">
+
+                                <table id="table_creditA" class="table table-hover app_specific matching" style="margin-top: 0;">
+                                    <thead>
+                                        <tr>
+                                            <th style="width: 50%;">Info</th>
+                                            <th>Credit</th>
+                                            <th style="width: 30px;">&nbsp;</th>
+                                            <th style="width: 40px;">&nbsp;</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+
+                            </div>
+                        </div>
+                        <div class="well" style="margin-bottom: 0; padding: 10px 25px;">
+                            <div class="row" style="padding: 0;">
+                                <div class="col-md-8 col-lg-8 text-right" style="padding-left: 0; margin-bottom: 0;">
+                                    Total
+                                </div>
+
+                                <div class="col-md-4 col-lg-4 text-right" style="margin-bottom: 0;" id="Sum_CreditsA">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-title">
+                                <label class="lblAccount11">Unmatched Debits</label>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div id="div_debitB" class="row scroller">
+
+
+                                <table id="table_debitB" class="table table-hover app_specific matching" style="margin-top: 0;">
+                                    <thead>
+                                        <tr>
+                                            <th style="width: 50%;">Info</th>
+                                            <th id="lblTitle1">Debit</th>
+                                            <th style="width: 30px;">&nbsp;</th>
+                                            <th style="width: 40px;">&nbsp;</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+
+                            </div>
+                        </div>
+                        <div class="well" style="margin-bottom: 0; padding: 10px 25px;">
+                            <div class="row" style="padding: 0;">
+                                <div class="col-md-8 col-lg-8 text-right" style="padding-left: 0; margin-bottom: 0;">
+                                    Total
+                                </div>
+
+                                <div class="col-md-4 col-lg-4 text-right" style="margin-bottom: 0;" id="Sum_DebitB">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row" id="debitAcreditB">
+                <div class="col-md-6 col-lg-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-title">
+                                <label class="lblAccount2">Unmatched Debits</label>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div id="div_debitA" class="row scroller">
+                                <table id="table_debitA" class="table table-hover app_specific matching" style="margin-top: 0;">
+
+                                    <thead>
+                                        <tr>
+                                            <th style="width: 50%;">Info</th>
+                                            <th>Debit</th>
+                                            <th style="width: 30px;">&nbsp;</th>
+                                            <th style="width: 40px;">&nbsp;</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+
+                            </div>
+                        </div>
+                        <div class="well" style="margin-bottom: 0; padding: 10px 25px;">
+                            <div class="row" style="padding: 0;">
+                                <div class="col-md-8 col-lg-8 text-right" style="padding-left: 0; margin-bottom: 0;">
+                                    Total
+                                </div>
+
+                                <div class="col-md-4 col-lg-4 text-right" style="margin-bottom: 0;" id="Sum_DebitA">
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-title">
+                                <label class="lblAccount22">Unmatched Credits</label>
+                            </div>
+                        </div>
+                        <div class="card-body">
+
+                            <div id="div_creditB" class="row scroller">
+                                <table id="table_creditB" class="table table-hover app_specific matching" style="margin-top: 0;">
+
+                                    <thead>
+                                        <tr>
+                                            <th style="width: 50%;">Info</th>
+                                            <th id="lblTitle2">Credit</th>
+                                            <th style="width: 30px;">&nbsp;</th>
+                                            <th style="width: 40px;">&nbsp;</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="well" style="margin-bottom: 0; padding: 10px 25px;">
+                            <div class="row" style="padding: 0;">
+                                <div class="col-md-8 col-lg-8 text-right" style="padding-left: 0; margin-bottom: 0;">
+                                    Total
+                                </div>
+                                <div class="col-md-4 col-lg-4 text-right" style="margin-bottom: 0;" id="Sum_CreditsB">
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+
+
+
+
+
+            <br />
+            <div class="row">
+                <div class="col-md-12">
+                    <button id="finish_button2" onclick="FinishRemaining()" class="btn btn-success">Finish (defer remaining)</button>
+                </div>
+            </div>
+        </div>
+
+
+        <br /><br />
+
+        <!--Comment-->
+
+        <div class="app_topnav entity_adds" style="background: #fff; padding: 0;">
+            <ul class="nav nav-pills app_main_nav">
+                <li role="presentation" class="active">
+                    <a href="#tab1" data-toggle="tab">
+                        <i class="fa fa-comments"></i>
+                        Comments
+                    </a>
+                </li>
+                <li role="presentation">
+                    <a href="#tab2" data-toggle="tab">
+                        <i class="fa fa-folder-open"></i>
+                        Files
+                    </a>
+                </li>
+            </ul>
+        </div>
+        <br />
+        <div class="row">
+            <div class="col-xs-12">
+                <div class="tab-content">
+                    <div class="tab-pane fade in active" id="tab1">
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <div class="well" style="max-width: 800px;">
+                                    <div class="form-group">
+                                        <label for="add-comment">Add a comment</label>
+                                        <textarea id="txt-comment-task" name="add-comment" class="form-control"></textarea>
+                                    </div>
+                                    <button onclick="AddCommentToTask('@qb_task.Key')" class="btn btn-success">Submit</button>
+                                </div>
+                                <br />
+                            </div>
+                        </div>
+                        <div id="list-comments-task">
+                            @foreach (var post in qb_task.Posts.OrderByDescending(x => x.StartedDate).Take(HelperClass.activitiesPageSize))
+                            {
+                                <!-- General post -->
+                                var fullName = post.CreatedBy.Id == currentUserId ? "Me" : HelperClass.GetFullNameOfUser(post.CreatedBy);
+                                <article id="post-@post.Id" class="activity post">
+                                    <img style="background-image: url('@api@post.CreatedBy.ProfilePic')" class="activity-avatar" />
+                                    <div class="activity-detail">
+                                        <div class="activity-meta">
+                                            <h4>@fullName</h4>
+                                            <small>@post.StartedDate.ConvertTimeFromUtc(timeZone).ToString(dateFormatUser + ", hh:mmtt")</small>
+                                        </div>
+                                        <div class="activity-overview media-comment">
+                                            <p>@post.Message</p>
+                                        </div>
+                                    </div>
+                                    <div class="clearfix"></div>
+                                </article>
+                                <!-- END General post -->
+                            }
+                        </div>
+                        @if (qb_task.Posts.Count() > HelperClass.activitiesPageSize)
+                        {
+                            <button class="btn btn-info" id="btn-load-more-comment-task" onclick="loadMoreCommentTask('@qb_task.Key',@HelperClass.activitiesPageSize)">Load older posts</button>
+                        }
+                    </div>
+
+                    <div class="tab-pane fade" id="tab2">
+                        @if (qb_task.ClosedBy == null)
+                        {
+                            <br />
+                            <a href="#" class="btn btn-success" id="btnAddFile" data-toggle="modal" data-target="#create-media"><i class="fa fa-upload"></i> &nbsp; Upload a file</a>
+                        }
+                        <br /><br />
+                        <div id="list-medias">
+                            @if (qb_task.SubActivities.Count > 0)
+                            {
+                                foreach (var item in qb_task.SubActivities.OrderByDescending(x => x.Id).Take(HelperClass.activitiesPageSize))
+                                {
+                                    var media = (QbicleMedia)item;
+                                    var createdByName = media.StartedBy.Id == currentUserId ? "Me" : HelperClass.GetFullNameOfUser(media.StartedBy);
+                                    var createdDate = media.StartedDate.Date == DateTime.UtcNow.Date ? "Today, " + media.StartedDate.ToString("hh:mmtt") : media.StartedDate.ToString(dateFormatUser + " hh:mmtt");
+                                    var mediaLastupdate = media.VersionedFiles.Where(e => !e.IsDeleted).OrderByDescending(x => x.UploadedDate).First() ?? null;
+                                    var lastUpdateFile = mediaLastupdate.UploadedDate.Date == DateTime.UtcNow.Date ? "Today, " + mediaLastupdate.UploadedDate.ToString("hh:mmtt") : mediaLastupdate.UploadedDate.ToString(dateFormatUser + " hh:mmtt");
+                                    //Media post
+                                    <article class="activity media">
+                                        <img style="background-image: url('@api@media.StartedBy.ProfilePic')" class="activity-avatar" />
+                                        <div class="activity-detail">
+                                            <div class="activity-meta">
+                                                <h4>@createdByName</h4>
+                                                <small>@createdDate</small>
+                                                <br class="visible-xs">
+                                            </div>
+                                            <div class="activity-overview media">
+                                                <div class="row">
+                                                    <div class="col-xs-12 col-sm-5 col-md-6 col-lg-5">
+                                                        <a href="javascript:void(0)" onclick="ShowMediaPage('@media.Key')">
+                                                            @if (media.FileType.Type == "Image File")
+                                                            {
+                                                                <img id="media-@item.Id" class="img-responsive" src='@api@mediaLastupdate.Uri' />
+                                                            }
+                                                            else
+                                                            {
+                                                                <img src="@media.FileType.IconPath" class="img-responsive">
+                                                            }
+                                                        </a>
+                                                    </div>
+                                                    <div class="col-xs-12 col-sm-7 col-md-6 col-lg-7 description">
+                                                        <h5>@media.Name</h5>
+                                                        <p>
+                                                            @media.Description
+                                                        </p>
+                                                        <small>@media.FileType.Type | Update @lastUpdateFile</small>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="clearfix"></div>
+                                    </article>
+                                    <!-- END Media post -->
+                                }
+                            }
+                        </div>
+                        @if (qb_task.SubActivities.Count() > HelperClass.activitiesPageSize)
+                        {
+                            <button class="btn btn-info" id="btnLoadMedias" onclick="loadMoreMediaTask(@HelperClass.activitiesPageSize)">Load older medias</button>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+
+        <!--end of comment-->
+    </section>
+    <!-- ./content -->
+    <!-- /.content-wrapper -->
+    <!--Rule matching-->
+    <div class="modal fade" id="modal-rules-view" role="dialog" aria-labelledby="modal-rules-view">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h5 class="modal-title">Automatic Matching Rules</h5>
+                </div>
+                <div class="modal-body">
+
+
+                    <div class="activity-overview task">
+
+                        <p style="margin: 8px 0 15px 0;">Please select the transaction matching methods used in the process...</p>
+
+                        <div class="row">
+                            <div class="col-md-4" style="padding-top:6px">
+                                <div class="row">
+                                    <div class="col-md-12">
+                                        <div class="checkbox">
+                                            <label>
+                                                <input type="hidden" id="hdrulerId" value="@(ruler!=null?ruler.Id:0)">
+
+                                                <input type="checkbox" class="toggle_subtext" data-target="1" id="chkManyToMany" @(ruler != null ? (ruler.IsManyToMany_Set == 1 ? "checked" : "") : "") onclick="MethodCheck(this, 'chkManyToMany')"> &nbsp; Many to Many
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-8">
+                                <div class="activity-overview alert-detail" style="margin-bottom: 10px;">
+                                    <p>
+                                        When the summation of a subset of Account 1 transactions,<br />
+                                        matches the summation of a subset of Account 2 transactions, <br />
+                                        with all transactions having the same Reference, <br />
+                                        the transactions are matched.
+                                    </p>
+                                </div>
+                            </div>
+
+
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4" style="padding-top:6px">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="checkbox">
+                                            <label>
+                                                <input type="checkbox" class="toggle_subtext" data-target="3" @(ruler != null ? ((ruler.IsReference_Set == 1 || ruler.IsReferenceAndDate_Set == 1) ? "checked" : "") : "") id="chkReference" onclick="MethodCheck(this, 'chkReference')"> &nbsp; Reference
+                                            </label>
+                                        </div>
+
+                                    </div>
+                                    @if (ruler.IsReference_Set == 1 || ruler.IsReferenceAndDate_Set == 1)
+                                    {
+                                        <div id="reference" style="display: block;">
+                                            <div class="col-md-6">
+                                                <div class="checkbox">
+                                                    <label>
+                                                        <input type="checkbox" class="enable_option" data-target="#date_variance" @(ruler != null ? (ruler.IsReferenceAndDate_Set == 1 ? "checked" : "") : "") id="chkReferenceDate" onclick="CheckDate(this, 0)"> &nbsp; Date
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div id="reference" style="display: none;">
+                                            <div class="col-md-6">
+                                                <div class="checkbox">
+                                                    <label>
+                                                        <input type="checkbox" class="enable_option" data-target="#date_variance" @(ruler != null ? (ruler.IsReferenceAndDate_Set == 1 ? "checked" : "") : "") id="chkReferenceDate" onclick="CheckDate(this, 0)"> &nbsp; Date
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+
+
+                                </div>
+                            </div>
+                            <div class="col-md-8">
+                                <div class="activity-overview alert-detail" style="margin-bottom: 10px;">
+                                    <p>
+                                        When the amount of an Account 1 transaction matches the amount of an Account 2 transaction
+                                        and references of the transactions match, the transactions are matched.<br />
+                                        If the Date option is toggled on then the dates for the transactions must also match,
+                                        taking into consideration whether Date Variance must also be applied.
+                                    </p>
+                                </div>
+                            </div>
+
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4" style="padding-top: 6px;">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="checkbox">
+                                            <label>
+                                                <input type="checkbox" class="toggle_subtext" @(ruler != null ? ((ruler.IsDescription_Set == 1 || ruler.IsDescriptionAndDate_Set == 1) ? "checked" : "") : "") id="chkDescription" onclick="MethodCheck(this, 'chkDescription')"> &nbsp; Description
+                                            </label>
+                                        </div>
+                                    </div>
+                                    @if (ruler.IsDescription_Set == 1 || ruler.IsDescriptionAndDate_Set == 1)
+                                    {
+                                        <div id="description" style="display: block;">
+                                            <div class="col-md-6">
+                                                <div class="checkbox">
+                                                    <label>
+                                                        <input type="checkbox" class="enable_option" @(ruler != null ? (ruler.IsDescriptionAndDate_Set == 1 ? "checked" : "") : "") data-target="#date_variance" id="chkDecriptionDate" onclick="CheckDate(this, 1)"> &nbsp; Date
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div id="description" style="display: none;">
+                                            <div class="col-md-6">
+                                                <div class="checkbox">
+                                                    <label>
+                                                        <input type="checkbox" class="enable_option" @(ruler != null ? (ruler.IsDescriptionAndDate_Set == 1 ? "checked" : "") : "") data-target="#date_variance" id="chkDecriptionDate" onclick="CheckDate(this, 1)"> &nbsp; Date
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+
+                                </div>
+                            </div>
+                            <div class="col-md-8">
+                                <div class="activity-overview alert-detail" style="margin-bottom: 10px;">
+                                    <p>
+                                        When the amount of an Account 1 transaction matches the amount of an Account 2 transaction
+                                        and descriptions of the transactions match, the transactions are matched.<br />
+                                        If the Date option is toggled on then the dates for the transactions must also match,
+                                        taking into consideration whether Date Variance must also be applied.
+                                    </p>
+                                </div>
+                            </div>
+
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4" style="padding-top: 6px;">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="checkbox">
+                                            <label>
+                                                <input type="checkbox" class="toggle_subtext" @(ruler != null ? (ruler.IsAmountAndDate_Set == 1 ? "checked" : "") : "") id="chkAmountAndDate" onclick="MethodCheck(this, 'chkAmountAndDate')"> &nbsp; Amount &amp; Date
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-8">
+                                <div class="activity-overview alert-detail" style="margin-bottom: 10px;">
+                                    <p>
+                                        When the amount of an Account 1 transaction matches the amount of an Account 2
+                                        transaction and the dates for the transactions match, the transactions are matched.<br />
+                                        Consideration for Date Variance must also be applied.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+
+                        <!-- Revserals -->
+                        <div class="row">
+                            <div class="col-md-4" style="padding-top: 6px;">
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div class="checkbox">
+                                            <label>
+                                                <input type="checkbox" class="toggle_subtext" @(ruler != null ? (ruler.IsReversals_Set == 1 ? "checked" : "") : "")
+                                                       id="chkReversals" onclick="MethodCheck(this, 'chkReversals')"> Reversals
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-8">
+                                <div class="activity-overview alert-detail" style="margin-bottom: 10px;">
+                                    <p>
+                                        With transactions within an Account, if the Credit of one transaction is equal to the Debit of another transaction
+                                        and the References match, then we have a reversal match.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- END Reversals -->
+
+
+                        <div class="row hidden">
+                            <div class="col-md-12 col-lg-12">
+                                <div class="form-group">
+                                    <label for="variance_name">Title of Variance</label>
+                                    <input type="text" name="variance_name" id="variance_name" value="@ruler.VarianceName" class="form-control" style="width: 100%;">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+
+
+                    <div class="row" style="padding-top: 15px;">
+                        <div class="col-md-12 col-lg-12">
+                            <div class="activity-overview task">
+                                <p style="margin: 8px 0 0 0;">
+                                    You have the option to set variance rules here. Date variance allows you to consider records that may have a slight timeshift from the expected, allowing for offsets.
+                                    Account value variance takes into account potential value offsets when performing matching. This could include scenarios where your bank charge a standard 5% for transactions.
+                                </p>
+                                <br />
+                                <div class="row">
+                                    <div class="col-md-4 col-lg-4" style="margin-bottom:0">
+
+
+                                        @if (ruler.IsReferenceAndDate_Set == 1 || ruler.IsDescriptionAndDate_Set == 1)
+                                        {
+                                            <!-- Date variance -->
+                                            <div class="form-group" id="date_variance" style="width: 100%;display: block;">
+                                                <label for="variance_date">Date Variance</label><br>
+                                                <input type="hidden" id="hdDatevariance" value="@ruler.DateVarianceValue" />
+                                                <select id="Datevariance" name="variance_date" class="form-control" @datecheck style="width: 100%;" tabindex="-1" aria-hidden="true">
+                                                    <option value="0" selected>No variance</option>
+                                                    @foreach (var item in lstDate)
+                                                    {
+                                                        <option value="@item.NumberOfDays">@item.NumberOfDays days</option>
+                                                    }
+                                                </select>
+                                            </div>
+                                            <!-- END Date variance -->
+                                        }
+                                        else
+                                        {
+                                            <!-- Date variance -->
+                                            <div id="date_variance" class="form-group" style="width: 100%;display: block;">
+                                                <label for="variance_date">Date Variance</label><br>
+                                                <input type="hidden" id="hdDatevariance" value="@ruler.DateVarianceValue" />
+                                                <select id="Datevariance" name="variance_date" class="form-control" @datecheck style="width: 100%;" tabindex="-1" aria-hidden="true">
+                                                    <option value="0" selected>No variance</option>
+                                                    @foreach (var item in lstDate)
+                                                    {
+                                                        <option value="@item.NumberOfDays">@item.NumberOfDays days</option>
+                                                    }
+                                                </select>
+                                            </div>
+                                            <!-- END Date variance -->
+                                        }
+                                    </div>
+
+
+
+
+                                    <div class="col-md-4 col-lg-4" style="margin-bottom:0">
+                                        <div class="form-group">
+                                            <label for="variance_1">Account 1 Amount Variance</label>
+                                            <input type="hidden" id="hdvariance_1" value="@ruler.Amount1VarianceValue" />
+                                            <select name="variance_1" id="variance_1" class="form-control" @amouncheck style="width: 100%;" tabindex="-1" aria-hidden="true">
+                                                <option value="0.00" selected>No variance</option>
+
+                                                @foreach (var item in lstAmount)
+                                                {
+                                                    <option value="@item.Percentage">@item.Percentage %</option>
+                                                }
+
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4 col-lg-4" style="margin-bottom:0">
+                                        <div class="form-group">
+                                            <label for="variance_2">Account 2 Amount Variance</label>
+                                            <input type="hidden" id="hdvariance_2" value="@ruler.Amount2VarianceValue" />
+                                            <select name="variance_2" id="variance_2" class="form-control " @amouncheck style="width: 100%;" tabindex="-1" aria-hidden="true">
+                                                <option value="0.00" selected>No variance</option>
+
+                                                @foreach (var item in lstAmount)
+                                                {
+                                                    <option value="@item.Percentage">@item.Percentage %</option>
+                                                }
+
+                                            </select>
+                                        </div>
+                                    </div>
+
+
+
+
+
+                                </div>
+                                <div class="row hidden">
+                                    <div class="col-md-12 col-lg-12">
+                                        <div class="form-group">
+                                            <label for="variance_name">Title of Variance</label>
+                                            <input type="text" name="variance_name" id="variance_name" value="test" class="form-control" style="width: 100%;">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <br />
+                    <button data-dismiss="modal" class="btn btn-success pull-right"><i class="fa fa-check"></i> &nbsp; Confirm</button>
+                    <div class="clearfix"></div>
+
+                </div>
+            </div> <!-- /.modal-content -->
+        </div> <!-- /.modal-dialog -->
+    </div> <!-- /.modal -->
+    <!--Review auto-->
+    <div class="modal fade cleanbooks" id="review_matches_auto" role="dialog" aria-labelledby="review_matches_auto">
+        <div class="modal-dialog modal-xl" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h5 class="modal-title">Automatically Matched Items</h5>
+                </div>
+                <div class="modal-body">
+
+                    <div class="row">
+                        <div id="div_review_matches_auto" class="nav-tabs-custom">
+                        </div>
+                    </div>
+
+                    <br /><br />
+
+
+
+                </div>
+            </div><!-- /.modal-content -->
+        </div><!-- /.modal-dialog -->
+    </div><!-- /.modal -->
+    <!--Review manual-->
+    <div class="modal fade cleanbooks" id="review_matches_manual" role="dialog" aria-labelledby="review_matches_manual">
+        <div class="modal-dialog modal-xl" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h5 class="modal-title">Manually Matched Items</h5>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div id="div_review_matches_manual" class="nav-tabs-custom">
+
+                            </div>
+                        </div>
+                    </div>
+
+
+
+                </div> <!-- /.tab-content -->
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+    @{
+        Html.RenderAction("GenerateModalMedia", "Qbicles");
+    }
+</div><!-- /.modal -->
+
+
+
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/cleanbook.transactionmatchingrecords.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/cleanbook.transactionmatchingrecords.min.js"></script>
+    }
+}

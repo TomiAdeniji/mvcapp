@@ -1,0 +1,296 @@
+﻿@using Qbicles.Models.Catalogs;
+
+@model CategoryItem
+@{
+    var api = (string)ViewBag.DocRetrievalUrl;
+    
+    var catalog = Model?.Category?.Menu;
+    var tableVariants = (List<Variant>)ViewBag.Variants ?? new List<Variant>();
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+
+    var traderItemDescription = "";
+    if (Model.PosVariants.Count > 0 && Model.VariantProperties.Count == 0)
+    {
+        traderItemDescription = Model.PosVariants[0]?.TraderItem.Description;
+    }
+}
+<button class="btn btn-primary" onclick="BackToList()" style="margin-bottom: 40px;">
+    <i class="fa fa-angle-left"></i> &nbsp; Back to all items
+</button>
+
+<div class="row">
+    <div class="col-xs-12">
+        <ul class="app_subnav admintabs" style="padding-top: 0;">
+            <li class="active"><a href="#container-overview" data-toggle="tab">Overview</a></li>
+            @if (catalog.SalesChannel != Qbicles.Models.Trader.SalesChannel.SalesChannelEnum.B2B)
+            {
+                <li><a href="#container-extrasvariants" data-toggle="tab">Extras &amp; Variants</a></li>
+            }
+        </ul>
+    </div>
+</div>
+
+<br />
+
+
+<div id="theform" class="row tab-content mydesk" style="min-height: 0; display: block;">
+    <input id="trader-item-description" type="hidden" value="@traderItemDescription" />
+    <!-- Overview -->
+    <div class="tab-pane fade in active" id="container-overview">
+
+        <div class="row">
+            <div class="col-xs-12 col-sm-8">
+
+                <input id="poscategoryitem_detail_id" value="@Model.Id" type="hidden" />
+                <div class="activity-overview plain nopad">
+                    <div class="block-header">
+                        <h4>Overview</h4>
+
+                        <p class="formhelp">Provide basic information about this item, and indicate if it's available for sale or simply a template for variants.</p>
+                    </div>
+                    <div class="block-content">
+
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="name">Item name</label>
+                                    <input type="text" name="name" id="poscategoryitem_detail_name" onchange="ChangeDetailItem()" class="form-control" value="@Model.Name">
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="name">Category</label>
+                                    <select name="category" id="poscategoryitem_detail_category" onchange="ChangeDetailItem('category')" class="form-control select2 taginput" style="width: 100%;">
+                                        @foreach (var item in Model.Category.Menu.Categories)
+                                        {
+                                            if (item.Id == Model.Category.Id)
+                                            {
+                                                <option value="@item.Id" selected>@item.Name</option>
+                                            }
+                                            else
+                                            {
+                                                <option value="@item.Id">@item.Name</option>
+                                            }
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        @if (Model.PosVariants.Count > 0 && Model.VariantProperties.Count == 0)
+                        {
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label for="name">SKU</label>
+                                        <input type="text" name="name" id="poscategoryitem_detail_sku" class="form-control" value="@Model.PosVariants[0].TraderItem.SKU" disabled>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-6">
+                                    <label for="name">Price</label>
+                                    <div class="input-group">
+                                        <span class="input-group-addon">@currencySettings.CurrencySymbol</span>
+                                        <input class="form-control" id="poscategoryitem-price" value="@(Model.PosVariants[0]?.Price?.GrossPrice ?? 0)" onchange="ChangeDetailItem()">
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                        <div class="row description-div-edit">
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label for="description">Description</label><br />
+                                    <textarea class="tinymce-description" onchange="ChangeDetailItem()" rows="5" name="form_specifics_description" id="poscategoryitem_detail_category_description">@Html.Raw(Model.Description)</textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="col-xs-12 col-sm-4">
+
+                <div class="activity-overview plain nopad">
+                    <div class="block-header">
+                        <h4>Featured image</h4>
+                    </div>
+                    <div class="block-content">
+
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <img id="item_categorydetail_imageurl_preview" src="@api@Model.ImageUri" alt="Your image" style="max-width: 100%; margin-bottom: 30px; height: auto;" />
+                            </div>
+                        </div>
+
+
+                        <div class="form-group" style="margin: 0;">
+                            <label for="name">Change image</label>
+                            <input type="file" id="item_categorydetail_imageurl" style="color:transparent;" onchange="ChangeImageItem()" class="form-control previewimg" name="featuredimg" data-target='#preview'>
+                        </div>
+                    </div>
+                </div>
+
+                @*<div class="activity-overview plain nopad">
+
+                    </div>*@
+
+            </div>
+        </div>
+
+    </div>
+    <!-- END Overview -->
+    <!-- Extras & Variants -->
+    @if (catalog.SalesChannel != Qbicles.Models.Trader.SalesChannel.SalesChannelEnum.B2B)
+    {
+        <div class="tab-pane fade" id="container-extrasvariants">
+
+            <div class="activity-overview plain nopad">
+                <div class="block-header">
+                    <h4>Extras</h4>
+
+                    <p class="formhelp">Choose extras that can be optionally added to this item.</p>
+                </div>
+                <div class="block-content reprise">
+
+                    <div class="extras">
+                        <div id="item_extras">
+
+                        </div>
+                        <br />
+                        <button class="btn btn-success" id="addextras2" onclick="$(this).hide(); $('.addextras2').show();"><i class="fa fa-plus"></i> &nbsp; Add an extra</button>
+
+                        <div class="addextras2" style="display: none; margin-top: 15px;">
+                            <div class="well custom">
+                                <label>Choose an item to include as an extra</label><br />
+                                <div class="input-group">
+                                    <input type="hidden" id="poscategoryitem_detail_itemid" class="form-control" value="">
+                                    <input type="text" name="name" id="poscategoryitem_detail_sku_search" class="form-control" value="" placeholder="Enter an SKU or search">
+                                    <div class="input-group-btn"><button class="btn btn-info" data-toggle="modal" onclick="FindSKUDetail()" data-target="#app-trader-pos-itemlist"><i class="fa fa-search"></i></button></div>
+                                </div>
+
+                                <br />
+                                <button class="btn btn-danger" onclick="$('.addextras2').hide(); $('#addextras2').show();">Cancel</button>
+                                <button class="btn btn-success" onclick="confirmAddExtras();">Confirm</button>
+                            </div>
+                        </div>
+
+                    </div>
+
+                </div>
+            </div>
+
+
+            @if (!(Model.PosVariants.Count > 0 && Model.VariantProperties.Count == 0))
+            {
+                <div class="activity-overview plain nopad">
+                    <div class="block-header">
+                        <h4>Configure Variants</h4>
+
+                        <p class="formhelp">
+                            Manage product variants and link to other item SKUs in your inventory. To get started, add an option and what variants it has.
+                            You'll then have a list of variants ready for you to associate with items in your inventory. You can manually enter an SKU, or use our Trader product
+                            finder to select the relevant item.
+                        </p>
+                    </div>
+
+                    <div class="block-content reprise">
+                        <div id="variants_properties_table">
+
+                        </div>
+                        <br />
+
+                        <button class="btn btn-success" onclick="addProperty()" data-toggle="modal" data-target="#app-trader-pos-property-add"><i class="fa fa-plus"></i> &nbsp; Add a property</button>
+
+                        <br /><br /><br />
+                        <hr />
+                        <br />
+
+
+                        <div class="variants">
+
+                            <h5>Generated Variants</h5>
+                            <p class="formhelp">
+                                Below is the list of variants generated as a result of your Variant Confoguraion above. Note that any time you
+                                change Properties this table will be regenerated and <strong>all</strong> data reset. Changing options will update the table but you
+                                won't lose any data.
+                            </p>
+
+                            <br />
+                            <div id="posCategoryItem_variants_table">
+
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            }
+
+
+        </div>
+    }
+    <!-- END Extras & Variants -->
+
+</div>
+
+
+
+<script src="https://cdn.tiny.cloud/1/ppfa9ubyahapmcpxedac4yuyhojva0q9bm41rip6a351qegu/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
+
+<script>
+
+    $(document).ready(function () {
+
+        $('.description-div-edit').LoadingOverlay("show");
+        tinymce.remove();
+        setTimeout(function () {
+            tinymce.init({
+                selector: 'textarea#poscategoryitem_detail_category_description',
+                setup: function (ed) {
+                    ed.on('change', function (e) {
+                        //$("#poscategoryitem_detail_category_description").val(ed.getContent());
+                        $("#poscategoryitem_detail_category_description").text(ed.getContent());
+                        ChangeDetailItem();
+                    });
+                },
+                menubar: false,
+                plugins: 'link',
+                toolbar: 'undo redo | bold italic underline | alignleft aligncenter alignright alignjustify |' +
+                    'bullist numlist checklist | removeformat'
+            });
+
+            tinymce.init({
+                selector: 'textarea#item_description',
+                setup: function (ed) {
+                    ed.on('change', function (e) {
+                        $("#item_description").val(ed.getContent());
+                        $("#item_description").text(ed.getContent());
+                    });
+                },
+                menubar: false,
+                plugins: 'link',
+                toolbar: 'undo redo | bold italic underline | alignleft aligncenter alignright alignjustify |' +
+                    'bullist numlist checklist | removeformat'
+            });
+            tinymce.get('item_description').setContent('');
+
+            $('.description-div-edit').LoadingOverlay("hide", true);
+        }, 1000);
+    });
+    LoadExtrasTable();
+    LoadCategoryTable();
+
+
+    function ImportDescriptionEdit() {
+        tinymce.get('poscategoryitem_detail_category_description').setContent($("#trader-item-description").val());
+        //$("#poscategoryitem_detail_category_description").val($("#trader-item-description").val());
+        $("#poscategoryitem_detail_category_description").text($("#trader-item-description").val());
+        ChangeDetailItem();
+    }
+</script>
+@if (!(Model.PosVariants.Count > 0 && Model.VariantProperties.Count == 0))
+{
+    <script>
+        LoadPropertyTable();
+        LoadVariantsPropertyTable($('#poscategoryitem_detail_id').val());
+    </script>
+}   

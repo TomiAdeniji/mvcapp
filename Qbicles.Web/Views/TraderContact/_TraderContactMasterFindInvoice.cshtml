@@ -1,0 +1,269 @@
+﻿@using Qbicles.BusinessRules
+
+//@model  List<InvoiceContact>
+@{
+    //var key = (string)ViewBag.Key;
+    var mode = (string)ViewBag.Mode;
+    //var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+}
+
+<div class="modal-dialog modal-xl" role="document">
+    <div class="modal-content">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            @if (mode == "DebitNote")
+            {
+                <h5 class="modal-title">Find a Bill</h5>
+            }
+            else
+            {
+                <h5 class="modal-title">Find an Invoice</h5>
+            }
+
+        </div>
+        <div class="modal-body">
+
+            <div class="well custom" style="padding-bottom: 5px;">
+
+                <div class="row">
+                    <div class="col-xs-12 col-sm-6">
+                        <div class="form-group">
+                            @if (mode == "DebitNote")
+                            {
+                                <label for="search_dt">Search for a bill</label>
+                            }
+                            else
+                            {
+                                <label for="search_dt">Search for an invoice</label>
+                            }
+
+                            <input type="text" name="search_dt" id="search_dt_find_invoice" class="form-control invoice-ref" placeholder="Enter an invoice reference or contact">
+                        </div>
+                    </div>
+                    <div class="col-xs-12 col-sm-6">
+                        <div class="form-group">
+                            <label for="daterange">Date range</label>
+                            <input type="text" id="search_daterange_invoice" class="form-control daterange" value="@DateTime.UtcNow.AddDays(-60).ToString("dd/MM/yyyy") - @DateTime.UtcNow.ToString("dd/MM/yyyy")" placeholder="Limit to a date range">
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <br />
+            <div class="invoice-select">
+                <table class="datatable table-striped table-hover" id="credit-debit-invoice-list" style="background: #fff; width: 100%;">
+                    <thead>
+                        <tr>
+                            @if (mode == "DebitNote")
+                            {
+                                <th>Bill Ref</th>
+                            }
+                            else
+                            {
+                                <th>Invoice Ref</th>
+                            }
+                            <th>Date created</th>
+                            <th>Amount <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                            <th>Amount paid <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                            <th data-orderable="false">Use</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @*@foreach (var item in Model)
+                        {
+                            <tr id="findInvoice_@item.Id">
+                                <input type="hidden" value="@item.BalanceInvoice" id="balanceInvoice_@item.Id" />
+                                <td class="ref">#@item.Ref</td>
+                                <td class="hidden">@item.Date</td>
+                                <td class="hidden">@item.Date_Sort</td>
+                                <td class="createdate">@item.Date</td>
+                                <td class="totalamount">@item.Amount</td>
+                                <td class="amountpaid">@(item.AmountPaid)</td>
+                                <td><button class="btn btn-success" onclick="selectInvoiceContact(@item.Id); $('.invoice-select').hide(); $('.selected-invoice').show();"><i class="fa fa-check"></i></button></td>
+                            </tr>
+                        }*@
+                    </tbody>
+                </table>
+            </div>
+
+
+            <div class="selected-invoice" style="display: none;">
+                <table class="datatable app_specific" id="community-list" style="background: #fff; width: 100%;" data-paging="false">
+                    <thead>
+                        <tr>
+                            @if (mode == "DebitNote")
+                            {
+                                <th data-orderable="false">Bill Ref</th>
+                            }
+                            else
+                            {
+                                <th data-orderable="false">Invoice Ref</th>
+                            }
+
+                            <th data-orderable="false">Date created</th>
+                            <th data-orderable="false">Amount</th>
+                            <th data-orderable="false">Amount paid</th>
+                            <th data-orderable="false">Options</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr id="invoiceselected">
+                            <input type="hidden" value="0" id="balanceInvoiceSelected" />
+                            <td class="ref"></td>
+                            <td class="createdate"></td>
+                            <td class="totalamount"></td>
+                            <td class="amountpaid">0</td>
+                            @if (mode == "DebitNote")
+                            {
+                                <td><button class="btn btn-warning" onclick="$('.selected-invoice').hide(); $('.invoice-select').show();"><i class="fa fa-pencil"></i> &nbsp; Change bill</button></td>
+                            }
+                            else
+                            {
+                                <td><button class="btn btn-warning" onclick="$('.selected-invoice').hide(); $('.invoice-select').show();"><i class="fa fa-pencil"></i> &nbsp; Change invoice</button></td>
+                            }
+
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <br /><br />
+            <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+            <button class="btn btn-success" onclick="confirmSelectInvoice()" data-dismiss="modal">Confirm</button>
+
+        </div>
+    </div><!-- /.modal-content -->
+</div><!-- /.modal-dialog -->
+
+<script>
+
+    var $formatDate = 'DD/MM/YYYY';
+    $(function () {
+        $('#search_daterange_invoice').daterangepicker({
+            autoUpdateInput: true,
+            timePicker: true,
+            cancelClass: "btn-danger",
+            opens: "right",
+            autoUpdateInput: false,
+            locale: {
+                cancelLabel: 'Clear',
+                format: $formatDate
+            }
+        });
+        $('#search_daterange_invoice').on('apply.daterangepicker', function (ev, picker) {
+            $(this).val(picker.startDate.format($formatDate) + ' - ' + picker.endDate.format($formatDate));
+            $('#search_daterange_invoice').html(picker.startDate.format($formatDate) + ' - ' + picker.endDate.format($formatDate));
+
+            $("#credit-debit-invoice-list").DataTable().ajax.reload();
+        });
+        $('#search_daterange_invoice').on('cancel.daterangepicker', function (ev, picker) {
+            $(this).val(null);
+            $('#search_daterange_invoice').html('full history');
+            $("#credit-debit-invoice-list").DataTable().ajax.reload();
+        });
+    });
+
+    $("#search_dt_find_invoice").keyup(searchThrottle(function () {
+        reloadDataTable();
+    }));
+
+    function reloadDataTable() {
+        $("#credit-debit-invoice-list").DataTable().ajax.reload(null, false);
+    }
+
+    function searchThrottle(f, delay) {
+        var timer = null;
+        return function () {
+            var context = this, args = arguments;
+            clearTimeout(timer);
+            timer = window.setTimeout(function () {
+                f.apply(context, args);
+            },
+                delay || 1000);
+        };
+    }
+
+
+    GetDataToTable();
+
+    function GetDataToTable() {
+        $("#credit-debit-invoice-list").on('processing.dt', function (e, settings, processing) {
+            if (processing) {
+                $('#credit-debit-invoice-list').LoadingOverlay("show", { minSize: "70x60px" });
+            } else {
+                $('#credit-debit-invoice-list').LoadingOverlay("hide", true);
+            }
+        }).DataTable({
+            "destroy": true,
+            "serverSide": true,
+            "paging": true,
+            "searching": false,
+            "responsive": true,
+            "lengthMenu": [[10, 20, 50, 100], [10, 20, 50, 100]],
+            "pageLength": 10,
+            "ajax": {
+                "url": '/TraderContact/FindInvoiceServerSide',
+                "type": 'POST',
+                "dataType": 'json',
+                "data": function (d) {
+                    return $.extend({}, d, {
+                        "type": '@mode',
+                        "keyword": $("#search_dt_find_invoice").val(),
+                        "contactId": $("#contact-id").val(),
+                        "dateRange": $("#search_daterange_invoice").val()
+                    });
+                }
+            },
+            "columns": [
+                {
+                    name: "FullRef",
+                    data: "FullRef",
+                    orderable: true,
+                    render: function (value, type, row) {
+                        return "<input type='hidden' value='" + row.Id + "' id='balanceInvoice_" + row.Id + "' /><span class='findInvoice_ref" + row.Id + "'>" + row.FullRef + "</span>";
+                    }
+                },
+                {
+                    name: "CreatedDate",
+                    data: "CreatedDate",
+                    orderable: true,
+                    render: function (value, type, row) {
+                        return "<span class='findInvoice_createdate" + row.Id + "'>" + row.CreatedDate + "</span>";
+                    }
+                },
+                {
+                    name: "BalanceInvoice",
+                    data: "BalanceInvoice",
+                    orderable: true,
+                    render: function (value, type, row) {
+                        return "<span class='findInvoice_totalamount" + row.Id + "'>" + row.BalanceInvoice + "</span>";
+                    }
+                },
+                {
+                    name: "AmountPaid",
+                    data: "AmountPaid",
+                    orderable: true,
+                    render: function (value, type, row) {
+                        return "<span class='findInvoice_amountpaid" + row.Id + "'>" + row.AmountPaid + "</span>";
+                    }
+                },
+                {
+                    name: null,
+                    data: null,
+                    orderable: false,
+                    width: "100px",
+                    render: function (value, type, row) {
+                        return "<button class='btn btn-success' onclick='selectInvoiceContact(" + row.Id + ");'><i class='fa fa-check'></i></button>";
+                    }
+                }
+            ],
+            "drawCallback": function (settings) {
+                //$.getScript("/Content/DesignStyle/js/html5tooltips.js");
+            },
+            "order": [[1, "desc"]]
+        });
+    }
+
+</script>

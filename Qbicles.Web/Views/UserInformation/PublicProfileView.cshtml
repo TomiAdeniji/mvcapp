@@ -1,0 +1,545 @@
+﻿@using Qbicles.Models;
+@using Qbicles.Models.UserInformation;
+@using Qbicles.BusinessRules;
+@using Qbicles.Models.Network;
+@using Qbicles.Models.ProfilePage;
+@{
+    ViewBag.Title = "Public Profile";
+
+    var user = (ApplicationUser)ViewBag.User;
+    var lstShowcases = (List<Showcase>)ViewBag.Showcases;
+    var lstSkills = (List<Skill>)ViewBag.Skills;
+    var lstWorkExp = (List<Experience>)ViewBag.WorkExp;
+    var lstEduExp = (List<Experience>)ViewBag.EduExp;
+    var lstFiles = (List<UserProfileFile>)ViewBag.PublicFiles;
+    //var lstSharedQbicles = (List<Qbicle>)ViewBag.SharedQbicles;
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var currentUserId = (string)ViewBag.CurrentUserId;
+    var lstShortlistGroups = (List<ShortListGroup>)ViewBag.lstShortlistGroups;
+    var isC2CConnected = (bool)ViewBag.isC2CConnected;
+    var isShortlisted = lstShortlistGroups != null && lstShortlistGroups.Any(x => x.Candidates.Any(c => c.Id == user.Id));
+    var videoApi = ViewBag.VideoRetrievalUrl;
+    var isC2CAccepted = ViewBag.isC2CConnectionAccepted;
+    var userPages = (List<UserPage>)ViewBag.UserPages;
+}
+
+<input id="candidate-id" value="@user.Id" type="hidden" />
+<input id="currentuser-id" value="@currentUserId" type="hidden" />
+<!-- Content wrapper -->
+<div class="content-wrapper qbicle-detail" style="background: #f4f6f9; padding-top: 85px;">
+
+    <!-- Main content -->
+    <section class="content nopad profilev2">
+
+        <div class="container">
+
+            <div class="row">
+                <div class="col-xs-12">
+
+                    <div class="activity-overview plain rounded businesscard" style="padding: 20px 30px;">
+
+                        <div class="business-logo" style="background-image: url('@api@user.ProfilePic');">&nbsp;</div>
+
+                        <div class="business-info">
+
+                            <h1>@user.GetFullName()</h1>
+                            <p class="summ">@user.TagLine</p>
+
+                        </div>
+
+
+                        @if (user.Id != currentUserId)
+                        {
+                            <div class="business-options">
+
+                                <div style="margin-bottom: 3px;">
+                                    @{
+                                        var connectBtnStyle = isC2CConnected ? "style=display:none" : "";
+                                        var pendingBtnStyle = isC2CConnected && !isC2CAccepted ? "" : "style=display:none";
+                                        var acceptedBtnStyle = isC2CConnected && isC2CAccepted ? "" : "style=display:none";
+                                    }
+
+                                    <button class="btn btn-info community-button" onclick="connectC2CProfilePage('@user.Id', '@user.GetFullName()')" @connectBtnStyle id="connect">Connect</button>
+                                    <button class="btn btn-warning community-button" id="pending" @pendingBtnStyle>Pending connection</button>
+                                    <button class="btn btn-info community-button" @acceptedBtnStyle disabled id="accepted">Connected</button>
+                                </div>
+
+                                @{
+                                    var shortlistStyle = isShortlisted ? "style=display:none" : "";
+                                    var shortlistedStyle = !isShortlisted ? "style=display:none" : "";
+                                }
+                                <button class="btn btn-success community-button" data-toggle="modal" data-target="#shortlist-candidate" id="shortlist" @shortlistStyle onclick="ShowAddUserToSlGroupCandidateView()">Shortlist</button>
+                                <button class="btn btn-success community-button" disabled id="shortlisted" @shortlistedStyle>Shortlisted</button>
+
+                            </div>
+                        }
+
+                    </div>
+
+                </div>
+            </div>
+
+
+
+
+
+
+            <div class="row">
+                <div class="col-xs-12">
+
+
+                    <ul class="profilenav" role="navigation" data-tooltip-stickto="bottom" data-tooltip-max-width="150" data-tooltip-color="teal" style="width: 550px; max-width: 100%;">
+                        <li class="active">
+                            <a href="#profile-info" data-toggle="tab" data-tooltip="Info">
+                                <i class="fa fa-info-circle"></i>
+                            </a>
+                        </li>
+                        @if (userPages != null)
+                        {
+                            <li>
+                                <a href="#profile-pages" data-toggle="tab" onclick="initmasonry(); initImageGallery()" data-tooltip="Page builder" id="pages">
+                                    <i class="fa fa-pencil-ruler"></i>
+                                </a>
+                            </li>
+                        }
+                        <li>
+                            <a href="#profile-acumen" data-toggle="tab" data-tooltip="Skills &amp; qualifications">
+                                <i class="fa fa-graduation-cap"></i>
+                            </a>
+                        </li>
+                        <li class="hidden">
+                            <a href="#profile-blocks" data-toggle="tab" data-tooltip="Blocks">
+                                <i class="fa fa-th"></i>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#profile-files" data-toggle="tab" data-tooltip="Public files">
+                                <i class="fa fa-file-text-o"></i>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#profile-qbicles" data-toggle="tab" data-tooltip="Qbicles we share">
+                                <i class="fa fa-chalkboard-teacher"></i>
+                            </a>
+                        </li>
+                    </ul>
+
+
+
+                    <a id="topjump"></a>
+
+
+                    <div class="tab-content">
+
+
+                        <!-- Info -->
+                        <div class="tab-pane fade in active" id="profile-info">
+
+
+                            <div class="activity-overview plain rounded" style="padding-bottom: 20px;">
+                                <div class="titlezone">
+                                    <h5>Profile</h5>
+                                </div>
+
+                                <p class="summ">@user.Profile</p>
+
+
+                                <br /><br />
+                                <div class="row">
+                                    <div class="col-xs-12">
+
+                                        <ul class="social-icons" data-tooltip-color="teal" data-tooltip-stickto="top">
+                                            @if (!string.IsNullOrEmpty(user.Tell))
+                                            {
+                                                <li><a href="tel:@user.Tell" data-tooltip="Call me on @user.Tell"><i class="fa fa-phone"></i></a></li>
+                                            }
+                                            @if (!string.IsNullOrEmpty(user.Email))
+                                            {
+                                                <li><a href="mailto:@user.Email" data-tooltip="Email me"><i class="fa fa-envelope"></i></a></li>
+                                            }
+                                            @if (!string.IsNullOrEmpty(user.FacebookLink))
+                                            {
+                                                <li><a href="https://www.@user.FacebookLink" target="_blank" data-tooltip="Find me on Facebook"><i class="fa fa-facebook"></i></a></li>
+                                            }
+                                            @if (!string.IsNullOrEmpty(user.InstagramLink))
+                                            {
+                                                <li><a href="https://www.@user.InstagramLink" target="_blank" data-tooltip="Find me on Instagram"><i class="fa fa-instagram"></i></a></li>
+                                            }
+                                            @if (!string.IsNullOrEmpty(user.LinkedlnLink))
+                                            {
+                                                <li><a href="https://www.@user.LinkedlnLink" target="_blank" data-tooltip="Find me on LinkedIn"><i class="fa fa-linkedin"></i></a></li>
+                                            }
+                                            @if (!string.IsNullOrEmpty(user.TwitterLink))
+                                            {
+                                                <li><a href="https://@user.TwitterLink" target="_blank" data-tooltip="Find me on Twitter"><i class="fa fa-twitter"></i></a></li>
+                                            }
+                                            @if (!string.IsNullOrEmpty(user.WhatsAppLink))
+                                            {
+                                                <li><a href="https://wa.me/@user.WhatsAppLink" target="_blank" data-tooltip="Find me on WhatsApp"><i class="fa fa-whatsapp"></i></a></li>
+                                            }
+                                        </ul>
+
+                                    </div>
+                                </div>
+
+                            </div>
+
+                            @if (lstShowcases != null && lstShowcases.Count > 0)
+                            {
+                                <div class="activity-overview plain rounded">
+                                    <div class="titlezone">
+                                        <h5>Showcase</h5>
+                                    </div>
+                                    <div class="owl-carousel realestate owl-theme" style="margin-bottom: 30px;">
+                                        @foreach (var showcaseItem in lstShowcases)
+                                        {
+
+                                            <div class="item">
+                                                <a data-fancybox="gallery" href="@api@showcaseItem.ImageUri" data-caption="@showcaseItem.Caption">
+                                                    <img src="@api@showcaseItem.ImageUri" class="showcase-img">
+                                                    <span class="nvcaption">
+                                                        <h6>@showcaseItem.Title</h6>
+                                                        <p>@showcaseItem.Caption</p>
+                                                    </span>
+                                                </a>
+                                            </div>
+
+                                        }
+                                    </div>
+                                </div>
+                            }
+
+
+
+                        </div>
+                        <!-- END Info -->
+                        <!-- Pages -->
+                        <div class="tab-pane fade" id="profile-pages">
+                            <ul class="profilesubnav" style="@(userPages!=null&&userPages.Count==1?"display:none":"")">
+                                @if (userPages != null)
+                                {
+                                    bool firstActive = true;
+                                    foreach (var item in userPages)
+                                    {
+                                        <li class="@(firstActive?"active":"")"><a href="#page-@item.Id" onclick="initmasonry()" data-toggle="tab" aria-expanded="true">@item.PageTitle</a></li>
+                                        firstActive = false;
+                                    }
+                                }
+                            </ul>
+                            <div class="tab-content">
+                                @if (userPages != null)
+                                {
+                                    bool firstActive = true;
+                                    foreach (var item in userPages)
+                                    {
+                                        <div class="tab-pane fade page-builder-tab @(firstActive?"active in":"")" id="page-@item.Id">
+                                            @Html.Partial("~/Views/ProfilePage/_UserBlockTemplate.cshtml", item)
+                                        </div>
+                                        firstActive = false;
+                                    }
+                                }
+                            </div>
+                        </div>
+                        <!-- END Pages -->
+                        <!-- Acumen -->
+                        <div class="tab-pane fade" id="profile-acumen">
+
+
+                            <div class="activity-overview plain rounded">
+                                <div class="titlezone">
+                                    <h5>Skills</h5>
+                                </div>
+
+                                @foreach (var skillItem in lstSkills)
+                                {
+                                    <div class="skill">
+                                        <div class="rating">@skillItem.Proficiency</div>
+                                        <span>@skillItem.Name</span>
+                                    </div>
+                                }
+
+                            </div>
+
+
+
+
+                            <div class="activity-overview plain rounded">
+                                <div class="titlezone">
+                                    <h5>Experience</h5>
+                                </div>
+
+                                @foreach (var ExpItem in lstWorkExp)
+                                {
+                                    var workExpItem = ExpItem as WorkExperience;
+                                    <div class="workhistory">
+                                        <div class="row">
+                                            <div class="col-xs-12">
+                                                <h5 class="place">@workExpItem.Role</h5>
+                                                <h5 class="course">@workExpItem.Company</h5>
+                                                <h5 class="dates">@(workExpItem.StartDate.ToString("MMM yyyy")) - @(workExpItem.EndDate == null ? "Present" : ((DateTime)workExpItem.EndDate).ToString("MMM yyyy"))</h5>
+                                            </div>
+                                        </div>
+
+                                        <p class="summ">@workExpItem.Summary</p>
+                                    </div>
+                                }
+                            </div>
+
+
+
+
+                            <div class="activity-overview plain rounded">
+                                <div class="titlezone">
+                                    <h5>Education</h5>
+                                </div>
+
+                                @foreach (var ExpItem in lstEduExp)
+                                {
+                                    var eduExpItem = ExpItem as EducationExperience;
+                                    <div class="workhistory">
+                                        <div class="row">
+                                            <div class="col-xs-12">
+                                                <h5 class="place">@eduExpItem.Institution</h5>
+                                                <h5 class="course">@eduExpItem.Course</h5>
+                                                <h5 class="dates">@(eduExpItem.StartDate.ToString("MMM yyyy")) - @(eduExpItem.EndDate == null ? "Present" : ((DateTime)eduExpItem.EndDate).ToString("MMM yyyy"))</h5>
+                                            </div>
+                                        </div>
+
+                                        <p class="summ">@eduExpItem.Summary</p>
+                                    </div>
+                                }
+
+                            </div>
+
+
+
+
+
+
+                        </div>
+                        <!-- END Acumen -->
+                        <!-- Blocks -->
+                        <div class="tab-pane fade" id="profile-blocks">
+
+                            <br />
+
+                            <div class="profile-block">
+                                <div class="pb-info">
+                                    <h1 style="padding-top: 30px;">Block title displayed here</h1>
+                                    <p class="summ">Ut vitae maximus lorem, vitae commodo dui. Etiam id elementum ipsum, ut scelerisque dui. Praesent pretium, augue eget suscipit malesuada, metus lacus ultricies purus, ut venenatis diam ligula ut felis. Nunc imperdiet rhoncus tincidunt. Nulla maximus purus at ultricies fermentum.</p>
+                                </div>
+                                <div class="pb-feature" style="background-image: url('dist/img/earlyaccess-bg.jpg');"></div>
+                            </div>
+
+
+
+                            <div class="profile-block alt">
+                                <div class="pb-feature" style="background-image: url('dist/img/bee.jpg');"></div>
+                                <div class="pb-info">
+                                    <h1 style="padding-top: 30px;">Block title displayed here</h1>
+                                    <p class="summ">Ut vitae maximus lorem, vitae commodo dui. Etiam id elementum ipsum, ut scelerisque dui. Praesent pretium, augue eget suscipit malesuada, metus lacus ultricies purus, ut venenatis diam ligula ut felis. Nunc imperdiet rhoncus tincidunt. Nulla maximus purus at ultricies fermentum.</p>
+                                </div>
+                            </div>
+
+
+                            <div class="profile-block alt2">
+                                <div class="pb-info">
+                                    <h1>Block title displayed here</h1>
+                                    <p class="summ">Ut vitae maximus lorem, vitae commodo dui. Etiam id elementum ipsum, ut scelerisque dui. Praesent pretium, augue eget suscipit malesuada, metus lacus ultricies purus, ut venenatis diam ligula ut felis. Nunc imperdiet rhoncus tincidunt. Nulla maximus purus at ultricies fermentum.</p>
+                                </div>
+                            </div>
+
+
+                        </div>
+                        <!-- END Blocks -->
+                        <!-- Files -->
+                        <div class="tab-pane fade" id="profile-files">
+
+                            <div class="activity-overview plain rounded profile-media">
+
+                                <div class="titlezone" style="margin-bottom: 15px;">
+                                    <h5>Public files</h5>
+                                </div>
+
+
+                                <div class="flex-grid-thirds-lg from-community c1 profile-group" style="margin-top: 30px; width: 100%;">
+                                    @foreach (var fileItem in lstFiles)
+                                    {
+                                        <div class="col">
+                                            <div class="article-feature">
+                                                @if (fileItem.FileType.Type == "Image File")
+                                                {
+                                                    <div class="article-feature-img" style="background: url('@(api+fileItem.StoredFileName)&size=M');"></div>
+                                                }
+                                                else if (fileItem.FileType.Type == "Video File")
+                                                {
+                                                    <video controls="" style="display: inline-block;height:200px !important;" class="fancybox-video">
+                                                        <source src="@string.Format(videoApi,fileItem.StoredFileName,"mp4")" type="video/mp4">
+                                                        <source src="@string.Format(videoApi,fileItem.StoredFileName,"webm")" type="video/webm">
+                                                        <source src="@string.Format(videoApi,fileItem.StoredFileName,"ogv")" type="video/ogv">
+                                                    </video>
+                                                }
+                                                else
+                                                {
+                                                    <div class="article-feature-img" style="background: url('@fileItem.FileType.ImgPath');"></div>
+                                                }
+
+                                                <div class="info" style="padding-bottom: 0;">
+
+                                                    <div class="btn-group optsnew defaulted dropdown">
+                                                        <button class="btn btn-default dropdown-toggle" data-toggle="dropdown">
+                                                            <i class="fa fa-cog"></i>
+                                                        </button>
+                                                        <ul class="dropdown-menu dropdown-menu-right">
+                                                            <li><a href="#" onclick="modalSaveProfileFileShow('@fileItem.Key')">Edit</a></li>
+                                                            <li><a href="#" onclick="deleteProfileFile('@fileItem.Key')">Delete</a></li>
+                                                        </ul>
+                                                    </div>
+
+                                                    <div class="padinfo">
+                                                        <h1>@fileItem.Title</h1>
+                                                        <small>@fileItem.Description</small>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+
+                                </div>
+
+                            </div>
+
+                        </div>
+                        <!-- END Files -->
+                        <!-- Qbicles -->
+                        <div class="tab-pane fade" id="profile-qbicles">
+
+                            <div class="activity-overview plain rounded">
+
+                                <div class="titlezone" style="margin-bottom: 15px;">
+                                    <h5>Qbicles we share</h5>
+                                </div>
+
+                                <ul class="avatar-listing team unstyled" id="qbicles-container" style="margin-bottom: 0 !important;">
+                                </ul>
+                                <div id="pagiation-qbicles" style="float: right;"></div>
+                                <br/>
+                            </div>
+
+
+                        </div>
+                        <!-- END Qbicles -->
+
+
+                    </div>
+
+
+
+
+
+                    <br /><br /><br /><br />
+                </div>
+
+
+
+
+            </div>
+
+        </div>
+
+    </section>
+    <!-- ./content -->
+
+</div>
+
+<div class="modal fade left" id="shortlist-candidate" role="dialog" aria-labelledby="shortlist-candidate">
+</div>
+<!-- /.content-wrapper -->
+@{
+    <script src="~/Content/DesignStyle/js/masonry.pkgd.min.js"></script>
+    @*<link href="~/Content/DesignStyle/css/pagination.css" rel="stylesheet" />
+    <script src="~/Content/DesignStyle/js/pagination.min.js"></script>*@
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/Community.userprofilesetup.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/Community.userprofilesetup.min.js"></script>
+    }
+    <script src="~/Content/DesignStyle/js/imagesloaded.pkgd.min.js"></script>
+}
+<style>
+    html {
+        display: block !important;
+        scroll-behavior: smooth;
+    }
+</style>
+<script>
+    $('#profile-info .owl-carousel').owlCarousel({
+        loop: false,
+        dots: true,
+        nav: false,
+        margin: 10,
+        responsiveClass: true,
+        responsive: {
+            0: {
+                items: 1
+            },
+            600: {
+                items: 3
+            }
+        }
+    });
+    $('#profile-pages .nvgalleryowl').owlCarousel({
+        loop: true,
+        nav: false,
+        dots: true,
+        autoplay: true,
+        autoplayTimeout: 3000,
+        autoplayHoverPause: true,
+        margin: 30,
+        responsive: {
+            0: {
+                items: 1
+            },
+            768: {
+                items: 2
+            },
+            1400: {
+                items: 3
+            }
+        }
+    });
+    function initmasonry() {
+        setTimeout(function () {
+            var $gallerylist = $('#profile-pages .masonry');
+            $gallerylist.imagesLoaded(function () {
+                $gallerylist.css('height', '');
+                $gallerylist.masonry('destroy');
+                $gallerylist.removeData('masonry'); // This line to remove masonry's data
+                $gallerylist.masonry({
+                    columnWidth: 420,
+                    isFitWidth: true,
+                    itemSelector: '.masonitem'
+                });
+            });
+        }, 200)
+
+    }
+    function initImageGallery() {
+        $("a[data-fancybox=gallery]").each(function () {
+            var galleryName = 'gallery-' + $(this).closest(".page-builder-tab").attr("id");
+            $(this).attr('data-fancybox', galleryName);
+        })
+    }
+    initSharedQbicleShow();
+</script>
+<style>
+    .showcase-img {
+        height: 180px;
+        border-top-left-radius: 3px;
+        border-top-right-radius: 3px;
+        background-position: center center !important;
+    }
+</style>

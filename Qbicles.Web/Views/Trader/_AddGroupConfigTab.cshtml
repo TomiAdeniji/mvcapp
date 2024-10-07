@@ -1,0 +1,499 @@
+﻿@using Qbicles.BusinessRules.Model
+@using Qbicles.Models.Trader.Settings
+@using Newtonsoft.Json
+@using Qbicles.BusinessRules
+@model TabGroupConfigModel
+@{
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+    if (Model.MasterSetup != null)
+    {
+        var dbContext = new Qbicles.BusinessRules.Model.ApplicationDbContext();
+        #region Load configs
+        //Ibuy
+        var typeIBuy = Model.MasterSetup.GroupSettings.FirstOrDefault(s => s.SettingType == GroupSetting.SettingTypeEnum.IBuy);
+        Model.IBuySettings = typeIBuy != null && !string.IsNullOrEmpty(typeIBuy.SettingsValue) ? JsonConvert.DeserializeObject<IBuySettingsModel>(typeIBuy.SettingsValue) : null;
+        if (Model.IBuySettings != null)
+        {
+            var accountPurchase = new BKCoANodesRule(dbContext).GetAccountById(Model.IBuySettings.ibuy_purchaseAccount);
+            Model.IBuySettings.ibuy_purchaseAccountText = accountPurchase != null ? accountPurchase.Name : "";
+            var accountInventory = new BKCoANodesRule(dbContext).GetAccountById(Model.IBuySettings.ibuy_pnventoryAccount);
+            Model.IBuySettings.ibuy_pnventoryAccountText = accountInventory != null ? accountInventory.Name : "";
+        }
+        //IbuySell
+        var typeIBuySell = Model.MasterSetup.GroupSettings.FirstOrDefault(s => s.SettingType == GroupSetting.SettingTypeEnum.IBuySell);
+        Model.IBuySellSettings = typeIBuySell != null && !string.IsNullOrEmpty(typeIBuySell.SettingsValue) ? JsonConvert.DeserializeObject<IBuySellSettingsModel>(typeIBuySell.SettingsValue) : null;
+        if (Model.IBuySellSettings != null)
+        {
+            var accountPurchase = new BKCoANodesRule(dbContext).GetAccountById(Model.IBuySellSettings.ibuysell_purchaseAccount);
+            Model.IBuySellSettings.ibuysell_purchaseAccountText = accountPurchase != null ? accountPurchase.Name : "";
+            var accountSell = new BKCoANodesRule(dbContext).GetAccountById(Model.IBuySellSettings.ibuysell_salesAccount);
+            Model.IBuySellSettings.ibuysell_salesAccountText = accountSell != null ? accountSell.Name : "";
+            var accountInventory = new BKCoANodesRule(dbContext).GetAccountById(Model.IBuySellSettings.ibuysell_inventoryAccount);
+            Model.IBuySellSettings.ibuysell_inventoryAccountText = accountInventory != null ? accountInventory.Name : "";
+        }
+        //ISell com
+        var typeISellCompound = Model.MasterSetup.GroupSettings.FirstOrDefault(s => s.SettingType == GroupSetting.SettingTypeEnum.ISellSCompound);
+        Model.ISellSCompoundSettings = typeISellCompound != null && !string.IsNullOrEmpty(typeISellCompound.SettingsValue) ? JsonConvert.DeserializeObject<ISellSCompoundSettingsModel>(typeISellCompound.SettingsValue) : null;
+        if (Model.ISellSCompoundSettings != null)
+        {
+            var accountSellCompound = new BKCoANodesRule(dbContext).GetAccountById(Model.ISellSCompoundSettings.isellcompound_salesAccount);
+            Model.ISellSCompoundSettings.isellcompound_salesAccountText = accountSellCompound != null ? accountSellCompound.Name : "";
+            var accountInventory = new BKCoANodesRule(dbContext).GetAccountById(Model.ISellSCompoundSettings.isellcompound_inventoryAccount);
+            Model.ISellSCompoundSettings.isellcompound_inventoryAccountText = accountInventory != null ? accountInventory.Name : "";
+        }
+        //ISell service
+        var typeISellService = Model.MasterSetup.GroupSettings.FirstOrDefault(s => s.SettingType == GroupSetting.SettingTypeEnum.ISellService);
+        Model.ISellServiceSettings = typeISellService != null && !string.IsNullOrEmpty(typeISellService.SettingsValue) ? JsonConvert.DeserializeObject<ISellServiceSettingsModel>(typeISellService.SettingsValue) : null;
+        if (Model.ISellServiceSettings != null)
+        {
+            var accountSellService = new BKCoANodesRule(dbContext).GetAccountById(Model.ISellServiceSettings.isellservices_salesAccount);
+            Model.ISellServiceSettings.isellservices_salesAccountText = accountSellService != null ? accountSellService.Name : "";
+            var accountInventory = new BKCoANodesRule(dbContext).GetAccountById(Model.ISellServiceSettings.isellservices_inventoryAccount);
+            Model.ISellServiceSettings.isellservices_inventoryAccountText = accountInventory != null ? accountInventory.Name : "";
+        }
+        #endregion
+    }
+}
+<div class="row">
+    <div class="col-xs-12">
+        <ul class="app_subnav admintabs" style="padding-top: 0;">
+            <li class="active"><a href="#p@(Model.TraderGroup.Id)-accounting" data-toggle="tab">Accounting</a></li>
+            <li><a href="#p@(Model.TraderGroup.Id)-pricing"onclick = "loadReloadPrices(@(Model.TraderGroup.Id))" data-toggle="tab">Pricing</a></li>
+        </ul>
+    </div>
+</div>
+<br />
+<div class="tab-content">
+    <!-- Accounting -->
+    <div class="tab-pane fade in active" id="p@(Model.TraderGroup.Id)-accounting">
+        <div class="well custom mydesk in-community" style="min-height: 0; height: auto;">
+            <div class="row equal">
+                <div class="col-xs-12 col-md-3">
+
+                    <div class="activity-overview plain nopad">
+                        <div class="block-header">
+                            <h4>Items I buy</h4>
+                        </div>
+                        <div style="padding: 20px;">
+                            <div class="row">
+                                <div class="col-xs-12">
+                                    <div class="form-group">
+                                        <label for="ibuy_purchaseTaxRate">Purchase tax rate(s)</label>
+                                        <select id="ibuy_purchaseTaxRate@(Model.TraderGroup.Id)" name="ibuy_purchaseTaxRate" class="form-control checkmulti" multiple>
+                                            @foreach (var item in Model.PurchaseTaxRates)
+                                            {
+                                                <option value="@item.Id" @(Model.IBuySettings != null && Model.IBuySettings.ibuy_purchaseTaxRate != null && Model.IBuySettings.ibuy_purchaseTaxRate.Any(s => s == item.Id) ? "selected" : "")>@item.Name</option>
+                                            }
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12">
+                                    <div class="form-group">
+                                        <label for="customer-account">Purchase account</label><br>
+                                        <button id="btn_ibuy_addpurchase_account@(Model.TraderGroup.Id)" class="btn btn-info @(Model.IBuySettings!=null&&Model.IBuySettings.ibuy_purchaseAccount>0?"hidden":"")" onclick="LoadAccountsTree(); idAccount = 'purchase';typeGroup='ibuy' ;idGroup =@(Model.TraderGroup.Id);" data-toggle="modal" data-target="#app-bookkeeping-treeview">Choose account</button>
+                                        <button id="btn_ibuy_editpurchase_account@(Model.TraderGroup.Id)" class="btn btn-small btn-warning btn-edit @(Model.IBuySettings!=null&&Model.IBuySettings.ibuy_purchaseAccount>0?"":"hidden")" onclick="LoadAccountsTree(); idAccount = 'purchase';typeGroup='ibuy' ;idGroup =@(Model.TraderGroup.Id);" data-toggle="modal" data-target="#app-bookkeeping-treeview"><i class="fa fa-pencil"></i></button>
+                                        <input type="hidden" id="ibuy_purchase_account@(Model.TraderGroup.Id)" value="@(Model.IBuySettings!=null&&Model.IBuySettings.ibuy_purchaseAccount>0?Model.IBuySettings.ibuy_purchaseAccount:0)">
+                                        <p id="ibuy_purchase_accounttext@(Model.TraderGroup.Id)" style="display: inline; padding-left: 5px; font-size: 12px;">@(Model.IBuySettings != null && Model.IBuySettings.ibuy_purchaseAccount > 0 ? Model.IBuySettings.ibuy_purchaseAccountText : "No account selected")</p>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12">
+                                    <div class="form-group">
+                                        <label for="customer-account">Inventory account</label><br>
+                                        <button id="btn_ibuy_addinventory_account@(Model.TraderGroup.Id)" class="btn btn-info @(Model.IBuySettings!=null&&Model.IBuySettings.ibuy_pnventoryAccount>0?"hidden":"")" onclick="LoadAccountsTree(); idAccount = 'inventory';typeGroup='ibuy' ;idGroup =@(Model.TraderGroup.Id);" data-toggle="modal" data-target="#app-bookkeeping-treeview">Choose account</button>
+                                        <button id="btn_ibuy_editinventory_account@(Model.TraderGroup.Id)" class="btn btn-small btn-warning btn-edit @(Model.IBuySettings!=null&&Model.IBuySettings.ibuy_pnventoryAccount>0?"":"hidden")" onclick="LoadAccountsTree(); idAccount = 'inventory';typeGroup='ibuy' ;idGroup =@(Model.TraderGroup.Id);" data-toggle="modal" data-target="#app-bookkeeping-treeview"><i class="fa fa-pencil"></i></button>
+                                        <input type="hidden" id="ibuy_inventory_account@(Model.TraderGroup.Id)" value="@(Model.IBuySettings!=null&&Model.IBuySettings.ibuy_pnventoryAccount>0?Model.IBuySettings.ibuy_pnventoryAccount:0)">
+                                        <p id="ibuy_inventory_accounttext@(Model.TraderGroup.Id)" style="display: inline; padding-left: 5px; font-size: 12px;">@(Model.IBuySettings != null && Model.IBuySettings.ibuy_pnventoryAccount > 0 ? Model.IBuySettings.ibuy_pnventoryAccountText : "No account selected")</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <br />
+                            <button class="btn btn-primary" data-toggle="modal" data-target="#confirm-apply" onclick="bindTabApply(@(Model.TraderGroup.Id),'@ApplyTypeSettingsModel.ApplyTypeEnum.IBuy')">Apply</button>
+
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xs-12 col-md-3">
+
+                    <div class="activity-overview plain nopad">
+                        <div class="block-header">
+                            <h4>Items I buy &amp; sell</h4>
+                        </div>
+                        <div style="padding: 20px;">
+
+                            <div class="row">
+                                <div class="col-xs-12">
+                                    <div class="form-group">
+                                        <label for="ibuysell_purchaseTaxRate">Purchase tax rate(s)</label>
+                                        <select id="ibuysell_purchaseTaxRate@(Model.TraderGroup.Id)" name="ibuysell_purchaseTaxRate" class="form-control checkmulti" multiple>
+                                            @foreach (var item in Model.PurchaseTaxRates)
+                                            {
+                                                <option value="@item.Id" @(Model.IBuySellSettings != null && Model.IBuySellSettings.ibuysell_purchaseTaxRate != null && Model.IBuySellSettings.ibuysell_purchaseTaxRate.Any(s => s == item.Id) ? "selected" : "")>@item.Name</option>
+                                            }
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12">
+                                    <div class="form-group">
+                                        <label for="customer-account">Purchase account</label><br>
+                                        <button id="btn_ibuysell_addpurchase_account@(Model.TraderGroup.Id)" class="btn btn-info @(Model.IBuySellSettings!=null&&Model.IBuySellSettings.ibuysell_purchaseAccount>0?"hidden":"")" onclick="LoadAccountsTree(); idAccount = 'purchase';typeGroup='ibuysell' ;idGroup =@(Model.TraderGroup.Id);" data-toggle="modal" data-target="#app-bookkeeping-treeview">Choose account</button>
+                                        <button id="btn_ibuysell_editpurchase_account@(Model.TraderGroup.Id)" class="btn btn-small btn-warning btn-edit @(Model.IBuySellSettings!=null&&Model.IBuySellSettings.ibuysell_purchaseAccount>0?"":"hidden")" onclick="LoadAccountsTree(); idAccount = 'purchase';typeGroup='ibuysell' ;idGroup =@(Model.TraderGroup.Id);" data-toggle="modal" data-target="#app-bookkeeping-treeview"><i class="fa fa-pencil"></i></button>
+                                        <input type="hidden" id="ibuysell_purchase_account@(Model.TraderGroup.Id)" value="@(Model.IBuySellSettings!=null&&Model.IBuySellSettings.ibuysell_purchaseAccount>0?Model.IBuySellSettings.ibuysell_purchaseAccount:0)">
+                                        <p id="ibuysell_purchase_accounttext@(Model.TraderGroup.Id)" style="display: inline; padding-left: 5px; font-size: 12px;">@(Model.IBuySellSettings != null && Model.IBuySellSettings.ibuysell_purchaseAccount > 0 ? Model.IBuySellSettings.ibuysell_purchaseAccountText : "No account selected")</p>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12">
+                                    <div class="form-group">
+                                        <label for="str">Sales tax rate(s)</label>
+                                        <select id="ibuysell_salesTaxRate@(Model.TraderGroup.Id)" name="ibuysell_salesTaxRate" class="form-control checkmulti" multiple>
+                                            @foreach (var item in Model.SaleTaxRates)
+                                            {
+                                                <option value="@item.Id" @(Model.IBuySellSettings != null && Model.IBuySellSettings.ibuysell_salesTaxRate != null && Model.IBuySellSettings.ibuysell_salesTaxRate.Any(s => s == item.Id) ? "selected" : "")>@item.Name</option>
+                                            }
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12">
+                                    <div class="form-group">
+                                        <label for="customer-account">Sales account</label><br>
+                                        <button id="btn_ibuysell_addsale_account@(Model.TraderGroup.Id)" class="btn btn-info @(Model.IBuySellSettings!=null&&Model.IBuySellSettings.ibuysell_salesAccount>0?"hidden":"")" onclick="LoadAccountsTree(); idAccount = 'sale';typeGroup='ibuysell' ;idGroup =@(Model.TraderGroup.Id);" data-toggle="modal" data-target="#app-bookkeeping-treeview">Choose account</button>
+                                        <button id="btn_ibuysell_editsale_account@(Model.TraderGroup.Id)" class="btn btn-small btn-warning btn-edit @(Model.IBuySellSettings!=null&&Model.IBuySellSettings.ibuysell_salesAccount>0?"":"hidden")" onclick="LoadAccountsTree(); idAccount = 'sale';typeGroup='ibuysell' ;idGroup =@(Model.TraderGroup.Id);" data-toggle="modal" data-target="#app-bookkeeping-treeview"><i class="fa fa-pencil"></i></button>
+                                        <input type="hidden" id="ibuysell_sale_account@(Model.TraderGroup.Id)" value="@(Model.IBuySellSettings!=null&&Model.IBuySellSettings.ibuysell_salesAccount>0?Model.IBuySellSettings.ibuysell_salesAccount:0)">
+                                        <p id="ibuysell_sale_accounttext@(Model.TraderGroup.Id)" style="display: inline; padding-left: 5px; font-size: 12px;">@(Model.IBuySellSettings != null && Model.IBuySellSettings.ibuysell_salesAccount > 0 ? Model.IBuySellSettings.ibuysell_salesAccountText : "No account selected")</p>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12">
+                                    <div class="form-group">
+                                        <label for="customer-account">Inventory account</label><br>
+                                        <button id="btn_ibuysell_addinventory_account@(Model.TraderGroup.Id)" class="btn btn-info @(Model.IBuySellSettings!=null&&Model.IBuySellSettings.ibuysell_inventoryAccount>0?"hidden":"")" onclick="LoadAccountsTree(); idAccount = 'inventory';typeGroup='ibuysell' ;idGroup =@(Model.TraderGroup.Id);" data-toggle="modal" data-target="#app-bookkeeping-treeview">Choose account</button>
+                                        <button id="btn_ibuysell_editinventory_account@(Model.TraderGroup.Id)" class="btn btn-small btn-warning btn-edit @(Model.IBuySellSettings!=null&&Model.IBuySellSettings.ibuysell_inventoryAccount>0?"":"hidden")" onclick="LoadAccountsTree(); idAccount = 'inventory';typeGroup='ibuysell' ;idGroup =@(Model.TraderGroup.Id);" data-toggle="modal" data-target="#app-bookkeeping-treeview"><i class="fa fa-pencil"></i></button>
+                                        <input type="hidden" id="ibuysell_inventory_account@(Model.TraderGroup.Id)" value="@(Model.IBuySellSettings!=null&&Model.IBuySellSettings.ibuysell_inventoryAccount>0?"":"hidden")">
+                                        <p id="ibuysell_inventory_accounttext@(Model.TraderGroup.Id)" style="display: inline; padding-left: 5px; font-size: 12px;">@(Model.IBuySellSettings != null && Model.IBuySellSettings.ibuysell_inventoryAccount > 0 ? Model.IBuySellSettings.ibuysell_inventoryAccountText : "No account selected")</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <br />
+                            <button class="btn btn-primary" data-toggle="modal" data-target="#confirm-apply" onclick="bindTabApply(@(Model.TraderGroup.Id),'@ApplyTypeSettingsModel.ApplyTypeEnum.IBuySell')">Apply</button>
+
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xs-12 col-md-3">
+
+                    <div class="activity-overview plain nopad">
+                        <div class="block-header">
+                            <h4>Items I sell (compound)</h4>
+                        </div>
+                        <div style="padding: 20px;">
+
+                            <div class="row">
+                                <div class="col-xs-12">
+                                    <div class="form-group">
+                                        <label for="isellcompound_salesTaxRate">Sales tax rate(s)</label>
+                                        <select id="isellcompound_salesTaxRate@(Model.TraderGroup.Id)" name="isellcompound_salesTaxRate" class="form-control checkmulti" multiple>
+                                            @foreach (var item in Model.SaleTaxRates)
+                                            {
+                                                <option value="@item.Id" @(Model.ISellSCompoundSettings != null && Model.ISellSCompoundSettings.isellcompound_salesTaxRate != null && Model.ISellSCompoundSettings.isellcompound_salesTaxRate.Any(s => s == item.Id) ? "selected" : "")>@item.Name</option>
+                                            }
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12">
+                                    <div class="form-group">
+                                        <label for="customer-account">Sales account</label><br>
+                                        <button id="btn_isellcompound_addsale_account@(Model.TraderGroup.Id)" class="btn btn-info @(Model.ISellSCompoundSettings!=null&&Model.ISellSCompoundSettings.isellcompound_salesAccount>0?"hidden":"")" onclick="LoadAccountsTree(); idAccount = 'sale';typeGroup='isellcompound' ;idGroup =@(Model.TraderGroup.Id);" data-toggle="modal" data-target="#app-bookkeeping-treeview">Choose account</button>
+                                        <button id="btn_isellcompound_editsale_account@(Model.TraderGroup.Id)" class="btn btn-small btn-warning btn-edit @(Model.ISellSCompoundSettings!=null&&Model.ISellSCompoundSettings.isellcompound_salesAccount>0?"":"hidden")" onclick="LoadAccountsTree(); idAccount = 'sale';typeGroup='isellcompound' ;idGroup =@(Model.TraderGroup.Id);" data-toggle="modal" data-target="#app-bookkeeping-treeview"><i class="fa fa-pencil"></i></button>
+                                        <input type="hidden" id="isellcompound_sale_account@(Model.TraderGroup.Id)" value="@(Model.ISellSCompoundSettings!=null&&Model.ISellSCompoundSettings.isellcompound_salesAccount>0?Model.ISellSCompoundSettings.isellcompound_salesAccount:0)">
+                                        <p id="isellcompound_sale_accounttext@(Model.TraderGroup.Id)" style="display: inline; padding-left: 5px; font-size: 12px;">@(Model.ISellSCompoundSettings != null && Model.ISellSCompoundSettings.isellcompound_salesAccount > 0 ? Model.ISellSCompoundSettings.isellcompound_salesAccountText : "No account selected")</p>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12">
+                                    <div class="form-group">
+                                        <label for="customer-account">Inventory account</label><br>
+                                        <button id="btn_isellcompound_addinventory_account@(Model.TraderGroup.Id)" class="btn btn-info @(Model.ISellSCompoundSettings!=null&&Model.ISellSCompoundSettings.isellcompound_inventoryAccount>0?"hidden":"")" onclick="LoadAccountsTree(); idAccount = 'inventory';typeGroup='isellcompound' ;idGroup =@(Model.TraderGroup.Id);" data-toggle="modal" data-target="#app-bookkeeping-treeview">Choose account</button>
+                                        <button id="btn_isellcompound_editinventory_account@(Model.TraderGroup.Id)" class="btn btn-small btn-warning btn-edit @(Model.ISellSCompoundSettings!=null&&Model.ISellSCompoundSettings.isellcompound_inventoryAccount>0?"":"hidden")" onclick="LoadAccountsTree(); idAccount = 'inventory';typeGroup='isellcompound' ;idGroup =@(Model.TraderGroup.Id);" data-toggle="modal" data-target="#app-bookkeeping-treeview"><i class="fa fa-pencil"></i></button>
+                                        <input type="hidden" id="isellcompound_inventory_account@(Model.TraderGroup.Id)" value="@(Model.ISellSCompoundSettings!=null&&Model.ISellSCompoundSettings.isellcompound_inventoryAccount>0?Model.ISellSCompoundSettings.isellcompound_inventoryAccount:0)">
+                                        <p id="isellcompound_inventory_accounttext@(Model.TraderGroup.Id)" style="display: inline; padding-left: 5px; font-size: 12px;">@(Model.ISellSCompoundSettings != null && Model.ISellSCompoundSettings.isellcompound_inventoryAccount > 0 ? Model.ISellSCompoundSettings.isellcompound_inventoryAccountText : "No account selected")</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <br />
+                            <button class="btn btn-primary" data-toggle="modal" data-target="#confirm-apply" onclick="bindTabApply(@(Model.TraderGroup.Id),'@ApplyTypeSettingsModel.ApplyTypeEnum.ISellSCompound')">Apply</button>
+
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xs-12 col-md-3">
+
+                    <div class="activity-overview plain nopad">
+                        <div class="block-header">
+                            <h4>Items I sell (services)</h4>
+                        </div>
+                        <div style="padding: 20px;">
+
+                            <div class="row">
+                                <div class="col-xs-12">
+                                    <div class="form-group">
+                                        <label for="isellservices_salesTaxRate">Sales tax rate(s)</label>
+                                        <select id="isellservices_salesTaxRate@(Model.TraderGroup.Id)" name="isellservices_salesTaxRate" class="form-control checkmulti" multiple>
+                                            @foreach (var item in Model.SaleTaxRates)
+                                            {
+                                                <option value="@item.Id" @(Model.ISellServiceSettings != null && Model.ISellServiceSettings.isellservices_salesTaxRate != null && Model.ISellServiceSettings.isellservices_salesTaxRate.Any(s => s == item.Id) ? "selected" : "")>@item.Name</option>
+                                            }
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12">
+                                    <div class="form-group">
+                                        <label for="customer-account">Sales account</label><br>
+                                        <button id="btn_isellservices_addsale_account@(Model.TraderGroup.Id)" class="btn btn-info @(Model.ISellServiceSettings!=null&&Model.ISellServiceSettings.isellservices_salesAccount>0?"hidden":"")" onclick="LoadAccountsTree(); idAccount = 'sale';typeGroup='isellservices' ;idGroup =@(Model.TraderGroup.Id);" data-toggle="modal" data-target="#app-bookkeeping-treeview">Choose account</button>
+                                        <button id="btn_isellservices_editsale_account@(Model.TraderGroup.Id)" class="btn btn-small btn-warning btn-edit @(Model.ISellServiceSettings!=null&&Model.ISellServiceSettings.isellservices_salesAccount>0?"":"hidden")" onclick="LoadAccountsTree(); idAccount = 'sale';typeGroup='isellservices' ;idGroup =@(Model.TraderGroup.Id);" data-toggle="modal" data-target="#app-bookkeeping-treeview"><i class="fa fa-pencil"></i></button>
+                                        <input type="hidden" id="isellservices_sale_account@(Model.TraderGroup.Id)" value="@(Model.ISellServiceSettings!=null&&Model.ISellServiceSettings.isellservices_salesAccount>0?Model.ISellServiceSettings.isellservices_salesAccount:0)">
+                                        <p id="isellservices_sale_accounttext@(Model.TraderGroup.Id)" style="display: inline; padding-left: 5px; font-size: 12px;">@(Model.ISellServiceSettings != null && Model.ISellServiceSettings.isellservices_salesAccount > 0 ? Model.ISellServiceSettings.isellservices_salesAccountText : "No account selected")</p>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12">
+                                    <div class="form-group">
+                                        <label for="customer-account">Inventory account</label><br>
+                                        <button id="btn_isellservices_addinventory_account@(Model.TraderGroup.Id)" class="btn btn-info @(Model.ISellServiceSettings!=null&&Model.ISellServiceSettings.isellservices_inventoryAccount>0?"hidden":"")" onclick="LoadAccountsTree(); idAccount = 'inventory';typeGroup='isellservices' ;idGroup =@(Model.TraderGroup.Id);" data-toggle="modal" data-target="#app-bookkeeping-treeview">Choose account</button>
+                                        <button id="btn_isellservices_editinventory_account@(Model.TraderGroup.Id)" class="btn btn-small btn-warning btn-edit @(Model.ISellServiceSettings!=null&&Model.ISellServiceSettings.isellservices_inventoryAccount>0?"":"hidden")" onclick="LoadAccountsTree(); idAccount = 'inventory';typeGroup='isellservices' ;idGroup =@(Model.TraderGroup.Id);" data-toggle="modal" data-target="#app-bookkeeping-treeview"><i class="fa fa-pencil"></i></button>
+                                        <input type="hidden" id="isellservices_inventory_account@(Model.TraderGroup.Id)" value="@(Model.ISellServiceSettings!=null&&Model.ISellServiceSettings.isellservices_inventoryAccount>0?Model.ISellServiceSettings.isellservices_inventoryAccount:0)">
+                                        <p id="isellservices_inventory_accounttext@(Model.TraderGroup.Id)" style="display: inline; padding-left: 5px; font-size: 12px;">@(Model.ISellServiceSettings != null && Model.ISellServiceSettings.isellservices_inventoryAccount > 0 ? Model.ISellServiceSettings.isellservices_inventoryAccountText : "No account selected")</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <br />
+                            <button class="btn btn-primary" data-toggle="modal" data-target="#confirm-apply" onclick="bindTabApply(@(Model.TraderGroup.Id),'@ApplyTypeSettingsModel.ApplyTypeEnum.ISellService')">Apply</button>
+
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <br />
+            <button class="btn btn-primary community-button w-auto" data-toggle="modal" data-target="#confirm-apply" onclick="bindTabApply(@(Model.TraderGroup.Id),'@ApplyTypeSettingsModel.ApplyTypeEnum.All')">Apply all</button>
+        </div>
+
+        <br />
+
+        <div class="well custom" style="padding-bottom: 5px;">
+            <div class="row">
+                <div class="col-xs-12 col-sm-4 col-lg-3">
+                    <div class="form-group">
+                        <label for="search">Search</label>
+                        <input type="text" class="form-control txtsearch">
+                    </div>
+                </div>
+                <div class="col-xs-12 col-sm-4 col-lg-3">
+                    <div class="form-group">
+                        <label for="search">Type</label>
+                        <select name="type" class="form-control select2 sltype" style="width: 100%;">
+                            <option value="0" selected>Show all</option>
+                            <option value="1">Item I buy</option>
+                            <option value="2">Item I buy &amp; sell</option>
+                            <option value="3">Item I sell (compound)</option>
+                            <option value="4">Item I sell (service)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <table class="datatable table-striped table-hover" id="tblGroup@(Model.TraderGroup.Id)" style="width: 100%;">
+            <thead>
+                <tr>
+                    <th data-priority="1">Item</th>
+                    <th data-priority="2">Type</th>
+                    <th data-priority="2">Taxes</th>
+                    <th data-priority="1">Accounts</th>
+                    <th data-priority="1" data-orderable="false" style="max-width:150px">Actions</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+
+    </div>
+    <!-- END Accounting -->
+    <!-- Pricing -->
+    <div class="tab-pane fade" id="p@(Model.TraderGroup.Id)-pricing">
+
+        <div class="well custom mydesk in-community" style="min-height: 0; height: auto;">
+            <form id="frmConfigsPrice@(Model.TraderGroup.Id)" action="~/TraderConfiguration/ApplyConfigPriceByGroup" method="post">
+                <div class="row">
+                    <div class="col-xs-12 col-sm-4">
+
+                        <div class="activity-overview plain nopad">
+                            <div class="block-header">
+                                <h4>Locations &amp; Sales Channels</h4>
+                            </div>
+                            <div class="" style="padding: 20px;">
+
+                                <div class="form-group">
+                                    <label>Location(s)</label><br />
+                                    <select name="Locations" onchange="$(this).valid()" class="form-control checkmulti" multiple>
+                                        @foreach (var item in Model.Locations)
+                                        {
+                                            <option value="@item.Id">@item.Name</option>
+                                        }
+                                    </select>
+                                    <label id="Locations-error" class="error" for="Locations" style="display:none">This field is required.</label>
+                                </div>
+
+                                <div class="form-group" style="margin-bottom: 0;">
+                                    <label>Sales Channel(s)</label><br />
+                                    <select name="Salechannels" onchange="$(this).valid()" class="form-control checkmulti" multiple>
+                                        @foreach (var item in Model.SalesChannels)
+                                        {
+                                            <option value="@((int)item)">@item.ToString()</option>
+                                        }
+                                    </select>
+                                    <label id="Salechannels-error" class="error" for="Salechannels" style="display:none">This field is required.</label>
+                                </div>
+
+                            </div>
+                        </div>
+
+                    </div>
+                    <div class="col-xs-12 col-sm-4">
+
+                        <div class="activity-overview plain nopad">
+                            <div class="block-header">
+                                <h4>Markup &amp; discount</h4>
+                            </div>
+                            <div class="block-content" style="padding: 20px;">
+
+
+                                <label for="str">Markup</label><br />
+                                <div class="row" style="margin-bottom: 15px;">
+                                    <div class="col-xs-9 npr">
+                                        <input name="MarkupValue" style="border: 1px solid #e1e1e1;" type="number" value="0" class="form-control">
+                                    </div>
+                                    <div class="col-xs-3 npl">
+                                        <select name="MarkupMethod" class="form-control select2" style="width: 100%;">
+                                            <option value="1" selected>%</option>
+                                            <option value="2">Value</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+
+                                <label for="str">Discount</label><br />
+                                <div class="row">
+                                    <div class="col-xs-9 npr">
+                                        <input name="DiscountValue" style="border: 1px solid #e1e1e1;" type="number" value="0" class="form-control">
+                                    </div>
+                                    <div class="col-xs-3 npl">
+                                        <select name="DiscountMethod" class="form-control select2" style="width: 100%;">
+                                            <option value="1" selected>%</option>
+                                            <option value="2">Value</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                    @*<div class="col-xs-12 col-sm-4">
+                            <div class="activity-overview plain nopad">
+                                <div class="block-header">
+                                    <h4>Rounding</h4>
+                                </div>
+                                <div class="" style="padding: 20px;">
+
+                                    <div class="form-group">
+                                        <label>Round to nearest</label><br />
+                                        <input type="number" class="form-control" value="10">
+                                    </div>
+
+                                    <div class="form-group" style="margin-bottom: 0;">
+                                        <label>Rounding offset</label><br />
+                                        <input type="number" class="form-control" value="-0.01">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>*@
+
+                </div>
+                <input type="hidden" value="@Model.TraderGroup.Id" name="GroupId" />
+                <div>
+                    
+                    <div class="checkbox toggle">
+                        <button type="button" class="btn btn-primary community-button w-auto" onclick="applyPriceConfig(@Model.TraderGroup.Id);">Apply</button>
+                        <label style="margin-left: 25px;" data-tooltip-color="teal" data-tooltip="Please apply Margin and Discount to create any missing prices">
+                            <input data-toggle="toggle" data-onstyle="success" type="checkbox" id="isOverwrite"> Overwrite existing prices
+                        </label>
+                    </div>
+                </div>
+
+            </form>
+        </div>
+
+        <br />
+
+        <div class="well custom" style="padding-bottom: 5px;">
+            <div class="row">
+                <div class="col-xs-12 col-sm-4 col-lg-3">
+                    <div class="form-group">
+                        <label for="search">Search</label>
+                        <input id="txtKeyword@(Model.TraderGroup.Id)" type="text" class="form-control">
+                    </div>
+                </div>
+                <div class="col-xs-12 col-sm-4 col-lg-3">
+                    <div class="form-group">
+                        <label for="search">Location</label>
+                        <select id="slFilterLocation@(Model.TraderGroup.Id)" name="Location" class="form-control select2" style="width: 100%;">
+                            <option value="0" selected>Show all</option>
+                            @foreach (var item in Model.Locations)
+                            {
+                                <option value="@item.Id">@item.Name</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+                <div class="col-xs-12 col-sm-4 col-lg-3">
+                    <div class="form-group">
+                        <label for="search">Sales Channel</label>
+                        <select id="slFilterSalesChannel@(Model.TraderGroup.Id)" name="SalesChannel" class="form-control select2" style="width: 100%;">
+                            <option value="0" selected>Show all</option>
+                            @foreach (var item in Model.SalesChannels)
+                            {
+                                <option value="@((int)item)">@item.ToString()</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <table class="datatable table-striped table-hover" id="tblPrice@(Model.TraderGroup.Id)" style="width: 100%;">
+            <thead>
+                <tr>
+                    <th data-priority="1">Item</th>
+                    <th data-priority="2">Location</th>
+                    <th data-priority="2">Sales Channel</th>
+                    <th data-priority="2">Average Cost (@currencySettings.CurrencySymbol)</th>
+                    <th data-priority="1">Price exc. tax (@currencySettings.CurrencySymbol)</th>
+                    <th data-priority="1">Tax (@currencySettings.CurrencySymbol)</th>
+                    <th data-priority="1">Price inc. tax (@currencySettings.CurrencySymbol)</th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+
+    </div>
+    <!-- END Pricing -->
+
+</div>
+<script>
+    $(function () {
+        initDatatable(@Model.TraderGroup.Id);
+        initDatatablePrices(@Model.TraderGroup.Id);
+        initFormAppconfigPrice(@Model.TraderGroup.Id);
+    });
+</script>

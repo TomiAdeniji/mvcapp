@@ -1,0 +1,74 @@
+﻿@using Qbicles.Models.Bookkeeping
+@using Qbicles.Models.Trader 
+@{
+    var taxRates = (bool)ViewBag.TaxRates;
+    var traderSetting = (TraderSettings)ViewBag.TraderSetting ?? (new TraderSettings());
+    var journalGroups = (IQueryable<JournalGroup>)ViewBag.JournalGroups;
+}
+
+<!-- Accounting -->
+<div class="show-form" id="show-accounting" >
+
+    <div class="activity-overview plain">
+        <h3>Accounting</h3>
+        <p style="max-width: 750px;">Optionally connect to Qbicles Bookkeeping, or manually enter setup information.</p>
+
+
+        <br />
+        <div class="activity-overview generic help-text animated bounce hidden">
+            <i class="fa fa-info-circle"></i>
+            <p>Wording TBC - a promotional message directing users to subscribe to Bookeeping for X, Y and Z benefits.</p>
+        </div>
+
+        <input type="hidden" value="@traderSetting.Id" id="trader_setting_id" />
+        <div class="well custom" style="padding-bottom: 5px;">
+            <div class="row">
+                <div class="col-xs-12 col-sm-6 col-md-4">
+                    <div class="form-group">
+                        <label>Journal Entry Group</label>
+                        <select id="journal-group-default" onchange="UpdateJournalGroupDefault(@traderSetting.Id)" class="form-control select2" style="width: 100%;" tabindex="-1" aria-hidden="true">
+                            <option value="0"></option>
+                            @foreach (var group in journalGroups)
+                            {
+                                if (group.Id == traderSetting.JournalGroupDefault?.Id)
+                                {
+                                    <option value="@group.Id" selected="">@group.Name</option>
+                                }
+                                else
+                                {
+                                    <option value="@group.Id">@group.Name</option>
+                                }
+                            }
+                        </select>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+        <br />
+
+
+
+        <div class="table_group table_trader_taxrate" style="margin-top: 25px;">
+            @{ Html.RenderAction("AddTraderTableTaxRate", "Trader"); }
+            <br /> 
+        </div>
+        <a href="#" class="btn btn-success" onclick="onclickAddTaxRate()"><i class="fa fa-plus"></i> &nbsp; Add a tax rate</a>
+        @if (taxRates && traderSetting.JournalGroupDefault != null)
+        {
+            <a class="btn btn-primary btn_process" onclick="AccountProcess()">Proceed &nbsp; <i class="fa fa-angle-right"></i></a>
+        }
+        else
+        {
+            <a class="btn btn-primary disabled btn_process" onclick="AccountProcess()" disabled>Proceed &nbsp; <i class="fa fa-angle-right"></i></a>
+        }
+
+    </div>
+
+</div>
+<!-- END Accounting -->
+<script>
+    $('#checked_conncect').bootstrapToggle();
+    $("#journal-group-default").select2();
+    $.LoadingOverlay("hide");
+</script>

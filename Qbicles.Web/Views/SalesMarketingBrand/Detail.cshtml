@@ -1,0 +1,349 @@
+﻿@using Qbicles.Models.SalesMkt;
+@using Qbicles.BusinessRules;
+@model Brand
+@{
+    /**/
+
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var setting = (Settings)ViewBag.Setting;
+    var products = (List<BrandProduct>)ViewBag.Products;
+}
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail mdv2-wrapper" style="position: relative;">
+    <!-- Main content -->
+    <section class="mdv2 dash" data-tooltip-color="teal" data-tooltip-delay="300" data-tooltip-animate-function="spin" style="border-top: 1px solid #f1f1f1;">
+        <!-- App bar -->
+        <div class="mdv2-col-app" style="margin-bottom: 0;">
+            <div data-spy="affix" class="contained-sidebar">
+                <div class="activity-overview plain company-overview welcome-info" style="text-align: left !important; flex: none; margin: 0; padding-top: 30px; padding-bottom: 0;">
+                    <div class="pull-left" style="margin-bottom: 15px;">
+                        <a href="/SalesMarketing/SMApps" class="btn btn-info"><i class="fa fa-angle-left"></i> &nbsp; Sales &amp; Marketing</a>
+                        <a href="#" onclick="QbicleSelected('@(setting != null && setting.SourceQbicle != null ? setting.SourceQbicle.Key : "0")', 'Dashboard');" class="btn btn-primary"><i class="fa fa-angle-up"></i> &nbsp; Qbicle</a>
+                        <a href="#app-marketing-brand-add" data-toggle="modal" class="btn btn-warning"><i class="fa fa-pencil"></i> &nbsp; Edit</a>
+                    </div>
+                    <div class="clearfix"></div>
+                    <br />
+                    <div class="text-center">
+                        <img src="@(api+Model.FeaturedImageUri + "&size=M")" class="img-responsive" style="margin: 0 auto;">
+                        <br />
+                        <h1 style="line-height: 1.2; font-size: 18px; margin-bottom: 5px; padding-top: 15px">@Model.Name</h1>
+                        <input type="hidden" id="hdfBrandId" value="@Model.Id" />
+                        <p style="color: rgba(0, 0, 0, 0.5); margin-bottom: 30px; padding-bottom: 15px ">@Model.Description</p>
+                    </div>
+                </div>
+                <ul class="subapps-nav" role="navigation" data-tooltip-stickto="bottom">
+                    <li class="active">
+                        <a href="#" data-toggle="tab" data-target="#brand-activity" data-tooltip="Activity" onclick="$('.options-brand-sub').hide(); $('#community-list').DataTable().ajax.reload()">
+                            <i class="fa fa-calendar-check"></i>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" data-toggle="tab" data-target="#brand-products" onclick="$('.options-brand-sub').hide(); $('#product-options').show();" data-tooltip="Products/Offerings">
+                            <i class="fa fa-box"></i>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" data-toggle="tab" data-target="#brand-attributes" onclick="$('.options-brand-sub').hide(); $('#attribute-options').show();" data-tooltip="Attributes">
+                            <i class="fa fa-list"></i>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" data-toggle="tab" data-target="#brand-value" onclick="$('.options-brand-sub').hide(); $('#value-options').show();" data-tooltip="Value Propositions">
+                            <i class="fa fa-money-bill-wave-alt"></i>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" data-toggle="tab" data-target="#brand-resources" onclick="$('.options-brand-sub').hide(); $('#media-options').show();" data-tooltip="Resources">
+                            <i class="fa fa-folder"></i>
+                        </a>
+                    </li>
+                </ul>
+                <div style="padding: 15px 30px 30px 30px;">
+                    <!-- Attribute options -->
+                    <div class="options-brand-sub" id="attribute-options" style="display: none;">
+
+                        <button class="btn btn-success community-button" onclick="SocialBrandAttributeReset();" style="margin-bottom: 30px;" data-toggle="modal" data-target="#app-marketing-attribute-add">
+                            <i class="fa fa-plus"></i> &nbsp; Add an Attribute
+                        </button>
+
+                        <div class="well custom text-left" style="padding-bottom: 5px;">
+                            <div class="form-group">
+                                <label for="search">Search Attributes</label>
+                                <input id="txtAttributeSearch" type="text" name="search" class="form-control">
+                            </div>
+                            <br />
+                            <div class="form-group" style="margin: 0;">
+                                <div class="checkbox toggle">
+                                    <label>
+                                        <input id="isLoadingHideAttribute" data-toggle="toggle" data-onstyle="success" type="checkbox" onchange="$('.brand-attribute-hidden').toggle();">
+                                        Include hidden records
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- END Attribute options -->
+                    <!-- Product options -->
+                    <div class="options-brand-sub" id="product-options" style="display: none;">
+
+                        <button class="btn btn-success community-button" onclick="SocialBrandProductReset();" data-toggle="modal" data-target="#app-marketing-brand-product-modal" style="margin-bottom: 30px;">
+                            <i class="fa fa-plus"></i> &nbsp; Add a Brand Product
+                        </button>
+
+                        <div class="well custom text-left" style="padding-bottom: 5px;">
+                            <div class="form-group">
+                                <label for="search">Search for Products</label>
+                                <input type="text" id="txtBrandProductSearch" name="search" class="form-control">
+                            </div>
+                            <br />
+                            <div class="form-group" style="margin: 0;">
+                                <div class="checkbox toggle">
+                                    <label>
+                                        <input id="isLoadingHideBrandProduct" data-toggle="toggle" data-onstyle="success" type="checkbox" onchange="$('.brand-product-hidden').toggle();">
+                                        Include hidden records
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- END Product options -->
+                    <!-- Attribute Group options -->
+                    <div class="options-brand-sub" id="attribute-group-options" style="display: none;">
+
+                        <button class="btn btn-success community-button" onclick="SocialBrandAttributeGroupReset();" style="margin-bottom: 30px;" data-toggle="modal" data-target="#app-marketing-attribute-group-add">
+                            <i class="fa fa-plus"></i> &nbsp; Add an Attribute Group
+                        </button>
+
+                        <div class="well custom text-left">
+                            <div class="form-group" style="margin: 0;">
+                                <label for="search">Search for Groups</label>
+                                <input id="txtSearchAttrGroup" type="text" name="search" class="form-control">
+                            </div>
+                        </div>
+                    </div>
+                    <!-- END Attribute Group options -->
+                    <!-- Value Prop options -->
+                    <div class="options-brand-sub" id="value-options" style="display: none;">
+
+                        <button class="btn btn-success community-button" onclick="SocialBrandValuePropotionReset();" style="margin-bottom: 30px;" data-toggle="modal" data-target="#app-marketing-value-prop-add">
+                            <i class="fa fa-plus"></i> &nbsp; Add a Value Proposition
+                        </button>
+
+                        <div class="well custom text-left" style="padding-bottom: 5px;">
+                            <div class="form-group">
+                                <label for="valuefilter">Filter by Product or Offering</label>
+                                <select id="valuefilter" name="valuefilter" onchange="socialBrandValueProLoad();" class="form-control select2" style="width: 100%;">
+                                    <option value="0">Show all</option>
+                                    @foreach (var item in products)
+                                    {
+                                        <option value="@item.Id">@item.Name</option>
+                                    }
+                                </select>
+                            </div>
+                            <br />
+                            <div class="form-group" style="margin: 0;">
+                                <div class="checkbox toggle">
+                                    <label>
+                                        <input id="isLoadingHideValueProp" data-toggle="toggle" data-onstyle="success" type="checkbox" onchange="$('.brand-valueprop-hidden').toggle();">
+                                        Include hidden records
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- END Value Prop options -->
+                    <!-- Media options -->
+                    <div class="options-brand-sub" id="media-options" style="display: none;">
+                        <button class="btn btn-success community-button" data-toggle="modal" data-target="#create-resource" style="margin: 0 0 30px 0;">
+                            <i class="fa fa-upload"></i>
+                            &nbsp; Upload a file
+                        </button>
+
+                        <div class="well custom">
+                            <div class="row">
+                                <div class="col-xs-12">
+                                    <div class="form-group" style="margin: 0;">
+                                        <label for="folder">Limit by type</label>
+                                        <select id="sl-media-type" onchange="SocialMediasByBrand(@Model.ResourceFolder.Id,@setting.SourceQbicle.Id)" name="folder" class="form-control select2" style="width: 100%;">
+                                            <option></option>
+                                            <option value="All">Show all</option>
+                                            <option value="Image File">Photos</option>
+                                            <option value="Video File">Videos</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+
+                    </div>
+                    <!-- END Media options -->
+
+                </div>
+            </div>
+        </div>
+        <!-- END App bar -->
+        <!-- Main area -->
+        <div class="mdv2-col-dash">
+            <div class="tab-content" style="padding-bottom: 30px;">
+                <!-- Activity -->
+                <div class="tab-pane fade in active" id="brand-activity">
+
+                    <div class="spacing">
+
+                        <h5>Campaigns using this Brand</h5>
+                        <br />
+
+                        <div class="well custom" style="padding-bottom: 5px;">
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-4">
+                                    <div class="form-group">
+                                        <label for="search">Search</label>
+                                        <input type="text" id="searchCampaign" onkeyup="$('#community-list').DataTable().ajax.reload()" class="form-control">
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-3">
+                                    <div class="form-group">
+                                        <label for="search">Campaign Type(s)</label>
+                                        <select name="filter" id="campaignType" onchange="$('#community-list').DataTable().ajax.reload()" class="form-control checkmulti" multiple style="width: 100%; display: none">
+                                            <optgroup label="Show all">
+                                                <option value="3" selected>Email Marketing Campaigns</option>
+                                                <option value="1" selected>Automated Social Campaigns</option>
+                                                <option value="2" selected>Manual Social Campaigns</option>
+                                            </optgroup>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+
+                        <br />
+                        <table class="datatable table-striped table-hover" style="width: 100%;" id="community-list">
+                            <thead>
+                                <tr>
+                                    <th>Campaign</th>
+                                    <th>Campaign type</th>
+                                    <th>Queued posts</th>
+                                    <th>Completed posts</th>
+                                    <th>Brand elements</th>
+                                    <th>Options</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            </tbody>
+                        </table>
+
+                    </div>
+
+                </div>
+                <!-- END Activity -->
+                <!-- Products -->
+                <div class="tab-pane fade" id="brand-products">
+                    @{
+                        Html.RenderAction("LoadBrandProducts", "SalesMarketingBrand", new { size = 0, pageSize = HelperClass.brandPageSize, isLoadingHide = false });
+                    }
+                </div>
+                <!-- END Guidelines -->
+                <!-- Attributes -->
+                <div class="tab-pane fade" id="brand-attributes">
+
+                    <div style="padding: 30px;">
+
+
+                        <div class="tab-content">
+
+
+                            <!-- Attributes -->
+                            <div class="tab-pane fade in active" id="brand-attribute-attributes">
+
+                                <div class="flex-grid-quarters-lg qbicles-dash-grid marketing restyle" data-tooltip-color="slate" data-tooltip-stickto="right">
+                                    @{
+                                        Html.RenderAction("LoadBrandAttributeByBrandId", "SalesMarketingBrand", new { brandId = Model.Id, keyword = "", attrGroupId = 0, isLoadingHide = false });
+                                    }
+                                </div>
+
+                            </div>
+                            <!-- END Attributes -->
+                            <!-- Attribute Groups -->
+                            <div class="tab-pane fade" id="brand-attribute-groups">
+
+                                <div class="flex-grid-quarters-lg qbicles-dash-grid marketing restyle" data-tooltip-color="slate" data-tooltip-stickto="right">
+                                    @*@{
+                                            Html.RenderAction("LoadBrandAttrGroupsByBrandId", "SalesMarketingBrand", new { brandId = Model.Id, keyword = "" });
+                                        }*@
+                                </div>
+
+                            </div>
+                            <!-- END Attribute Groups -->
+
+
+                        </div> <!-- ./tab-content -->
+
+                    </div>
+
+                </div>
+                <!-- END Attributes -->
+                <!-- Value Propositions -->
+                <div class="tab-pane fade" id="brand-value">
+
+                    <div style="padding: 20px;">
+
+                        <div class="flex-grid-thirds-lg qbicles-dash-grid marketing restyle" data-tooltip-color="slate" data-tooltip-stickto="right">
+
+                            @{
+                                Html.RenderAction("LoadValuePropositionByBrand", "SalesMarketingBrand", new { brandId = Model.Id, productId = 0, isLoadingHide = false });
+                            }
+
+                        </div>
+
+                    </div>
+
+
+                </div>
+                <!-- END Value Propositions -->
+                <!-- Resources -->
+                <div class="tab-pane fade" id="brand-resources">
+                    <div style="padding: 20px;">
+                        <div class="flex-grid-thirds-lg">
+                            @{
+                                Html.RenderAction("LoadMediasByBrand", "SalesMarketingBrand", new { fid = Model.ResourceFolder.Id, qid = setting.SourceQbicle.Id, fileType = "" });
+                            }
+                        </div>
+                    </div>
+                </div>
+                <!-- END Resources -->
+            </div>
+        </div>
+    </section>
+    <!-- ./content -->
+</div>
+<div class="modal fade" id="app-marketing-brand-usage" role="dialog" aria-labelledby="app-marketing-brand-usage"></div>
+@Html.Partial("_ValuePropAdd")
+@Html.Partial("_CreateResource", Model)
+@Html.Partial("_BrandProductAdd")
+@*@Html.Partial("_AttributeGroupAdd", Model)*@
+@Html.Partial("_AttributeAdd")
+<!-- /.content-wrapper -->
+
+<div class="modal fade left" id="app-marketing-brand-add" role="dialog" aria-labelledby="app-marketing-brand-add">
+   @{
+       Html.RenderAction("GenerateModalBrandAddEdit", "SalesMarketingBrand", new { brandId = Model != null ? Model.Id : 0 });
+   } 
+</div>
+
+@{
+    <script>
+    var brandPageSize=@(HelperClass.brandPageSize);
+    </script>
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Content/DesignStyle/js/bootstrap-multiselect.js"></script>
+        <script src="~/Scripts/dev/salesmarketing.branddetail.js"></script>
+    }
+    else
+    {
+        <script src="~/Content/DesignStyle/js/bootstrap-multiselect.min.js"></script>
+        <script src="~/Scripts/dev/salesmarketing.branddetail.js"></script>
+    }
+}

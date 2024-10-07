@@ -1,0 +1,132 @@
+﻿@using Qbicles.BusinessRules;
+@{
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+}
+<!-- Cash Management -->
+<div class="tab-pane fade in active" id="shift-cash">
+
+    <div class="well custom" style="padding-bottom: 10px;">
+        <div class="row">
+            <div class="col-xs-12 col-sm-3">
+                <div class="form-group">
+                    <label for="search">Search</label>
+                    <input type="text" id="sm-cash-management_key-search" onchange="FilterSMCashManagementTab()" value="@ViewBag.Key" name="search" class="form-control">
+                </div>
+            </div>
+            <div class="col-xs-12 col-sm-3 col-lg-2">
+                <div class="form-group">
+                    <label for="status">Limit by type</label>
+                    <select name="status" id="sm-cash-management_show-type" onchange="FilterSMCashManagementTab()" class="form-control select2" style="width: 100%;">
+                        @{
+                            var showSafe = "";
+                            var showTill = "";
+                            var showAll = "";
+                            if (ViewBag.ShowSafe && !ViewBag.ShowTill)
+                            {
+                                showSafe = "selected";
+                            }
+                            else if (!ViewBag.ShowSafe && ViewBag.ShowTill)
+                            {
+                                showTill = "selected";
+                            }
+                            else
+                            {
+                                showAll = "selected";
+                            }
+                        }
+
+                        <option value="0" @showAll>Show all</option>
+                        <option value="1" @showSafe>Safes</option>
+                        <option value="2" @showTill>Virtual Tills</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <br />
+
+    <div class="flex-grid-quarters-lg qbicles-dash-grid pos-devices">
+
+        @foreach (var tillItem in ViewBag.Tills)
+        {
+            <article class="col">
+                <a href="/CashManagement/TillDetail?tillId=@tillItem.Id">
+                    <div class="avatar" style="background-image: url('/Content/DesignStyle/img/icon_ipad.png');">&nbsp;</div>
+                    <h1 style="color: #333;">@(tillItem.Name ?? "")</h1>
+                </a>
+
+                <br />
+                <p class="qbicle-detail">
+                    <label style="color: #333;">Device type</label><br>
+                    Virtual Till
+                </p>
+
+                <br />
+                <p class="qbicle-detail">
+                    <label style="color: #333;">Linked POS Devices</label><br>
+                    @{
+                        var PosDevicesString = "";
+                        foreach (var posDeviceItem in tillItem.PosDevices)
+                        {
+                            if (PosDevicesString == "")
+                            {
+                                PosDevicesString = posDeviceItem.Name ?? "";
+                            }
+                            else
+                            {
+                                PosDevicesString += ", " + posDeviceItem.Name ?? "";
+                            }
+                        }
+                    }
+                    @PosDevicesString
+                </p>
+
+            </article>
+        }
+
+
+
+        @if (ViewBag.Safe != null)
+        {
+            <article class="col">
+                <a href="/CashManagement/SafeDetail?safeId=@ViewBag.Safe.Id">
+                    <div class="avatar" style="background-image: url('/Content/DesignStyle/img/icon_app_bankmate.png');">&nbsp;</div>
+                    <h1 style="color: #333;">@(ViewBag.Safe.Name ?? "")</h1>
+                </a>
+
+                <br />
+                <p class="qbicle-detail">
+                    <label style="color: #333;">Device type</label><br>
+                    Safe
+                </p>
+
+                <br />
+                <div class="row">
+                    <div class="col-xs-12 col-sm-6">
+                        <p class="qbicle-detail">
+                            <label style="color: #333;">Cash &amp; Bank</label><br>
+                            @(ViewBag.Safe?.CashAndBankAccount?.Name ?? "")
+                        </p>
+                    </div>
+                    <div class="col-xs-12 col-sm-6">
+                        <p class="qbicle-detail">
+                            <label style="color: #333;">Balance</label><br>
+                            @(currencySettings.CurrencySymbol ?? "")@(ViewBag.SafeBalance)
+                        </p>
+                    </div>
+                </div>
+
+            </article>
+        }
+
+
+    </div>
+
+
+</div>
+<!-- END Cash Management -->
+<script>
+    $("#sm-cash-management_show-type").select2();
+</script>

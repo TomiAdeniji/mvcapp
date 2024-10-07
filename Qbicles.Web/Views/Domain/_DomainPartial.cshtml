@@ -1,0 +1,171 @@
+﻿@using Qbicles.Models;
+@using Microsoft.AspNet.Identity.Owin;
+@using Qbicles.BusinessRules;
+@{
+    //var UserManager = Request.GetOwinContext().GetUserManager<ApplicationUserManager>();
+    var currentUserId = (string)ViewBag.CurrentUserId;
+    var currentTimeZone = (string)ViewBag.CurrentTimeZone;
+    var currentDomain = (QbicleDomain)ViewBag.CurrentDomain;
+    var api = (string)ViewBag.DocRetrievalUrl;
+}
+
+@model List<Qbicle>
+<!-- Main content -->
+
+<div class="activity-overview alert-detail" style="padding: 22px; display: inline-block;">
+    <p style="margin: 0 0 8px 0;">Showing <strong>@Model.Count() Qbicles</strong> based on your search/filter criteria <strong id="divSearchFor" style="display:none;"><i>for "<span id="spanSearchForStr"></span>"...</i></strong></p>
+    <a href="javascript:void(0)" class="btn btn-warning btn-small" onclick="SearchQbicleClick(0)"><i class="fa fa-trash"></i> &nbsp; Clear search/filter</a>
+</div>
+
+<br /><br />
+
+@{
+    foreach (var qbic in Model)
+    {
+        var closedTitle = qbic.ClosedDate == null ? "" :
+            "(Closed on " + HelperClass.DatetimeToOrdinal((DateTime)qbic.ClosedDate) + ")";
+        var strSpit = qbic.Name.Split('₩');
+
+        var qbicleName = @strSpit[0] + @closedTitle;
+
+            <article id="qbicle-@qbic.Id" class="qbicle">
+                <a href="javascript:void(0)" onclick="QbicleSelected('@qbic.Key','@Enums.QbicleModule.Dashboard')">
+                   
+                    @{
+                        if (qbic.LogoUri == null || qbic.LogoUri.StartsWith("/Content/DesignStyle/img"))
+                        {
+                            <img src="/Content/DesignStyle/img/icon_qbicle_default.png" class="img-circle icon">
+                        }
+                        else
+                        {
+                            <img id="media-@qbic.Id" src='@api@qbic.LogoUri' class="img-circle icon" />
+                        }
+                    }
+                <h5>
+                    @qbicleName
+                    <br />
+                    <small>Created by @qbic.StartedBy.Forename @qbic.StartedBy.Surname on @strSpit[1] </small>
+                    <br />
+                    <span class="label label-primary">@qbic.Domain.Name Domain</span>
+               
+                    <span class="details">
+                        <p>
+                            @Html.Raw(qbic.Description.Replace(Environment.NewLine, "<br/>"))
+                        </p>
+                    </span>
+
+                </h5>
+            </a>
+            @{
+                var post = new PostsRules().GetPostsToday(qbic.Id, currentTimeZone);
+                int alertToday = qbic.Activities.Count(a => a.ActivityType == QbicleActivity.ActivityTypeEnum.AlertActivity && a.TimeLineDate.ConvertTimeFromUtc(currentTimeZone).Date == DateTime.UtcNow.Date);
+                int eventToday = qbic.Activities.Count(a => a.ActivityType == QbicleActivity.ActivityTypeEnum.EventActivity && a.TimeLineDate.ConvertTimeFromUtc(currentTimeZone).Date == DateTime.UtcNow.Date);
+                int taskToday = qbic.Activities.Count(a => a.ActivityType == QbicleActivity.ActivityTypeEnum.TaskActivity && a.TimeLineDate.ConvertTimeFromUtc(currentTimeZone).Date == DateTime.UtcNow.Date);
+                int mediaToday = qbic.Activities.Count(a => a.ActivityType == QbicleActivity.ActivityTypeEnum.MediaActivity && a.TimeLineDate.ConvertTimeFromUtc(currentTimeZone).Date == DateTime.UtcNow.Date);
+            }
+            <div class="pull-right qbicle-overview hidden-xs hidden-sm">
+                <div class="item">
+                    <a href="javascript:void(0)" onclick="ModuleClick(@qbic.Id,'@Enums.QbicleModule.Post','Post')"
+                       data-tooltip="@post new posts" data-tooltip-color="turquoise">
+                        @if (post > 0)
+                        {
+                            <span class="badge">@post</span>
+                        }
+                        <img src="~/Content/DesignStyle/img/icon_discussions.png">
+                    </a>
+                </div>
+                <div class="item">
+                    <a href="javascript:void(0)" onclick="ModuleClick(@qbic.Id,'@Enums.QbicleModule.Alerts','Alerts')"
+                       data-tooltip="@alertToday new alerts" data-tooltip-color="turquoise">
+                        @if (alertToday > 0)
+                        {
+                            <span class="badge">@alertToday</span>
+                        }
+                        <img src="~/Content/DesignStyle/img/icon_alerts.png">
+                    </a>
+                </div>
+                <div class="item">
+                    <a href="javascript:void(0)" onclick="ModuleClick(@qbic.Id,'@Enums.QbicleModule.Tasks','Tasks')"
+                       data-tooltip="@taskToday new tasks" data-tooltip-color="turquoise">
+                        @if (taskToday > 0)
+                        {
+                            <span class="badge">@taskToday</span>
+                        }
+                        <img src="~/Content/DesignStyle/img/icon_tasks.png">
+                    </a>
+                </div>
+                <div class="item">
+                    <a href="javascript:void(0)" onclick="ModuleClick(@qbic.Id,'@Enums.QbicleModule.Media','Media')"
+                       data-tooltip="@mediaToday new media items" data-tooltip-color="turquoise">
+                        @if (mediaToday > 0)
+                        {
+                            <span class="badge">@mediaToday</span>
+                        }
+                        <img src="~/Content/DesignStyle/img/icon_media.png">
+                    </a>
+                </div>
+                <div class="item">
+                    <a href="javascript:void(0)" onclick="ModuleClick(@qbic.Id,'@Enums.QbicleModule.Events','Events')"
+                       data-tooltip="@eventToday new events" data-tooltip-color="turquoise">
+                        @if (eventToday > 0)
+                        {
+                            <span class="badge">@eventToday</span>
+                        }
+                        <img src="~/Content/DesignStyle/img/icon_events.png">
+                    </a>
+                </div>
+            </div>
+
+            <div style="clear: both;"></div>
+            @if (currentDomain != null && currentDomain.Id > 0
+                && (currentDomain.Administrators.Any(x => x.Id == currentUserId) ||
+                @qbic.StartedBy.Id == currentUserId)
+                )
+            {
+                <div class="qbicle-options">
+                    <div class="btn-group options">
+                        <button type="button" class="btn btn-success dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            Administration &nbsp; <i class="fa fa-angle-down"></i>
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li>
+                                <a href="#" onclick="EditQbicle('@qbic.Id')" data-toggle="modal" data-target="#create-qbicle">Edit this Qbicle</a>
+                            </li>
+
+                        </ul>
+                    </div>
+                </div>
+            }
+
+        </article>
+            <br />
+                }
+}
+
+<!-- ./content -->
+
+<script>
+
+
+    var $dateClosed = null;
+    jQuery(function ($) {
+        $("#loadingGif").hide();
+    });
+   
+
+    function ModuleClick(Id, module, ref) {
+        $.ajax({
+            type: 'post',
+            url: '/Commons/BindingQbicleParameter',
+            dataType: 'json',
+            data: {
+                QbicleId: Id,
+                ModuleSelected: module
+            },
+            success: function (refModel) {
+                if (refModel.result === true)
+                    window.location.href = "/Qbicles/Dashboard?ActivityType=" + ref;
+            }
+        });
+    }
+</script>

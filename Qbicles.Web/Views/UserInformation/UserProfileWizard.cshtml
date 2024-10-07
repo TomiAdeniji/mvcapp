@@ -1,0 +1,624 @@
+﻿@using Qbicles.Models
+@using Qbicles.BusinessRules
+@using Qbicles.BusinessRules.Helper 
+@model ApplicationUser
+@{
+    ViewBag.Title = "User Profile Wizard";
+    Layout = null;
+    var dateFormat = (string)ViewBag.CurrentDateFormat;
+    var timeFormat = (string)ViewBag.CurrentTimeFormat;
+    var currentSystemShortDateFormat = (string)ViewBag.CurrentSystemShortDateFormat;
+    var timezoneList = (List<SelectListItem>)ViewBag.TimezoneList;
+    var notificationMethod = (ICollection<HelperClass.EnumModel>)ViewBag.notificationMethod;
+    var notificationSound = (ICollection<HelperClass.EnumModel>)ViewBag.notificationSound;
+    var lstInterests = (List<BusinessCategory>)ViewBag.listBusinessCategories;
+}
+
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+
+    <title>Welcome to Qbicles | Let's get you set up</title>
+    <link rel="shortcut icon" type="image/x-icon" href="/Content/DesignStyle/img/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="~/Content/DesignStyle/img/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="~/Content/DesignStyle/img/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="~/Content/DesignStyle/img/favicon-16x16.png">
+    
+    <meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" name="viewport">
+
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Poppins:300,400,500,600,700|Roboto:300,400,500,600,700|Lato:300,400,500,600,700" />
+    @Styles.Render("~/Content/qbiclescss")
+    @Qbicles.Web.Helper.HtmlHelpers.LocalizedJsBundle("~/Scripts/ErrorMessages")
+
+    <script src='@Url.Content(System.Configuration.ConfigurationManager.AppSettings["HubUrl"])/hubs'></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@2.8.0" defer></script>
+    <script src="https://sdk.amazonaws.com/js/aws-sdk-2.1.24.min.js"></script>
+    <script src="~/Scripts/dev/s3.upload.medial.js"></script>
+    <script>
+        var $s3BucketName = '@ViewBag.S3BucketName';
+        var $s3BucketRegion = '@ViewBag.S3BucketRegion';
+        var $s3IdentityPoolId = '@ViewBag.S3IdentityPoolId';
+    </script>
+</head>
+
+
+<body>
+    <input id="currentSystemShortDateFormat" value="@currentSystemShortDateFormat" hidden="" />
+    <input id="formatDateByUser" value="@dateFormat" hidden="" />
+    <input id="formatTimeByUser" value="@timeFormat" hidden="" />
+    <input type="hidden" value="@Model.Id" id="user-id" />
+    <div class="wizard-full">
+
+        <div class="helper contained-sidebar">
+
+            <div>
+                @{
+                    var userLogoUri = Model.ProfilePic == ConfigManager.DefaultUserUrlGuid ? "/Content/DesignStyle/img/icon_qbicle_default.png" : Model.ProfilePic.ToDocumentUri().ToString();
+                }
+                <div id="avatar" style="background-image: url('@userLogoUri');">&nbsp;</div>
+                <h1>Welcome to Qbicles, @Model.Forename</h1>
+
+                <br />
+                <div class="activity-overview plain rounded">
+                    <p>Let's get your Qbicles profile set up. You can skip this wizard at any time, but the more you add to your profile the more interest you'll receive in community!</p>
+                </div>
+                <br /><br />
+
+                <h5>Profile completion</h5>
+                <br />
+                <div class="stat" style="margin-bottom: 80px;"></div>
+
+            </div>
+
+        </div>
+
+        <div class="tab-content wizard-steps">
+
+
+            <!-- Step 1 -->
+            <div class="tab-pane fade" id="s1">
+
+                <form id="wizard-step1-form">
+                    <div class="wizard-form">
+
+                        <div class="mod_title">
+                            <h5>A little about yourself</h5>
+                            <h4>General</h4>
+                        </div>
+                        <br /><br />
+                        <div class="form-group">
+                            <label for="avatar">Customise your avatar</label>
+                            <input type="file" name="avatar" id="setavatar" onchange="avatarWizardChange(this)">
+                        </div>
+
+                        <div class="form-group valid">
+                            <label for="name">Your displayed name</label>
+                            <input type="text" class="form-control valid" onchange="checkValidInput(this)" id="winzard-displayname" value="@(Model?.DisplayUserName ?? "")" @*onchange="$(this).toggleClass('valid invalid'); $(this).next('i').toggleClass('fa-check green fa-remove red');"*@>
+                            <i class="fa fa-check green"></i>
+                        </div>
+                        <div class="form-group">
+                            <label for="name">Tagline (optional, max 50 characters)</label>
+                            <input type="text" id="wizard-tagline" value="@Model.TagLine" class="form-control" placeholder="Enter something to show below your name in your profile" maxlength="50">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="name">Briefly describe yourself</label>
+                            <textarea name="about" id="wizard-about" class="form-control" onchange="checkValidTextArea(this)">@Model.Profile</textarea>
+                        </div>
+
+                        <div style="padding-top: 25px;">
+                            <button class="btn btn-primary community-button w-auto" type="submit">Next</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <!-- END Step 1 -->
+            <!-- Step 2 -->
+            <div class="tab-pane fade" id="s2">
+
+                <div class="wizard-form animated fadeIn" style="min-width:500px">
+
+                    <div class="mod_title">
+                        <h5>Optional contact information</h5>
+                        <h4>Address &amp; phone</h4>
+                    </div>
+                    <br /><br />
+
+
+                    <div class="form-group">
+                        <label for="name">Tel (optional)</label>
+                        <input type="text" id="wizard-tel" class="form-control" value="@Model.Tell">
+                        <i class="fa fa-check green"></i>
+                    </div>
+
+                    @{
+                        var hasAddress = Model.TraderAddresses != null && Model.TraderAddresses.Count > 0;
+                        var noAddrStyle = hasAddress ? "style=display:none" : "";
+                        var hasAddrStyle = hasAddress ? "" : "style=display:none";
+                    }
+
+                    <div id="noaddress" @noAddrStyle>
+
+                        <div class="activity-overview plain rounded">
+
+                            <label>Addresses (optional)</label><br />
+                            <p>Storing your addresses allows you to select them for quickly placing orders in Qbicles.</p>
+
+                            <br />
+                            <button class="btn btn-success community-button sm w-auto" data-toggle="modal" data-target="#user-address-add"
+                                    onclick="CreateEditUserAddressShow(0)">
+                                <i class="fa fa-plus"></i> &nbsp; Add an address
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                    <div id="address" @hasAddrStyle>
+
+                        <label>My addresses</label><br />
+                        <div class="flex-grid-half-lg from-community c1" style="width: 100%;" id="wizard-addresses">
+
+                        </div>
+
+
+                        <br />
+                        <button class="btn btn-success community-button sm w-auto" onclick="CreateEditUserAddressShow(0)" style="margin-bottom: 30px;"><i class="fa fa-plus"></i> &nbsp; Add another</button>
+
+                    </div>
+
+
+
+                    <br />
+                    <button class="btn btn-warning community-button w-auto" data-toggle="tab" data-target="#s1" onclick="recount(0);">Previous</button> &nbsp;&nbsp;
+                    <button class="btn btn-primary community-button w-auto" onclick="saveStepInforWizard('', 's@((int)UserWizardStep.AddressAndPhoneSettingStep)', 's@((int)UserWizardStep.ShowcaseSettingStep)');">Next</button>
+
+                </div>
+
+            </div>
+            <!-- END Step 2 -->
+            <!-- Step 3 -->
+            <div class="tab-pane fade" id="s3">
+
+                <div class="wizard-form animated fadeIn" style="min-width:500px">
+
+                    <div class="mod_title">
+                        <h5>Promote what matters to you in your profile</h5>
+                        <h4>Showcases</h4>
+                    </div>
+                    <br />
+
+                    <div id="list-showcase-wizard"></div>
+
+
+                    <br />
+                    <button class="btn btn-warning community-button w-auto" data-toggle="tab" data-target="#s2" onclick="recount(@((int)UserWizardStep.GeneralSettingsStep));">Previous</button> &nbsp;&nbsp;
+                    <button class="btn btn-primary community-button w-auto" data-toggle="tab" data-target="#s4" onclick="recount(@((int)UserWizardStep.ShowcaseSettingStep));">Next</button>
+
+
+
+                </div>
+
+
+            </div>
+            <!-- END Step 3 -->
+            <!-- Step 4 -->
+            <div class="tab-pane fade" id="s4">
+
+                <div class="wizard-form animated fadeIn">
+
+                    <div class="mod_title">
+                        <h5>Configure your experience</h5>
+                        <h4>Settings</h4>
+                    </div>
+                    <br /><br />
+
+
+                    <div class="form-group">
+                        <label for="name">Timezone</label>
+                        <select name="timezone" id="wizard-timezone" class="form-control select2" style="width: 100%;">
+                            @foreach (var item in timezoneList)
+                            {
+                                if (item.Value == Model.Timezone)
+                                {
+                                    <option value="@item.Value" selected>@item.Text</option>
+                                }
+                                else
+                                {
+                                    <option value="@item.Value">@item.Text</option>
+                                }
+                            }
+                        </select>
+                    </div>
+
+
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-6">
+
+                            <div class="form-group">
+                                <label for="name">Notification methods</label>
+                                <select name="chosen-notification-method" id="wizard-chosen-notification-method" class="form-control select2" style="width: 100%;">
+                                    @foreach (var item in notificationMethod)
+                                    {
+                                        if (item.Key == (int)Model.ChosenNotificationMethod)
+                                        {
+                                            <option value="@item.Key" selected>@item.Value</option>
+                                        }
+                                        else
+                                        {
+                                            <option value="@item.Key">@item.Value</option>
+                                        }
+                                    }
+                                </select>
+                            </div>
+
+                        </div>
+                        <div class="col-xs-12 col-sm-6">
+
+                            <div class="form-group">
+                                <label for="name">Play a sound when notifications are received</label>
+                                <select name="notification-sound" id="wizard-notification-sound" class="form-control select2" style="width: 100%;">
+                                    @foreach (var item in notificationSound)
+                                    {
+                                        if (item.Key == (int)Model.NotificationSound)
+                                        {
+                                            <option value="@item.Key" selected>@item.Value</option>
+                                        }
+                                        else
+                                        {
+                                            <option value="@item.Key">@item.Value</option>
+                                        }
+                                    }
+                                </select>
+                            </div>
+
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-6">
+
+                            <div class="form-group">
+                                <label for="name">Time format</label>
+                                <select name="timeformat" id="wizard-timeformat" class="form-control select2" style="width: 100%;">
+                                    @if (Model.TimeFormat == "HH:mm")
+                                    {
+                                        <option value="HH:mm" selected>HH:mm</option>
+                                    }
+                                    else
+                                    {
+                                        <option value="HH:mm">HH:mm</option>
+                                        <option value="@Model.TimeFormat" selected>@Model.TimeFormat</option>
+                                    }
+                                </select>
+                            </div>
+
+                        </div>
+                        <div class="col-xs-12 col-sm-6">
+
+                            <div class="form-group">
+                                <label for="name">Date format</label>
+                                <select name="dateformat" id="wizard-dateformat" class="form-control select2" style="width: 100%;">
+                                    @if (Model.DateFormat == "dd/MM/yyyy")
+                                    {
+                                        <option value="dd/MM/yyyy" selected>DD/MM/YYYY</option>
+                                        <option value="MM/dd/yyyy">MM/DD/YYYY</option>
+                                    }
+                                    else if (Model.DateFormat == "MM/dd/yyyy")
+                                    {
+                                        <option value="dd/MM/yyyy">DD/MM/YYYY</option>
+                                        <option value="MM/dd/yyyy" selected>MM/DD/YYYY</option>
+                                    }
+                                    else
+                                    {
+                                        <option value="dd/MM/yyyy" selected>DD/MM/YYYY</option>
+                                        <option value="MM/dd/yyyy">MM/DD/YYYY</option>
+                                        <option value="@Model.DateFormat">@Model.DateFormat</option>
+                                    }
+                                </select>
+                            </div>
+
+                        </div>
+                    </div>
+
+
+                    <br /><br />
+                    <button class="btn btn-warning community-button w-auto" data-toggle="tab" data-target="#s3" onclick="recount(@((int)UserWizardStep.AddressAndPhoneSettingStep));">Previous</button>
+                    <button class="btn btn-primary community-button w-auto" onclick="saveStepInforWizard('', 's@((int)UserWizardStep.Settings)', 's@((int)UserWizardStep.InterestSettingsStep)');">Next</button>
+                </div>
+
+            </div>
+            <!-- END Step 4 -->
+            <!--Step 5-->
+            <div class="tab-pane fade" id="s5">
+
+                <div class="wizard-form animated fadeIn">
+
+                    <div class="mod_title">
+                        <h5>Configure your interests</h5>
+                        <h4>Your interests</h4>
+                    </div>
+                    <br /><br />
+
+                    <p>
+                        Choose a few things that interest you below. We'll use this to suggest businesses that you might be interested in shopping with or following in
+                        Highlights.
+                    </p>
+
+                    <br /><br />
+                    <p><strong>Choose at least 1 category to continue</strong></p>
+
+
+                    <div class="myinterests flex-grid-quarters-lg gridfix">
+
+                        @foreach (var interestItem in lstInterests)
+                        {
+                            var isChosen = Model.Interests.Any(p => p.Id == interestItem.Id) ? "active" : "";
+                            <div class="col">
+                                <a href="#" class="@isChosen" bid="@interestItem.Id">@interestItem.Name</a>
+                            </div>
+                        }
+
+                        @*<div class="col">
+                            <a href="#">Bridal</a>
+                        </div>
+
+                        <div class="col">
+                            <a href="#">Cosmetics</a>
+                        </div>
+
+                        <div class="col">
+                            <a href="#">Design</a>
+                        </div>
+
+                        <div class="col">
+                            <a href="#">Fashion</a>
+                        </div>
+
+                        <div class="col">
+                            <a href="#">Fast food</a>
+                        </div>
+
+                        <div class="col">
+                            <a href="#">Household</a>
+                        </div>
+
+                        <div class="col">
+                            <a href="#">Restaurants</a>
+                        </div>*@
+
+
+                    </div>
+
+
+                    <style>
+
+                        .myinterests {
+                            margin-top: 30px;
+                        }
+
+                            .myinterests .col a {
+                                display: block;
+                                width: 100%;
+                                border-radius: 25px;
+                                background: #fff;
+                                border: 0;
+                                color: #333;
+                                text-align: center;
+                                line-height: 1.8;
+                                font-family: "Roboto", sans-serif;
+                                font-size: 14px;
+                                font-weight: 500;
+                                padding: 18px 10px;
+                            }
+
+                                .myinterests .col a.active {
+                                    background: #45bad4;
+                                    color: #fff;
+                                }
+
+                                .myinterests .col a:not(.active):hover {
+                                    background: #bae0e8;
+                                }
+                    </style>
+
+                    <br /><br /><br /><br /><br />
+                    @{ 
+                        var hasInterests = Model.Interests.Any() ? "" : "disabled";
+                    }
+                    <button class="btn btn-warning community-button w-auto" data-toggle="tab" data-target="#s4" onclick="recount(@((int)UserWizardStep.ShowcaseSettingStep));">Previous</button>
+                    <button class="btn btn-primary community-button w-auto" onclick="saveUserInterest()" @hasInterests id="interests">Next</button>
+
+                </div>
+
+            </div>
+            <!-- END Step 5 -->
+            <!-- Step 6 -->
+            <div class="tab-pane fade" id="s6">
+
+                <div class="wizard-form animated fadeIn">
+
+
+                    <div class="mod_title">
+                        <h5>Recommended businesses</h5>
+                        <h4>Make some connections</h4>
+                    </div>
+                    <br /><br />
+
+                    <p>
+                        Based on your interests, we think the following businesses might be worth connecting with. By doing so you'll be able to shop directly from them in Qbicles,
+                        and take advantage of offers exclusive to their Qbicles connections.
+                    </p>
+                    <br /><br />
+
+
+
+                    <ul class="avatar-listing team unstyled text-left wizard-follows" id="recommended-businesses" style="background: #fff;">
+                       
+                    </ul>
+
+
+                    <style>
+
+                        .wizard-follows .owner-avatar {
+                            flex: 0 0 80px;
+                        }
+
+                            .wizard-follows .owner-avatar .avatar-sm {
+                                width: 80px;
+                                height: 80px;
+                            }
+
+                        .wizard-follows li a .info {
+                            flex: 1;
+                            padding-left: 20px;
+                            align-self: center;
+                        }
+
+                        .wizard-follows li a h5 {
+                            font-size: 14px;
+                            margin: 0;
+                            padding: 0;
+                        }
+
+                        .wizard-follows li a p {
+                            font-size: 13px;
+                            color: rgba(0, 0, 0, 0.7);
+                            margin: 0;
+                            padding: 5px 0 3px 0;
+                        }
+
+                        .wizard-follows li a span {
+                            font-size: 11px;
+                            font-weight: 500;
+                            font-style: italic;
+                            color: rgba(0, 0, 0, 0.7);
+                        }
+
+                        .wizard-follows .options {
+                            flex: 0 0 80px;
+                            align-self: center;
+                        }
+
+                        .wizard-follows li a {
+                            padding: 30px 25px !important;
+                            border-radius: 15px;
+                        }
+                    </style>
+
+                    <br /><br /><br><br />
+                    <button class="btn btn-warning community-button w-auto" data-toggle="tab" data-target="#s5" onclick="recount(@((int)UserWizardStep.Settings));">Previous</button>
+                    <button class="btn btn-primary community-button w-auto" data-toggle="tab" data-target="#sfinal" onclick="recount(@((int)UserWizardStep.BusinessesConnectStep));">Next</button>
+                    @*<a href="/" class="btn btn-success community-button w-auto">Finish</a>*@
+
+                </div>
+
+            </div>
+            <!-- END Step 6 -->
+            <!-- Final step -->
+            <div class="tab-pane fade" id="sfinal">
+
+                <div class="activity-overview plain rounded businesscard" style="padding: 20px 30px; width: 850px; max-width: 100%;">
+
+                    <div class="business-info">
+                        <br />
+                        <h1>You're good to go, @Model.Forename!</h1>
+
+                        <br />
+                        <p class="summ">Why not use this chance to <strong>enhance your profile</strong> with some more about yourself? We've only asked for the basics here to get you started - in My Profile you'll be able to add things like social network links, education and work history information, files and more.</p>
+
+
+                        <br /><br />
+                        <a href="/Administration/UserProfile" class="btn btn-info community-button w-auto">Go to My Profile</a>
+
+
+                    </div>
+
+                </div>
+
+                <br /><br />
+                <div style="width: 750px; max-width: 100%;">
+                    <button class="btn btn-warning community-button w-auto" data-toggle="tab" data-target="#s6" onclick="recount(@((int)UserWizardStep.InterestSettingsStep));">Previous</button>
+                    <a href="javascript:void(0)" onclick="FinishWizard()" class="btn btn-success community-button w-auto">Finish</a>
+                </div>
+
+
+
+            </div>
+            <!-- END Final step -->
+
+        </div>
+
+    </div>
+
+    <div class="modal fade left" id="create-address" role="dialog" aria-labelledby="user-address-add">
+    </div><!-- /.modal -->
+    <div class="modal fade left" id="profile-showcase-add" role="dialog" aria-labelledby="profile-showcase-add">
+    </div><!--/.modal-->
+
+    @Scripts.Render("~/bundles/qbiclesjs")
+    <script src="~/Content/DesignStyle/js/owl.carousel.min.js"></script>
+    <script src="~/Content/DesignStyle/js/jquery.circle-progress.js"></script>
+    <script src="~/Content/DesignStyle/js/select2.full.min.js"></script>
+    <script src="~/Content/DesignStyle/js/datepicker.min.js"></script>
+
+
+</body>
+
+</html>
+
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/qbicle.user.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/qbicle.user.js"></script>
+    }
+}
+
+<script>
+    var stepFinished = @((int)Model.WizardStep);
+    var stepNum = 6;
+    var step = (100 / stepNum) * stepFinished;
+    $(document).ready(function (e) {
+        initUserProfileWizard();
+        initStep1WizardForm();
+    });
+
+    // User wizard steps definition
+    const GeneralSettingsStep = @((int)UserWizardStep.GeneralSettingsStep);
+    const AddressAndPhoneSettingStep = @((int)UserWizardStep.AddressAndPhoneSettingStep);
+    const ShowcaseSettingStep = @((int)UserWizardStep.ShowcaseSettingStep);
+    const Settings = @((int)UserWizardStep.Settings);
+    const InterestSettingsStep = @((int)UserWizardStep.InterestSettingsStep);
+    const BusinessesConnectStep = @((int)UserWizardStep.BusinessesConnectStep);
+
+    function FinishWizard() {
+        
+        var returnUrl = getCookieWizard('SharingPostUrlCookie');
+        if (returnUrl == '') {
+            window.location = '/';
+        } else {
+            window.location = returnUrl;
+        }
+    }
+
+    function getCookieWizard(cname) {
+        let name = cname + "=";
+        let decodedCookie = decodeURIComponent(document.cookie);
+        let ca = decodedCookie.split(';');
+        for (let i = 0; i < ca.length; i++) {
+            let c = ca[i];
+            while (c.charAt(0) == ' ') {
+                c = c.substring(1);
+            }
+            if (c.indexOf(name) == 0) {
+                return c.substring(name.length, c.length);
+            }
+        }
+        return "";
+    }
+</script>

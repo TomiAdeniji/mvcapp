@@ -1,0 +1,104 @@
+﻿@using Qbicles.BusinessRules;
+@using Qbicles.Models;
+@model IEnumerable<DateTime>
+@{
+        <!--Acivities data-->
+    var activitiesDateCount = (int)ViewBag.AcivitiesDateCount;
+    var activitiesMedia = (List<QbicleMedia>)ViewBag.activitiesMedia;
+    var myPinned = (List<QbicleActivity>)ViewBag.myPinneds;
+    string dateStr = "";
+    string dateStart = "";
+    var currentUserId = (string)ViewBag.CurrentUserId;
+    string classMyPostOrReply = "";
+    var today = (DateTime)ViewBag.Today;
+}
+@foreach (var dates in Model.OrderBy(d => d.Date).Batch(HelperClass.qbiclePageSize))
+{
+    foreach (var item in dates)
+    {
+        dateStart = @HelperClass.DatetimeToOrdinal(item);
+        if (item.Date == today.Date)
+            dateStr = "Today";
+        else
+            dateStr = dateStart;
+
+
+        <div class="day-block"  id=@(dateStr == "Today"?"activity-date-today":dateStr)  style="margin-bottom: 0;">
+            <div class="day-date">
+                <span class="date">@dateStr</span>
+            </div>
+            @if (activitiesMedia.Where(d => d.TimeLineDate.Date == item).ToList().Count > 0)
+            {
+                foreach (var m in activitiesMedia.Where(d => d.TimeLineDate.Date == item).OrderBy(d => d.TimeLineDate))
+                {
+                    classMyPostOrReply = m.StartedBy.Id == currentUserId ? "mypost" : "reply";
+                    <div class="@classMyPostOrReply" onclick="ShowMediaPage('@m.Key',false);">
+                        <div class="poster">
+                            @{
+                                if (m.FileType != null)
+                                {
+                                    <img src="@m.FileType.IconPath">
+                                }
+                                else
+                                {
+                                    <img src="/Content/DesignStyle/img/document-process.png" />
+                                }
+                            }
+                        </div>
+                        <div class="content task">
+                            @if (m.Topic != null)
+                            {
+                                <span class="topic">
+                                    Topic: <a href="javascript:void(0);" onclick="ShowTopic(event,'@m.Topic.Id');">@m.Topic.Name</a>
+                                </span>
+                            }
+                            <a href="javascript:void(0);" onclick="PinnedActivity('@m.Id',false,event)" class="pin">
+                                @if (myPinned != null && myPinned.Any(e => e.Id == m.Id))
+                                {
+                                    <i id="pinIcon-@m.Id" class="fa fa-check green"></i>
+                                }
+                                else
+                                {
+                                    <i id="pinIcon-@m.Id" class="fa fa-thumb-tack"></i>
+                                }
+                            </a>
+
+                            <div class="bubble-marker"></div>
+                            <small>@m.StartedBy.Forename @m.StartedBy.Surname &nbsp; | &nbsp; @m.TimeLineDate.ToString("hh:mmtt")</small>
+                            <p><a href="javascript:void(0);">@m.Name</a> was added</p>
+                            <div class="info_labels">
+                                @{
+                                    if (m.FileType != null)
+                                    {
+                                        <span class="label label-primary">@m.FileType.Type</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="label label-primary"></span>
+                                    }
+                                }
+                                @{
+                                    var lblName = m.FileType == null ? "My Documentation" : "My Media";
+                                    var lblDocument = m.FileType == null ? "Process Documentation AppInstance" : "";
+                                    if (m.StartedBy.Id == currentUserId)
+                                    {
+                                        <span class="label label-danger">@lblName</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="label label-danger">@m.StartedBy.Forename @m.StartedBy.Surname</span>
+                                    }
+                                    <span class="label label-success">@lblDocument</span>
+                                }
+                            </div>
+                            
+                        </div>
+                        <div class="clearfix"></div>
+                    </div>
+                    <div class="clearfix"></div>
+                                    }
+                                }
+        </div>
+        
+                                    }
+                                }

@@ -1,0 +1,511 @@
+﻿@using Qbicles.Models.Highlight
+@using Qbicles.Models.Qbicles
+@using Qbicles.BusinessRules
+@using Qbicles.BusinessRules.Model
+@model ListingHighlight
+@{
+    var listCountries = (List<Country>)ViewBag.ListCountries;
+    var listLocations = (List<Select2Option>)ViewBag.ListLocations;
+    var timezone = (string)ViewBag.TimeZone;
+    var datetimeformat = (string)ViewBag.DateTimeFormat;
+
+    var isEditting = (Model == null || Model.Id <= 0) ? "" : "disabled";
+    var isEdittingEvent = (Model != null && Model.ListingHighlightType == ListingType.Event) ? "selected" : "";
+    var isEdittingJob = (Model != null && Model.ListingHighlightType == ListingType.Job) ? "selected" : "";
+    var isEdittingRealEstate = (Model != null && Model.ListingHighlightType == ListingType.RealEstate) ? "selected" : "";
+
+    var eventPost = (Model == null || Model.Id <= 0 || Model.ListingHighlightType != ListingType.Event) ? null : (Model as EventListingHighlight);
+    var jobPost = (Model == null || Model.Id <= 0 || Model.ListingHighlightType != ListingType.Job) ? null : (Model as JobListingHighlight);
+    var realestatePost = (Model == null || Model.Id <= 0 || Model.ListingHighlightType != ListingType.RealEstate) ? null : (Model as RealEstateListingHighlight);
+
+    var propertyTypeList = (List<PropertyType>)ViewBag.PropTypeList;
+    var propertyList = (List<PropertyExtras>)ViewBag.PropertiesList;
+
+    var isEventRequestApproved = (bool)ViewBag.IsEventRequestApproved;
+    var isJobRequestApproved = (bool)ViewBag.IsJobRequestApproved;
+    var isRealEstateRequestApproved = (bool)ViewBag.IsRealEstateRequestApproved;
+    var imgAcceptedFile = (string)ViewBag.ImageAcceptedExtensions;
+}
+
+<input type="hidden" id="listing-id" value="@(Model?.Id ?? 0)" />
+<div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <h5 class="modal-title">@(Model == null ? "Create a B2C listing" : "Edit a B2C listing")</h5>
+        </div>
+        <div class="modal-body">
+
+            <!-- General listing -->
+            <div class="create well custom" style="padding-bottom: 5px;">
+
+                <div class="row">
+                    <div class="col-xs-12 col-sm-6">
+                        <div class="form-group">
+                            <label for="type">What type of listing are you adding?</label>
+                            <select name="type" class="form-control select2" id="listingtypeselection" style="width: 100%;" @isEditting
+                                    onchange="var route = '.'+$(this).val(); $('.customform').hide(); $(route).fadeIn(); $('#createconfirm').fadeIn();">
+                                <option value=""></option>
+                                <!--<option value="general">General</option>-->
+                                @if (isEventRequestApproved)
+                                {
+                                    <option @isEdittingEvent value="event">Event</option>
+                                }
+                                @if (isJobRequestApproved)
+                                {
+                                    <option @isEdittingJob value="job">Job</option>
+                                }
+                                @if (isRealEstateRequestApproved)
+                                {
+                                    <option @isEdittingRealEstate value="realestate">Real estate</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-xs-12 col-sm-6">
+                        <div class="form-group">
+                            <label for="country">Country</label>
+                            <select name="country" id="listing-country" onchange="CheckShowingAreaSelection(this, 'area')" class="form-control select2" style="width: 100%;">
+                                @{
+                                    var isAllListingCountriesSelected = (Model == null || Model.Country == null) ? "selected" : "";
+                                    var lstCountryCommonNames = listCountries.Select(p => p.CommonName).ToList();
+                                }
+                                <option value="" @isAllListingCountriesSelected>Available everywhere</option>
+                                @foreach (var countryItem in lstCountryCommonNames)
+                                {
+                                    var isCountrySelected = Model != null && Model.Country != null && Model.Country.CommonName == countryItem ? "selected" : "";
+                                    <option value="@countryItem" @isCountrySelected>@countryItem</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+                    @if (listLocations.Count <= 1)
+                    {
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group" id="area" style="display: none;">
+                                <label for="location">Area</label>
+                                <select name="location" class="form-control select2" id="listing-location" style="width: 100%;">
+                                    <option value="0" selected>All areas</option>
+                                    <option value="1">Lagos - Ikeja</option>
+                                    <option value="2">Lagos - Lekki</option>
+                                </select>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group" id="area">
+                                <label for="location">Area</label>
+                                <select name="location" class="form-control select2" id="listing-location" style="width: 100%;">
+                                    @{ var chosenLocationId = Model?.ListingLocation?.Id ?? 0;}
+                                    @foreach (var locationItem in listLocations)
+                                    {
+                                        var isSelected = locationItem.id == chosenLocationId.ToString() ? "selected" : "";
+                                        <option @isSelected value="@locationItem.id">@locationItem.text</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                    }
+                </div>
+
+
+                <!-- General
+                <div class="customform general" style="display: none;">
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group">s
+                                <label for="type">Title</label>
+                                <input type="text" class="form-control">
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group">
+                                <label for="image">Featured image</label>
+                                <input type="file" name="image" class="form-control">
+                            </div>
+                        </div>
+                        <div class="col-xs-12">
+                            <div class="form-group">
+                                <label for="summary">Summary</label>
+                                <textarea name="summary" class="form-control" style="max-width: 100%; height: 120px;"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                END General -->
+                <!-- Event -->
+                <div class="customform event" style="padding-bottom: 5px; display: none;">
+                    <form id="event-form">
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="reference">Reference</label>
+                                    <input type="text" name="reference" id="event-ref" class="form-control" value="@(eventPost?.Reference ?? "")">
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="title">Title</label>
+                                    <input type="text" name="title" id="event-title" value="@(eventPost?.Title ?? "")" class="form-control">
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="where">Where is the event happening?</label>
+                                    <input type="text" id="event-location" value="@(eventPost?.EventLocation ?? "")" name="where" class="form-control">
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="image">Featured image</label>
+                                    <input type="file" id="event-img" name="image" class="form-control">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-6">
+                                <label for="starts">Starts</label>
+                                <div class="input-group" style="margin-bottom: 15px;">
+                                    <input type="text" id="event-startdate" value="@(eventPost == null ? "" : eventPost.StartDate.ConvertTimeFromUtc(timezone).ToString(" dd-MM-yyyy hh:mm"))" class="form-control singledateandtime">
+                                    <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-6">
+                                <label for="ends">Ends</label>
+                                <div class="input-group" style="margin-bottom: 15px;">
+                                    <input type="text" id="event-enddate" value="@(eventPost == null ? "" : eventPost.EndDate.ConvertTimeFromUtc(timezone).ToString(" dd-MM-yyyy hh:mm"))" class="form-control singledateandtime">
+                                    <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label for="summary">Summary</label>
+                                    <textarea name="summary" id="event-summary" class="form-control" style="max-width: 100%; height: 120px;">@(eventPost?.Content ?? "")</textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <!-- END Event -->
+                <!-- Job -->
+                <div class="customform job" style="display: none;">
+                    <form id="job-form">
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="reference">Reference</label>
+                                    <input type="text" name="reference" id="job-ref" class="form-control" value="@(jobPost?.Reference ?? "")">
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="title">Title</label>
+                                    <input type="text" name="title" id="job-title" value="@(jobPost?.Title ?? "")" class="form-control">
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="image">Salary</label>
+                                    <input type="text" id="job-salary" value="@(jobPost?.Salary ?? "")" class="form-control">
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-6">
+                                    <label for="starts">Closing date</label>
+                                    <div class="input-group" style="margin-bottom: 15px;">
+                                        <input type="text" id="job-closingdate" name="closing-date" value="@(jobPost?.ClosingDate.ConvertTimeFromUtc(timezone).ToString(" dd-MM-yyyy hh:mm"))" class="form-control singledateandtime">
+                                        <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="image">Featured image</label>
+                                    <input type="file" id="job-img" name="image" class="form-control">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label for="summary">Summary</label>
+                                    <textarea name="summary" id="job-summary" class="form-control" style="max-width: 100%; height: 120px;">@(jobPost?.Content ?? "")</textarea>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label for="skill">Skills required</label>
+                                    <textarea name="skill" id="job-skillrequired" class="form-control" style="max-width: 100%; height: 120px;">@(jobPost?.SkillRequired ?? "")</textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <!-- END Job -->
+                <!-- Real estate -->
+                <div class="customform realestate" style="display: none; padding-bottom: 5px;">
+                    <form id="realestate-form">
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="reference">Reference</label>
+                                    <input type="text" name="reference" id="realestate-ref" class="form-control" value="@(realestatePost?.Reference ?? "")">
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="title">Title</label>
+                                    <input type="text" name="title" id="realestate-title" value="@(realestatePost?.Title ?? "")" class="form-control">
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="image">Featured image</label>
+                                    <br />
+                                    @{
+                                        var attachmentsCount = "";
+                                        var btnCss = "fa fa-plus";
+                                        if (realestatePost != null && realestatePost.Id > 0 && realestatePost.RealEstateListImgs != null && realestatePost.RealEstateListImgs.Count > 0)
+                                        {
+                                            attachmentsCount = $" Attachments {realestatePost.RealEstateListImgs?.Count.ToString()}";
+                                            btnCss = "fa fa-paperclip";
+                                        }
+                                    }
+                                    <button class="btn btn-info" id="add_attachment" data-toggle="modal" data-target="#attachments-view"><i id="attachment-icon" class="@btnCss"></i> @attachmentsCount</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label for="summary">Property overview</label>
+                                    <textarea name="summary" id="realestate-summary" class="form-control" style="max-width: 100%; height: 120px;">@(realestatePost?.Content ?? "")</textarea>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="summary">Property type</label>
+                                    <select name="type" id="realestate-property-type" class="form-control select2" style="width: 100%;">
+                                        <option value="0"></option>
+                                        @foreach (var typeItem in propertyTypeList)
+                                        {
+                                            var isSelected = (realestatePost != null && realestatePost.PropType?.Id == typeItem.Id) ? "selected" : "";
+                                            <option @isSelected value="@typeItem.Id">@typeItem.Name</option>
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-3">
+                                <div class="form-group">
+                                    <label for="summary">Bedrooms</label>
+                                    <input type="number" id="realestate-bedroom-number" class="form-control" value="@(realestatePost?.BedRoomNum ?? 0)">
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-3">
+                                <div class="form-group">
+                                    <label for="summary">Bathrooms</label>
+                                    <input type="number" id="realestate-bathroom-number" class="form-control" value="@(realestatePost?.BathRoomNum ?? 0)">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="price">Pricing info</label>
+                                    <input type="text" id="realestate-pricing-info" value="@(realestatePost?.PricingInfo ?? " ")" class="form-control" placeholder="e.g. 'Offers over £100,000'">
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="options">Included with property</label>
+                                    <select name="options" id="realestate-properties" class="form-control checkmulti" multiple>
+                                        @foreach (var propertyItem in propertyList)
+                                        {
+                                            var isSelected = (realestatePost != null && realestatePost.IncludedProperties.Any(pitem => pitem.Id == propertyItem.Id)) ? "selected" : "";
+                                            <option @isSelected value="@propertyItem.Id">@propertyItem.Name</option>
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <!-- END Real estate -->
+
+
+            </div>
+            <!-- END Custom -->
+
+
+            <br />
+            <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+            <button class="btn btn-success" id="createconfirm" onclick="submitListingForm()" style="display: none;">Confirm</button>
+
+
+        </div>
+    </div><!-- /.modal-content -->
+</div><!-- /.modal-dialog -->
+
+<div class="modal fade left" style="z-index: 99999" id="attachments-view" role="dialog" aria-labelledby="attachments-view">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" onclick="CloseModalAttachment()" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Manage Attachments Add</h5>
+            </div>
+            <div class="modal-body">
+
+                <div class="row">
+                    <div class="col-xs-12 col-md-6">
+
+                        <div class="activity-overview task" style="margin-bottom: 40px;">
+                            <form name="add_attachment" id="attachments">
+                                <div class="repeater_wrap">
+                                    @if (realestatePost != null && realestatePost.Id > 0 && realestatePost.RealEstateListImgs != null && realestatePost.RealEstateListImgs.Count > 0)
+                                    {
+                                        var index = 0;
+                                        foreach (var itemAttached in realestatePost.RealEstateListImgs.OrderBy(x => x.Order))
+                                        {
+                                            index++;
+                                            <div class="row edit_attachment_row inputFile_@itemAttached.Id" imgkey="@itemAttached.Id">
+                                                <div class="col-xs-12">
+                                                    <div class="form-group">
+                                                        <label for="name">Name</label>
+                                                        <input id="file_id_@(index)" type="hidden" value="@itemAttached.Order" />
+                                                        <input id="inputiconpath_edit@(index)" type="hidden" value="@itemAttached.FileType.IconPath" />
+                                                        <input id="imgkey_edit@(index)" type="hidden" value="@itemAttached.Id" />
+                                                        <input type="text" name="name" id="inputfilename_edit@(index)" class="form-control" value="@itemAttached.Name">
+                                                    </div>
+                                                </div>
+                                                <div class="col-xs-12">
+                                                    <div class="form-group">
+                                                        <label for="file">File</label>
+                                                        <input type="file" name="file" accept="@imgAcceptedFile" class="form-control inputfile">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <div class="row add_attachment_row" imgkey="0">
+                                            <div class="col-xs-12">
+                                                <div class="form-group">
+                                                    <label for="name">Name</label>
+                                                    <input type="text" name="name" id="inputfilename1" class="form-control">
+                                                </div>
+                                            </div>
+                                            <div class="col-xs-12">
+                                                <div class="form-group">
+                                                    <label for="file">File</label>
+                                                    <input type="file" name="file" accept="@imgAcceptedFile" class="form-control inputfile">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+
+                                <button type="button" class="btn btn-info" id="app_attachment_trigger"><i class="fa fa-plus"></i> &nbsp; Add another</button>
+                                @if (realestatePost != null && realestatePost.Id > 0)
+                                {
+                                    <button type="button" class="btn btn-success" onclick="ConfirmAttachment(true)"><i class="fa fa-check"></i> &nbsp; Confirm add</button>
+                                }
+                                else
+                                {
+                                    <button type="button" class="btn btn-success" onclick="ConfirmAttachment(false)"><i class="fa fa-check"></i> &nbsp; Confirm add</button>
+                                }
+                                <button type="button" class="btn btn-danger" onclick="CloseModalAttachment()"><i class="fa fa-remove"></i> &nbsp; Cancel</button>
+                            </form>
+                        </div>
+
+                    </div>
+                    <div class="col-xs-12 col-md-6">
+
+                        <ul class="domain-change-list unstyled cap-height" style="margin-top: 0;">
+                            @if (realestatePost != null && realestatePost.Id > 0 && realestatePost.RealEstateListImgs != null && realestatePost.RealEstateListImgs.Count > 0)
+                            {
+                                foreach (var itemAttached in realestatePost.RealEstateListImgs)
+                                {
+                                    <li>
+                                        <a onclick="RemoveReImage('@itemAttached.Id', @Model.Id, this)">
+                                            <img src="@itemAttached.FileType.IconPath" style="max-width: 80px; height: auto; padding-right: 10px;"> @(itemAttached.Name + "." + itemAttached.FileType.Extension)
+                                        </a>
+                                    </li>
+                                }
+                            }
+                        </ul>
+
+                    </div>
+                </div>
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/social.highlight.js"></script>
+        <link rel="stylesheet" href="~/Content/DesignStyle/css/tagify.css">
+    }
+    else
+    {
+        <script src="~/Scripts/dev/social.highlight.js"></script>
+        <link rel="stylesheet" href="~/Content/DesignStyle/css/tagify.css">
+    }
+}
+
+<script>
+    $(".select2").select2();
+    $('.checkmulti').multiselect({
+        includeSelectAllOption: false,
+        enableFiltering: false,
+        buttonWidth: '100%',
+        maxHeight: 400,
+        enableClickableOptGroups: true
+    });
+    $('.singledateandtime').daterangepicker({
+        singleDatePicker: true,
+        timePicker: true,
+        autoApply: true,
+        showDropdowns: true,
+        autoUpdateInput: true,
+        cancelClass: "btn-danger",
+        opens: "left",
+        locale: {
+            cancelLabel: 'Clear',
+            format: $dateTimeFormatByUser
+        }
+    });
+    $(document).ready(function () {
+        if (Number($("#listing-id").val()) > 0) {
+            var selectionElement = document.getElementById("listingtypeselection");
+            selectionElement.onchange();
+        }
+
+        $("#app_attachment_trigger").click(function () {
+            var inputFiles = $(".add_attachment_row input.inputfile");
+            var attInput = "<div class=\"row add_attachment_row inputFile_" + (inputFiles.length + 1) + "\"> <div class=\"col-xs-12\">";
+            attInput += "<div class=\"form-group\"> <label for=\"name\">Name</label> <input type=\"text\" id=\"inputfilename" + (inputFiles.length + 1) + "\" name=\"name\" class=\"form-control\">";
+            attInput += "</div> </div> <div class=\"col-xs-12\"> <div class=\"form-group\"> <label for=\"file\">File</label>";
+            attInput += "<input type=\"file\" name=\"file\" accept=" + '@imgAcceptedFile' + " class=\"form-control inputfile\">  </div>  </div> </div>";
+            $("#attachments div.repeater_wrap").append(attInput);
+        });
+    });
+
+    initAddingListingEventForm();
+    initAddingListingJobForm();
+    initAddingListingRealEstateForm();
+</script>

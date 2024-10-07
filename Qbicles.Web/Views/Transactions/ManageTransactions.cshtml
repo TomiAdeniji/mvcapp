@@ -1,0 +1,1416 @@
+﻿@using CleanBooksData;
+@using Qbicles.Models;
+@using Qbicles.BusinessRules.FilesUploadUtility;
+@model IEnumerable<upload>
+@{
+    ViewBag.Title = "Manage Uploads";
+    var groups = (IEnumerable<accountgroup>
+        )ViewBag.groups;
+
+    var fileTypes = (IEnumerable<filetype>)ViewBag.fileTypes;
+    var fileTransaction = new List<transactionStructure>();
+    var colNames = new List<transactionStructure>();
+    var result_save_upload = TempData["result_save_upload"] as string;
+    var result_uploadAccountId = TempData["uploadAccountId"] as string;
+    var result_uploadGroupAccountId = TempData["uploadGroupAccountId"] as string;
+    var existAccount = false;
+}
+<link href="~/Content/DesignStyle/css/style.css" rel="stylesheet" />
+<div id="modal-delete" class="modal fade" role="dialog">
+    <div class="modal-dialog">
+
+        <!-- Modal content-->
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4 class="modal-title">Delete Upload</h4>
+            </div>
+            <div class="modal-body">
+
+                <div id="confirm-del" class="alert alert-danger">
+                    <p>
+                        You are about to delete Upload :<strong><span id="upload-name-confirm"></span></strong>
+                        for the Account: <strong><span id="account-name-confirm"></span></strong>
+                    </p>
+                    <br />
+                    <button data-dismiss="modal" class="btn btn-warning">Cancel</button>
+                    <button onclick="deleteUpload()" class="btn btn-danger">Confirm Delete</button>
+                </div>
+
+                <div id="permission-del" class="alert alert-warning">
+                    <p>
+                        You may not delete Upload: <strong><span id="upload-name-permission"></span></strong>
+                        for the Account: <strong><span id="account-name-permission"></span></strong>
+                    </p><br />
+                    <label><strong><span id="temp-name-permission"></span></strong></label>
+                    <br />
+                    <button data-dismiss="modal" class="btn btn-success">OK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="content-wrapper qbicle-detail" style="background: #ececec;">
+    <section class="content" data-tooltip-animate-function="fadein" data-tooltip-delay="300" data-tooltip-stickTo="top" data-tooltip-stickDistance="30">
+        <div class="container-fluid">
+            <div class="side-body padding-top">
+                <div class="page-heading">
+                    <div class="page-title">
+                        <div class="title">Manage Uploads</div>
+                        <div class="page-action">
+                        </div>
+                        <div style="clear: both;"></div>
+                        <div hidden id="accountIdSelected"></div>
+                        <div hidden id="accountLastBalanceSelected"></div>
+                        <div hidden id="tabledataCofirm"></div>
+                    </div>
+                </div>
+
+                <br />
+                <div class="row">
+
+                    <div class="col-xs-12">
+
+                        <div class="panel panel-default company1">
+                            <!-- Default panel contents -->
+                            <div class="panel-heading">Search for Account</div>
+                            <div class="panel-body">
+
+                                <div class="row">
+                                    <div class="col-sm-6 col-md-6 col-lg-6">
+                                        <div class="form-group">
+
+                                            <select name="search-change_account" style="width: 100%;" onchange="SearchTransactionUpdate(this);" id="searchtransaction">
+                                                <option value="-1"> Please select</option>
+                                                @foreach (var group in groups)
+                                                {
+                                                    <optgroup label="@group.Name"></optgroup>
+
+                                                    foreach (var account in group.Accounts.OrderBy(c => c.Name))
+                                                    {
+                                                        <option id="oppAcount1_@account.Id" group-id="@group.Id" value="@account.Id" accountLastBalance="@account.LastBalance">@account.Name - @account.Number</option>
+                                                    }
+                                                }
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-sm-6 col-md-6 col-lg-6">
+                                        <button class="btn btn-success" onclick="TransactionAll()" disabled="disabled" id="btndisplayalltransaction">
+                                            <i class="fa fa-plus"></i> Display All Account Groups
+                                        </button>
+                                    </div>
+                                </div>
+
+
+
+                            </div>
+                        </div>
+
+                    </div>
+
+                </div>
+                @foreach (var group in groups)
+                {
+
+                    //var accounts = subGroupByGroup.Select(m => m.accounts);
+                    <div class="row rowtransition" id="tran_@group.Id">
+                        <div class="col-xs-12">
+                            <div class="panel panel-default company1">
+                                <!-- Default panel contents -->
+                                <div class="panel-heading">@group.Name</div>
+                                <div class="panel-body">
+
+                                    <div class="row">
+                                        <div class="col-sm-6 col-md-6 col-lg-6">
+                                            <div class="form-group accountGroup-@group.Id">
+                                                <select class="selected-@group.Id" id="selected-@group.Id" name="change_account" style="width: 100%;" group-id="@group.Id" onchange="TransactionUpdate(this);">
+                                                    @foreach (var account in group.Accounts.OrderBy(c => c.Name))
+                                                    {
+                                                        <option id="oppAcount2_@account.Id" value="@account.Id" accountLastBalance="@(account.LastBalance == null? null : account.LastBalance)" accountNumValue="@account.Number">@account.Name - @account.Number</option>
+                                                    }
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="col-sm-6 col-md-6 col-lg-6 text-right">
+                                            <div class="company_logo pull-right">
+                                                <img src="@group.LogoPath" class="img-responsive" />
+                                            </div>
+                                            <div style="clear: both;"></div>
+                                        </div>
+                                    </div>
+                                    <hr />
+                                    @foreach (var account in group.Accounts)
+                                    {
+                                        existAccount = true;
+                                        //var uploads = Model.Where(m => m.upload.AccountId == account.Id);
+                                        var uploads = Model.Where(m => m.AccountId == account.Id);
+                                                <!-- Table -->
+                                        <table group-id="@group.Id" account-id="@account.Id" id="table_@account.Id" class="userTable111 table t1style no-margin-top" style="display:none;width:100%">
+                                            <thead>
+                                                <tr>
+                                                    <th style="width: 30%;">Name</th>
+                                                    <th>Uploaded By</th>
+                                                    <th>Uploaded On</th>
+                                                    <th style="width: 150px;">Admin</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody group-id="@group.Id">
+
+
+                                                @foreach (var u in uploads.OrderByDescending(c => c.CreatedDate))
+                                                {
+                                                    <tr role="row">
+                                                        <td>@u.Name</td>
+                                                        <td><a href="mailto:@u.user.Email">@u.user.Forename @u.user.Surname</a></td>
+                                                        <td>@(u.CreatedDate.HasValue ? u.CreatedDate.Value.ToString() : null)</td>
+                                                        <td>
+                                                            <a href="javascript:void(0)" name="button_transaction_preview"
+                                                               transaction-name="@u.Name" transaction-id="@u.Id">Preview</a> |
+                                                            <a href="javascript:void(0)" name="button_transaction_delete"
+                                                               transaction-name="@u.Name"
+                                                               transaction-id="@u.Id"
+                                                               transaction-account-id="@u.AccountId"
+                                                               transaction-last="@u.CreatedDate"
+                                                               transaction-accName="@u.account.Name"
+                                                               uploadformat-id="@u.UploadFormatId">
+                                                                Delete
+                                                            </a>
+                                                        </td>
+                                                    </tr>
+
+                                                }
+                                            </tbody>
+                                        </table>
+                                    }
+                                    @if (existAccount)
+                                    {
+                                        <button class="btn btn-success btnaddtransaction" data-toggle="modal" data-target="#modal_transaction_edit" onclick="AddnewTrasaction(@group.Id)">
+                                            <i class="fa fa-plus"></i> Add New
+                                        </button>
+                                        existAccount = false;
+                                    }
+
+                                </div>
+                            </div>
+
+                        </div>
+
+                    </div>
+                }
+            </div>
+        </div>
+    </section>
+</div>
+
+
+<div id="modal_transaction_preview" class="modal fade" role="dialog">
+    <div class="modal-dialog large">
+
+        <!-- Modal content-->
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4 class="modal-title"></h4>
+            </div>
+            <div class="modal-body">
+
+                <div class="row">
+                    <div class="col-md-12 col-lg-12">
+                        <table id="tablePreview" class="table t1style table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Reference</th>
+                                    <th>Description</th>
+                                    <th>Debit</th>
+                                    <th>Credit</th>
+                                    <th>Balance</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="modal_transaction_edit" class="modal fade" role="dialog">
+    <div class="modal-dialog large">
+
+        <!-- Modal content-->
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" onclick="close_modal_upload()" data-dismiss="modal">&times;</button>
+                <h4 class="modal-title">Upload</h4>
+            </div>
+            <div class="modal-body">
+
+                <div class="card-body no-padding">
+                    <div class="step card-no-padding tabs-left" style="height:100%">
+                        <ul class="nav nav-tabs" role="tablist" style="width:100%;height: 100%">
+                            <li role="step" id="step_2_edit" class="disabled disabledTab">
+                                <a href="#stepv2edit" role="tab" id="step2_edit-vtab" data-toggle="tab" aria-controls="profile">
+                                    <div class="icon fa fa-file"></div>
+                                    <div class="step-title">
+                                        <div class="title">Upload</div>
+                                        <div class="description">Supply File</div>
+                                    </div>
+                                </a>
+                            </li>
+                            <li role="step" id="step_3_edit" class="disabled disabledTab">
+                                <a href="#stepv3edit" role="tab" id="step3_edit-vtab" data-toggle="tab" aria-controls="confirm">
+                                    <div class="icon fa fa-wrench"></div>
+                                    <div class="step-title">
+                                        <div class="title">Configure</div>
+                                        <div class="description">Prepare Your Upload</div>
+                                    </div>
+                                </a>
+                            </li>
+                            <li role="step" id="step_4_edit" class="disabled disabledTab">
+                                <a href="#stepv4edit" role="tab" id="step4_edit-vtab" data-toggle="tab" aria-controls="confirm">
+                                    <div class="icon fa fa-check"></div>
+                                    <div class="step-title">
+                                        <div class="title">Confirm</div>
+                                        <div class="description">Review and Confirm</div>
+                                    </div>
+                                </a>
+                            </li>
+                        </ul>
+                        <div class="tab-content">
+                            <div role="tabpanel" class="tab-pane fade in active" id="stepv2edit" aria-labelledby="home-tab">
+                                <div class="row">
+                                    <div class="col-md-6 col-lg-6">
+                                        <label for="statement_upload_name_title">Active Account</label><br />
+                                        <label for="statement_upload_name" id="label_upload_name" name="Name"></label>
+                                    </div>
+                                    <div class="col-md-6 col-lg-6">
+                                        <label>Opening Balance</label><br />
+                                        <input type="text" name="opening_balance" id="opening_balance" value="0" class="form-control">
+                                        <span for="" id="lblOpenBalance" name="" style="display:none;"></span>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-12 col-lg-12">
+                                        <div class="form-group">
+                                            <label for="statement_file">Upload File <span>*</span></label>
+
+                                            <div id="group_file_upload" class="fileinput input-group fileinput-new" data-provides="fileinput">
+                                                <div class="form-control" data-trigger="fileinput">
+                                                    <i class="glyphicon glyphicon-file fileinput-exists"></i>
+                                                    <span class="fileinput-filename"></span>
+                                                </div>
+                                                <span class="input-group-addon btn btn-warning btn-file">
+                                                    <span class="fileinput-new"><i class="fa fa-file"></i> Select file</span>
+                                                    <span class="fileinput-exists"><i class="fa fa-pencil"></i> Change</span>
+                                                    <input type="file" name="excelFile" id="input_transaction_upload">
+                                                </span>
+                                                <a href="#" class="input-group-addon btn btn-danger fileinput-exists"
+                                                   data-dismiss="fileinput"><i class="fa fa-trash"></i>Remove</a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-4 col-lg-4">
+                                        <button id="buttoncheckscan" class="btn btn-success" onclick="CheckFileTypeVirusScaning()">File validation and Virus Scan</button>
+                                    </div>
+                                    <div class="col-md-8 col-lg-8">
+                                        <label id="lblcheckfilefeedback" for="lblcheckfilefeedback" style="color:red"></label>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div id="dlsheetname" class="col-md-12 col-lg-12">
+                                        <div class="form-group ">
+                                            <label for="statement_format">Sheet name (*)</label>
+                                            <select id="select_sheetnameFile" name="UploadFormatId" style="width: 100%;" tabindex="1"></select>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button id="ReadSheetData" onclick="ReadSheetData_Click()" class="btn btn-success tab-next">Proceed</button>
+                            </div>
+                            <div role="tabpanel" class="tab-pane fade" id="stepv3edit" aria-labelledby="confirm-tab">
+                                @*new design*@
+                                <div class="row">
+                                    <div class="col-md-12 col-lg-12" id="containerdiv" style="overflow: hidden;">
+                                        <h4>Define Columns</h4>
+                                        <div id="alertConfigureColumns1" class="alert alert-warning">
+                                            <p>
+                                                Below you will find the data from your imported file. Above each column is a select box which you can use to specify what each column is in your import. If a column isn't required, simply select <strong><i>ignore</i></strong>
+                                            </p>
+                                        </div>
+                                        <hr />
+
+                                        <div id="resizediv">
+
+                                            <table id="tabletransactionNew" class="table t1style table-bordered" style="margin: 0; padding: 0;table-layout: fixed;">
+                                                @*table-layout: fixed*@
+                                                <tbody></tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <br>
+                                </div>
+                                <div class="row">
+                                    <button id="buttonBack3" onclick="resetTitlle()" class="btn btn-warning tab-prev">Back</button>
+                                    <button id="DefineColumnsData" class="btn btn-success tab-next" onclick="DefineColumnsData_Click()">Proceed</button>
+                                </div>
+                            </div>
+                            <div role="tabpanel" class="tab-pane fade" id="stepv4edit" aria-labelledby="confirm-tab">
+                                <div class="row">
+                                    <div id="Divuploaderror" class="col-md-12 col-lg-12" style="display:none">
+                                        <p id="ReportError" style="color:red; font-size:13px">We found an error in the file upload. Please download the file bug reports here to check: <a id="linkerrorfile">File error reports</a></p>
+                                    </div>
+                                    <div id="Divuploadnoerror" class="col-md-12 col-lg-12">
+                                        <h4>Review Import</h4>
+                                        <br />
+                                        <h5>Analysed Data</h5>
+                                        <table id="tableAnalysedData" class="table t1style table-bordered">
+                                            <thead>
+                                                <tr>
+                                                    <th>From date</th>
+                                                    <th>To date</th>
+                                                    <th>Total Records</th>
+                                                    <th>Total Credit</th>
+                                                    <th>Total Debit</th>
+                                                    <th>Opening Balance</th>
+                                                    <th>Closing Balance</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody></tbody>
+                                        </table>
+
+                                        <br />
+
+                                        <h5>Final Version</h5>
+
+                                        <div class="alert alert-warning">
+                                            <p>
+                                                Below you will see the final version of your import, after running your
+                                                configuration. Excluded rows are highlighted in red. If you're happy with
+                                                all of this you can choose to Finish and Save, or alternatively click Back
+                                                to return to make additional changes
+                                            </p>
+                                        </div>
+                                        <div>
+                                            Date format: <span id="list_dateformat"></span>
+                                        </div>
+                                        <div style="overflow: hidden; height: 300px; overflow-y: scroll;
+                                    overflow-x: scroll; position: relative;">
+                                            <table id="tableConfirmDisplay" class="table t1style table-bordered" style="margin: 0; padding: 0;
+                                        overflow: hidden;">
+                                                <tbody></tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button class="btn btn-warning tab-prev">Back</button>
+                                <div id="lblfromtodate" hidden></div>
+                                <button id="buttonProceed4" class="btn btn-success tab-next" onclick="ConfirmUpload()">Finish and Save</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="~/Scripts/jquery.number.min.js"></script>
+<script>
+    var $change_account = $("select[name='change_account']"),
+        $search_change_account = $("select[name='search-change_account']"),
+        $modal_transaction_preview = $("#modal_transaction_preview"),
+        $modal_transaction_preview_title = $("#modal_transaction_preview [class='modal-title']"),
+        $button_transaction_preview = $("a[name='button_transaction_preview']"),
+        $modal_transaction_edit = $("#modal_transaction_edit"),
+        $button_transaction_delete = $("a[name='button_transaction_delete']"),
+        $input_uploadformat = $("#input_uploadformat"),
+        $modal_upload_remove = $("#modal-delete"),
+    $stepv3edit_tableNew = $("#tabletransactionNew");
+    $stepv4display_table = $("#tableConfirmDisplay");
+    $stepv4AnalysedData_table = $("#tableAnalysedData");
+    $ReadSheetData = $("#ReadSheetData"),
+    $DefineColumnsData = $("#DefineColumnsData"),
+    $buttonProceed4 = $("#buttonProceed4"),
+    $buttoncheckscan = $("#buttoncheckscan"),
+    $lblcheckfilefeedback = $("#lblcheckfilefeedback"),
+    $select_sheetnameFile = $("#select_sheetnameFile"),
+    $tablePreview = $("#tablePreview")
+    $input_transaction_upload = $("#input_transaction_upload"),
+    $dlsheetname = $("#dlsheetname"),
+    $select_upload_accountid = 0,
+    $tabledataCofirm = $("#tabledataCofirm"),
+    $accountIdSelected = $("#accountIdSelected"),
+    $accountLastBalanceSelected = 0;
+    $lblfromtodate = $("#lblfromtodate"),
+    $label_upload_name = $("#label_upload_name"),
+    $selectedAccountId = 0,
+    $selectedGroupAccountId = 0,
+    $dateFromatSelected = "",
+    _headersSelected = [],
+    $uploadIdDelete = 0,
+    $uploadNameDelete = "",
+    $accountNameDelete = "",
+    $accountIdDelete = 0,
+    $uploadFormatId = 0,
+    $tdDelete = null,
+    $trDelete = null,
+    $accountName = ""
+    ;
+    var CheckExistsAccount = false;
+    var colCount = 0; // count number columns
+    var colHeadIndex = 1;
+
+    function format(item, container) {
+        var originalOption = item.element;
+        var originalText = item.text;
+        return $('<div title="' + originalText + " " + $(originalOption).data('mytxt') + '">' + originalText + ' ' + '<span class="newTxt">' + $(originalOption).data('mytxt') + '</span></div>');
+    }
+    function resetTitlle() {
+
+        $('#alertConfigureColumns1').empty().append("Below you will find the data from your imported file. Above each column is a " +
+            "select box which you can use to specify what each column is in your import. If " +
+            "a column isn't required, simply select <strong><i>ignore</i></strong></br>");
+        $('select').not('.multi-select').select2();
+    }
+    function getCookie(key) {
+        var result = null;
+        $.ajax({
+            url: "/Commons/GetCookie",
+            data: { key: key },
+            type: "POST",
+            async: false,
+            success: function (data) {
+                result = data.Object;
+            },
+            error: function (error) {
+            }
+        });
+        return result;
+    }
+
+    // validation data on columns selected
+    function configureColumns(colIndex) {
+        cleanBookNotification.clearmessage();
+        $DefineColumnsData.attr('disabled', '');
+        // validation data date, number success then = true
+        var validColValue = false;
+        // validation selected minimum columns require
+        var validColSelected = false;
+        //[1- get selected columns]
+        _headersSelected = [];
+        var _headersName = [];
+        $("#tabletransactionNew  tbody  tr").find('.columnSelected').each(function (i, selected) {
+            selectedVal = $(this).val().replace(' ', '');
+            _headersSelected[i] = selectedVal;
+            if (selectedVal.toString().startsWith('Ignore')) {
+                _headersName[i] = selectedVal;
+            }
+            else {
+                var pos = selectedVal.lastIndexOf('_');
+                _headersName[i] = (pos <= 0) ? '' : selectedVal.substring(pos, 0);
+            }
+        });
+        //[2] validate duplicate columns selected
+        var duplicates = _headersName.reduce(function (acc, el, i, arr) {
+            if (arr.indexOf(el) !== i && acc.indexOf(el) < 0)
+                acc.push('It is not possible to select two <strong>' + el + '</strong> columns. Please change your selection.</br>');
+            return acc;
+        }, []);
+
+        var _headercol = [];
+        _headercol = getCookie('headercol').replace(" ", "").split(',');
+        var _status = true;
+        var _status_same = false;
+        if (duplicates.length == 0) {
+            for (var x = 0; x < _headercol.length; x++) {
+                _status_same = false;
+                for (var y = 0; y < _headersName.length; y++) {
+                    if (_headercol[x].replace(" ", "") == _headersName[y].replace(" ", "")) {
+                        _status_same = true;
+                        break;
+                    }
+                }
+                if (!_status_same) {
+                    _status = false;
+                    break;
+                }
+            }
+            if (_status)
+                $DefineColumnsData.removeAttr('disabled', '');
+            else
+                $DefineColumnsData.attr('disabled', '');
+        }
+        else
+            $DefineColumnsData.attr('disabled', '');
+        if (duplicates.length > 0) {
+            cleanBookNotification.warning($.unique(duplicates), 'CleanBooks');
+            return;
+        }
+    }
+
+    $(document).ready(function () {
+        $modal_transaction_edit.on('hidden.bs.modal', function () {
+            $('select').not('.multi-select').select2();
+        });
+       
+        $('select').not('.multi-select').select2();
+       
+        $("#opening_balance").number(true, 5);
+        var $trs = $(".userTable111");
+        $trs.DataTable({
+            "sDom": '<"top">rt<"bottomtable"ip><"clear">',
+            "bInfo": true,
+            "bFilter": false,
+            "bPaginate": true,
+            "bSearchable": false,
+            "sPaginationType": "numbers",
+            "pageLength": 10,
+            "bAutoWidth": false,
+            "columnDefs": [
+                 { "targets": 0 },
+                 { "targets": 1 },
+                 { "targets": 2 },
+                 { "targets": 3 }
+            ],
+            "fnInitComplete": function () {
+                $trs.next(".bottomtable").attr("style", "display:none");
+
+                $trs.each(function (index) {
+                    var style = $(this).attr("style");
+                    if (style.indexOf("display:table") > -1) {
+                        $(this).next(".bottomtable").attr("style", "display:block");
+                    }
+                });
+                $(".dataTables_wrapper").css("width", "100%");
+            }
+        });
+
+        $button_transaction_delete.bind('click', function () {
+            $tdDelete = $(this).parent();
+            $trDelete = $tdDelete.parent();
+
+            var $this = $(this),
+                lastUpload = $this.attr("transaction-last");
+            $uploadIdDelete = $this.attr("transaction-id");
+            $uploadNameDelete = $this.attr("transaction-name");
+            $accountIdDelete = $this.attr("transaction-account-id");
+            $accountNameDelete = $this.attr("transaction-accName");
+            $uploadFormatId = $this.attr("uploadformat-id");
+            var model = {
+                Id: $uploadIdDelete,
+                Name: $uploadNameDelete,
+                AccountId: $accountIdDelete,
+                CreatedDate: lastUpload
+            };
+            $.ajax({
+                type: 'post',
+                url: '/Transactions/ValidDelete',
+                dataType: 'json',
+                data: model,
+                success: function (ref) {
+
+                    if (ref.resLastUpload == "" && ref.resTransaction == "") {
+                        cleanBookNotification.error("Have an error when Delete upload. Please contact the system administrator for help.", "Cleanbooks");
+                        return;
+                    }
+                    if (!ref.resLastUpload) {// not last upload
+                        $("#permission-del").show();
+                        $("#confirm-del").hide();
+                        $('#upload-name-permission').text($uploadNameDelete);
+                        $('#account-name-permission').text($accountNameDelete);
+                        $('#temp-name-permission').text("You may only select the last upload to the Account to be deleted.");
+                    }
+                    else if (ref.resLastUpload) { // last upload
+                        if (ref.resTransaction)//not in taskinstance
+                        {
+                            //delete
+                            $("#permission-del").hide();
+                            $("#confirm-del").show();
+                            $('#upload-name-confirm').text($uploadNameDelete);
+                            $('#account-name-confirm').text($accountNameDelete);
+                        }
+                        else {
+                            //$("#permission-del").hide();
+                            //$("#confirm-del").show();
+                            //$('#upload-name-confirm').text($uploadNameDelete);
+                            //$('#account-name-confirm').text($accountNameDelete);
+                            $("#permission-del").show();
+                            $("#confirm-del").hide();
+                            $('#upload-name-permission').text($uploadNameDelete);
+                            $('#account-name-permission').text($accountNameDelete);
+                            $('#temp-name-permission').text("Transactions from this upload are currently being used in a task.");
+                        }
+                    }
+                    $modal_upload_remove.modal('toggle');
+                },
+                error: function () {
+                    cleanBookNotification.error("Have an error when Delete upload. Please contact the system administrator for help.", "Cleanbooks");
+                }
+            })
+        });
+
+        // preview upload
+        $button_transaction_preview.bind('click', function () {
+            var $this = $(this),
+                id = $this.attr("transaction-id"),
+                name = $this.attr("transaction-name");
+            if (id && id > 0) {
+                GetTransactions(id).done(function (response) {
+                    if (response && response != "") {
+                        $tablePreview.dataTable().fnDestroy();
+                        $tablePreview.find("tbody").find("tr").remove();
+
+                        $tablePreview.find("tbody").append(response);
+                        var table = $tablePreview.DataTable({
+                            retrieve: true,
+                            "dom": '<"top"fl<"clear">>rt<"bottomtable"ip<"clear">>',
+                            "bInfo": true,
+                            "bFilter": true,
+                            "bPaginate": true,
+                            "bSearchable": false,
+                            "sPaginationType": "numbers",
+                            "pageLength": 10
+
+                        });
+
+                        $modal_transaction_preview_title.text(name);
+                        $modal_transaction_preview.modal('toggle');
+                    }
+                    else {
+                        cleanBookNotification.error("Have an error when get Transactions by upload. Please contact the system administrator for help.", "Cleanbooks");
+                    }
+                }).error(function (response) {
+                    cleanBookNotification.error("Have an error when get Transactions by Upload. Please contact the system administrator for help.", "Cleanbooks");
+                })
+            }
+        })
+
+        cleanBookNotification.displayNotification('@result_save_upload');
+
+        $change_account.trigger('onchange');
+        $search_change_account.trigger('onchange');
+        //validation if select file upload is null
+        $("input[type=file]").bind("change", function () {
+            var selected_file_name = $(this).val();
+            if (selected_file_name.length > 0) {
+                $buttoncheckscan.removeAttr('disabled', '');
+            }
+            else {
+                $ReadSheetData.attr('disabled', '');
+                $buttoncheckscan.attr('disabled', '');
+                RemoveSheetSelect();
+                $dlsheetname.hide();
+            }
+        });
+
+        //tab 2 proceed bind data to tab3
+        //$input_transaction_upload.add(function (e, data) {
+        //    $("#stepv2edit>.tab-next").off("click").on('click', function () {
+        //        //var file = $('#input_transaction_upload')[0].files;
+
+        //    });
+        //});
+        //end tab2
+        if ('@result_uploadAccountId' && '@result_uploadGroupAccountId') {
+
+            var groupId = '@result_uploadGroupAccountId',
+                 accountId = '@result_uploadAccountId';
+            $search_change_account.val(accountId).trigger('change');
+        }
+
+    });
+    $.extend(true, $.fn.dataTable.defaults, {
+        "searching": false,
+        "ordering": false
+    });
+    function ResizeAble() {
+        setTimeout(function () {
+            var width = $('#containerdiv').width();
+            $('#resizediv').width(width);
+            $("#resizediv").css({ 'height': '400px', 'overflow': 'auto' });
+        }, 50);
+    }
+    function close_modal_upload() {
+        $.ajax({
+            type: 'post',
+            url: '/Transactions/RemoveSession',
+        })
+    }
+    function deleteUpload() {
+        if ($uploadIdDelete <= 0)
+            return;
+        var model = {
+            Id: $uploadIdDelete,
+            Name: $uploadNameDelete,
+            UploadFormatId: $uploadFormatId,
+            AccountId: $accountIdDelete
+        };
+        $.ajax({
+            type: 'post',
+            url: '/Transactions/DeleteUpload',
+            dataType: 'json',
+            data: model,//{ taskId: $taskIdDelete},
+            success: function (res) {
+
+                if (res.status) {
+                    $modal_upload_remove.modal('hide');
+                    cleanBookNotification.removeSuccess();
+                    //change the background color to red before removing
+                    $trDelete.css("background-color", "#FF3700");
+                    $trDelete.fadeOut(1500, function () {
+                        $trDelete.remove();
+                    });
+
+                    $uploadIdDelete = 0;
+                    var _account_id_option1 = "#oppAcount1_" + res.AccountId;
+                    var _account_id_option2 = "#oppAcount2_" + res.AccountId;
+                    $(_account_id_option1).attr("accountLastBalance", res.LastBalance);
+                    $(_account_id_option2).attr("accountLastBalance", res.LastBalance);
+                }
+                else
+                    cleanBookNotification.removeFail();
+            }
+        })
+    }
+
+    function SearchTransactionUpdate(select) {
+        if (select && $(select).val() > 0) {
+            var groupId = $(select).attr("group-id"),
+             accountId = $(select).val();
+            $accountIdSelected.val(accountId);
+            var element = $(select).find('option:selected');
+            var lastBalance = element.attr("accountLastBalance");
+            $accountLastBalanceSelected = lastBalance;
+
+            //  check search
+            $("#btndisplayalltransaction").removeAttr('disabled', '');
+            var groupsearchid = $("#searchtransaction option:selected").attr("group-id");
+            if (groupsearchid != undefined) {
+                $("#searchtransaction").addClass("selected-" + groupsearchid);
+                $("#searchtransaction").attr("group-id", groupsearchid);
+                $(".rowtransition").hide();
+                $("#tran_" + groupsearchid).show();
+                $change_account.val(accountId).trigger('change');
+            }
+
+            var trs = $("table[group-id='" + groupId + "']");
+            trs.hide();
+            var trsbyaccount = trs.filter(function () {
+                return (accountId == $(this).attr('account-id'))
+            })
+            if (trsbyaccount.length > 0) {
+                $(trsbyaccount).show();
+            }
+        }
+    }
+    function TransactionUpdate(select) {
+        if (select && $(select).val() > 0) {
+            //accountLastBalance
+            var element = $(select).find('option:selected');
+            var lastBalance = element.attr("accountLastBalance");
+            $accountLastBalanceSelected = lastBalance;
+
+            var groupId = $(select).attr("group-id"),
+                accountId = $(select).val();
+            $accountIdSelected.val(accountId);
+            var trs = $("table[group-id='" + groupId + "']");
+            trs.hide();
+
+            $(trs).next(".bottomtable").attr("style", "display:none");
+            var trsbyaccount = trs.filter(function () {
+                return (accountId == $(this).attr('account-id'))
+            });
+
+            if (trsbyaccount.length > 0) {
+                $(trsbyaccount).attr("style", "display:table");
+                $(trsbyaccount).next(".bottomtable").attr("style", "display:block");
+            }
+        }
+    }
+
+    function TransactionAll() {
+        window.location.href = $(location).attr('href');
+    }
+    function GetTransactions(uploadId) {
+        return $.ajax({
+            url: "/Transactions/GetTransactions",
+            type: "GET",
+            dataType: "json",
+            data: { UploadId: uploadId }
+        });
+    }
+
+    function GetUploads(id) {
+        return $.ajax({
+            url: "/Transactions/GetUploads",
+            type: "GET",
+            dataType: "json",
+            data: { id: id }
+        });
+    }
+
+    function GetMaxUploads(accountId) {
+        return $.ajax({
+            url: "/ManageAccounts/GetMaxUploadToAccount",
+            type: "GET",
+            dataType: "json",
+            data: { accountId: accountId }
+        });
+    }
+
+    function AddnewTrasaction(id) {
+        $selectedGroupAccountId = id;//
+        $dlsheetname.hide();
+        $ReadSheetData.attr('disabled', '');
+        $DefineColumnsData.attr('disabled', '');
+        $buttonProceed4.attr('disabled', '');
+        $buttoncheckscan.attr('disabled', '');
+        $lblcheckfilefeedback.text("");
+        $input_transaction_upload.val(null);
+        $(document).find('.active').removeClass('active');//
+        $("#step_2_edit").addClass('in active');//
+        $("#stepv2edit").addClass('in active');//
+        $(".fileinput").fileinput("clear");
+        ResizeAble();
+        var select = $(document).find("#selected-" + id);
+        $accountName = select.select2('data')[0]["text"];//
+        $selectedAccountId = select.select2('data')[0]["id"];//
+
+        $accountLastBalanceSelected = $('option:selected', select).attr('accountLastBalance');//
+        var upName = select.select2('data')[0]['text'];//
+
+        // gen upload name
+        GetMaxUploads($selectedAccountId).done(function (response) {
+            var dateNow = new Date();
+            $label_upload_name.text(upName + " - " +
+                dateNow.getFullYear() + '/' + (dateNow.getMonth() + 1) + '/' + dateNow.getDate() + " - " + response.num
+                 );
+            CheckExistsAccount = response.existsUpload;
+            if (response.existsUpload) {
+                $("#opening_balance").css({ "display": "none" });
+                $("#lblOpenBalance").css({ "display": "block" });
+                $("#lblOpenBalance").html($.number(response.lastbalance))
+            }
+            else {
+                if (response.lastbalance > 0) {
+                    $("#opening_balance").css({ "display": "block" });
+                    $("#lblOpenBalance").css({ "display": "none" });
+                    $("#opening_balance").val($.number(response.lastbalance))
+                }
+                else {
+                    $("#opening_balance").css({ "display": "block" });
+                    $("#lblOpenBalance").css({ "display": "none" });
+                    $("#lblOpenBalance").html('')
+                    //$("#opening_balance").val('');
+                }
+            }
+        }).error(function (response) {
+            cleanBookNotification.error("Have an error when get Upload. Please contact the system administrator for help.", "Cleanbooks");
+        })//
+    }
+
+    function RemoveSheetSelect() {
+        document.getElementById("select_sheetnameFile").innerHTML = "";
+        $select_sheetnameFile.val(null).trigger("change");
+    }
+
+    function CheckFileTypeVirusScaning() {
+        var fileName = $('[name="excelFile"]').val().trim();
+        var pos = fileName.lastIndexOf('.');
+        var extension = (pos <= 0) ? '' : fileName.substring(pos);
+        var model = {
+            fileName: "Excel",// default only upload excel
+            fileExtension: extension
+        };
+        RemoveSheetSelect();
+        $.ajax({
+            type: 'post',
+            url: '/Transactions/ValidationFileType',
+            dataType: 'json',
+            data: model,
+            success: function (ref) {
+                if (ref.valid == 1) {
+                    $lblcheckfilefeedback.text("");
+                    $buttoncheckscan.removeAttr('disabled', '');
+                    scaning_virus();
+                }
+                else if (ref.valid == 0) {
+                    $lblcheckfilefeedback.text("Please browse a correct Excel file to upload");
+                    return;
+                }
+                else {
+                    $lblcheckfilefeedback.text("Please upload a valid excel file of version 2003 and above!");
+                    return;
+                }
+            },
+            error: function () {
+                cleanBookNotification.error("Have an error when Validation File Type. Please contact the system administrator for help.", "Cleanbooks");
+            }
+        })
+
+    }
+    // scan virus if isvirus free then read sheets excel file, else delete file
+    function scaning_virus() {
+        var file = $('#input_transaction_upload')[0].files;
+        if (!file) {
+            $lblcheckfilefeedback.text("Please browse a correct Excel file to upload");
+            return;
+        }
+        var fd = new FormData();
+        fd.append("file", file[0]);
+        $.ajax({
+            url: "/Transactions/VirusSacning",
+            type: "POST",
+            data: fd,
+            processData: false,
+            contentType: false
+        }).done(function (data) {
+            if (data.IsVirusFree) {
+                $.ajax({
+                    url: "/Transactions/ReadSheets",
+                    dataType: 'json',
+                    type: "POST",
+                    data: fd,
+                    processData: false,
+                    contentType: false
+                }).done(function (data) {
+                    if (!data.Status.Success) {
+                        $lblcheckfilefeedback.text(data.Status.Message);
+                        cleanBookNotification.error(_L("ERROR_MSG_EXCEPTION_SYSTEM"), "Cleanbooks");
+                        return;
+                    }
+                    var sheetId;
+                    $.each(data.Sheets, function () {
+                        sheetId = this.sheetId;
+                        $select_sheetnameFile.multiSelect('addOption', { value: this.sheetId, text: this.sheetName });
+                    })
+                    $select_sheetnameFile.val(sheetId).trigger("change");
+                    $dlsheetname.show();
+                    $lblcheckfilefeedback.text("");
+                    cleanBookNotification.success(_L("ERROR_MSG_665"), "Cleanbooks");
+                    $ReadSheetData.removeAttr('disabled', '');
+                }).error(function (data) {
+                    cleanBookNotification.error(_L("ERROR_MSG_EXCEPTION_SYSTEM"), "Cleanbooks");
+                    return false;
+                });
+            }
+            else {
+                $lblcheckfilefeedback.text(data.Message);
+                $ReadSheetData.attr('disabled', '');
+                cleanBookNotification.error(_L("ERROR_MSG_EXCEPTION_SYSTEM"), "Cleanbooks");
+                //delete file
+            }
+        }).error(function (data) {
+            cleanBookNotification.error(_L("ERROR_MSG_EXCEPTION_SYSTEM"), "Cleanbooks");
+            return false;
+        });
+    }
+
+    function dateFormatSlected() {
+        configureColumns(1);
+    }
+
+    function ReadSheetData_Click() {
+        _heads = [];
+        colHeadIndex = 1;
+        //Read data sheet
+        var fd = new FormData();
+        //fd.append("file", file[0]);
+        fd.append("sheetId", $select_sheetnameFile.select2().val());
+        fd.append("accountId", $selectedAccountId);
+        fd.append("_SheetName", $select_sheetnameFile.select2().text());
+        fd.append("lastBalance", $("#opening_balance").val());
+        $.ajax({
+            url: "/Transactions/ExcelFileUpload",
+            dataType: 'json',
+            type: "POST",
+            data: fd,
+            processData: false,
+            contentType: false
+        }).done(function (data) {
+
+            if (data.StartReadSheetData == 1) {
+                return;
+            }
+            if (data.status == "Error") {
+                cleanBookNotification.error(_L("ERROR_MSG_EXCEPTION_SYSTEM"), "Cleanbooks");
+                return;
+            }
+            else if (data.status == "NoData") {
+                cleanBookNotification.error(_L("ERROR_MSG_673"), "Cleanbooks");
+                return;
+            }
+            else if (data.status == "Error") {
+                cleanBookNotification.error(data.message, "Cleanbooks");
+                return;
+            }
+            //bind datatransaction to table
+            $stepv3edit_tableNew.find('tbody').empty();
+            $stepv3edit_tableNew.find('tbody').append(data.dataTransactionsNew);
+            //formatColDate();
+            ResizeAble();
+            $('select').not('.multi-select').select2({
+                templateResult: format
+            });
+            colCount = data.colCount;
+            if (!CheckExistsAccount)
+                $accountLastBalanceSelected = $("#opening_balance").val();
+            else {
+                var tmp = $("#lblOpenBalance").html();
+                for (var i = 0; i < tmp.length; ++i) {
+                    if (tmp[i] == ",")
+                        tmp = tmp.replace(",", "");
+                }
+                $accountLastBalanceSelected = tmp;
+            }
+            $(document).find('.active').removeClass('active');
+            $("#step_3_edit").addClass('in active');
+            $("#stepv3edit").addClass('in active');
+            setCookie("headercol", data.headColRequire);
+            if (data.bindFormat == "Done") {
+                configureColumns(1);
+                if (data.headColRequire != "")
+                    $('#alertConfigureColumns1').empty().append("Below you will find the data from your imported file. Above each column is a" +
+                        " select box which you can use to specify what each column is in your import. If " +
+                        "a column isn't required, simply select <strong><i>ignore</i></strong></br>")
+                        .append("<strong>The previous format for uploading transactions to this account has been applied.</strong>")
+                        .append("</br><strong style='color:#F00;'> Uploading transactions to this account requires the following fields: " + data.headColRequire + ".</strong>");
+                else
+
+                    $('#alertConfigureColumns1').empty().append("Below you will find the data from your imported file. Above each column is a" +
+                        " select box which you can use to specify what each column is in your import. If " +
+                        "a column isn't required, simply select <strong><i>ignore</i></strong></br>")
+                        .append("<strong>The previous format for uploading transactions to this account has been applied.</strong>");
+            }
+            else {
+                if (data.headColRequire != "")
+                    $('#alertConfigureColumns1').empty().append("Below you will find the data from your imported file. Above each column is a" +
+                        " select box which you can use to specify what each column is in your import. If " +
+                        "a column isn't required, simply select <strong><i>ignore</i></strong></br>")
+                        .append("</br><strong style='color:#F00;'> Uploading transactions to this account requires the following fields: " + data.headColRequire + ".</strong>");
+                else
+                    $('#alertConfigureColumns1').empty().append("Below you will find the data from your imported file. Above each column is a" +
+                        " select box which you can use to specify what each column is in your import. If " +
+                        "a column isn't required, simply select <strong><i>ignore</i></strong></br>");
+            }
+            return;
+        }).error(function (data) {
+            cleanBookNotification.error(_L("ERROR_MSG_EXCEPTION_SYSTEM"), "Cleanbooks");
+            return false;
+        });
+        return false;
+    }
+
+    function ValidationSelectedHeadColumns(headsselected, accountIdSelected) {
+        var heads = { values: JSON.stringify(headsselected) };
+        return $.ajax({
+            url: "/Transactions/ValidationSelectedHeadColumns",
+            type: "GET",
+            dataType: "json",
+            data: { heads: JSON.stringify(headsselected), accountId: accountIdSelected }
+        });
+    }
+
+    function DefineColumnsData_Click() {
+        // analyse data,checking for duplicate records, compare balance,sum credit, sum debit,count data,start date, endate
+        //var dateFormat = $('#date_options').find('#date_optionsId option:selected').val();
+        Loading_proceed();
+
+        $.ajax({
+            type: 'post',
+            url: '/Transactions/DataAnalyse',
+            dataType: 'json',
+            data: {
+                AccountId: $selectedAccountId,
+                headerColumns: JSON.stringify(_headersSelected),
+                accountName: $accountName,
+                accountLastBalance: JSON.stringify($accountLastBalanceSelected)
+            },
+            success: function (ref) {
+                EndLoading();
+
+                if (ref.StartDataAnalyse == 1) {
+                    return;
+                }
+                var _Divuploaderror = document.getElementById('Divuploaderror');
+                var _Divuploadnoerror = document.getElementById('Divuploadnoerror');
+                _Divuploaderror.style.display = "none";
+                _Divuploaderror.style.height = "0px";
+                _Divuploadnoerror.style.display = "block";
+                $stepv4AnalysedData_table.find('tbody').empty();
+                $stepv4AnalysedData_table.find('tbody').append(ref.dataAnalysedData);
+                $stepv4display_table.find('tbody').empty();
+                $stepv4display_table.find('tbody').append(ref.dataTransactions);
+                if (ref.warningbalance != "") {
+                    _Divuploaderror.style.display = "block";
+                    _Divuploaderror.style.height = "150px";
+                    _Divuploadnoerror.style.display = "none";
+                    cleanBookNotification.error(_L("ERROR_MSG_EXCEPTION_SYSTEM"), "Cleanbooks");
+                    $("#linkerrorfile").attr("href", ref.Errorfile)
+                    $buttonProceed4.attr('disabled', '');
+                    return;
+                }
+                if (ref.dataTransactions != "") {
+                    $buttonProceed4.removeAttr('disabled', '');
+                    $("#list_dateformat").children().remove();
+                    $("#list_dateformat").append(ref.GenListdateFormat);
+                }
+                else {
+                    cleanBookNotification.warning("No data Transaction upload.", "Cleanbooks");
+                    $buttonProceed4.attr('disabled', '');
+                }
+            },
+            error: function () {
+                EndLoading();
+                cleanBookNotification.error(_L("ERROR_MSG_EXCEPTION_SYSTEM"), "Cleanbooks");
+                $buttonProceed4.attr('disabled', '');
+            }
+        });
+    }
+    function ConfirmUpload() {
+        Loading_save();
+        //get filename
+        var filepath = $('[name="excelFile"]').val().trim();
+        var pos = filepath.lastIndexOf('\\');
+        //bind uploadformat modal to save
+        var uploadformatmodal = {
+            Name: $label_upload_name.text()
+        };
+        //bind upload modal to save
+        var uploadmodal = {
+            Name: $label_upload_name.text(),
+            FileName: filepath.substring(pos + 1),
+            AccountId: $selectedAccountId
+        };
+        var dateFormat = "";
+        dateFormat = $('#list_dateformat').find('#date_optionsId option:selected').val();
+
+        $.ajax({
+            url: "/Transactions/Confirm2Save",
+            type: "post",
+            dataType: "json",
+            data: {
+                uploadModal: uploadmodal,
+                uploadFormatModal: uploadformatmodal,
+                dateFormat: dateFormat,
+                headerColumns: JSON.stringify(_headersSelected),//_headsSelected
+                selectedGroupAccountId: $selectedGroupAccountId
+            }
+        }).done(function (data) {
+            EndLoading();
+            if (data.result == 1) {
+                $modal_transaction_edit.modal('hide');
+                location.reload();
+            }
+            else if (data.result == 2) {
+                cleanBookNotification.error(_L("ERROR_MSG_EXCEPTION_SYSTEM"), "Cleanbooks");
+            }
+            else if (data.result == 3) {
+                cleanBookNotification.error(_L("ERROR_MSG_674"), "Cleanbooks");
+            }
+        }).error(function (data) {
+            EndLoading();
+            cleanBookNotification.error(_L("ERROR_MSG_EXCEPTION_SYSTEM"), "Cleanbooks");
+        });
+    }
+</script>
+<script>
+    function Loading_proceed() {
+        var str = '<div id="modal-loading-parent"  class="modal fade" role="dialog" style="opacity: 0.6;background: #000;display: block;">' + ' </div>' +
+            '<div id="modal-loading"  class="modal fade" style="margin-top: 14%;">' +
+        '<div class="modal-dialog">' +
+          '  <div class="modal-content">' +
+              '  <div class="modal-body text-center">' +
+                 '   <br />' +
+                   ' <i class="fa fa-spinner fa-4x fa-spin" style="margin-bottom: 20px;"></i>' +
+                   ' <h4>Processing Data, please wait...</h4>' +
+                   ' <br />' +
+                   '<br />' +
+               ' </div>' +
+           ' </div>' +
+       ' </div>' +
+        ' </div>' +
+       '<input type="button" data-toggle="modal" data-target="#modal-loading" id="popdialogloading" style="display:none" />';
+        $('body').append(str);
+        $('#popdialogloading').click();
+    }
+    function Loading_save() {
+        var str = '<div id="modal-loading-parent"  class="modal fade" role="dialog" style="opacity: 0.6;background: #000;display: block;">' + ' </div>' +
+            '<div id="modal-loading"  class="modal fade" style="margin-top: 14%;">' +
+        '<div class="modal-dialog">' +
+          '  <div class="modal-content">' +
+              '  <div class="modal-body text-center">' +
+                 '   <br />' +
+                   ' <i class="fa fa-spinner fa-4x fa-spin" style="margin-bottom: 20px;"></i>' +
+                   ' <h4>Saving Data, please wait...</h4>' +
+                   ' <br />' +
+                   '<br />' +
+               ' </div>' +
+           ' </div>' +
+       ' </div>' +
+        ' </div>' +
+       '<input type="button" data-toggle="modal" data-target="#modal-loading" id="popdialogloading" style="display:none" />';
+        $('body').append(str);
+        $('#popdialogloading').click();
+    }
+    function EndLoading() {
+        setTimeout(function () {
+            $('body').find('div#modal-loading').remove();
+            $('body').find('div#modal-loading-parent').remove();
+            var _array = $('.modal-backdrop.fade.in').toArray();
+            for (var x = 1; x < _array.length; x++) {
+                _array[x].remove();
+            }
+            $('#popdialogloading').remove();
+        }, 500);
+    }
+</script>
+<script src="~/Scripts/toastr/cleanBookNotification.js"></script>
+<script src="~/Content/DesignStyle/bootbox/bootbox.js"></script>
+<style>
+    span.newTxt {
+        color: red;
+        font-size: smaller;
+    }
+
+    .disabledTab {
+        pointer-events: none;
+    }
+
+    .nav-tabs > li.active > a, .nav-tabs > li.active > a:focus, .nav-tabs > li.active > a:hover {
+        color: #337ab7;
+    }
+
+    .disabled {
+        pointer-events: none;
+    }
+
+    .modal {
+        overflow-y: scroll;
+    }
+
+    .formatDate {
+        text-align: right !important;
+    }
+
+    /*.nav-tabs {
+        float: left;
+        width: 14%;
+        .modal-body;
+
+    {
+        position: relative;
+        padding: 15px;
+        overflow: hidden;
+    }*/
+
+    .frame-upload {
+        position: relative;
+        width: 100%;
+        overflow: hidden;
+        overflow-x: auto;
+        overflow-y: auto;
+        height: 400px;
+    }
+
+    .nav-tabs {
+        width: 14%;
+        float: left;
+        position: relative;
+        left: -10px;
+    }
+
+        .nav-tabs li {
+            width: 90%;
+        }
+
+    .tab-content {
+        width: 86%;
+        float: right;
+        position: relative;
+    }
+    .fileinput {
+        margin-bottom: 9px;
+        display: inline-block;
+    }
+    .fileinput.input-group {
+        display: table;
+    }
+    .fileinput-new.input-group .btn-file, .fileinput-new .input-group .btn-file {
+        border-radius: 0 4px 4px 0;
+    }
+    .fileinput.input-group>.btn-file {
+        z-index: 1;
+    }
+    .btn-file>input {
+        position: absolute;
+        top: 0;
+        right: 0;
+        margin: 0;
+        opacity: 0;
+        filter: alpha(opacity=0);
+        font-size: 23px;
+        height: 100%;
+        width: 100%;
+        direction: ltr;
+        cursor: pointer;
+    }
+    .fileinput.input-group>* {
+        position: relative;
+        z-index: 2;
+    }
+    .fileinput-exists .fileinput-new, .fileinput-new .fileinput-exists {
+        display: none;
+    }
+    .fileinput .btn {
+        vertical-align: middle;
+    }
+    .input-group-addon:not(:first-child) {
+        border-left: 0;
+    }
+    input.form-control, .input-group-addon {
+        padding: 8px 12px 6px 12px;
+    }
+    .input-group-addon {
+        font-size: 12px;
+        font-weight: 500;
+    }
+    .btn-file {
+        overflow: hidden;
+        position: relative;
+        vertical-align: middle;
+    }
+    .input-group-addon {
+        padding: 6px 12px;
+        font-size: 14px;
+        font-weight: 400;
+        line-height: 1;
+        color: #555;
+        text-align: center;
+        background-color: #eee;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+    }
+    .btn-file>input {
+        position: absolute;
+        top: 0;
+        right: 0;
+        margin: 0;
+        opacity: 0;
+        filter: alpha(opacity=0);
+        font-size: 23px;
+        height: 100%;
+        width: 100%;
+        direction: ltr;
+        cursor: pointer;
+    }
+
+
+</style>

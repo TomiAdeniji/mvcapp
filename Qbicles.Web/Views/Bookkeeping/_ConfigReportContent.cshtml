@@ -1,0 +1,125 @@
+﻿@using Qbicles.Models.Bookkeeping;
+@model List<IncomeStatementReportEntry>
+@{
+    var revId = (int)ViewBag.revId;
+    var expId = (int)ViewBag.expId;
+    var revenues = Model.Where(s => s.CoANode.Parent.Id== revId).ToList();
+    var expenses = Model.Where(s => s.CoANode.Parent.Id== expId).ToList();
+}
+<div class="well custom">
+    <div class="checklist reportconfig">
+
+
+        <h2 style="font-size: 16px;">Revenue</h2>
+
+        <div class="form-row sortable">
+
+            @foreach (var item in revenues)
+            {
+                var coANode = item.CoANode;
+                var inlineReport = item.InlineReportEntry;
+                <div class="dragelem" val="@item.Id">
+                    <div class="row preview-area" style="position: relative; padding-bottom: 24px;">
+                        <div class="col-xs-12">
+                            <h5><i style="font-size: 13px;">@coANode.Name</i></h5>
+                        </div>
+                    </div>
+                </div>
+                <!-- Step -->
+                <div class="dragelem" style="display:none;" id="calcfirst_@item.Id">
+                    <div class="row preview-area">
+                        <div class="col-xs-9">
+                            <h5><i style="font-size: 13px;">Add an inline subtotal</i></h5>
+                        </div>
+                        <div class="col-xs-3">&nbsp;</div>
+                    </div>
+                    <div class="row-options" style="display:@(inlineReport!=null?"none":"block"); background: #fff; padding: 0;">
+
+                        <div class="well custom">
+                            <form id="frm_subtotal_@item.Id">
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="title">Subtotal title</label>
+                                            <input type="text" class="form-control" name="title" required>
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="title">Expense category to move here</label>
+                                            <select name="expId" class="form-control select2" onchange="$('#frm_subtotal_@item.Id select[name=expId]').valid();" required style="width: 100%;" tabindex="-1" aria-hidden="true">
+                                                <option value=""></option>
+                                                @foreach (var exp in expenses)
+                                                {
+                                                    <option class="exp_@exp.Id" value="@exp.Id">@exp.CoANode.Name</option>
+                                                }
+                                            </select>
+                                            <label id="expId-error" class="error" for="expId" style="display: none;margin-top: 33px;">This field is required.</label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button class="btn btn-danger" type="button" onclick="$(this).parent().parent().parent().parent().slideUp(); $('#addcalcfirst_@item.Id').show();">Cancel</button>
+                                <button class="btn btn-success" type="button" onclick="addRevenue(this,'#frm_subtotal_@item.Id',@item.Id);">Confirm</button>
+                            </form>
+                        </div>
+
+                    </div>
+                </div>
+                <!-- END Step -->
+                <div id="calcfirstitem_@item.Id" style="display: @(inlineReport!=null?"block":"none"); background: transparent;">
+
+                    <div class="dragelem" style="background: #fff; margin-bottom: 5px;">
+                        <div class="row preview-area">
+                            <div class="col-xs-9">
+                                <h5><i style="font-size: 13px;"><label class="label label-danger label-lg">Expense</label> &nbsp; <span id="success_expense_@item.Id" class="red">- @(inlineReport?.ExpenseReportEntry?.CoANode.Name)</span></i></h5>
+                            </div>
+                            <div class="col-xs-3"><a href="#" class="remove" onclick="removeSubtotal(@(inlineReport?.ExpenseReportEntry.Id??0),@item.Id)"><i class="fa fa-undo"></i></a></div>
+                        </div>
+                    </div>
+
+                    <div class="dragelem" id="calcrow" style="margin: 0 0 10px 30px; background: #fff;">
+                        <div class="row preview-area" style="padding-bottom: 24px;">
+                            <div class="col-xs-9">
+                                <h5><i style="font-size: 13px;"><label class="label label-warning label-lg">Calculation</label> &nbsp; = <span id="success_subtitle_@item.Id">@(inlineReport?.SubTotalTitle)</span></i></h5>
+                            </div>
+                            <div class="col-xs-3"></div>
+                        </div>
+                    </div>
+
+                </div>
+                <div class="step-container" id="addcalcfirst_@item.Id" style="display: @(inlineReport!=null?"none":"block");">
+                    <button class="btn btn-primary add" onclick="$('#calcfirst_@item.Id').slideDown(); $(this).parent().hide();"><i class="fa fa-plus"></i></button>
+                </div>
+
+            }
+        </div>
+
+
+        <br>
+
+        <h2 style="font-size: 16px;">Expenses</h2>
+
+        <div class="form-row sortable">
+            @foreach (var item in expenses)
+            {
+                var coANode = item.CoANode;
+                <div class="dragelem exp_@item.Id" val="@item.Id">
+                    <div class="row preview-area" style="position: relative; padding-bottom: 24px;">
+                        <div class="col-xs-9">
+                            <h5><i style="font-size: 13px;">@coANode.Name</i></h5>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <br>
+
+    </div>
+
+</div>
+
+<br>
+<button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+<a href="#" class="btn btn-success" onclick="saveConfigTemplate()">Save template</a>
+

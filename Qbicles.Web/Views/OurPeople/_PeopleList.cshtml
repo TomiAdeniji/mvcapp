@@ -1,0 +1,82 @@
+﻿@using Qbicles.BusinessRules;
+@using Qbicles.Models;
+@model List<OurPeopleModel>
+@{
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var currentuserId = (string)ViewBag.CurrentUserId;
+}
+<table class="datatable table-hover table-striped responsive" id="Peoplelist" style="width: 100%; background: #fff;" data-order='[[ 4, "asc" ]]'>
+    <thead>
+        <tr>
+            <th data-priority="3" data-orderable="false" style="width: 30px;"></th>
+            <th data-priority="1">Name</th>
+            @*<th data-priority="4">Member since</th>*@
+            <th data-priority="2">Email</th>
+            <th data-priority="1">Admin Level(s)</th>
+            <th data-priority="1">App Role(s)</th>
+            @*<th data-priority="3">Associated Qbicles</th>*@
+            <th data-priority="1" data-orderable="false"></th>
+        </tr>
+    </thead>
+    <tbody>
+        @if (Model != null && Model.Any())
+        {
+            foreach (var item in Model)
+            {
+                <tr>
+                    <td><div class="table-avatar mini" style="background-image: url('@(string.IsNullOrEmpty(item.Image)?"../Content/DesignStyle/img/icon_contact.png": api+item.Image+"&size=T")');">&nbsp;</div></td>
+                    <td><a href="/Community/UserProfilePage?uId=@item.Id">@item.FullName</a></td>
+                    @*<td>@item.CreatedDate.ToString("dd.MM.yyyy")</td>*@
+                    <td><a href="mailto:@item.Email">@item.Email</a></td>
+                    <td>
+                        <span class="label label-lg label-primary">@item.TypeUser</span>
+                    </td>
+                    <td>
+                        @if (item.lstRole != null && item.lstRole.Any())
+                        {
+                            foreach (var role in item.lstRole)
+                            {
+                                <span class="label label-lg label-info" style="margin-bottom:3px;display: inline-flex;">@role</span><br />
+                            }
+
+                        }
+
+                    </td>
+                    @*<td>@item.QbiclesCount</td>*@
+                      <td>
+                          @if (!(item.TypeUserId == (int)AdminLevel.Administrators && item.Id == currentuserId)){
+                          <div class="btn-group options">
+                              <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                  <i class="fa fa-cog"></i>
+                              </button>
+                              <ul class="dropdown-menu dropdown-menu-right" style="right: 0;">
+                                  @if (item.TypeUserId == (int)AdminLevel.Administrators)
+                                  {
+                                      <li><a href="#" onclick="PromoteOrDemoteUser('@item.Id', @((int)AdminLevel.QbicleManagers), @((int)AdminLevel.Administrators))"><i class="fa fa-arrow-down"></i> &nbsp; Demote to Qbicle Creator</a></li>
+                                      <li><a href="#" onclick="PromoteOrDemoteUser('@item.Id', @((int)AdminLevel.Users), @((int)AdminLevel.Administrators))"><i class="fa fa-arrow-down"></i> &nbsp; Demote to Domain User</a></li>
+                                      <li><a href="#" onclick="ConfirmRemoveUserFromDomain('@item.Id','@item.FullName')"><i class="fa fa-trash"></i> &nbsp; Remove from Domain</a></li>
+                                  }
+                                  else if (item.TypeUserId == (int)AdminLevel.QbicleManagers)
+                                  {
+                                      <li><a href="#" onclick="PromoteOrDemoteUser('@item.Id', @((int)AdminLevel.Administrators), @((int)AdminLevel.QbicleManagers))"><i class="fa fa-arrow-up"></i> &nbsp; Promote to Domain Admin</a></li>
+                                      <li><a href="#" onclick="PromoteOrDemoteUser('@item.Id', @((int)AdminLevel.Users), @((int)AdminLevel.QbicleManagers))"><i class="fa fa-arrow-down"></i> &nbsp; Demote to Domain User</a></li>
+                                      <li><a href="#" onclick="ConfirmRemoveUserFromDomain('@item.Id','@item.FullName')"><i class="fa fa-trash"></i> &nbsp; Remove from Domain</a></li>
+                                  }
+                                  else
+                                  {
+                                      <li><a href="#" onclick="PromoteOrDemoteUser('@item.Id', @((int)AdminLevel.Administrators), @((int)AdminLevel.Users))"><i class="fa fa-arrow-up"></i> &nbsp; Promote to Domain Admin</a></li>
+                                      <li><a href="#" onclick="PromoteOrDemoteUser('@item.Id', @((int)AdminLevel.QbicleManagers), @((int)AdminLevel.Users))"><i class="fa fa-arrow-up"></i> &nbsp; Promote to Qbicle Creator</a></li>
+                                      <li><a href="#" onclick="ConfirmRemoveUserFromDomain('@item.Id','@item.FullName')"><i class="fa fa-trash"></i> &nbsp; Remove from Domain</a></li>
+                                  }
+                              </ul>
+                          </div>
+                          }
+
+                      </td>
+                </tr>
+            }
+
+        }
+    </tbody>
+</table>
+

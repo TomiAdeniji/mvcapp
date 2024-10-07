@@ -1,0 +1,167 @@
+﻿@using Qbicles.BusinessRules;
+@using Qbicles.Models;
+@{
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var currentQbicleId = (int)ViewBag.CurrentQbicleId;
+    var currentDomain = (QbicleDomain)ViewBag.CurrentDomain;
+    var listFileType = (List<string>)ViewBag.listFileType;
+    string fileAccept = listFileType.Count() > 0 ? ("." + string.Join(",.", listFileType)) : "";
+    <!--task modal-->
+    var listMediaFolders = (List<MediaFolder>)ViewBag.listMediaFolder;
+    var dbContext = new Qbicles.BusinessRules.Model.ApplicationDbContext();
+    var qbicleTopics = new TopicRules(dbContext).GetTopicByQbicle(currentQbicleId);
+}
+<div class="modal fade left" id="create-media" tabindex="-1" role="dialog" aria-labelledby="create-media" style="display: none;">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+                <h5 class="modal-title">Add media</h5>
+            </div>
+            <div class="modal-body">
+                <form id="form_media_addedit">
+                    <input id="mediaQbicleId" type="hidden" name="qbicleId" value="@currentQbicleId" />
+                    <div class="well custom">
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label for="media-title">Document name</label>
+                                    <input type="text" id="mediaTitle" required name="Name" class="form-control">
+                                </div>
+                            </div>
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label for="topic">Choose a topic</label>
+                                    <select id="media-topic-selected" name="Topic" class="form-control select2" style="width: 100%;">
+                                        @foreach (var item in qbicleTopics)
+                                        {
+                                            <option value="@item.Id">@item.Name</option>
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label for="account_number">Choose a file</label>
+                                    <input type="file" id="mediaAttachments" accept="@fileAccept" data-target="#preview" required name="mediaAttachments" class="form-control previewimg">
+                                </div>
+                            </div>
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label for="tags">Choose a destination folder</label>
+                                    <select id="add-media-select-media-folder" class="form-control select2" style="width: 100%;">
+                                        @foreach (var mFolder in listMediaFolders)
+                                        {
+                                            <option value="@mFolder.Id">@mFolder.Name</option>
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label for="media-description">Add a description</label>
+                                    <textarea id="mediaDescription" name="Description" required class="form-control" style="max-width: 100%; height: 80px;"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    @*<a class="btn btn-warning" onclick="UploadStart()">Upload UI Start</a>
+                        <a class="btn btn-warning" onclick="UploadStop()">Upload UI Stop</a>
+                        <a class="btn btn-primary" onclick="UploadQbiclesMediaDemo()">Upload Media Only</a>*@
+                    <a href="javascript:void(0);" class="btn btn-danger" onclick="ClearMediaInputModalAddEdit()" data-dismiss="modal">Cancel</a>
+                    <button class="btn btn-success" type="button" onclick="SaveMedia()">Confirm</button>
+                </form>
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+<script>
+
+function GetListTopic(){
+    $.getJSON("/B2C/GetListTopic", { qbicleid: @currentQbicleId }, function (data) {
+            if (data && data.length > 0) {
+                $('#media-topic-selected').empty();
+                $('#media-topic-selected').select2({
+                    data: data
+            });
+        }
+    });
+}
+
+        @* UploadQbiclesMediaDemo = function () {
+
+
+            var mediaFiles = document.getElementById("mediaAttachments").files;
+
+            if (mediaFiles.length > 0 && mediaFiles.length > 0) {
+
+                AWS.config.update({
+                    region: $s3BucketRegion,
+                    credentials: new AWS.CognitoIdentityCredentials({
+                        IdentityPoolId: $s3IdentityPoolId
+                    })
+                });
+
+                var s3 = new AWS.S3({
+                    apiVersion: '2006-03-01',
+                    params: { Bucket: $s3BucketName }
+                });
+
+                UploadStart();
+
+                //setTimeout(function () {
+                //UploadStop();
+                //}, 50000);
+
+
+                var file = mediaFiles[0];
+
+                var mediaS3Object = {
+                    objectKey: GenerateUUID(),
+                    fileName: file.name,
+                    fileSize: file.size,
+                };
+
+                var fileType = file.type;
+
+
+                if (file.type.match('image.*')) {
+                    fileType = "image";
+                } else if (file.type.match('video.*')) {
+                    fileType = "video";
+                } else {
+                    fileType = "application";
+                }
+                //OK
+                s3.upload({
+                    Key: mediaS3Object.objectKey,
+                    Body: file,
+                    ContentType: file.type,
+                    Metadata: {
+                        "file-name": mediaS3Object.fileName,
+                        "file-type": fileType
+                    },
+                    ACL: "bucket-owner-full-control"//'public-read'
+                }, function (err, data) {
+                    UploadStop();
+                    if (err) {
+                        mediaS3Object.objectKey = "no-image";
+                        cleanBookNotification.error(err, "Qbicles");
+                        
+                        return;
+                    }
+                    else {
+                        cleanBookNotification.updateSuccess();
+                    }
+
+                }).on('httpUploadProgress', function (progress) {
+                    var uploaded = parseInt((progress.loaded * 100) / progress.total);
+                    $("progress").attr('value', uploaded);
+                });
+
+
+            }
+
+        } *@
+    </script>

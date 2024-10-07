@@ -1,0 +1,610 @@
+﻿@using Qbicles.BusinessRules
+@using Qbicles.Models.Qbicles
+@using Qbicles.Models.Bookkeeping
+@using Qbicles.Models.Trader;
+@model TraderSale
+@{
+    List<string> lstEnum = (List<string>)ViewBag.LstEnum ?? new List<string>();
+    var traderContacts = (List<TraderContact>)ViewBag.Contacts;
+    int locationId = (int)ViewBag.LocationId;
+    var dimensions = (List<TransactionDimension>)ViewBag.Dimensions;
+    var workGroups = (List<WorkGroup>)ViewBag.WorkGroups ?? (new List<WorkGroup>());
+    var countries = (List<Country>)ViewBag.Contries;
+    if (Model.DeliveryAddress == null)
+    {
+        Model.DeliveryAddress = new TraderAddress();
+    }
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var hidden = "display: none;";
+    if (Model.DeliveryMethod.ToString() == "Delivery")
+    {
+        hidden = "display: block;";
+    }
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+}
+<div class="modal-dialog modal-xl" role="document">
+    <div class="modal-content" style="border-radius:0px;">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            @if (Model.Id > 0)
+            {
+                <h5 class="modal-title">Edit sale @Model.Reference.FullRef</h5>
+            }
+            else
+            {
+                <h5 class="modal-title">Add a sale</h5>
+            }
+            <input type="hidden" value="@Model.Id" id="tradersale_form_id" />
+            <input type="hidden" value="@(Model?.Key ?? "")" id="tradersale_form_key" />
+        </div>
+        <div class="modal-body">
+            <div class="row">
+                <div class="col-xs-12">
+                    <ul class="app_subnav admintabs" style="padding-top: 0;">
+                        <li class="active"><a href="#sale-1" data-toggle="tab">Specifics</a></li>
+                        <li><a href="#sale-2" data-toggle="tab">Items</a></li>
+                        <li><a href="#sale-3" onclick="nextToConfirm()" data-toggle="tab">Confirm</a></li>
+                    </ul>
+                </div>
+            </div>
+            <br />
+            <div class="tab-content">
+                <!-- Contact details -->
+                <div class="tab-pane fade in active" id="sale-1">
+                    <div class="row">
+                        <div class="col-xs-12 col-md-4">
+                            <div class="activity-overview generic" style="padding: 20px; max-width: 600px;">
+                                <div class="form-group" style="margin: 0;">
+                                    <label for="workgroup">Choose associated Workgroup <span>*</span></label>
+                                    <select name="workgroup" id="trader_sale_add_workgroup" onchange="ChangeSaleWorkgroup(this)" class="form-control select2" style="width: 100%;">
+                                        <option value=""></option>
+                                        @foreach (var item in workGroups)
+                                        {
+                                            if (Model.Workgroup != null && Model.Workgroup.Id == item.Id)
+                                            {
+                                                <option value="@item.Id" selected>@item.Name</option>
+                                            }
+                                            else
+                                            {
+                                                <option value="@item.Id">@item.Name</option>
+                                            }
+                                        }
+                                    </select>
+                                </div>
+                                <div class="preview-workgroup" style="display: none;">
+                                    <br />
+                                    <table class="table app_specific" style="margin: 0;">
+                                        <tr>
+                                            <td><h5>Location</h5></td>
+                                            <td class="location_name">Location name</td>
+                                        </tr>
+                                        <tr>
+                                            <td><h5>Process</h5></td>
+                                            <td class="workgroup_process">Transfers</td>
+                                        </tr>
+                                        <tr>
+                                            <td><h5>Qbicle</h5></td>
+                                            <td class="workgroup_qbicle">Qblicle Name</td>
+                                        </tr>
+                                        <tr>
+                                            <td><h5>Members</h5></td>
+                                            <td class="workgroup_member"><button class="btn btn-info" onclick="ShowGroupMember()" data-toggle="modal" data-target="#app-trader-workgroup-preview"><i class="fa fa-user"></i> &nbsp; <span></span></button></td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-md-8">
+                            <div class="activity-overview task" style="padding: 20px 20px 5px 20px;">
+                                <div class="row">
+                                    <div class="col-xs-12">
+
+                                        <div class="form-group">
+                                            <label for="reference">Reference</label>
+                                            <input type="hidden" value="@Model.Reference.Id" id="reference_id" />
+                                            <input type="hidden" value="@Model.Reference.Type.ToString()" id="reference_type" />
+                                            <input type="hidden" value="@Model.Reference.Prefix" id="reference_prefix" />
+                                            <input type="hidden" value="@Model.Reference.Suffix" id="reference_suffix" />
+                                            <input type="hidden" value="@Model.Reference.Delimeter" id="reference_delimeter" />
+                                            <input type="hidden" value="@Model.Reference.FullRef" id="reference_fullref" />
+                                            <div class="show-ref">
+                                                <p>
+                                                    @Model.Reference.Prefix@Model.Reference.Delimeter<span id="refedit">@Model.Reference.NumericPart</span>@Model.Reference.Delimeter@Model.Reference.Suffix &nbsp; &nbsp;
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="form_sale_contact">Contact</label>
+                                            <input type="hidden" value="@(Model?.Purchaser?.Id ?? 0)" id="selected-contact-id" />
+                                            <input type="hidden" value="@(Model?.Purchaser?.Name ?? "")" id="selected-contact-name" />
+                                            <select id="form_sale_contact" data-placeholder="Please select" name="contact" onchange="changeContact(this)" class="form-control select2" style="width: 100%;">
+                                                @if (Model.Purchaser != null)
+                                                {
+                                                    <option value="@Model.Purchaser.Id" selected>@Model.Purchaser.Name</option>
+                                                }
+                                                else
+                                                {
+                                                    <option value=""></option>
+                                                }
+                                                @foreach (var item in traderContacts)
+                                                {
+                                                    if (Model.Purchaser != null && Model.Purchaser.Id == item.Id)
+                                                    {
+
+                                                    }
+                                                    else
+                                                    {
+                                                        <option value="@item.Id">@item.Name</option>
+                                                    }
+
+                                                }
+
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group" style="margin: 0;">
+                                            <label for="sales_delivery">Delivery method</label><br />
+                                            <select name="method" id="sales_delivery" class="form-control select2" style="width: 100%;">
+                                                @foreach (var item in lstEnum)
+                                                {
+                                                    if (item == "CustomerPickup")
+                                                    {
+                                                        if (Model.DeliveryMethod.ToString() == item)
+                                                        {
+                                                            <option value="@item" selected>Customer pickup</option>
+                                                        }
+                                                        else
+                                                        {
+                                                            <option value="@item">Customer pickup</option>
+                                                        }
+                                                    }
+                                                    else
+                                                    {
+                                                        if (Model.DeliveryMethod.ToString() == item)
+                                                        {
+                                                            <option value="@item" selected>@item</option>
+                                                        }
+                                                        else
+                                                        {
+                                                            <option value="@item">@item</option>
+                                                        }
+                                                    }
+
+                                                }
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="delivery-stored" style="padding: 20px 0; @hidden">
+                                    <div class="row">
+                                        <div class="col-xs-12 col-sm-6">
+                                            <label>Saved delivery address</label>
+                                            @if (Model.DeliveryAddress != null)
+                                            {
+                                                <input type="hidden" value="@Model.DeliveryAddress.Id" id="contact_address_id" />
+                                            }
+                                            else
+                                            {
+                                                <input type="hidden" value="0" id="contact_address_id" />
+                                            }
+                                            <p id="address_info">
+                                                @Html.Raw(Model.DeliveryAddress?.ToAddress().Replace(",", "<br />"))
+                                            </p>
+                                            <br />
+                                            <button class="btn btn-warning" id="delivery-new" onclick="changeDelivery()"><i class="fa fa-pencil"></i> &nbsp; Change delivery address</button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="delivery-details" style="padding: 20px 0 0 0; display: none;">
+                                    <form id="form_sale_contact_custom">
+                                        <div class="row">
+                                            <div class="col-xs-12 col-sm-6">
+                                                <div class="form-group">
+                                                    <label for="form_contact_address_1">Address line 1</label>
+                                                    <input type="text" id="form_contact_address_1" name="address1" value="@Model.DeliveryAddress.AddressLine1" class="form-control">
+                                                </div>
+                                            </div>
+                                            <div class="col-xs-12 col-sm-6">
+                                                <div class="form-group">
+                                                    <label for="form_contact_address_2">Address line 2</label>
+                                                    <input type="text" id="form_contact_address_2" name="contact" value="@Model.DeliveryAddress.AddressLine2" class="form-control">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-xs-12 col-sm-6">
+                                                <div class="form-group">
+                                                    <label for="form_contact_address_city">City</label>
+                                                    <input type="text" id="form_contact_address_city" name="city" value="@Model.DeliveryAddress.City" class="form-control">
+                                                </div>
+                                            </div>
+                                            <div class="col-xs-12 col-sm-6">
+                                                <div class="form-group">
+                                                    <label for="form_contact_address_state">State</label>
+                                                    <input type="text" id="form_contact_address_state" name="state" value="@Model.DeliveryAddress.State" class="form-control">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-xs-12 col-sm-6">
+                                                <div class="form-group">
+                                                    <label for="form_contact_address_country">Country</label>
+                                                    <select name="country" id="form_contact_address_country" class="form-control select2" style="width: 100%;">
+                                                        @foreach (var item in countries)
+                                                        {
+                                                            if (Model.DeliveryAddress != null
+                                                                && Model.DeliveryAddress.Country != null
+                                                                && Model.DeliveryAddress.Country.CommonName == item.CommonName)
+                                                            {
+                                                                <option value="@item.CommonName" selected>@item.CommonName</option>
+                                                            }
+                                                            else
+                                                            {
+                                                                <option value="@item.CommonName">@item.CommonName</option>
+                                                            }
+                                                        }
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="col-xs-12 col-sm-6">
+                                                <div class="form-group" style="margin: 0;">
+                                                    <label for="form_contact_address_postcode">Postcode</label>
+                                                    <input type="text" id="form_contact_address_postcode" value="@Model.DeliveryAddress.PostCode" name="postcode" class="form-control">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <button style="margin: 10px 0 15px 0;" type="button" class="btn btn-info" onclick="usedDeliveryExists()"><i class="fa fa-angle-left"></i> &nbsp; Use existing address</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                    <br />
+                    <a href="#sale-2" data-toggle="tab" class="btn btn-success btnNext" onclick="nextToItems()">Next &nbsp; <i class="fa fa-angle-right"></i></a>
+
+                </div>
+                <!-- END Contact details -->
+                <!-- Items -->
+                <div class="tab-pane fade" id="sale-2">
+
+                    <div class="activity-overview task" style="padding: 20px; max-width: 1000px;">
+                        <input type="hidden" value="0" id="price_id" />
+                        <input type="hidden" value="0" id="price_value" />
+                        <form id="form_add_transaction">
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-6">
+                                    <div id='sale-product-items' class="form-group">
+                                        <label for="item">Add item to order <span>*</span></label>
+                                        <select name="traderitem" onchange="ChangeSelectedUnit()" class="form-control select2" style="width: 100%;" id="item-select-manage">
+                                        </select>
+
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-2">
+                                    <div class="form-group" id="item_selected">
+                                        @{Html.RenderAction("TraderSaleSelectUnit", "Trader", new { idLocation = locationId, issale = true });}
+                                    </div>
+
+                                </div>
+                                <div class="col-xs-12 col-sm-2">
+                                    <div class="form-group">
+                                        <label for="cpu" id="label_cost">Cost per &lt;selected unit&gt;</label><label> <span>*</span></label><br />
+                                        <input type="text" disabled name="cpu" id="cpu" class="form-control isnumber" value="">
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-2">
+                                    <div class="form-group">
+                                        <label for="price" id="label_price">Price per&lt;selected unit&gt;</label><label> <span>*</span></label><br />
+                                        <input maxlength="15" onkeypress="maxDecimalKeyPress(this, event, 5)" onpaste="maxDecimalOnPaste(this, event, 5)" type="text" class="form-control" name="price" id="priceSale" value="">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-3">
+                                    <div class="form-group">
+                                        @*<input type="text" id="form_item_quantity1" class="form-control isnumber">*@
+                                        <label for="form_item_quantity">Quantity <span>*</span></label><br />
+                                        <input maxlength="15" onkeypress="decimalKeyPress(this, event)" onpaste="decimalOnPaste(this, event)" type="text" id="form_item_quantity" onchange="enableBtnAddRowTraderItem(this)" class="form-control" min="1">
+
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-3">
+                                    <div class="form-group">
+                                        <label for="form_item_discount">Discount %</label>
+                                        <input maxlength="6" oninput="maxDecimalOnInput(this, event,100)" onkeypress="decimalKeyPress(this, event)" onpaste="decimalOnPaste(this, event)" id="form_item_discount" min="0" name="discount" class="form-control form_item_discount">
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label for="form_item_dimensions">Reporting Filters</label><br />
+                                        <select name="dimensions" id="form_item_dimensions" data-placeholder="Please select" class="form-control select2" style="width: 100%;" multiple>
+                                            <option value=""></option>
+                                            @foreach (var item in dimensions)
+                                            {
+                                                <option value="@item.Id">@item.Name</option>
+                                            }
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                        <button id="btnAddRowItem" class="btn btn-success" disabled onclick="addRowItem()"><i class="fa fa-plus"></i> &nbsp; Add now</button>
+                    </div>
+
+
+                    <br /><br />
+                    <table id="tb_form_item" class="datatable table-hover" style="width: 100%; background: #fff;">
+                        <thead>
+                            <tr>
+                                <th></th>
+                                <th>Name</th>
+                                <th>Unit</th>
+                                <th>Cost per unit <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                <th>Price per unit <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                <th>Quantity</th>
+                                <th>Discount %</th>
+                                <th>Tax rate <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                <th hidden="">Tax rate</th>
+                                <th>Reporting Filters</th>
+                                <th class="hidden">Cost <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                <th>Price <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                <th data-orderable="false"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in Model.SaleItems)
+                            {
+
+                                var lstId = item.Dimensions.Select(q => q.Id).ToList();
+                                string taxrateName = "0";
+                                decimal taxRate = 0;
+                                decimal taxValue = 0;
+                                if (item.Taxes != null)
+                                {
+                                    taxRate = item.SumTaxRatesPercent();
+                                    taxrateName = item.StringTaxRates(currencySettings);
+
+
+                                    var priceIncludeTax = item.SalePricePerUnit * item.Quantity * (1 - (item.Discount / 100)) * (1 + taxRate / 100);
+                                    var priceExcludeTax = priceIncludeTax / (1 + taxRate / 100);
+                                    taxValue = priceIncludeTax - priceExcludeTax;
+                                }
+                                <tr id="tr_id_@item.TraderItem.Id">
+                                    <td class="row_image">
+                                        <div class="table-avatar" style="background-image: url('@(api+item.TraderItem.ImageUri)&size=T');"></div>
+                                    </td>
+                                    <td class="row_name">@item.TraderItem.Name</td>
+                                    <td class="row_unit">
+                                        @{Html.RenderAction("TraderSaleSelectUnit", "Trader", new { idTraderItem = item.TraderItem.Id, idLocation = locationId, table = 1, itemSaleId = item.Id, valueUnit = item.Unit?.Id, isTraderItem = true });}
+                                    </td>
+                                    <td class="row_costperunit">
+                                        <input type="text" onchange="UpdateCost('#tr_id_@item.TraderItem.Id')" disabled min="0" name="item-1-costperunit" class="form-control" style="width: 80px;" value="@item.CostPerUnit.ToDecimalPlace(currencySettings)">
+                                    </td>
+                                    <td class="row_costprice">
+                                        <input maxlength="15" disabled onkeypress="maxDecimalKeyPress(this, event, 5)" onpaste="maxDecimalOnPaste(this, event, 5)" type="text" name="item-1-cpu" onchange="UpdateCost('#tr_id_@item.TraderItem.Id')" style="width: 80px;" class="form-control" value="@item.SalePricePerUnit.ToInputNumberFormat(currencySettings)">
+                                    </td>
+                                    <td class="row_quantity"><input maxlength="15" onkeypress="decimalKeyPress(this, event)" onpaste="decimalOnPaste(this, event)" type="text" name="item-1-qty" min="1" onchange="UpdateCost('#tr_id_@item.TraderItem.Id')" class="form-control" style="width: 80px;" value="@item.Quantity.ToInputNumberFormat(currencySettings)"></td>
+                                    <td class="row_discount">
+                                        <input maxlength="6" oninput="maxDecimalOnInput(this, event,100)" onkeypress="decimalKeyPress(this, event)" onpaste="decimalOnPaste(this, event)" onchange="UpdateCost('#tr_id_@item.TraderItem.Id')" min="0" name="item-1-discount" class="form-control form_item_discount" style="width: 80px;" value="@item.Discount.ToInputNumberFormat(currencySettings)">
+                                    </td>
+
+                                    <td class="row_taxname">
+                                        @Html.Raw(taxrateName)
+                                    </td>
+                                    <td hidden="" class="row_taxrate">@taxRate</td>
+                                    <td class="row_dimensions">
+                                        <select name="dimensions" data-placeholder="Please select" class="form-control select2" style="width: 100%;" multiple>
+                                            @{
+                                                foreach (var itemdimensions in dimensions)
+                                                {
+                                                    if (lstId.Contains(itemdimensions.Id))
+                                                    {
+                                                        <option value="@itemdimensions.Id" selected>@itemdimensions.Name</option>
+                                                    }
+                                                    else
+                                                    {
+                                                        <option value="@itemdimensions.Id">@itemdimensions.Name</option>
+                                                    }
+
+                                                }}
+                                        </select>
+                                    </td>
+                                    <td class="row_cost hidden">@item.Cost.ToDecimalPlace(currencySettings)</td>
+                                    <td class="row_price">
+                                        @*@item.Price.ToDecimalPlace(currencySettings)*@
+                                        <input onkeypress="decimalKeyPress(this, event)"
+                                               onpaste="decimalOnPaste(this, event)" onchange="UpdateSaleItemPrice(@item.TraderItem.Id)"
+                                               min="0" name="item-price" class="form-control" style="width: 80px;" value="@item.Price.ToInputNumberFormat(currencySettings)">
+                                    </td>
+                                    <td class="row_button">
+                                        <button class="btn btn-danger" onclick="removeRowItem('#tr_id_@item.TraderItem.Id')"><i class="fa fa-trash"></i></button>
+                                        <input type="hidden" class="traderItem" value="@item.TraderItem.Id" />
+                                        <input type="hidden" class="row_id" value="@item.Id" />
+                                        @{
+                                            var priceId = item.PriceBookPrice?.Id ?? 0;
+                                            var priceValue = item.PriceBookPrice?.NetPrice ?? 0;
+                                        }
+                                        <input type="hidden" class="price_id" value="@priceId" />
+                                        <input type="hidden" class="price_Value" value="@priceValue" />
+                                    </td>
+                                </tr>
+                            }
+
+
+                        </tbody>
+                    </table>
+                    <table id="tb_form_template" class="datatable table-hover hidden" style="width: 100%; background: #fff;">
+                        <thead>
+                            <tr>
+                                <th></th>
+                                <th>Name</th>
+                                <th>Unit</th>
+                                <th>Cost per unit <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                <th>Price per unit <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                <th>Quantity</th>
+                                <th>Discount %</th>
+                                <th>Tax rate <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                <th hidden="">Tax rate</th>
+                                <th>Reporting Filters</th>
+                                <th class="hidden">Cost</th>
+                                <th>Price <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="row_image">
+                                    <div class="table-avatar" style="background-image: url('');"></div>
+                                </td>
+                                <td class="row_name"></td>
+                                <td class="row_unit">
+                                    @{Html.RenderAction("TraderSaleSelectUnit", "Trader", new { idLocation = locationId, table = 1 });}
+
+                                </td>
+                                <td class="row_costperunit">
+                                    <input type="text" onchange="UpdateCost(id)" disabled min="0" name="item-1-costperunit" class="form-control" style="width: 80px;" value="0">
+                                </td>
+                                <td class="row_costprice">
+                                    <input maxlength="15" disabled onkeypress="maxDecimalKeyPress(this, event, 5)" onpaste="maxDecimalOnPaste(this, event, 5)" type="text" name="item-1-cpu" class="form-control" style="width: 80px;" value="">
+                                </td>
+                                <td class="row_quantity">
+                                    <input maxlength="15" onkeypress="decimalKeyPress(this, event)" onpaste="decimalOnPaste(this, event)" type="text" onchange="UpdateCost(id)" name="item-1-qty" class="form-control" style="width: 80px;" value="0">
+                                </td>
+                                <td class="row_discount"><input maxlength="6" oninput="maxDecimalOnInput(this, event,100)" onkeypress="decimalKeyPress(this, event)" onpaste="decimalOnPaste(this, event)" onchange="UpdateCost(id)" min="0" name="item-1-discount" class="form-control form_item_discount" style="width: 80px;" value="0"></td>
+                                <td class="row_taxname"></td>
+                                <td hidden="" class="row_taxrate"></td>
+                                <td class="row_dimensions">
+                                    <select name="dimensions" data-placeholder="Please select" class="form-control select2" style="width: 100%;" multiple>
+                                        @foreach (var itemdimensions in dimensions)
+                                        {
+                                            <option value="@itemdimensions.Id">@itemdimensions.Name</option>
+                                        }
+                                    </select>
+                                </td>
+                                <td class="row_cost hidden"></td>
+                                <td class="row_price">
+                                    <input onkeypress="decimalKeyPress(this, event)"
+                                           onpaste="decimalOnPaste(this, event)" onchange="UpdateSaleItemPrice(id)"
+                                           min="0" name="item-price" class="form-control" style="width: 80px;" value="0">
+                                </td>
+                                <td class="row_button">
+                                    <button class="btn btn-danger" onclick="removeRowItem(0)"><i class="fa fa-trash"></i></button>
+                                    <input type="hidden" class="traderItem" value="" />
+                                    <input type="hidden" class="row_id" value="0" />
+                                    <input type="hidden" class="price_id" value="0" />
+                                    <input type="hidden" class="price_Value" value="0" />
+                                </td>
+                            </tr>
+
+                        </tbody>
+                    </table>
+                    <br />
+                    <a href="#sale-1" data-toggle="tab" class="btn btn-warning btnPrevious"><i class="fa fa-angle-left"></i> &nbsp; Previous</a>
+                    <a href="#sale-3" data-toggle="tab" class="btn btn-success btnNext" onclick="nextToConfirm()">Next &nbsp; <i class="fa fa-angle-right"></i></a>
+
+                </div>
+                <!-- END Items -->
+                <!-- Confirm -->
+                <div class="tab-pane fade" id="sale-3">
+
+                    <div class="activity-overview alert-detail" style="padding: 20px;">
+                        <p style="margin: 0;">
+                            Below is a summary of your choices. If you need to make changes you can return to the previous step, otherwise you're ready to
+                            finalise and save your sale.
+                        </p>
+                    </div>
+
+                    <br />
+                    <div class="activity-overview task" style="padding: 20px;">
+                        <h5>Summary</h5>
+                        <table id="tb_confirm" class="datatable table-hover" style="width: 100%; background: #fff;" data-order='[[1, "asc"]]'>
+                            <thead>
+                                <tr>
+                                    <th data-orderable="false"></th>
+                                    <th>Name</th>
+                                    <th>Unit</th>
+                                    <th>Price per unit <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                    <th>Quantity</th>
+                                    <th>Discount %</th>
+                                    <th>Tax rate <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                    <th>Reporting Filters</th>
+                                    <th>Price <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+
+
+                        <br />
+                        <h5>Sale total</h5>
+                        <h3 style="margin: 0; font-family: 'Lato'; font-weight: 400;" id="total_id">@Model.SaleTotal.ToCurrencySymbol(currencySettings)</h3>
+                    </div>
+
+                    <br />
+                    <a href="#sale-2" data-toggle="tab" class="btn btn-warning btnPrevious"><i class="fa fa-angle-left"></i> &nbsp; Previous</a>
+                    <a href="javascript:void(0)" onclick="SaveSaleDraft()" class="btn btn-primary"><i class="fa fa-save"></i> &nbsp; Save draft</a>
+                    <a href="javascript:void(0)" id="a_send_toreview_sale" onclick="SaveSaleReview()" class="btn btn-success"><i class="fa fa-thumbs-up"></i> &nbsp; Send to review</a>
+                </div>
+                <!-- END Confirm -->
+
+
+            </div>
+
+
+        </div>
+    </div><!-- /.modal-content -->
+</div><!-- /.modal-dialog -->
+<script src="~/Scripts/dev/qbicle.formatnumber.js"></script>
+<script>
+    $('.btnNext').click(function () {
+        $('.modal .app_subnav > .active').next('li').find('a').trigger('click');
+    });
+
+    $('.btnPrevious').click(function () {
+        $('.modal .app_subnav > .active').prev('li').find('a').trigger('click');
+    });
+    $('#sale-1 select').not('.multi-select').select2();
+    $('#form_add_transaction select').not('.multi-select').select2();
+    $('#tb_form_item select').not('.multi-select').select2();
+    $('#trader_sale_add_workgroup').not('.multi-select').select2({ placeholder: "Please select"});
+    $('#sales_delivery').on('change', function (e) {
+        if (!$("#form_sale_contact").val())
+        {
+            cleanBookNotification.error("Please select contact!", "Qbicles");
+            return;
+        }
+        if ($(this).val() === "Delivery") {
+            $('.delivery-stored').fadeIn();
+        } else {
+            $('.delivery-stored').hide();
+        }
+        $('.delivery-details').hide();
+    });
+
+    $('#delivery-new').on('click', function (e) {
+        $('.delivery-stored').hide();
+        $('.delivery-details').fadeIn();
+    });
+    //WorkGroupSelectedChange();
+    $(document).ready(function () {
+        initSelect2MethodAJAX('form_sale_contact', '/Select2Data/GetTraderContact');
+
+
+        
+        //Set initial value for select2
+        //var $selectedId = $("#selected-contact-id").val();
+        //var $selectedName = $("#selected-contact-name").val();
+        //if ($selectedId > 0) {
+        //    var $newOption = $("<option selected='selected'></option>").val($selectedId).text($selectedName);
+        //    $("#form_sale_contact").append($newOption).trigger('change');
+        //}
+    })
+</script>

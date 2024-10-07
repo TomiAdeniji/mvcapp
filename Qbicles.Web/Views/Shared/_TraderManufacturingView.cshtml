@@ -1,0 +1,150 @@
+﻿@using Qbicles.Models.Manufacturing;
+@using Qbicles.BusinessRules;
+@model ManuJob
+@{
+    var manujobs = (List<ManuJob>)ViewBag.ManuJobs;
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var timeZone = (string)ViewBag.CurrentTimeZone ?? "";
+    var dateFormat = (string)ViewBag.CurrentDateFormat;
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+}
+<div class="modal-dialog modal-xl" role="document">
+    <div class="modal-content">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <h5 class="modal-title">@Model.Product.Name Compound Item Overview</h5>
+        </div>
+        <div class="modal-body">
+
+            <section style="padding-top: 20px;">
+
+                <div class="row" style="margin-top: -30px;">
+                    <div class="col-xs-12">
+                        <ul class="app_subnav admintabs" style="padding-top: 0;">
+                            <li class="active"><a href="#info-1" data-toggle="tab">Recipe</a></li>
+                            <li><a href="#info-2" data-toggle="tab">History</a></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <br /><br />
+
+
+                <div class="tab-content">
+
+                    <!-- Recipe -->
+                    <div class="tab-pane fade in active" id="info-1">
+                        <table class="datatable table-striped table-hover" style="width: 100%; background: #fff;">
+                            <thead>
+                                <tr>
+                                    <th style="width: 90px;"></th>
+                                    <th>Item</th>
+                                    <th>Unit</th>
+                                    <th>Quantity</th>
+                                    <th>Cost <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (Model.SelectedRecipe != null && Model.SelectedRecipe.Ingredients.Count > 0)
+                                {
+                                    foreach (var item in Model.SelectedRecipe.Ingredients)
+                                    {
+                                        <tr>
+                                            <td><div class="table-avatar" style="background-image: url('@(api+item.SubItem.ImageUri)&size=T');"></div></td>
+                                            <td>@item.SubItem.Name</td>
+                                            <td>@item.Unit.Name</td>
+                                            <td>@item.Quantity</td>
+                                            <td>
+
+                                                @if (item.SubItem.InventoryDetails.Count > 0)
+                                                {
+                                                    var averageCost = item.SubItem.InventoryDetails.FirstOrDefault().AverageCost;
+                                                    var quantityOfBaseunit = item.Unit.QuantityOfBaseunit;
+                                                    var cost = (averageCost * quantityOfBaseunit * item.Quantity).ToDecimalPlace(currencySettings);
+                                                    @*<span>@item.SubItem.InventoryDetails[0].LatestCost.ToDecimalPlace(currencySettings)</span>*@
+                                                    <span>@cost</span>
+                                                }
+                                                else
+                                                {
+                                                    <span>0</span>
+                                                }
+                                            </td>
+
+                                        </tr>
+                                    }
+                                }
+                            </tbody>
+                        </table>
+
+                    </div>
+                    <!-- END Recipe -->
+                    <!-- History -->
+                    <div class="tab-pane fade" id="info-2">
+
+                        <table class="datatable table-striped table-hover" style="width: 100%; background: #fff;">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Date &amp; time</th>
+                                    <th>Manufactured qty</th>
+                                    <th>Added by</th>
+                                    <th>Status</th>
+                                    <th>Options</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in manujobs)
+                                {
+                                    <tr>
+                                        <td>@item.Id</td>
+                                        <td>@item.CreatedDate.ConvertTimeFromUtc(timeZone).ToString(dateFormat + " h:mm tt")</td>
+                                        <td>@item.Quantity</td>
+                                        <td>@HelperClass.GetFullNameOfUser(item.CreatedBy)</td>
+                                        <td>
+                                            @switch (item.Status)
+                                            {
+                                                case ManuJobStatus.Approved:
+                                                    <span class="label label-lg label-success">Approved</span>
+                                                    break;
+                                                case ManuJobStatus.Denied:
+                                                    <span class="label label-lg label-danger">Denied</span>
+                                                    break;
+                                                case ManuJobStatus.Discarded:
+                                                    <span class="label label-lg label-danger">Discarded</span>
+                                                    break;
+                                                case ManuJobStatus.Pending:
+                                                    <span class="label label-lg label-warning">Pending</span>
+                                                    break;
+                                                case ManuJobStatus.Reviewed:
+                                                    <span class="label label-lg label-info">Reviewed</span>
+                                                    break;
+                                            }
+                                        </td>
+                                        <td><button class="btn btn-primary" onclick="ManufacturingHistoryViewer(@item.Id)"><i class="fa fa-eye"></i> &nbsp; View</button></td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+
+                    </div>
+                    <!-- END History -->
+
+                </div>
+
+
+
+            </section>
+
+
+            <br />
+            <button class="btn btn-danger" data-dismiss="modal">Close</button>
+
+        </div>
+    </div><!-- /.modal-content -->
+</div><!-- /.modal-dialog -->
+
+
+<script>
+    $('.tab-content table').DataTable().draw();
+</script>

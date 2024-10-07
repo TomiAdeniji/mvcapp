@@ -1,0 +1,139 @@
+﻿
+@using Qbicles.BusinessRules;
+@using Qbicles.Models.Bookkeeping
+@{
+    var JournalGroups = ((IQueryable<JournalGroup>)ViewBag.JournalGroups).ToList();
+}
+
+<div class="modal fade left" id="app-coa-subgroup-add" role="dialog" aria-labelledby="app-coa-subgroup-add">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Add Journal Entry Group</h5>
+            </div>
+            <div class="modal-body">
+                <form method="POST" id="form_group_add" action="/Bookkeeping/SaveJournalGroup" enctype="multipart/form-data" novalidate="novalidate">
+                    <div class="well">
+
+                        <div class="form-group">
+                            <label for="title">Name <span class="required">*</span></label>
+                            <input type="text" name="Name" id="journalgroup-name" class="form-control" required>
+                        </div>
+
+                    </div>
+
+                    <button type="submit" class="btn btn-success"><i class="fa fa-check"></i> &nbsp; Add now</button>
+                    <button class="btn btn-danger modal-group-add-cancel" data-dismiss="modal"><i class="fa fa-remove"></i> &nbsp; Cancel</button>
+                </form>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal Add journal group -->
+
+<div class="modal fade left" id="app-coa-subgroup-edit" role="dialog" aria-labelledby="app-coa-subgroup-edit">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Edit Journal Entry Group</h5>
+            </div>
+            <div class="modal-body">
+
+                <div class="well">
+                    <form class="form-group" method="POST" id="form_group_edit" action="/Bookkeeping/SaveJournalGroup" enctype="multipart/form-data" novalidate="novalidate">
+                        <input class="hidden" id="subgroup-edit-id" />
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group">
+                                <label for="date">Create by</label>
+                                <input type="text" id="subgroup-edit-createby" disabled class="form-control" value="">
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group">
+                                <label for="date">Created date</label>
+                                <input type="text" id="subgroup-edit-createdate" disabled class="form-control" value="">
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-sm-12">
+                            <div class="form-group">
+                                <label for="Name">Name <span class="required">*</span></label>
+                                <input type="text" id="subgroup-edit-name" class="form-control" name="Name" required>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
+                <button type="submit" class="btn btn-success" onclick="updateJournalGroup()"><i class="fa fa-check"></i> &nbsp; Save</button>
+                <button class="btn btn-danger modal-group-edit-cancel" data-dismiss="modal"><i class="fa fa-remove"></i> &nbsp; Cancel</button>
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal Edit journal group-->
+
+<div class="soft_tan" style="margin-bottom: 15px;">
+
+    <table class="accgroup-table1 table table-hover t1style valignm custome-table" style="width: 100%; background: #fff;">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Created</th>
+                <th>Creator</th>
+                <th width="100">Options</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var jgroup in JournalGroups)
+            {
+                <tr>
+                    <td>@jgroup.Name</td>
+                    <td>@jgroup.CreatedDate.ToString("yyyy-MM-dd")</td>
+                    <td>@HelperClass.GetFullNameOfUser(jgroup.CreatedBy)</td>
+                    <td>
+                        <button class="btn btn-warning" onclick="editJournalGroup(@jgroup.Id)" data-toggle="modal" data-target="#app-coa-subgroup-edit"><i class="fa fa-pencil"></i></button>
+                        <button class="btn btn-danger" onclick="confirmDeleteJournalGroup(@jgroup.Id,'@jgroup.Name')" data-toggle="modal" data-target="#app-journalgroup-confirm"><i class="fa fa-trash"></i></button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <a href="#" class="btn btn-success" onclick="addGroup()" data-toggle="modal" data-target="#app-coa-subgroup-add"><i class="fa fa-plus"></i> &nbsp; Add new</a>
+</div> <!-- Table -->
+
+<div class="modal fade" id="app-journalgroup-confirm" role="dialog" aria-labelledby="app-journalgroup-confirm">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Delete journal group</h5>
+            </div>
+            <div class="modal-body">
+                <div class="col-xs-12 col-sm-12" style="margin-bottom: 30px;">
+                    <span id="label-confirm-journalgroup"></span>
+                    <input class="hidden" id="id-itemjournalgroup-delete" />
+                </div>
+
+                <button class="btn btn-success" data-dismiss="modal" id="confirm-journalgroup-delete" onclick="deleteJournalGroup()"><i class="fa fa-check"></i> &nbsp; OK</button>
+                <button class="btn btn-danger" data-dismiss="modal"><i class="fa fa-remove"></i> &nbsp; Cancel</button>
+            </div>
+        </div> <!-- /.modal-content -->
+    </div> <!-- /.modal-dialog -->
+</div> <!-- /.modal Confirm delete-->
+
+
+
+<script>
+
+    $(document).ready(function () {
+        $('.accgroup-table1').DataTable({
+            responsive: true,
+            "lengthChange": true,
+            "pageLength": 10,
+            "order": []
+        });
+
+        $('.accgroup-table1').show();
+    });
+</script>

@@ -1,0 +1,130 @@
+﻿@using Qbicles.Models.Trader;
+@using Qbicles.BusinessRules
+@model TraderSale
+@{
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+}
+
+<div style="display: none">
+    <div id="contact-confirm" class="content-block transfer">
+        <div class="content-block-upper">
+            <smaller>Destination</smaller>
+            <h2>@Model.Purchaser.Name</h2>
+            <p>
+                @Html.Raw(Model.Purchaser.Address?.ToAddress().Replace(",", "<br />"))
+                @{                    
+                    if (string.IsNullOrEmpty(Model.Purchaser.CompanyName))
+                    {
+                        <span>@Model.Purchaser.CompanyName</span>
+                        <br />
+                    }
+                    if (string.IsNullOrEmpty(Model.Purchaser.PhoneNumber))
+                    {
+                        <a href="tel:@Model.Purchaser.PhoneNumber">
+                            <span id="add-email">@Model.Purchaser.PhoneNumber</span>
+                        </a>
+                        <br />
+                    }
+                    if (string.IsNullOrEmpty(Model.Purchaser.Email))
+                    {
+                        <a href="mailto:@Model.Purchaser.Email">
+                            <span id="add-email">@Model.Purchaser.Email</span>
+                        </a>
+                        <br />
+                    }
+                }
+            </p>
+        </div>
+    </div>
+</div>
+
+<div class="activity-overview generic help-text animated bounce" style="margin-bottom: 10px;">
+    <i class="fa fa-info-circle"></i>
+    <p>
+        Below are the items associated with <strong>Sale #@Model.Id</strong>. You can assign any quantity up to the Sale Order total for each line item. Reducing the
+        number will increase the <strong>remaining</strong> count, which you can use as a reference for subsequent Transfers associated with this sale.
+    </p>
+</div>
+
+<br />
+<div class="activity-overview task" style="padding: 20px;">
+    <table class="datatable table-hover" id="transfer_sale_table" style="width: 100%; background: #fff;" data-order='[[1, "asc"]]'>
+        <thead>
+            <tr>
+                <th data-orderable="false"></th>
+                <th>Name</th>
+                <th>Unit</th>
+                <th>Qty</th>
+                <th>Transfer unit</th>
+                <th>Transfer qty</th>
+                <th>Remaining</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model.SaleItems)
+            {
+
+                decimal totalQuantity = 0;
+                decimal totalTransfer_old = 0;
+                decimal remainderQuantity = 0;
+                var unitName = item.Unit.Name;
+                <tr class="transfer_tr_@item.Id">
+                    <td class="row_image">
+                        <div class="table-avatar" style="background-image: url('@(api+item.TraderItem.ImageUri)&size=T');">
+                            <input type="hidden" value="@item.Id" class="saleitem_td_id" />
+                            <input type="hidden" value="@item.TraderItem.Id" class="saleitem_td_traderitem_id" />
+                            <input type="hidden" value="0" class="transfer_td_id" />
+                        </div>
+                    </td>
+                    <td class="transfer_td_sale_name row_name">
+                        @item.TraderItem.Name
+
+                        <input class="transfer_conversionunit_quan" type="hidden" value="0" />
+                        @{
+                            totalQuantity = item.Quantity * item.Unit?.QuantityOfBaseunit ?? 1;
+
+                            // caculate transfer old (basse_unit)
+                            if (item.TransferItems.Count > 0)
+                            {
+                                foreach (var traderTransferItem in item.TransferItems)
+                                {
+                                    totalTransfer_old += traderTransferItem.QuantityAtPickup * traderTransferItem.Unit?.QuantityOfBaseunit ?? 1;
+                                }
+                            }
+                            totalQuantity = totalQuantity - totalTransfer_old;
+                            remainderQuantity = Math.Round(totalQuantity / item.Unit?.QuantityOfBaseunit ?? 1, 2);
+
+                            <input class="total_sale_@item.Id" hidden value="@totalQuantity" />
+
+                            <input class="conversion_trans_@item.Id" type="hidden" value="0" />
+
+                        }
+
+
+                    </td>
+                    <td class="transfer_td_sale_unit_name">
+                        @(item.Unit?.Name ?? "")
+                    </td>
+                    <td class="transfer_td_sale_quan">@remainderQuantity.ToDecimalPlace(currencySettings)</td>
+                    <td class="row_unit">
+                        @{Html.RenderAction("ShowTransactionItemUnit", "TraderTransfers", new { id = item.Id, locationId = Model.Location.Id, unitName = unitName });}
+                    </td>
+                    <td class="transfer_td_tran_quan">
+                        <input type="number" name="item-1-qty" maxlength='15' class="form-control" style="width: 80px;"
+                               onchange="SetTransferCostSale(@item.Id)" onkeypress='decimalKeyPress(this, event)' onpaste='decimalOnPaste(this, event)'
+                               value="@remainderQuantity">
+                    </td>
+                    <td class="transfer_td_tran_cost_@item.Id remainder"><span>0</span></td>
+                </tr>
+            }
+
+
+        </tbody>
+    </table>
+</div>
+
+<br />
+<script>
+    $('.select-modal').not('.multi-select').select2();
+</script>

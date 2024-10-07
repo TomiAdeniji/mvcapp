@@ -1,0 +1,111 @@
+﻿@using Qbicles.Models.B2B
+@using Qbicles.BusinessRules
+@using Qbicles.Models
+@using Qbicles.BusinessRules.Model
+@model LogisticsPartnership
+@{
+    var currentDomain = (QbicleDomain)ViewBag.CurrentDomain;
+    var consumerBusinesProfile = Model.ConsumerDomain.Id.BusinesProfile();
+    var providerBusinessProfile = Model.ProviderDomain.Id.BusinesProfile();
+    var consumerBusinessName = consumerBusinesProfile?.BusinessName ?? Model.ConsumerDomain.Name;
+    var providerBusinessName = providerBusinessProfile?.BusinessName ?? Model.ProviderDomain.Name;
+    //var consumerLocations = (List<TraderLocation>)ViewBag.ConsumerLocations;
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var archiveLogisticsAgreements = Model.LogisticsAgreements.Where(s => s.Status == AgreementStatus.IsArchived).OrderByDescending(s=>s.ArchivedDate).ToList();
+    var verhicleTypeIcons = B2bVerhicleTypeIcon.vehicleTypes;
+    var currencySettings = (CurrencySetting)ViewBag.CurrencySettings;
+    var countActiveLA = archiveLogisticsAgreements.Count;
+    int index = 0;
+}
+@if (archiveLogisticsAgreements != null)
+{
+<article class="col">
+
+    <div class="row">
+        <div class="col-xs-12 col-sm-6">
+
+            <a href="#">
+                <div class="avatar" style="background-image: url('@(api+consumerBusinesProfile.LogoUri)&size=T');">&nbsp;</div>
+                <h1 style="color: #333;">@consumerBusinessName</h1>
+            </a>
+            <p class="qbicle-detail">Choose the locations you require coverage for</p>
+
+        </div>
+
+        <div class="col-xs-12 col-sm-6">
+
+            <a href="#">
+                <div class="avatar" style="background-image: url('@(api+providerBusinessProfile.LogoUri)&size=T');">&nbsp;</div>
+                <h1 style="color: #333;">@providerBusinessName</h1>
+            </a>
+            <p class="qbicle-detail">@providerBusinessName's proposals will appear here as they add them</p>
+
+        </div>
+    </div>
+
+
+    <br><br>
+
+
+        <div class="well custom rounded text-left">
+            @foreach (var item in archiveLogisticsAgreements)
+            {
+                <div class="row">
+                    <div class="col-xs-12 col-sm-6">
+                        <div class="activity-overview plain rounded" style="margin: 0;">
+                            <div class="row">
+                                <div class="col-xs-12">
+                                    <label>Location(s) requiring coverage</label>
+                                    <br><br>
+                                    <table class="table table-condensed table-borderless app_specific" style="margin: 6.5px 0 6.5px -4px;">
+                                        <tbody>
+                                            @foreach (var location in item.ConsumerLocations)
+                                            {
+                                                <tr>
+                                                    <td style="max-width:25%;width:20%"><strong>@location.Name</strong></td>
+                                                    <td><i class="fa fa-map-marker red"></i> &nbsp; @(location.Address?.ToAddress()??"")</td>
+                                                    <td style="text-align: right;@( (location.Address!=null && location.Address.Latitude != 0 && location.Address.Longitude != 0)?"width:80px":"")">
+                                                        @if (location.Address != null && location.Address.Latitude != 0 && location.Address.Longitude != 0)
+                                                        {
+                                                            <a href="https://www.google.com/maps/@("@"+location.Address.Latitude),@(location.Address.Longitude),15z" target="_blank">View map</a>
+                                                        }
+                                                    </td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    <div class="col-xs-12 col-sm-6">
+                        <div class="activity-overview plain rounded" style="margin: 0px;">
+                            <div class="row">
+                                <div class="col-xs-12">
+                                    <table class="table table-condensed table-borderless app_specific" style="margin: 6.5px 0 6.5px -4px;">
+                                        <tbody>
+                                            <tr>
+                                                <td><strong>@item.PriceList.PriceList.Name</strong></td>
+                                                <td><i class="fa fa-map-marker red"></i> &nbsp; @item.PriceList.PriceList.Location.Name</td>
+                                                <td style="text-align: right;"><button class="btn btn-info" data-toggle="modal" data-target="#b2b-archive-delivery-charge-list" onclick="loadChargeListModal(@item.Id)"><i class="fa fa-eye"></i> &nbsp; Show prices</button></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                index++;
+                if (index <= (countActiveLA-1))
+                {
+                    <br />
+                }
+                
+            }
+        </div>
+</article>
+}

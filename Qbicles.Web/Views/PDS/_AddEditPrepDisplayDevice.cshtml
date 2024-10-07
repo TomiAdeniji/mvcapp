@@ -1,0 +1,178 @@
+﻿@using Qbicles.BusinessRules
+@using Qbicles.Models
+@using Qbicles.Models.Trader.ODS
+@using Qbicles.Models.Trader.PoS
+@model PrepDisplayDevice
+@{
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var users = (List<ApplicationUser>)ViewBag.Users;
+    var posUsers = (List<PosRoleUsersViewModel>)ViewBag.PosUsers;
+    var queue = (PrepQueue)ViewBag.PrepQueue;
+    var odsDeviceTypes = (List<OdsDeviceType>)ViewBag.OdsDeviceTypes;
+    if (Model.Id == 0)
+    {
+        Model.Queue = queue;
+    }
+    var categoryExclutions = (List<CategoryExclusionSet>)ViewBag.ListCategoryExclutions;
+
+}
+<input hidden="" id="pds-id" value="@Model.Id" />
+<div class="modal-dialog" role="document">
+    <div class="modal-content">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <h5 class="modal-title">@(Model.Id == 0 ? "Add a PDS Device" : "Edit PDS Device")</h5>
+        </div>
+        <div class="modal-body">
+            <div class="well custom">
+                <from id="pds-form" class="row">
+                    <div class="row">
+                        <div class="col-xs-12">
+                            <div class="form-group">
+                                <label for="name">Name <span>*</span></label>
+                                <input type="text" id="pds-name" name="pdsname" class="form-control" value="@Model.Name" required="">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-xs-12">
+                            <div class="form-group">
+                                <label for="queue" style="width: 100%">Queue <span>*</span></label>
+
+                                <label>@Model.Queue.Name</label>
+                                <input type="hidden" value="@Model.Queue.Id" id="pds-queue" />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-xs-12">
+                            <div class="form-group">
+                                <label style="width: 100%" for="queue">Device type <span>*</span></label>
+
+                                <select id="ods-device-type" name="devicequeue" class="form-control select2All" style="width: 100%;" required="">
+                                    @foreach (var q in odsDeviceTypes)
+                                    {
+                                        if (q.Id == Model.Type?.Id)
+                                        {
+                                            <option selected="" value="@q.Id">@q.Name</option>
+                                        }
+                                        else
+                                        {
+                                            <option value="@q.Id">@q.Name</option>
+                                        }
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-xs-12">
+                            <div class="form-group">
+                                <label for="admin">Administrator(s) <span>*</span></label>
+                                <select id="pds-admin" name="pdsadmins" class="form-control checkmulti" multiple style="display:none;">
+                                    @foreach (var item in users)
+                                    {
+                                        if (Model.Administrators.Any() && Model.Administrators.Select(q => q.Id).Contains(item.Id))
+                                        {
+                                            <option selected value="@item.Id">@HelperClass.GetFullNameOfUser(item)</option>
+                                        }
+                                        else
+                                        {
+                                            <option value="@item.Id">@HelperClass.GetFullNameOfUser(item)</option>
+                                        }
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-xs-12">
+                            <div class="form-group avatarpickermulti" style="margin: 0;">
+                                <label for="assignee">User(s) <span>*</span></label>
+                                <select id="device-user" name="assignee" class="form-control select2avatar" data-placeholder="Type to search" multiple style="width: 100%;" required="">
+                                    @foreach (var u in posUsers)
+                                    {
+                                        if (Model.Users.Any(e => e.Id == u.Id))
+                                        {
+                                            <option LogoUri="@(u.User.ProfilePic)" api="@api" value="@u.Id" selected>@u.User.DisplayUserName</option>
+                                        }
+                                        else
+                                        {
+                                            <option LogoUri="@(u.User.ProfilePic)" api="@api" value="@u.Id">@u.User.DisplayUserName</option>
+                                        }
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-xs-12">
+                            <div class="form-group">
+                                <label for="assocsets">Associated category exclusion set(s) <span>*</span></label>
+                                <select id="pds-assocsets" name="pdsassocsets" class="form-control checkmulti" multiple style="display:none;">
+                                    @if (Model.Id == 0)
+                                    {
+                                        foreach (var categoryExclusion in categoryExclutions)
+                                        {
+                                            <option value="@categoryExclusion.Id">@categoryExclusion.Name</option>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        if (Model.CategoryExclusionSets != null)
+                                        {
+                                            foreach (var categoryExclusion in categoryExclutions)
+                                            {
+                                                <option @(Model.CategoryExclusionSets.Contains(categoryExclusion) ? "selected" : "") value="@categoryExclusion.Id">@categoryExclusion.Name</option>
+                                            }
+                                        }
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </from>
+            </div>
+
+            <br />
+            <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+            @if (Model.Queue.Id > 0)
+            {
+                <button onclick="SavePrepDisplayDevice()" class="btn btn-success">Confirm </button>
+            }
+            else
+            {
+                <button onclick="SavePrepDisplayDevice()" disabled class="btn btn-success">Confirm </button>
+            }
+        </div>
+    </div><!-- /.modal-content -->
+</div>
+
+<script src="~/Content/DesignStyle/js/bootstrap-multiselect.min.js"></script>
+
+<script>
+    //$('#pds-queue').select2({ placeholder: 'Please select' });
+
+    $("#pds-admin").multiselect({
+        includeSelectAllOption: false,
+        enableFiltering: false,
+        buttonWidth: '100%',
+        maxHeight: 200,
+        enableClickableOptGroups: true
+    });
+    $('.select2avatar').select2({
+        placeholder: 'Please select',
+        templateResult: formatOptions,
+        templateSelection: formatSelected
+    });
+
+    $("#pds-assocsets").multiselect({
+        includeSelectAllOption: false,
+        enableFiltering: false,
+        buttonWidth: '100%',
+        maxHeight: 200,
+        enableClickableOptGroups: true
+    });
+
+    $('select.select2All').select2({ placeholder: 'Please select' });
+</script>

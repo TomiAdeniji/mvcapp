@@ -1,0 +1,478 @@
+﻿@using Microsoft.AspNet.Identity;
+@using Microsoft.AspNet.Identity.Owin;
+@using Qbicles.Models;
+@using Qbicles.BusinessRules;
+@using Qbicles.Models.Form
+
+@{
+    ViewBag.Title = ViewBag.PageTitle;
+    var UserRoleRights = (List<string>)ViewBag.UserRoleRights;
+    var UserManager = Request.GetOwinContext().GetUserManager<ApplicationUserManager>();
+    var currentUserId = (string)ViewBag.CurrentUserId;
+    var currentUser = UserManager.FindById(currentUserId);
+    var approvalGroups = (List<ApprovalGroup>)ViewBag.approvalGroups;
+    var listFileType = (List<string>)ViewBag.listFileType;
+    string fileAccept = listFileType.Count() > 0 ? ("." + string.Join(",.", listFileType)) : "";
+    var ApprovalTypes = (ICollection<HelperClass.EnumModel>)ViewBag.ApprovalTypes;
+    var currentDomain = (QbicleDomain)ViewBag.CurrentDomain;
+    var memberRoles = currentDomain.Users;
+
+    var rightAddEditGroup = UserRoleRights.Any(r => r == "Edit Content") == true ? "" : "isDisabled";
+    var rightAddnew = UserRoleRights.Any(r => r == "Edit Content") == true ? "" : "isDisabled";
+    var rightEdit = UserRoleRights.Any(r => r == "Edit Content") == true ? "" : "isDisabled";
+    var rightDelete = UserRoleRights.Any(r => r == "Edit Content") == true ? "" : "isDisabled";
+    var imgAcceptedFile = (string)ViewBag.ImageAcceptedExtensions;
+}
+
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail">
+
+
+    <!-- Main content -->
+    <section class="content">
+
+        <br /><br />
+
+        <div class="mod_title">
+            <h5>Approvals</h5>
+            <h4>Approval Management</h4>
+        </div>
+
+        <div class="row">
+            <div class="col-xs-12">
+                <div class="app_filter">
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-4 col-lg-4 button_options">
+                            <a href="/Apps/AppManagement" class="btn btn-info"><i class="fa fa-th"></i> &nbsp; All apps</a>
+
+                            <div class="btn-group options">
+                                <button type="button" class="btn btn-success dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                    Create a new &nbsp; <i class="fa fa-angle-down"></i>
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li><a class="@rightAddEditGroup" href="javascript:void(0)" id="button_add_group">Group</a></li>
+                                    @if (approvalGroups != null && approvalGroups.Count > 0)
+                                    {
+                                        <li><a class="@rightAddnew" href="javascript:void(0)" id="button_add_app" onclick="AddNewApprovalApp(0)">Request process</a></li>
+                                    }
+                                </ul>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <br /><br />
+
+        <div id="app-page-display">
+            <div id="app-content">
+            </div>
+        </div>
+
+
+
+    </section>
+    <!-- ./content -->
+
+</div>
+<!-- /.content-wrapper -->
+<!-- /.modal add group-->
+<!-- add group .modal -->
+<div class="modal fade" id="modal_group" role="dialog" aria-labelledby="approval-group-generic-add" data-keyboard="true" data-backdrop="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title"></h5>
+            </div>
+            <div class="modal-body">
+                <input id="input_group_id" type="hidden" name="Id" />
+                <div class="well">
+                    <div class="form-group">
+                        <label for="title">Title</label>
+                        <form id="form-approval-group" method="post" action="/ApprovalApps/SaveApprovalAppGroup">
+                            <input type="text" id="approval-group-name-input" class="form-control" name="name">
+                        </form>
+
+                    </div>
+                </div>
+
+                <button type="submit" id="save-group" onclick="SaveApprovalAppGroup()" class="btn btn-success"><i class="fa fa-check"></i> &nbsp; Add now</button>
+                <button class="btn btn-danger" data-dismiss="modal"><i class="fa fa-remove"></i> &nbsp; Cancel</button>
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+<!--approval add/edit-->
+<div class="modal fade" id="create-approval-type" role="document" data-keyboard="true" data-backdrop="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title"><span id="approval-title"></span></h5>
+            </div>
+            <div class="modal-body">
+
+
+                <div class="row">
+                    <div class="col-xs-12">
+                        <ul class="app_subnav">
+                            <li id="tab1-li" class="active"><a href="#tab1" data-toggle="tab">Details</a></li>
+                            <li id="tab2-li"><a href="#tab2" data-toggle="tab">Roles</a></li>
+                            <li id="tab3-li"><a href="#tab3" data-toggle="tab">Related</a></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <br /><br />
+
+                <div id="approval-content" class="tab-content">
+                    <div class="tab-pane fade in active" id="tab1">
+
+                        <form id="form_approval_app_addedit" name="form_approval_addedit" method="post" action="#" class="well">
+                            <div class="approval-app-form">
+                                <div class="form-group">
+                                    <label for="approval_group">Group &nbsp;<span>*</span></label>
+                                    <select id="approval_group" name="approval_group" class="form-control select2" style="width:100%">
+                                        @foreach (var group in approvalGroups)
+                                        {
+                                            <option value="@group.Id">@group.Name</option>
+                                        }
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="approval_type">Type &nbsp;<span>*</span></label>
+                                    <select id="approval_type" name="approval_type" class="form-control select2" style="width:100%">
+                                        @foreach (var type in ApprovalTypes)
+                                        {
+                                            <option value="@type.Key">@type.Value</option>
+                                        }
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="approval_title">Title&nbsp;<span>*</span></label>
+                                    <input type="text" name="Title" id="approval_title" class="form-control">
+                                </div>
+                                <div class="form-group">
+                                    <label for="approval_description">Description&nbsp;<span>*</span></label>
+                                    <textarea name="Description" id="approval_description" class="form-control"></textarea>
+                                </div>
+                            </div>
+
+
+                            <div class="form-group"><label for="process_owner">Approval image</label></div>
+                            <div class="form-group" style="margin-bottom: 0;">
+
+                                <div class="pull-left" style="max-width: 65px; max-height: 65px; margin-right: 15px;">
+                                    <img src="https://www.placehold.it/300x250/EFEFEF/AAAAAA&text=no+image+selected" style="float: left;" id="approvalPicture" class="img-responsive">
+                                </div>
+                                <div class="pull-left" style="margin: 15px 0 0 0;">
+                                    <input id="processImageUrl" hidden />
+                                    <input type="file" id="approvalPictureId" class="form-control" accept="@imgAcceptedFile" onchange="approvalPictureChange(this)" />
+                                </div>
+                                <div style="clear: both;"></div>
+                            </div>
+                        </form>
+
+                        <div class="pull-right">
+                            <button onclick="ValidApprovalTab()" class="btn btn-success">Next &nbsp; <i class="fa fa-chevron-right"></i></button>
+                        </div>
+                        <div class="clearfix"></div>
+
+                    </div>
+                    <div class="tab-pane fade" id="tab2">
+
+                        <form name="form_approval_role_addedit" id="form_approval_role_addedit" method="post" action="#" class="well">
+                            <div id="initiates" class="form-group">
+                                <label for="approval_initiate">Initiate(s)</label>
+                                <select id="approval_Initiate" data-placeholder="..." class="chosen-select select2" multiple style="width:100%;">
+                                    <option value=""></option>
+                                    @foreach (var u in memberRoles)
+                                    {
+                                        var fullName = (string.IsNullOrEmpty(u.Forename) || string.IsNullOrEmpty(u.Surname)) ? u.UserName : u.Forename + " " + u.Surname;
+                                        <option value="@u.Id">@fullName</option>
+                                    }
+
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="approval_review">Reviewer(s)</label>
+                                <select id="approval_Reviewer" data-placeholder="..." class="chosen-select select2" multiple style="width:100%;">
+                                    <option value=""></option>
+                                    @foreach (var u in memberRoles)
+                                    {
+                                        var fullName = (string.IsNullOrEmpty(u.Forename) || string.IsNullOrEmpty(u.Surname)) ? u.UserName : u.Forename + " " + u.Surname;
+                                        <option value="@u.Id">@fullName</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="approval_approve">Approver(s)</label>
+                                <select id="approval_Approver" data-placeholder="..." class="chosen-select select2" multiple style="width:100%;">
+                                    <option value=""></option>
+                                    @foreach (var u in memberRoles)
+                                    {
+                                        var fullName = (string.IsNullOrEmpty(u.Forename) || string.IsNullOrEmpty(u.Surname)) ? u.UserName : u.Forename + " " + u.Surname;
+                                        <option value="@u.Id">@fullName</option>
+                                    }
+                                </select>
+                            </div>
+                        </form>
+
+                        <div class="pull-left">
+                            <button onclick="NextTab(-1)" class="btn btn-warning"><i class="fa fa-chevron-left"></i> &nbsp; Previous</button>
+                        </div>
+                        <div class="pull-right">
+                            <button onclick="NextTab(3)" class="btn btn-success">Next &nbsp; <i class="fa fa-chevron-right"></i></button>
+                        </div>
+                        <div class="clearfix"></div>
+
+                    </div>
+                    <div class="tab-pane fade" id="tab3">
+                        <form id="form_process_related_addedit" class="well" method="post" action="/Apps/AddProcessRelateToView">
+                            <div class="form-group" style="margin-bottom: 10px;">
+                                <label for="approval_related">Type</label>
+                                <select id="approval_related" name="approval_related" class="form-control toggle_display select2" style="width: 100%;">
+                                    <option value="">Please select</option>
+                                    <option value="choose-doc">Document</option>
+                                </select>
+                            </div>
+                            <div class="form-group toggleable mydesk_content" style="display: none;" id="choose-doc">
+                                <input id="DocumentImage" name="DocumentImage" hidden />
+                                <div class="heading">New Document</div>
+                                <div class="form-group item guest compact">
+                                    <div class="form-group">
+                                        <label for="process_title">Document &nbsp;<span>*</span></label>
+                                        <input type="text" id="Document" name="Document" class="form-control">
+                                    </div>
+                                    <div class="form-group"><label for="process_owner">Document file</label></div>
+                                    <div class="form-group" style="margin-bottom: 0;">
+
+                                        <div class="pull-left" style="max-width: 65px; max-height: 65px; margin-right: 15px;">
+                                            <img src="https://www.placehold.it/300x250/EFEFEF/AAAAAA&text=no+image+selected" style="float: left;" id="documentPicture" class="img-responsive">
+                                        </div>
+                                        <div class="pull-left" style="margin: 15px 0 0 0;">
+                                            <input type="file" id="documentPictureId" name="relatedAttachments" class="form-control" accept="@fileAccept" onchange="documentPictureChange(this)" />
+                                        </div>
+                                        <div style="clear: both;"></div>
+                                    </div>
+                                </div>
+
+                                <a class="btn btn-success" onclick="AddDocumentTolist()" style="margin-top: 10px;"><i class="fa fa-plus"></i> &nbsp; Add</a>
+
+                            </div>
+                        </form>
+                        <div class="related_items" id="related_items">
+
+                        </div>
+
+                        <br />
+                        <div class="row hidden" id="table-document">
+                            <div class="col-xs-12">
+
+                                <h5>Related</h5>
+
+                                <table id="table-document" class="table table-responsive table-striped app_specific" style="font-family: 'Roboto', Arial, sans-serif;">
+                                    <thead>
+                                        <tr>
+                                            <th>Title</th>
+                                            <th>Document type</th>
+                                            <th>Options</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="pro-document-tr"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="pull-left">
+                            <button onclick="NextTab(-2)" class="btn btn-warning"><i class="fa fa-chevron-left"></i> &nbsp; Previous</button>
+                        </div>
+                        <div class="pull-right">
+                            <button id="finish-save-approval" onclick="ApprovalFinishAndSave()" class="btnFinish btn btn-success"><i class="fa fa-check"></i> &nbsp; Finish and Save</button>
+                        </div>
+                        <div class="clearfix"></div>
+
+                    </div>
+
+                    <div class="clearfix"></div>
+                </div>
+
+
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+<!-- Delete Account -->
+<div id="modal-delete-app" class="modal fade" role="dialog">
+    <div class="modal-dialog">
+
+        <!-- Modal content-->
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4 class="modal-title">Delete Request Process</h4>
+            </div>
+            <div class="modal-body">
+
+                <div id="confirm-del-app" class="alert alert-danger">
+                    <p>You are about to delete Request Process : <strong><span id="app-name-confirm"></span></strong></p>
+                    <br />
+                    <button data-dismiss="modal" class="btn btn-warning">Cancel</button>
+                    <button onclick="ApprovalDelete()" class="btn btn-danger">Confirm Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!--approval trader view-->
+<div class="modal fade" id="view-trader-approval" role="document" data-keyboard="true" data-backdrop="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">View of Trader Process</h5>
+            </div>
+            <div class="modal-body">
+
+
+                <div class="row">
+                    <div class="col-xs-12">
+                        <ul class="app_subnav">
+                            <li id="tab1-li_view" class="active"><a href="#tab1_view" data-toggle="tab">Details</a></li>
+                            <li id="tab2-li_view"><a href="#tab2_view" data-toggle="tab">Roles</a></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <br /><br />
+
+                <div id="approval-content_view" class="tab-content">
+                    <div class="tab-pane fade in active" id="tab1_view">
+
+                        <form class="well">
+                            <div class="approval-app-form">
+                                <div class="form-group">
+                                    <label for="approval_group">Group </label>
+                                    <input readonly="" type="text" id="approval_group_view" class="form-control"/>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="approval_type">Type</label>
+                                    <input readonly="" type="text" id="approval_type_view" class="form-control">
+                                </div>
+                                <div class="form-group">
+                                    <label for="approval_title">Title</label>
+                                    <input readonly="" type="text" id="approval_title_view" class="form-control">
+                                </div>
+                                <div class="form-group">
+                                    <label for="approval_description">Description</label>
+                                    <textarea readonly="" id="approval_description_view" class="form-control"></textarea>
+                                </div>
+                            </div>
+
+
+                            <div class="form-group"><label for="process_owner">Approval image</label></div>
+                            <div class="form-group" style="margin-bottom: 0;">
+
+                                <div class="pull-left" style="max-width: 65px; max-height: 65px; margin-right: 15px;">
+                                    <img src="https://www.placehold.it/300x250/EFEFEF/AAAAAA&text=no+image+selected" style="float: left;" id="approvalPictureView" class="img-responsive">
+                                </div>
+
+                                <div style="clear: both;"></div>
+                            </div>
+                        </form>
+
+                        <div class="pull-right">
+                            <button onclick="NextView()" class="btn btn-success">Next &nbsp; <i class="fa fa-chevron-right"></i></button>
+                        </div>
+                        <div class="clearfix"></div>
+
+                    </div>
+                    <div class="tab-pane fade" id="tab2_view">
+
+                        <form>
+                            <div class="form-group">
+                                <label for="approval_initiate">Initiate(s)</label>
+                                <input readonly="" type="text" id="approval_initiate_view" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label for="approval_review">Reviewer(s)</label>
+                                <input readonly="" type="text" id="approval_review_view" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label for="approval_approve">Approver(s)</label>
+                                <input readonly="" type="text" id="approval_approve_view" class="form-control">
+                            </div>
+                        </form>
+
+                        <div class="pull-left">
+                            <button onclick="PreviousView()" class="btn btn-warning"><i class="fa fa-chevron-left"></i> &nbsp; Previous</button>
+                        </div>
+                        <div class="pull-right">
+                            <button class="btn btn-danger" data-dismiss="modal">Close &nbsp; <i class="fa fa-close"></i></button>
+                        </div>
+                        <div class="clearfix"></div>
+
+                    </div>
+
+                    <div class="clearfix"></div>
+                </div>
+
+
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+<!-- /.modal -->
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/qbicle.approvalsapps.js"></script>
+
+    }
+    else
+    {
+        <script src="~/Scripts/dev/qbicle.approvalsapps.min.js"></script>
+
+    }
+}
+<script>
+    jQuery(function ($) {
+        if ('@UserRoleRights.Any(r => r == RightPermissions.EditContent)' === 'False') {
+            $("#approval-content :input").attr("disabled", true);
+            $(".btnNext,.btnPrevious").attr("disabled", false);
+            $(".btnFinish").css('display', 'none');
+            $("#approval-title").text("Prevew Approval Request");
+        };
+
+        $('.toggle_display').on('change', function (e) {
+            var show = '#' + $(this).val();
+            $('.toggleable').hide();
+            if ($(this).val() == "choose-doc") {
+                $('#table-document').removeClass("hidden");
+            } else {
+                $('#table-document').addClass("hidden");
+            }
+
+            $(show).show();
+            $('.title_type').html($(this).val());
+        });
+
+        $('#approval_type').on('change', function () {
+            if ($(this).val() === 4) {
+                $('#initiates').hide();
+            } else {
+                $('#initiates').show();
+            }
+        });
+    });
+</script>

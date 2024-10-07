@@ -1,0 +1,798 @@
+﻿@using Qbicles.Models
+@using Qbicles.BusinessRules
+@using Qbicles.Models.B2B
+@model B2BProfile
+@{
+    Layout = null;
+    var domain = (QbicleDomain)ViewBag.Domain;
+    ViewBag.Title = $"{domain.Name} | Business Profile wizard";
+
+    var countries = new CountriesRules().GetAllCountries();
+    var businessCategories = (List<BusinessCategory>)ViewBag.BusinessCategories;
+
+    var step = "0%";
+    var stepActived1 = "";
+    var stepActived2 = "";
+    switch (domain.WizardStep)
+    {
+        case DomainWizardStep.None:
+            stepActived1 = "fade in active";
+            break;
+        case DomainWizardStep.General:
+            step = "50%";
+            stepActived2 = "fade in active";
+            break;
+        case DomainWizardStep.InviteUsers:
+            step = "100%";
+            stepActived2 = "fade in active";
+            break;
+    }
+    var businessName = string.IsNullOrEmpty(Model.BusinessName) ? domain.Name : Model.BusinessName;
+    var domainMemEmails = domain.Users.OrderBy(p => p.Email).Select(p => p.Email).Distinct().ToList();
+    var canSendInvite = (bool)ViewBag.CanSendInvite;
+}
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>@domain.Name | Business Profile wizard</title>
+
+    <link rel="shortcut icon" type="image/x-icon" href="/Content/DesignStyle/img/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="~/Content/DesignStyle/img/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="~/Content/DesignStyle/img/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="~/Content/DesignStyle/img/favicon-16x16.png">
+
+    <meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" name="viewport">
+
+    @Styles.Render("~/Content/qbiclescss")
+
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+    <script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
+    <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+    <![endif]-->
+
+    <script src="https://sdk.amazonaws.com/js/aws-sdk-2.1.24.min.js"></script>
+    <script src="~/Scripts/dev/s3.upload.medial.js"></script>
+    <script>
+        var $s3BucketName = '@ViewBag.S3BucketName';
+        var $s3BucketRegion = '@ViewBag.S3BucketRegion';
+        var $s3IdentityPoolId = '@ViewBag.S3IdentityPoolId';
+    </script>
+
+</head>
+
+
+
+
+
+
+
+<body>
+
+    <div class="wizard-full">
+        <input type="hidden" id="profile-id" value="@Model.Id" />
+        <input type="hidden" id="formatDateByUser" value="mm/dd/yyyy" />
+        <input type="hidden" id="domain-id" value="@domain.Id" />
+        <div class="helper contained-sidebar">
+
+            <div>
+                @{
+                    var logoUri = string.IsNullOrEmpty(Model.LogoUri)
+                        ? "/Content/DesignStyle/img/icon_qbicle_default.png"
+                        : Model.LogoUri.ToUriString(Enums.FileTypeEnum.Image, "T");
+                }
+
+                <div id="avatar" style="margin-top: 100px; background-image: url('@logoUri');">&nbsp;</div>
+
+                <h1>Set up your profile</h1>
+                <br /><br />
+
+                <ul class="nav nav-pills nav-stacked wizardtabs business text-left" style="margin-bottom: 10px;">
+                    <li class="active">
+                        <a href="#">
+                            <span>Profile setup</span>
+                            <div class="progress">
+                                <div class="progress-bar progress-bar-primary active" role="progressbar"
+                                     var step="0%" ;
+                                     aria-valuenow="40" aria-valuemin="0" aria-valuemax="100" style="width: @step;" id="step1p">
+                                    <span class="sr-only">70% complete</span>
+                                </div>
+                            </div>
+                        </a>
+                    </li>
+
+                </ul>
+                <br />
+                <a href="#wizard-business--exit" data-toggle="modal" class="btn btn-danger community-button animated fadeIn" style="position: center; top: 20px; right: 20px; z-index: 1000;">Exit wizard</a>
+            </div>
+
+        </div>
+
+        <div class="tab-content wizard-steps" style="display: block; padding-top: 80px;">
+
+            <!-- Step 1 -->
+            <div class="tab-pane @stepActived1" id="s1">
+
+                <form id="frmB2BProfile" method="post" enctype="multipart/form-data" class="wizard-form bness">
+
+                    <div class="mod_title">
+                        <h5>Profile setup</h5>
+                        <h4>About your business</h4>
+                    </div>
+                    <br /><br />
+
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group">
+                                <label for="avatar">Business name <span>*</span></label>
+                                <input id="business-name" onfocus="focusChange(this)" type="text" class="form-control" name="BusinessName" value="@businessName">
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group">
+                                <label for="avatar">Logo</label>
+                                <input type="hidden" id="business-logo-object-key" name="LogoUri" value="@Model.LogoUri" />
+                                <input type="hidden" id="hdfProfileId" value="@Model.Id" />
+                                <input type="file" class="form-control" id="setavatar" data-target="#avatar">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group valid">
+                                <label for="name">Business email address <span>*</span></label>
+                                <select class="form-control select2" name="BusinessEmail" style="width: 100%;" onchange="BusinessProfileWizardGeneral(true)" required>
+                                    @foreach (var emailItem in domainMemEmails)
+                                    {
+                                        <option value="@emailItem" @(Model.BusinessEmail == emailItem ? "selected" : "")>@emailItem</option>
+                                    }
+                                </select>
+
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group">
+                                <label for="areas">Where you operate (Choose one or more)</label>
+                                <select style="display:none" class="form-control checkmulti" multiple name="AreasOperation">
+                                    @foreach (var item in countries)
+                                    {
+                                        <option value="@item.CommonName" @(Model.AreasOperation.Any(s => s.Name == item.CommonName) ? "selected" : "")>@item.CommonName</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group">
+                                <label for="name">Choose one or more categories to help classify your business</label>
+                                <select style="display:none" name="BusinessCategories" class="form-control checkmulti" multiple id="profile-catagories">
+                                    @foreach (var category in businessCategories)
+                                    {
+                                        <option value="@category.Id" @(Model.BusinessCategories.Any(s => s.Id == category.Id) ? "selected" : "")>@category.Name</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-md-6">
+                            <div class="form-group">
+                                <label>Tag your business to help people find you (optional, max 8 tags)</label><br />
+                                <select name="Tags" class="form-control select2tag select2-hidden-accessible" multiple style="width: 100%;" data-placeholder="Type and hit enter to add your tags">
+                                    @foreach (var tag in Model.Tags)
+                                    {
+                                        <option value="@tag.TagName.FixQuoteCode()" selected>@tag.TagName</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-xs-12 col-lg-12">
+                            <div class="form-group">
+                                <label for="name">Briefly summarise your business (max 500 characters) <span>*</span></label>
+                                <textarea required maxlength="500" id="wizard-description" onkeyup="ValidateDescription()" onfocus="focusDescriptionChange(this)" name="BusinessSummary" class="form-control" style="height: 80px;">@Model.BusinessSummary</textarea>
+                                <label id="wizard-description-error" class="error" for="name" style="display: none;">Your post is longer than the 500 characters limit. Please reduce the length.</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-xs-12 col-lg-6">
+                            <div class="form-group">
+                                <label for="name">I want to provide B2C services</label><br />
+                                <input name="IsDisplayedInB2CListings" @(Model.IsDisplayedInB2CListings ? "checked" : "") data-toggle="toggle" data-onstyle="success" data-on="Yes" data-off="No" type="checkbox">
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-lg-6">
+                            <div class="form-group">
+                                <label for="name">I want to provide B2B services</label><br />
+                                <input name="IsDisplayedInB2BListings" @(Model.IsDisplayedInB2BListings ? "checked" : "") data-toggle="toggle" data-onstyle="success" data-on="Yes" data-off="No" type="checkbox">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="padding-top: 65px;">
+                        <button class="btn btn-primary community-button w-auto" data-toggle="tab" onclick="BusinessProfileWizardGeneral(false)">Next - Invites</button>
+                    </div>
+                </form>
+
+            </div>
+            <!-- END Step 1 -->
+            <!-- Step 2 -->
+            <div class="tab-pane @stepActived2" id="s2">
+
+                <div class="wizard-form bness animated fadeIn">
+
+                    <div class="mod_title">
+                        <h5>Management</h5>
+                        <h4>Invite users to your Domain</h4>
+
+                        <br />
+                        @if (canSendInvite)
+                        {<div class="alert alert-qb">
+                                <p>
+                                    To add people to your Domain (optional), you first need to send some invites. We'll send a welcome email to everyone you include below, with instructions on how to
+                                    join you in Qbicles. You'll be able to track the progress of your invitations in Domain > Members once this wizard is complete. We'll point you in the right
+                                    direction once we're done here.
+                                </p>
+
+                                <br />
+                                <button onclick="$('#invite').show();$('#report').hide();" class="btn btn-success community-button sm w-auto" data-toggle="modal" data-target="#people-user-add"><i class="fa fa-user-plus"></i> &nbsp; Send an invitation</button>
+                            </div>
+                        }
+
+                    </div>
+                    @{
+                        var displayInvited = "none";
+                        if (domain.WizardStep == DomainWizardStep.InviteUsers)
+                        {
+                            displayInvited = "block";
+                        }
+                    }
+
+                    <div id="invited" class="animated fadeIn" style="display: @displayInvited;">
+                        <br />
+                        <table class="table app_specific table-borderless table-hover table-striped" id="user-invited-list" style="width: 100%; background: #fff;">
+                            <thead>
+                                <tr>
+                                    <th data-priority="2" data-orderable="false">Email</th>
+                                    <th data-priority="1" data-orderable="false">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            </tbody>
+                        </table>
+
+                    </div>
+
+
+
+                    <div style="padding-top: 65px;">
+                        <button class="btn btn-warning community-button w-auto" data-toggle="tab" onclick="decount();">Previous</button>
+                        <button id="finish-wizard" class="btn btn-primary community-button w-auto" onclick="FinishBusinessProfileWizard()">Finish wizard</button>
+                    </div>
+
+                </div>
+
+            </div>
+
+
+        </div>
+
+    </div>
+
+    <div class="modal fade left" id="people-user-add" role="dialog" aria-labelledby="people-user-add">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h5 class="modal-title">Invite a Domain User to @domain.Name</h5>
+                </div>
+                <div class="modal-body" id="invite-modal">
+
+                    <div class="activity-overview generic help-text animated bounce" id="report" style="margin-bottom: 15px; padding: 20px; display: none;">
+                        <i class="fa fa-info-circle"></i>
+                        <h5>Next steps</h5>
+                        <p>
+                            An email has been sent to <strong id="email-send-to"></strong> with instructions on how they can get started. If they accept your invite, they
+                            can complete initial registration and will be automatically added to your domain - you'll be notified when this happens.
+
+                            <br /><br />
+
+                            <h5>Rejections</h5>
+                        <p>
+                            If they reject your invite they can indicate why, and you'll be notified of the declined request. You can choose to reissue your invite (in case they
+                            accidentally declined, for example).
+                        </p>
+
+                        <br />
+                        <button class="btn btn-info community-button" data-dismiss="modal" style="margin: 5px 0; max-width: 170px;">Okay</button>
+                    </div>
+
+                    <div class="well custom" id="invite">
+                        <div class="form-group" style="margin: 0;">
+                            <label for="member-new">Enter their email address</label>
+                            <input type="email" class="form-control" id="invite-to-email" placeholder="Enter their email address" onkeyup="$('.confirm-add').removeAttr('disabled');">
+                        </div>
+                        <br>
+                        <button class="btn btn-success community-button confirm-add" disabled="" onclick="SaveBusinessWinzardInviteUse()"><i class="fa fa-envelope"></i> &nbsp; Send invite</button>
+                    </div>
+
+
+                </div>
+            </div><!-- /.modal-content -->
+        </div><!-- /.modal-dialog -->
+    </div>
+    <!-- /.modal -->
+
+    <div class="modal fade right" id="wizard-business--exit" role="dialog" aria-labelledby="wizard-business--exit">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content rounded">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h5 class="modal-title"></h5>
+                </div>
+                <div class="modal-body text-center">
+                    <img src="~/Content/DesignStyle/img/b2b-trading.png" class="img-responsive" />
+                    <br />
+                    @{
+                        //var message = "Your progress has been saved.";
+                        //switch (domain.WizardStep)
+                        //{
+                        //    case DomainWizardStep.None:
+                        //        message = "Your progress haven't save!";
+                        //        break;
+                        //    case DomainWizardStep.General:
+                        //    case DomainWizardStep.InviteUsers:
+                        //        break;
+                        //    case DomainWizardStep.Done:
+                        //        break;
+                        //}
+                    }
+                    <h4>Your progress has been saved.</h4>
+                    <br />
+                    <p>
+                        We’ve saved your progress on this wizard so you can continue where you left off next time.
+                        You can reopen the wizard at any time by accessing your new Domain.
+                    </p>
+
+                    <br /><br />
+                    <a href="/Domain" class="btn btn-danger community-button">Exit wizard</a>
+
+                </div>
+            </div><!-- /.modal-content -->
+        </div><!-- /.modal-dialog -->
+    </div><!-- /.modal -->
+</body>
+
+</html>
+<script src="https://code.jquery.com/jquery-2.2.4.min.js" integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44=" crossorigin="anonymous"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+<script src="~/Scripts/DesignStyle/lib/js/jquery.validate.min.js"></script>
+<script src="~/Content/DesignStyle/js/html5tooltips.js"></script>
+<script src="~/Content/DesignStyle/js/select2.full.min.js"></script>
+<script src="//cdn.datatables.net/1.10.15/js/jquery.dataTables.min.js"></script>
+<script src="//cdn.datatables.net/1.10.15/js/dataTables.bootstrap.min.js"></script>
+<script src="https://gitcdn.github.io/bootstrap-toggle/2.2.2/js/bootstrap-toggle.min.js"></script>
+<script src="~/Content/DesignStyle/js/owl.carousel.min.js"></script>
+@*<script src="~/Content/DesignStyle/js/jquery.easing.1.3.js"></script>*@
+<script src="~/Content/DesignStyle/js/jquery.circle-progress.js"></script>
+<script src="~/Content/DesignStyle/js/select2.full.min.js"></script>
+<script src="~/Content/DesignStyle/js/moment.js"></script>
+<script src="~/Content/DesignStyle/js/daterangepicker.js"></script>
+<script src="~/Content/DesignStyle/js/owl.carousel.min.js"></script>
+<script src="~/Content/DesignStyle/js/bootstrap-multiselect.js"></script>
+<script src="~/Content/DesignStyle/js/lodash/lodash.min.js"></script>
+<script src="~/Scripts/toastr/cleanBookNotification.min.js"></script>
+<script src="~/Scripts/dev/common-controller.js"></script>
+<link href="~/Scripts/toastr/toastr.min.css" rel="stylesheet" />
+<script src="~/Scripts/toastr/toastr.min.js"></script>
+<script src="~/Content/DesignStyle/js/loadingoverlay.min.js"></script>
+@*<script src="dist/js/app.js"></script>*@
+
+<script>
+    var isBusy = false, frmProfileId = "#frmB2BProfile";
+    var $businessNameInput = $("#business-name");
+    var $businessNameValid = true;
+    var wto;
+    function delay(callback, ms) {
+        var timer = 0;
+        return function () {
+            var context = this, args = arguments;
+            clearTimeout(timer);
+            timer = setTimeout(function () {
+                callback.apply(context, args);
+            }, ms || 0);
+        };
+    }
+
+
+    $(document).ready(function () {
+
+        //$(frmProfileId).validate({ validClass: "valid-no-border" });
+        $('.select2').select2();
+
+        $('.select2tag').select2({
+            tags: true
+        });
+
+        $(".checkmulti").multiselect({
+            includeSelectAllOption: true,
+            selectAllJustVisible: true,
+            includeResetOption: false,
+            enableFiltering: true,
+            buttonWidth: '100%',
+            maxHeight: 400,
+            enableClickableOptGroups: true,
+            enableCaseInsensitiveFiltering: true
+        });
+
+        $('#setavatar').on('change', function (event) {
+            var target = $(this).data('target');
+            var url = URL.createObjectURL(event.target.files[0]);
+            $(target).css('background-image', 'url(' + url + ')');
+            $(target).fadeIn();
+        });
+
+        GetDomainUsersInvitation();
+    });
+
+    var step = 0;
+
+    function recount() {
+        step = step + 50;
+        var update = step + '%';
+        $('#step1p').css('width', update);
+
+        $("#s1").toggle();
+        $("#s2").toggle();
+    }
+
+    function decount() {
+        step = step - 50;
+        if (step < 0) step = 0;
+        var update = step + '%';
+        $('#step1p').css('width', update);
+
+        $("#s1").toggle();
+        $("#s2").toggle();
+    }
+    $('input[name=IsDisplayedInB2CListings], input[name=IsDisplayedInB2BListings]').change(function () {
+        clearTimeout(wto);
+        wto = setTimeout(function () {
+            BusinessProfileWizardGeneral(true);
+        }, 1000);
+    });
+
+    $('select[name=AreasOperation], select[name=BusinessCategories], select[name=Tags], select[name=AreasOperation]').change(function () {
+        clearTimeout(wto);
+        wto = setTimeout(function () {
+            BusinessProfileWizardGeneral(true);
+        }, 1500);
+    });
+
+
+    function BusinessProfileWizardGeneral(runtime) {
+        var descrp = $("#wizard-description").val();
+        if (descrp.length > 500) {
+            return;
+        }
+        if ($businessNameValid == false || $businessDesciptionValid == false)
+            return;
+        if ($(frmProfileId).valid()) {
+            if (runtime) {
+                var profileId = $('#hdfProfileId').val();
+                if (profileId == 0)
+                    return;
+
+            }
+            if (!runtime)
+                recount();
+
+            var files = document.getElementById("setavatar").files;
+            if (files && files.length > 0) {
+                UploadMediaS3ClientSide("setavatar").then(function (mediaS3Object) {
+
+                    if (mediaS3Object.objectKey === "no_image" || mediaS3Object.objectKey === "no-image") {
+                        cleanBookNotification.error(_L("ERROR_MSG_S3_UPLOAD"), "Qbicles");
+                        return;
+                    }
+                    else {
+                        $("#business-logo-object-key").val(mediaS3Object.objectKey);
+                        SaveBusinessWinzardGeneral(mediaS3Object.objectKey);
+                    }
+                });
+
+
+            } else {
+                SaveBusinessWinzardGeneral("");
+            }
+
+        }
+    }
+
+    function SaveBusinessWinzardGeneral(objectKey) {
+
+        var business = {
+            id: $('#hdfProfileId').val(),
+            domainId: $('#domain-id').val(),
+            BusinessName: $('input[name=BusinessName]').val(),
+            BusinessSummary: $('textarea[name=BusinessSummary]').val(),
+            BusinessEmail: $('select[name=BusinessEmail]').val(),
+            LogoUri: objectKey,
+            IsDisplayedInB2BListings: $('input[name=IsDisplayedInB2BListings]').prop('checked'),
+            IsDisplayedInB2CListings: $('input[name=IsDisplayedInB2CListings]').prop('checked'),
+            AreasOperation: $('select[name=AreasOperation]').val(),
+            Tags: $('select[name=Tags]').val(),
+            Categories: $('select[name=BusinessCategories]').val(),
+        }
+
+        $.ajax({
+            type: "POST",
+            dataType: "JSON",
+            url: "/DomainProfile/BusinessProfileWizardGeneral",
+            data: {
+                profile: business
+            },
+            beforeSend: function (xhr) {
+                isBusy = true;
+            },
+            success: function (data) {
+                isBusy = false;
+                if (data.result) {
+                    $('#hdfProfileId').val(data.msgId);
+                    cleanBookNotification.success("Update successful","Qbicle");
+                } else if (!data.result && data.msg) {
+                    cleanBookNotification.error(data.msg, "Commerce");
+                } else
+                    cleanBookNotification.error("ERROR_MSG_EXCEPTION_SYSTEM", "Commerce");
+            },
+            error: function (data) {
+                isBusy = false;
+                cleanBookNotification.error(data, "Commerce");
+            }
+        });
+    }
+
+    function SaveBusinessWinzardInviteUse() {
+        var inviteTo = $("#invite-to-email").val();
+        if (!validateEmail(inviteTo)) {
+            cleanBookNotification.error("Invalid email.","Qbicle");
+            return;
+        }
+        $('#invite-modal').LoadingOverlay("show");
+        setTimeout(function () {
+
+            $("#email-send-to").text(inviteTo);
+
+            var url = "/DomainProfile/InvitationUser/";
+            $.ajax({
+                url: url,
+                data: { email: inviteTo, domainId: $("#domain-id").val() },
+                cache: false,
+                type: "POST",
+                async: false,
+                success: function (refModel) {
+                    if (refModel.result) {
+                        $('#step1p').css('width', '100%');
+                        $("#invite-to-email").val('');
+                        $('.confirm-add').attr('disabled', 'disabled');
+                        ReloadUserInvited();
+                        $('#invite').hide();
+                        $('#report').show();
+                        $('#invited').show();
+                        /*$('#finish-wizard').removeAttr('disabled');*/
+                    }
+                    else {
+                        if (refModel.msg != '') {
+                            cleanBookNotification.warning(refModel.msg, "Qbicles");
+                        }
+                        else {
+                            cleanBookNotification.error("Error", "Qbicles");
+                        }
+                    }
+
+                },
+                error: function (xhr, status, error) {
+                    cleanBookNotification.error(xhr.responseText, "Qbicles");
+                }
+            }).always(function () {
+                $('#invite-modal').LoadingOverlay("hide", true);
+            });
+        }, 500);
+
+
+
+    }
+
+    function GetDomainUsersInvitation() {
+        $("#user-invited-list").on('processing.dt', function (e, settings, processing) {
+            //if (processing) {
+            //    $('#user-invited-list').LoadingOverlay("show", { minSize: "70x60px" });
+            //} else {
+            //    $('#user-invited-list').LoadingOverlay("hide", true);
+            //}
+        }).DataTable({
+            "destroy": true,
+            "serverSide": true,
+            "paging": true,
+            "searching": false,
+            "responsive": true,
+            "lengthMenu": [[10, 20, 50, 100], [10, 20, 50, 100]],
+            "pageLength": 10,
+            "ajax": {
+                "url": '/DomainProfile/GetDomainUsersInvitation',
+                "type": 'POST',
+                "dataType": 'json',
+                "data": function (d) {
+                    return $.extend({}, d, {
+                        "domainId": $("#domain-id").val(),
+                    });
+                }
+            },
+            "columns": [
+                {
+                    name: "Email",
+                    data: "Email",
+                    orderable: true
+                },
+                {
+                    name: null,//"Status",
+                    data: null,//"Status",
+                    orderable: true,
+                    render: function (value, type, row) {
+                        return "<i class='fa fa-check green'></i> &nbsp; Invitation sent";
+                    }
+                }
+            ],
+            "drawCallback": function (settings) {
+                //if (settings._iRecordsTotal == 0)
+                //    $('#finish-wizard').attr('disabled', 'disabled');
+                //else
+                //    $('#finish-wizard').removeAttr('disabled');
+            },
+            "order": [[0, "desc"]]
+        });
+    }
+
+    function ReloadUserInvited() {
+        $("#user-invited-list").DataTable().ajax.reload(null, false);
+    }
+
+    function FinishBusinessProfileWizard() {
+
+        cleanBookNotification.success('Wizard completed', "Qbicles");
+        $.ajax({
+            type: "POST",
+            dataType: "JSON",
+            url: "/DomainProfile/FinishBusinessProfileWizard",
+            data: {
+                domainKey: '@domain.Key'
+            },
+            beforeSend: function (xhr) {
+                isBusy = true;
+            },
+            success: function (data) {
+                isBusy = false;
+                if (data.result) {
+                    setTimeout(function () {
+                        $(".wizard-full").LoadingOverlay('show');
+                        goToDomainQbicles();
+                    }, 100);
+
+                } else if (!data.result && data.msg) {
+                    cleanBookNotification.error(data.msg, "Qbicles");
+                } else
+                    cleanBookNotification.error("ERROR_MSG_EXCEPTION_SYSTEM", "Qbicles");
+            },
+            error: function (data) {
+                isBusy = false;
+                cleanBookNotification.error(data, "Qbicles");
+            }
+        });
+
+    }
+
+    function goToDomainQbicles() {
+
+        $.ajax({
+            type: 'post',
+            url: '/Commons/UpdateCurrentDomain',
+            datatype: 'json',
+            cache: false,
+            data: {
+                currentDomainKey: '@domain.Key'
+            },
+            success: function (refModel) {
+                if (refModel.result) {
+                    window.location.href = '/Qbicles';
+                }
+                else {
+
+                }
+            }
+        });
+    }
+
+    var $businessDesciptionInput = $("#wizard-description");
+    var $businessDesciptionValid = true;
+    var $oldDescription = "";
+    function focusDescriptionChange(ev) {
+        $oldDescription = $(ev).val();
+    }
+
+    function ValidateDescription() {
+        var descrp = $("#wizard-description").val();
+        if (descrp.length > 500) {
+            $("#wizard-description-error").show();
+            $businessDesciptionValid = false;
+        } else {
+            $("#wizard-description-error").hide();
+            $businessDesciptionValid = true;
+            //BusinessProfileWizardGeneral(true);
+        }
+    }
+
+    $businessDesciptionInput.blur(function () {
+        if ($businessDesciptionValid == false) {
+            return;
+        }
+        if ($oldDescription != $businessDesciptionInput.val())
+        BusinessProfileWizardGeneral(true);
+    });
+
+    var $oldName = "";
+    function focusChange(ev) {
+        $oldName = $(ev).val();
+    }
+    $businessNameInput.blur(function () {
+        if ($businessNameInput.val() == "") {
+            $businessNameValid = false;
+            $('#frmB2BProfile').validate().showErrors({
+                BusinessName: 'This field is required.'
+            });
+            return;
+        }
+        $.ajax({
+            url: "/DomainProfile/ValidationBusinessName/",
+            data: { name: $businessNameInput.val(), id: $("#profile-id").val() },
+            cache: false,
+            type: "POST",
+            async: false,
+            success: function (refModel) {
+                if (refModel.result) {
+                    if ($oldName != $businessNameInput.val())
+                        BusinessProfileWizardGeneral(true);
+                    $businessNameValid = true;
+                }
+                else {
+                    $businessNameValid = false;
+                    $('#frmB2BProfile').validate().showErrors({
+                        BusinessName: 'That business name is already in use.'
+                    });
+                }
+
+            },
+            error: function (xhr, status, error) {
+                cleanBookNotification.error(xhr.responseText, "Qbicles");
+            }
+        }).always(function () {
+
+        });
+    });
+
+    function validateEmail(email) {
+    var re = /^(([^<>()\[\]\\.,;:\s@@"]+(\.[^<>()\[\]\\.,;:\s@@"]+)*)|(".+"))@@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+    return re.test(String(email).toLowerCase());
+    }
+
+</script>

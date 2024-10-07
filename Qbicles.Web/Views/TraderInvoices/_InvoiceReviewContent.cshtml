@@ -1,0 +1,827 @@
+﻿@using Qbicles.BusinessRules
+@using Qbicles.Models
+@using Qbicles.Models.Trader
+@model Invoice
+@{
+    ViewBag.Title = "Invoice #" + Model.Reference?.FullRef;
+
+    var timeZone = (string)ViewBag.CurrentTimeZone ?? "";
+
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var pageSize = HelperClass.activitiesPageSize;
+
+    var userId = ViewBag.CurrentUserId;
+    var userRight = "none";
+    var traderAppRight = (IsReviewerAndApproverModel)ViewBag.TraderApprovalRight;
+
+    var invoiceType = "saleInvoice";
+    if (Model.Sale == null && Model.Purchase != null)
+    {
+        invoiceType = "purchaseInvoice";
+    }
+
+    //o1
+    if (!(traderAppRight?.IsInitiators ?? false) && !(traderAppRight?.IsReviewer ?? false) && !(traderAppRight?.IsApprover ?? false))
+    {
+        userRight = "none";
+
+    }//hiden approval, no edit
+     //o2
+    else if ((traderAppRight?.IsInitiators ?? false) && !(traderAppRight?.IsReviewer ?? false) && !(traderAppRight?.IsApprover ?? false))
+    {
+        userRight = "initiator";
+    } // readonly approval, no edit
+      //o3
+    else if ((traderAppRight?.IsReviewer ?? false) && Model.InvoiceApprovalProcess?.RequestStatus == ApprovalReq.RequestStatusEnum.Pending)
+    {
+        userRight = "reviewer";
+    }//If the user is an ApprovalReq.ApprovalRequestDefinition.Reviewer and the Status of the ApprovalReq is Pending, the drop down displays the items Discard, or Send to Approval.
+     //o4
+    else if ((traderAppRight?.IsApprover ?? false) && Model.InvoiceApprovalProcess?.RequestStatus == ApprovalReq.RequestStatusEnum.Reviewed)
+    {
+        userRight = "approver";
+    }
+    //o4.1
+    else if ((traderAppRight?.IsApprover ?? false) && Model.InvoiceApprovalProcess?.RequestStatus == ApprovalReq.RequestStatusEnum.Pending)
+    {
+        userRight = "initiator";
+    }
+    //o5
+    else if (Model.InvoiceApprovalProcess?.RequestStatus == ApprovalReq.RequestStatusEnum.Approved
+             || Model.InvoiceApprovalProcess?.RequestStatus == ApprovalReq.RequestStatusEnum.Denied
+             || Model.InvoiceApprovalProcess?.RequestStatus == ApprovalReq.RequestStatusEnum.Discarded)
+    {
+        userRight = "completed";
+    }
+
+    var confirm = "";
+    var isdisabled = "";
+    var isChange = "";
+    if (userRight == "initiator" || userRight == "completed" || userRight == "none")
+    {
+        isChange = "disabled";
+        confirm = "hidden";
+    }
+    if (Model.Status != TraderInvoiceStatusEnum.PendingReview)
+    {
+        isdisabled = "disabled";
+    }
+    if (Model.InvoiceApprovalProcess?.RequestStatus != ApprovalReq.RequestStatusEnum.Pending)
+    {
+    }
+    if (isChange == "disabled")
+    {
+        confirm = "hidden";
+    }
+
+    var invoiceTotal = (decimal)ViewBag.InvoiceTotal;
+    var invoiceSaleTax = (decimal)ViewBag.InvoiceSaleTax;
+    var subtotal = (decimal)ViewBag.SubTotal;
+
+
+    var dateFormat = ViewBag.CurrentDateFormat;
+    var timeFormat = ViewBag.CurrentTimeFormat;
+
+    var today = (DateTime)ViewBag.Today;
+    var timeline = (List<ApprovalStatusTimeline>)ViewBag.Timeline;
+    var timelineDate = (List<DateTime>)ViewBag.TimelineDate;
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+}
+
+<div class="content-wrapper qbicle-detail mdv2-wrapper" style="position: relative;">
+
+
+    <!-- Main content -->
+    <section class="mdv2 dash" data-tooltip-color="teal" data-tooltip-delay="300" data-tooltip-animate-function="spin" style="border-top: 1px solid #f1f1f1;">
+        <input type="hidden" id="action_approval_default" value="@(Model.InvoiceApprovalProcess?.RequestStatus)" />
+        <input id="invoice-id" hidden value="@Model.Id" />
+        <input id="invoice-key" hidden value="@Model.Key" />
+        <!-- App bar -->
+        <div class="mdv2-col-app" style="margin-bottom: 0;">
+
+            <div data-spy="affix" class="contained-sidebar">
+
+                <div class="activity-overview plain company-overview welcome-info" style="text-align: left !important; flex: none; margin: 0 0 30px 0; padding-top: 30px; padding-bottom: 0;">
+
+                    <div class="pull-left" style="margin-bottom: 15px;">
+                        <a onclick="QbicleSelected('@(Model.Workgroup?.Qbicle.Key??"0")','Dashboard')" class="btn btn-primary"><i class="fa fa-angle-up"></i> &nbsp; View Qbicle</a>
+                        <a href="/Trader/AppTrader" onclick="setTabTrader('cashbank')" class="btn btn-primary"><i class="fa fa-th"></i> &nbsp; Cash &amp; Bank</a>
+                        @{
+                            if (invoiceType == "saleInvoice")
+                            {
+                                <a href="/TraderSales/SaleMaster?key=@Model.Sale.Key" class="btn btn-info"><i class="fa fa-eye"></i> &nbsp; View Sale</a>
+                            }
+                            else if (invoiceType == "purchaseInvoice")
+                            {
+                                <a href="/TraderPurchases/PurchaseMaster?id=@Model.Purchase.Id" class="btn btn-info"><i class="fa fa-eye"></i> &nbsp; View Purchase</a>
+                            }
+                        }
+                    </div>
+                    <div class="clearfix"></div>
+
+                    <br />
+
+                    <h6 class="subhead">Trader Invoice Approval Request</h6>
+                    <h1 style="line-height: 1.2;">Invoice @(Model.Reference?.FullRef)</h1>
+                    <span class="label label-lg label-primary">@Model.Workgroup.Topic.Name</span>
+                    @{
+                        var cssTrader = "";
+                        switch (Model.Status)
+                        {
+                            case TraderInvoiceStatusEnum.Draft:
+                                cssTrader = StatusLabelStyle.Draft;
+                                break;
+                            case TraderInvoiceStatusEnum.PendingReview:
+                                cssTrader = StatusLabelStyle.Pending;
+                                break;
+                            case TraderInvoiceStatusEnum.PendingApproval:
+                                cssTrader = StatusLabelStyle.Reviewed;
+                                break;
+                            case TraderInvoiceStatusEnum.InvoiceDenied:
+                                cssTrader = StatusLabelStyle.Denied;
+                                break;
+                            case TraderInvoiceStatusEnum.InvoiceApproved:
+                                cssTrader = StatusLabelStyle.Approved;
+                                break;
+                            case TraderInvoiceStatusEnum.InvoiceDiscarded:
+                                cssTrader = StatusLabelStyle.Discarded;
+                                break;
+                        }
+                    }
+                    <span class="label label-lg @cssTrader">@Model.Status.GetDescription()</span>
+                    <div class="clearfix"></div>
+
+
+                    <br /><br /><br />
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-6">
+                            <label>Created</label><br />
+                            <p>@Model.CreatedDate.ConvertTimeFromUtc(timeZone).ToString($"{dateFormat} {timeFormat}")</p>
+                        </div>
+                        <div class="col-xs-12 col-sm-6">
+                            <label>Creator</label><br />
+                            <p><a href="/Community/UserProfilePage?uId=@(Model.CreatedBy.Id)">@HelperClass.GetFullNameOfUser(Model.CreatedBy)</a></p>
+                        </div>
+                    </div>
+
+
+                    <br /><br />
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-6">
+                            <button class="btn btn-primary community-button" style="margin-bottom: 3px;" data-toggle="modal" data-target="#team-view">
+                                <i class="fa fa-users"></i> &nbsp; Team
+                            </button>
+                        </div>
+                        <div class="col-xs-12 col-sm-6">
+                            <button class="btn btn-info community-button" data-toggle="modal" data-target="#history-view"><i class="fa fa-history"></i> &nbsp; History</button>
+                        </div>
+                    </div>
+
+                </div>
+
+
+            </div>
+        </div>
+        <!-- END App bar -->
+        <!-- Main area -->
+        <div class="mdv2-col-dash">
+
+            <div class="spacing">
+
+                @{
+                    if (confirm == "" && Model.InvoiceApprovalProcess != null)
+                    {
+                        <div style="width: 500px; max-width: 100%; margin-bottom: 40px;">
+                            <div class="alert activity-overview generic reviewer" style="padding: 10px 20px !important; margin: 0;">
+                                <form name="action" method="post" action="" style="padding: 10px 0;">
+                                    <label for="status">Approval options available to you</label>
+                                    <div class="input-group">
+
+
+                                        <select @isChange id="action_approval" class="form-control select2" style="width: 100%;" data-placeholder="Please choose...">
+                                            @{
+                                                switch (userRight)
+                                                {
+                                                    case "initiator":
+                                                    case "none":
+                                                        <option>@Model.InvoiceApprovalProcess.RequestStatus</option>
+                                                        break;
+                                                    case "reviewer":
+                                                        <option value="Reviewed" selected>Send to Approval</option>
+                                                        <option value="Discarded">Discard</option>
+                                                        break;
+                                                    case "approver":
+                                                        <option value="Approved" selected>Approve</option>
+                                                        <option value="Pending">Send back to Review</option>
+                                                        <option value="Denied">Deny</option>
+                                                        break;
+                                                    case "completed":
+                                                        <option>@Model.InvoiceApprovalProcess.RequestStatus</option>
+                                                        break;
+                                                }
+                                            }
+                                        </select>
+                                        <span class="input-group-btn">
+                                            @{if (userRight != "none")
+                                                {
+                                                    var approvalId = Model.InvoiceApprovalProcess.Id.Encrypt();
+                                                    <button onclick="javascript:UpdateStatusApproval('@approvalId');" class="btn btn-success">Confirm</button>
+                                                }
+                                            }
+                                        </span>
+
+
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    }
+                }
+
+
+                <br />
+
+                <section class="associated_forms">
+
+
+                    <ul class="nav nav-pills alt" style="margin: 0 0 30px 0;">
+                        <li class="active"><a href="#" data-toggle="tab" data-target="#approval-0">Invoice</a></li>
+                        <li><a href="#items" data-toggle="tab">Items &amp; Products</a></li>
+                        <li><a href="#" data-toggle="tab" data-target="#approval-1">Comments &amp; Files</a></li>
+                    </ul>
+
+
+                    <div class="tab-content">
+
+
+                        <!-- Invoice -->
+                        <div class="tab-pane fade in active" id="approval-0">
+
+                            <div class="invoice">
+
+                                <div class="row">
+                                    <div class="col-xs-12">
+
+
+                                        <div class="card">
+                                            <div class="card-body p-0" style="position: relative;">
+                                                <div class="row p-5">
+                                                    <div class="col-md-6">
+                                                        <img src="@api@(Model.Workgroup?.Qbicle.Domain.LogoUri)&size=M" style="width: 250px; height: auto;">
+                                                    </div>
+
+                                                    <div class="col-md-6 text-right">
+                                                        <p class="font-weight-bold mb-1">Invoice @(Model.Reference?.FullRef)</p>
+                                                        <p class="text-muted">Due: <input @isdisabled id="invoice-duedate" type="text" @isChange class="inline form-control singledate" value="@Model.DueDate.ConvertTimeFromUtc(timeZone).ToString(dateFormat)" style="width: 100px;"></p>
+
+                                                        <textarea @isdisabled onfocusout="OnFocusOutControl(this.value)" @isChange onfocus="OnFocusControl(this.value)" id="invoice-invoiceaddress" class="form-control invoice-block" style="height: 82px;">
+                                                        @{
+                                                            if (!string.IsNullOrEmpty(Model.InvoiceAddress))
+                                                            {
+                                                                @Model.InvoiceAddress.Replace(Environment.NewLine,"<br/>")
+                                                            }
+                                                        }
+                                                        </textarea>
+                                                        <div class="clearfix"></div>
+                                                    </div>
+                                                </div>
+
+                                                <hr class="my-2">
+
+                                                <div class="row pb-5 p-5">
+                                                    <div class="col-md-6">
+                                                        <p class="font-weight-bold mb-4">Client Information</p>
+                                                        @if (Model.Sale != null && Model.Sale.Purchaser != null)
+                                                        {
+                                                            <p class="mb-1">@Model.Sale.Purchaser.Name</p><br />
+                                                            <p>
+                                                                @Html.Raw(Model.Sale?.Purchaser?.Address.ToAddress().Replace(",", "<br />"))
+                                                            </p>
+                                                        }
+                                                        else if (Model.Purchase != null && Model.Purchase.Vendor != null)
+                                                        {
+                                                            <p class="mb-1">@Model.Purchase.Vendor.Name</p><br />
+                                                            <p>
+                                                                @Html.Raw(Model.Purchase?.Vendor?.Address.ToAddress().Replace(",", "<br />"))
+                                                            </p>
+                                                        }
+                                                    </div>
+
+                                                    <div class="col-md-6 text-right">
+                                                        <p class="font-weight-bold mb-4">Payment Details</p>
+                                                        <textarea onfocusout="OnFocusOutControl(this.value)" @isdisabled onfocus="OnFocusControl(this.value)" id="invoice-paymentdetails" class="form-control invoice-block" style="height: 110px;">
+                                                             @{
+                                                                 if (!string.IsNullOrEmpty(Model.PaymentDetails))
+                                                                 {
+                                                                     @Model.PaymentDetails.Replace(Environment.NewLine,"<br/>")
+                                                                 }
+                                                             }
+                                                        </textarea>
+                                                        <div class="clearfix"></div>
+                                                    </div>
+                                                </div>
+
+                                                <div class="row p-5">
+                                                    <div class="col-xs-12">
+                                                        <div class="table-responsive">
+                                                            <table class="table table-striped table-hover">
+                                                                <thead>
+                                                                    <tr>
+                                                                        <th class="border-0 small font-weight-bold">Item</th>
+                                                                        <th class="border-0 small font-weight-bold">Invoice qty</th>
+                                                                        <th class="border-0 small font-weight-bold">Unit</th>
+                                                                        <th class="border-0 small font-weight-bold">Invoice discount (%)</th>
+                                                                        <th class="border-0 small font-weight-bold">Invoice tax</th>
+                                                                        @if (Model.Sale != null)
+                                                                        {
+                                                                            <th class="border-0 small font-weight-bold">Invoice Total <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                                                        }
+                                                                        else
+                                                                        {
+                                                                            <th class="border-0 small font-weight-bold">Bill Total <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                                                        }
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody>
+                                                                    @foreach (var inv in Model.InvoiceItems)
+                                                                    {
+                                                                        string taxrateName = "(Tax free)";
+                                                                        if (inv.TransactionItem.Taxes != null)
+                                                                        {
+                                                                            var priceIvi = inv.TransactionItem.SalePricePerUnit * inv.InvoiceItemQuantity;
+                                                                            taxrateName = priceIvi.InvoiceTaxRatesHtml(inv.TransactionItem.Taxes, currencySettings);
+                                                                        }
+                                                                        <tr>
+                                                                            <td>@inv.TransactionItem.TraderItem.Name</td>
+                                                                            <td>@inv.InvoiceItemQuantity.ToDecimalPlace(currencySettings)</td>
+                                                                            <td>
+                                                                                @{
+                                                                                    if (inv.TransactionItem.Unit != null)
+                                                                                    {
+                                                                                        @inv.TransactionItem.Unit.Name
+                                                                                    }
+                                                                                }
+                                                                            </td>
+                                                                            <td>@inv.InvoiceDiscountValue</td>
+                                                                            <td>
+                                                                                @Html.Raw(taxrateName)
+                                                                            </td>
+                                                                            <td>@inv.InvoiceValue.ToDecimalPlace(currencySettings)</td>
+                                                                        </tr>
+                                                                    }
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div class="d-flex flex-row-reverse bg-dark text-white p-5">
+                                                    <div class="py-3 px-5 text-right">
+                                                        <div class="mb-2">Total</div>
+                                                        <div class="h2 font-weight-light">@invoiceTotal.ToCurrencySymbol(currencySettings)</div>
+                                                    </div>
+
+                                                    <div class="py-3 px-5 text-right">
+                                                        <div class="mb-2">Sales tax</div>
+                                                        <div class="h2 font-weight-light">@invoiceSaleTax.ToCurrencySymbol(currencySettings)</div>
+                                                    </div>
+
+                                                    <div class="py-3 px-5 text-right">
+                                                        <div class="mb-2">Subtotal</div>
+                                                        <div class="h2 font-weight-light">@subtotal.ToCurrencySymbol(currencySettings)</div>
+                                                    </div>
+                                                </div>
+
+                                                <div class="row p-5">
+                                                    <div class="col-md-6">
+                                                        <img src="@api@(Model.Workgroup?.Qbicle.LogoUri)&size=T" style="width: 80px; height: auto;">
+                                                    </div>
+
+                                                    <div class="col-md-6 text-right">
+                                                        <p class="text-muted">Powered by Qbicles</p>
+
+                                                        <p class="text-muted" style="font-size: 12px;">
+                                                            Strapline information or copyright notices here
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+
+                            </div> <!-- ./invoice -->
+
+                        </div>
+                        <!-- END Invoice -->
+                        <!-- Items & Products -->
+                        <div class="tab-pane fade" id="items">
+
+                            <table class="datatable table-striped table-hover" style="width: 100%;" data-order='[[1, "asc"]]'>
+                                <thead>
+                                    <tr>
+                                        <th data-priority="5" style="width: 60px;" data-orderable="false"></th>
+                                        <th data-priority="1">Item</th>
+                                        <th data-priority="1">Unit</th>
+                                        <th data-priority="1">Price per unit <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                        <th data-priority="2">Qty</th>
+                                        <th data-priority="3">Discount</th>
+                                        <th data-priority="2">Total item tax <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                        <th data-priority="2">Sale value <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                        <th data-priority="3">Invoice qty</th>
+                                        <th data-priority="3">Invoice tax <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                        <th data-priority="3">Invoice discount (%)</th>
+                                        <th data-priority="3">Invoice value <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @if (Model.InvoiceItems.Any())
+                                    {
+                                        foreach (var item in Model.InvoiceItems)
+                                        {
+                                            string taxrateName = "(Tax free)";
+                                            decimal taxRate = 0;
+                                            if (item.TransactionItem.Taxes != null)
+                                            {
+                                                taxRate = item.TransactionItem.SumTaxRates();
+                                                taxrateName = item.TransactionItem.StringTaxRates(currencySettings);
+
+                                            }
+                                            <tr>
+                                                <td>
+                                                    <div class="table-avatar mini" style="background-image: url('@api@item.TransactionItem.TraderItem.ImageUri');">&nbsp;</div>
+                                                </td>
+                                                <td>@item.TransactionItem.TraderItem.Name</td>
+                                                <td>
+                                                    @if (item.TransactionItem.Unit != null)
+                                                    {
+                                                        @item.TransactionItem.Unit.Name
+                                                    }
+                                                </td>
+                                                <td>@item.TransactionItem.SalePricePerUnit.ToDecimalPlace(currencySettings)</td>
+                                                <td>@item.TransactionItem.Quantity.ToDecimalPlace(currencySettings)</td>
+                                                <td>
+                                                    <span>@item.TransactionItem.Discount.ToDecimalPlace(currencySettings)</span>%
+                                                </td>
+                                                <td>
+                                                    <span hidden="" class="taxrate_value_@item.Id">@taxRate</span>
+                                                    @Html.Raw(taxrateName)
+                                                </td>
+                                                <td>
+                                                    <span>@item.TransactionItem.Price.ToDecimalPlace(currencySettings)</span>
+                                                </td>
+                                                <td>
+                                                    @item.InvoiceItemQuantity
+                                                </td>
+                                                <td>
+                                                    @(item.InvoiceTaxValue.HasValue ? item.InvoiceTaxValue.Value.ToDecimalPlace(currencySettings) : ((decimal)0).ToDecimalPlace(currencySettings))
+                                                </td>
+                                                <td>@item.InvoiceDiscountValue.ToDecimalPlace(currencySettings)%</td>
+                                                <td>@item.InvoiceValue.ToDecimalPlace(currencySettings)</td>
+                                            </tr>
+                                        }
+                                    }
+                                </tbody>
+                            </table>
+
+                        </div>
+                        <!-- END Items & Products -->
+                        <!-- Comments & Files -->
+                        <div class="tab-pane fade" id="approval-1">
+
+                            @if (Model.InvoiceApprovalProcess != null)
+                            {
+                                <br /><br />
+                                @* comment and media*@
+                                <div class="app_topnav entity_adds" style="background: #fff; padding: 0;">
+                                    <ul class="nav nav-pills app_main_nav">
+                                        <li role="presentation" class="active">
+                                            <a href="#tab1" data-toggle="tab">
+                                                <i class="fa fa-comments"></i>
+                                                Comments
+                                            </a>
+                                        </li>
+                                        <li role="presentation">
+                                            <a href="#tab2" data-toggle="tab">
+                                                <i class="fa fa-folder-open"></i>
+                                                Files
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </div>
+                                <br />
+                                <div class="row">
+                                    <div class="col-xs-12">
+                                        <div class="tab-content">
+                                            <div class="tab-pane fade in active" id="tab1">
+                                                <div class="row">
+                                                    <div class="col-xs-12">
+                                                        <div class="well" style="max-width: 800px;">
+                                                            <div class="form-group">
+                                                                <label for="add-comment">Add a comment</label>
+                                                                <textarea id="txt-comment-approval" name="add-comment" class="form-control"></textarea>
+                                                            </div>
+                                                            <button onclick="addCommentForApproval('@(Model.InvoiceApprovalProcess?.Key ?? "")')" class="btn btn-success">Submit</button>
+                                                        </div>
+                                                        <br />
+                                                    </div>
+                                                </div>
+
+                                                <div id="list-comments-approval">
+                                                    @foreach (var post in Model.InvoiceApprovalProcess.Posts.OrderByDescending(x => x.StartedDate).Take(pageSize))
+                                                    {
+
+                                                        <!-- General post -->
+                                                        var fullName = HelperClass.GetFullNameOfUser(post.CreatedBy, userId);
+                                                        <article id="post-@post.Id" class="activity post">
+                                                            <img style="background-image: url('@api@post.CreatedBy.ProfilePic')" class="activity-avatar" />
+                                                            <div class="activity-detail">
+                                                                <div class="activity-meta">
+                                                                    <h4>@fullName</h4>
+                                                                    <small>@post.StartedDate.ConvertTimeFromUtc(timeZone).ToString(dateFormat + ", hh:mmtt")</small>
+                                                                </div>
+                                                                <div class="activity-overview media-comment">
+                                                                    <p>
+                                                                        @Html.Raw(post.Message.Replace(Environment.NewLine, "<br />"))
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                            <div class="clearfix"></div>
+                                                        </article>
+                                                        <!-- END General post -->
+                                                    }
+                                                </div>
+                                                @if (Model.InvoiceApprovalProcess.Posts.Count() > @pageSize)
+                                                {
+                                                    <button id="btnLoadPosts" onclick="LoadMorePosts('@Model.InvoiceApprovalProcess.Key', @pageSize,'list-comments-approval')" class="btn btn-info trigger_load">Load older posts</button>
+                                                }
+
+                                            </div>
+
+                                            <div class="tab-pane fade" id="tab2">
+                                                <br />
+                                                <a href="javascript:void(0)" class="btn btn-success" id="btnAddFile" data-toggle="modal" data-target="#create-media"><i class="fa fa-upload"></i> &nbsp; Upload a file</a>
+
+                                                <br /><br />
+                                                <div id="list-medias">
+                                                    @if (Model.InvoiceApprovalProcess.SubActivities.Count > 0)
+                                                    {
+                                                        foreach (var item in Model.InvoiceApprovalProcess.SubActivities.OrderByDescending(x => x.Id).Take(pageSize))
+                                                        {
+                                                            var media = (QbicleMedia)item;
+                                                            var createdByName = HelperClass.GetFullNameOfUser(media.StartedBy, userId);
+                                                            var createdDate = media.StartedDate.Date == DateTime.UtcNow.Date ? "Today, " + media.StartedDate.ConvertTimeFromUtc(timeZone).ToString("hh:mmtt").ToLower() : media.StartedDate.ConvertTimeFromUtc(timeZone).ToString(dateFormat + " hh:mmtt").ToLower();
+                                                            var mediaLastUpdate = media.VersionedFiles.Where(e => !e.IsDeleted).OrderByDescending(x => x.UploadedDate).First() ?? null;
+                                                            var lastUpdateFile = mediaLastUpdate != null ? (mediaLastUpdate.UploadedDate.Date == DateTime.UtcNow.Date ? "Today, " + mediaLastUpdate.UploadedDate.ConvertTimeFromUtc(timeZone).ToString("hh:mmtt").ToLower() : mediaLastUpdate.UploadedDate.ConvertTimeFromUtc(timeZone).ToString(dateFormat + " hh:mmtt").ToLower()) : createdDate;
+                                                            //Media post
+                                                            <article class="activity media">
+                                                                <img style="background-image: url('@api@media.StartedBy.ProfilePic')" class="activity-avatar" />
+                                                                <div class="activity-detail">
+                                                                    <div class="activity-meta">
+                                                                        <h4>@createdByName</h4>
+                                                                        <small>@createdDate</small>
+                                                                        <br class="visible-xs">
+                                                                    </div>
+                                                                    <div class="activity-overview media">
+                                                                        <div class="row">
+                                                                            <div class="col-xs-12 col-sm-5 col-md-6 col-lg-5">
+                                                                                <a href="javascript:void(0)" onclick="ShowMediaPage('@media.Key')">
+                                                                                    @if (media.FileType.Type == "Image File")
+                                                                                    {
+                                                                                        <img id="media-@item.Id" class="img-responsive" src='@api@mediaLastUpdate.Uri' />
+                                                                                    }
+                                                                                    else
+                                                                                    {
+                                                                                        <img src="@media.FileType.IconPath" class="img-responsive">
+                                                                                    }
+                                                                                </a>
+                                                                            </div>
+                                                                            <div class="col-xs-12 col-sm-7 col-md-6 col-lg-7 description">
+                                                                                <h5>@media.Name</h5>
+                                                                                <p>
+                                                                                    @media.Description
+                                                                                </p>
+                                                                                <small>@media.FileType.Type | Update @lastUpdateFile</small>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="clearfix"></div>
+                                                            </article>
+                                                            <!-- END Media post -->
+                                                        }
+                                                    }
+                                                </div>
+                                                @if (Model.InvoiceApprovalProcess.SubActivities.Count() > @pageSize)
+                                                {
+                                                    <button id="btnLoadMedias" onclick="LoadMoreMedias(@Model.InvoiceApprovalProcess.Id,@pageSize,'list-medias')" class="btn btn-info trigger_load">Load older medias</button>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+
+                            }
+
+                        </div>
+                        <!-- END Comments & Files -->
+
+
+                    </div>
+
+                </section>
+
+                <br /><br /><br />
+
+            </div>
+
+        </div>
+
+
+    </section>
+    <!-- ./content -->
+
+</div>
+<!-- /.content-wrapper -->
+
+
+<div class="modal fade left" id="history-view" role="dialog" aria-labelledby="history-view">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Approval history</h5>
+            </div>
+            <div class="modal-body">
+
+                <ul class="timeline" style="margin-left: -5px;">
+                    @foreach (var date in timelineDate)
+                    {
+                        var dateStart = date.ConvertTimeFromUtc(timeZone).DatetimeToOrdinal();
+                        var dateStr = date.Date == today.Date ? "Today" : dateStart;
+
+                        <li class="time-label">
+                            <span class="label label-lg label-info">
+                                @dateStr
+                            </span>
+                        </li>
+                        foreach (var tl in timeline.Where(d => d.LogDate.Date == date.Date))
+                        {
+                            <li>
+                                <div class="person" style="background-image: url('@api@tl.UserAvatar');"></div>
+                                <div class="timeline-item">
+                                    <span class="time"><i class="fa fa-clock-o"></i> @tl.Time</span>
+                                    <h4 class="timeline-header">@tl.Status</h4>
+                                </div>
+                            </li>
+                        }
+                        <br />
+                    }
+
+
+                </ul>
+
+
+                <br />
+                <button class="btn btn-primary" data-dismiss="modal">Close</button>
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+
+
+<div class="modal fade left" id="team-view" role="dialog" aria-labelledby="team-view">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Team Members</h5>
+            </div>
+            <div class="modal-body">
+
+                <div class="row">
+                    <div class="col-xs-12">
+                        <ul class="app_subnav">
+                            <li class="active"><a href="#initiators" data-toggle="tab">Initiators</a></li>
+                            <li><a href="#reviewers" data-toggle="tab">Reviewers</a></li>
+                            <li><a href="#approvers" data-toggle="tab">Approvers</a></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <br />
+
+                <div class="tab-content">
+
+
+                    <div class="tab-pane fade in active" id="initiators">
+
+                        <ul class="avatar-listing team unstyled" style="margin-bottom: 0 !important;">
+                            @foreach (var initiator in Model.Workgroup.Members)
+                            {
+                                var title = "Initiator";
+                                if (Model.Workgroup.Approvers.Any(e => e.Id == initiator.Id))
+                                {
+                                    title += " , Approver";
+                                }
+                                if (Model.Workgroup.Reviewers.Any(e => e.Id == initiator.Id))
+                                {
+                                    title += " , Reviewer";
+                                }
+
+                                <li>
+                                    <a href="javascript:">
+                                        <div class="owner-avatar">
+                                            <div class="avatar-sm" style="background: url('@api@initiator.ProfilePic');"></div>
+                                        </div>
+                                        <h5>
+                                            @HelperClass.GetFullNameOfUser(initiator)<br>
+                                            <small>
+                                                @title
+                                            </small>
+                                        </h5>
+                                    </a>
+                                </li>
+
+                            }
+                        </ul>
+
+                    </div>
+
+                    <div class="tab-pane fade" id="reviewers">
+
+                        <ul class="avatar-listing team unstyled" style="margin-bottom: 0 !important;">
+                            @foreach (var review in Model.Workgroup.Reviewers)
+                            {
+                                <li>
+                                    <a href="javascript:">
+                                        <div class="owner-avatar">
+                                            <div class="avatar-sm" style="background: url('@api@review.ProfilePic');"></div>
+                                        </div>
+                                        <h5>
+                                            @HelperClass.GetFullNameOfUser(review)<br>
+                                            <small>
+                                                @{
+                                                    var detail = "Reviewer";
+                                                    if (Model.Workgroup.Approvers.Any(e => e.Id == review.Id))
+                                                    {
+                                                        detail += " ,Approver";
+                                                    }
+                                                }
+                                                @detail
+                                            </small>
+                                        </h5>
+                                    </a>
+                                </li>
+                            }
+
+                        </ul>
+
+                    </div>
+
+                    <div class="tab-pane fade" id="approvers">
+                        <ul class="avatar-listing team unstyled" style="margin-bottom: 0 !important;">
+                            @foreach (var review in Model.Workgroup.Approvers)
+                            {
+                                <li>
+                                    <a href="javascript:">
+                                        <div class="owner-avatar">
+                                            <div class="avatar-sm" style="background: url('@api@review.ProfilePic');"></div>
+                                        </div>
+                                        <h5>
+                                            @HelperClass.GetFullNameOfUser(review)<br>
+                                            <small>
+                                                @{
+                                                    var detail = "Approver";
+                                                    if (Model.Workgroup.Approvers.Any(e => e.Id == review.Id))
+                                                    {
+                                                        detail += " ,Reviewer";
+                                                    }
+                                                }
+                                                @detail
+                                            </small>
+                                        </h5>
+                                    </a>
+                                </li>
+                            }
+                        </ul>
+                    </div>
+
+                </div>
+
+                <br /><br />
+                <button class="btn btn-primary" data-dismiss="modal">Close</button>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+
+<script>
+    $('#invoice_content .select2').select2({
+        placeholder: 'Please choose...'
+    });
+</script>

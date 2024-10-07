@@ -1,0 +1,472 @@
+﻿@using Qbicles.Models;
+@using Qbicles.BusinessRules;
+@model List<QbicleActivity>
+@{
+    string type = ViewBag.type as string;
+    var pinned = ViewBag.Pinneds as List<int>;
+    var api = (string)ViewBag.DocRetrievalUrl;
+    string currentTimeZone = ViewBag.currentTimeZone;
+    var dateFormat = (string)ViewBag.CurrentDateFormat;
+}
+
+@if (Model != null && Model.Count() > 0)
+{
+    foreach (var item in Model)
+    {
+        var isPinned = false;
+        var showDetail = "";
+        var PriorityName = "";
+        var cssStatus = "";
+        var source = "";
+        switch (item.ActivityType)
+        {
+            case QbicleActivity.ActivityTypeEnum.ApprovalRequest:
+                var QbApproval = (ApprovalReq)item;
+                var manuJob = QbApproval.Manufacturingjobs.FirstOrDefault();
+                if (QbApproval.Transfer.Any())
+                {
+                    showDetail = "/TraderTransfers/TransferReview?key=" + QbApproval.Transfer.FirstOrDefault().Key;
+                }
+                else if (QbApproval.Sale.Any())
+                {
+                    showDetail = "/TraderSales/SaleReview?key=" + QbApproval.Sale.FirstOrDefault().Key;
+                }
+                else if (QbApproval.Purchase.Any())
+                {
+                    showDetail = "/TraderPurchases/PurchaseReview?id=" + QbApproval.Purchase.FirstOrDefault().Id;
+                }
+                else if (QbApproval.TraderContact.Any())
+                {
+                    showDetail = "/TraderContact/ContactReview?id=" + QbApproval.TraderContact.FirstOrDefault().Id;
+                }
+                else if (QbApproval.Invoice.Any())
+                {
+                    showDetail = "/TraderInvoices/InvoiceReview?key=" + QbApproval.Invoice.FirstOrDefault().Key;
+                }
+                else if (QbApproval.Payments.Any())
+                {
+                    showDetail = "/TraderPayments/PaymentReview?id=" + QbApproval.Payments.FirstOrDefault().Id; ;
+                }
+                else if (QbApproval.SpotCounts.Any())
+                {
+                    showDetail = "/TraderSpotCount/SpotCountReview?id=" + QbApproval.SpotCounts.FirstOrDefault().Id;
+                }
+                else if (QbApproval.WasteReports.Any())
+                {
+                    showDetail = "/TraderWasteReport/WasteReportReview?id=" + QbApproval.WasteReports.FirstOrDefault().Id;
+                }
+                else if (QbApproval.Manufacturingjobs.Any())
+                {
+                    showDetail = "/Manufacturing/ManuJobReview?id=" + QbApproval.Manufacturingjobs.FirstOrDefault().Id;
+                }
+                switch (QbApproval.RequestStatus)
+                {
+                    case ApprovalReq.RequestStatusEnum.Pending:
+                        cssStatus = "review";
+                        PriorityName = "Awaiting Review";
+                        break;
+                    case ApprovalReq.RequestStatusEnum.Reviewed:
+                        cssStatus = "pending";
+                        PriorityName = "Awaiting Approval";
+
+                        break;
+                    case ApprovalReq.RequestStatusEnum.Approved:
+                        cssStatus = "complete";
+                        PriorityName = ApprovalReq.RequestStatusEnum.Approved.ToString();
+                        break;
+                    case ApprovalReq.RequestStatusEnum.Denied:
+                    case ApprovalReq.RequestStatusEnum.Discarded:
+                        cssStatus = "complete";
+                        PriorityName = ApprovalReq.RequestStatusEnum.Discarded.ToString();
+                        break;
+                }
+                <article class="@cssStatus">
+                    <div class="record">
+                        <div class="col" style="flex: 0 1 40px;">
+                            <div class="dropdown">
+                                <button class="btn btn-default dropdown-toggle more" type="button" data-toggle="dropdown" style="padding: 0;">
+                                    <i class="fa fa-ellipsis-v"></i>
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li>
+                                        @{isPinned = (pinned != null && pinned.Any(e => e == QbApproval.Id)) ? true : false;}
+                                        @if (isPinned)
+                                        {
+                                            <a href="javascript:void(0);" onclick="CalPinned(@QbApproval.Id,false)" id="textPin-@QbApproval.Id"><span id="textPin-@QbApproval.Id"> Unpin this</span></a>
+                                        }
+                                        else
+                                        {
+                                            <a href="javascript:void(0);" onclick="CalPinned(@QbApproval.Id,false)" id="textPin-@QbApproval.Id"><span id="textPin-@QbApproval.Id"> Pin this</span></a>
+                                        }
+                                    </li>
+                                </ul>
+                            </div>
+
+                        </div>
+                        <div class="col titleblock">
+                            <a href="#" data-toggle="modal" data-target="#process-more" onclick="LoadProcessMoreModal('@QbApproval.Key')">
+                                <p class="tasktitle">
+                                    <span class="label label-lg label-soft">Process</span>
+                                    &nbsp;@(QbApproval.Manufacturingjobs.Count() <= 0 ? QbApproval.Name : ("Compound Item Assembly: " + (manuJob?.Reference?.FullRef ?? "") + " " + (manuJob?.Product?.Name ?? "")))
+                                </p>
+                            </a>
+                        </div>
+                        @{
+                            if (QbApproval.JournalEntries.Any() || QbApproval.BKAccounts.Any())
+                            {
+                                source = "Bookkeeping";
+                            }
+                            else if (QbApproval.EmailPostApproval.Any() || QbApproval.CampaigPostApproval.Any())
+                            {
+                                source = "Sales & Marketing";
+                            }
+                            else
+                            {
+                                source = "Trader";
+                            }
+                        }
+                        <div class="col dueblock hidden-xs">
+                            <p><i class="fa fa-calendar iconlb"></i> &nbsp; @source, @QbApproval.StartedDate.ToString(dateFormat + " hh:mmtt").ToLower()</p>
+                        </div>
+                    </div>
+                </article>
+                break;
+            case QbicleActivity.ActivityTypeEnum.ApprovalRequestApp:
+                var QbApprovalApp = (ApprovalReq)item;
+                switch (QbApprovalApp.RequestStatus)
+                {
+                    case ApprovalReq.RequestStatusEnum.Pending:
+                        cssStatus = "review";
+                        PriorityName = "Awaiting Review";
+                        break;
+                    case ApprovalReq.RequestStatusEnum.Reviewed:
+                        cssStatus = "pending";
+                        PriorityName = "Awaiting Approval";
+
+                        break;
+                    case ApprovalReq.RequestStatusEnum.Approved:
+                        cssStatus = "complete";
+                        PriorityName = ApprovalReq.RequestStatusEnum.Approved.ToString();
+                        break;
+                    case ApprovalReq.RequestStatusEnum.Denied:
+                    case ApprovalReq.RequestStatusEnum.Discarded:
+                        cssStatus = "complete";
+                        PriorityName = ApprovalReq.RequestStatusEnum.Discarded.ToString();
+                        break;
+                }
+
+                <article class="@cssStatus">
+                    <div class="record">
+                        <div class="col" style="flex: 0 1 40px;">
+                            <div class="dropdown">
+                                <button class="btn btn-default dropdown-toggle more" type="button" data-toggle="dropdown" style="padding: 0;">
+                                    <i class="fa fa-ellipsis-v"></i>
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li>
+                                        @{isPinned = (pinned != null && pinned.Any(e => e == QbApprovalApp.Id)) ? true : false;}
+                                        @if (isPinned)
+                                        {
+                                            <a href="javascript:void(0);" onclick="CalPinned(@QbApprovalApp.Id,false)" id="textPin-@QbApprovalApp.Id"><span id="textPin-@QbApprovalApp.Id"> Unpin this</span></a>
+                                        }
+                                        else
+                                        {
+                                            <a href="javascript:void(0);" onclick="CalPinned(@QbApprovalApp.Id,false)" id="textPin-@QbApprovalApp.Id"><span id="textPin-@QbApprovalApp.Id"> Pin this</span></a>
+                                        }
+                                    </li>
+                                </ul>
+                            </div>
+
+                        </div>
+                        <div class="col titleblock">
+                            <a href="#" data-toggle="modal" data-target="#process-more" onclick="LoadProcessMoreModal('@QbApprovalApp.Key')">
+                                <p class="tasktitle">
+                                    <span class="label label-lg label-soft">Process</span>
+                                    &nbsp;@QbApprovalApp.Name
+                                </p>
+                            </a>
+
+                        </div>
+                        @{
+                            if (QbApprovalApp.JournalEntries.Any() || QbApprovalApp.BKAccounts.Any())
+                            {
+                                source = "Bookkeeping";
+                            }
+                            else if (QbApprovalApp.EmailPostApproval.Any() || QbApprovalApp.CampaigPostApproval.Any())
+                            {
+                                source = "Sales & Marketing";
+                            }
+                            else if (QbApprovalApp.OperatorClockIn.Any() || QbApprovalApp.OperatorClockOut.Any())
+                            {
+                                source = "Operator";
+                            }
+                            else
+                            {
+                                source = "Trader";
+                            }
+                        }
+                        <div class="col dueblock hidden-xs">
+                            <p><i class="fa fa-calendar iconlb"></i> &nbsp; @source, @QbApprovalApp.StartedDate.ToString(dateFormat + " hh:mmtt").ToLower()</p>
+                        </div>
+
+                    </div>
+                </article>
+                break;
+            case QbicleActivity.ActivityTypeEnum.TaskActivity:
+                var QbTask = (QbicleTask)item;
+                var taskStatus = 0;
+                if (!QbTask.isComplete && QbTask.ActualStart == null && QbTask.ProgrammedEnd >= DateTime.UtcNow)
+                { taskStatus = 0; }
+                else if (!QbTask.isComplete && QbTask.ActualStart != null && QbTask.ProgrammedEnd >= DateTime.UtcNow)
+                { taskStatus = 1; }
+                else if (!QbTask.isComplete && QbTask.ProgrammedEnd < DateTime.UtcNow)
+                { taskStatus = 2; }
+                else if (QbTask.isComplete)
+                { taskStatus = 3; }
+
+                <article class="@(taskStatus == 0 ? "pending" : (taskStatus == 1 ? "started" : (taskStatus == 2 ? "overdue" : (taskStatus == 3 ? "complete" : ""))))">
+                    <div class="record">
+                        <div class="col" style="flex: 0 1 40px;">
+                            <div class="dropdown">
+                                <button class="btn btn-default dropdown-toggle more" type="button" data-toggle="dropdown" style="padding: 0;">
+                                    <i class="fa fa-ellipsis-v"></i>
+                                </button>
+                                <ul class="dropdown-menu">
+                                    @{isPinned = (pinned != null && pinned.Any(e => e == QbTask.Id)) ? true : false;}
+                                    @if (isPinned)
+                                    {
+                                        <li><a href="javascript:void(0);" onclick="CalPinned(@QbTask.Id,false)" id="textPin-@QbTask.Id"><span id="textPin-@QbTask.Id"> Unpin this</span></a></li>
+                                    }
+                                    else
+                                    {
+                                        <li><a href="javascript:void(0);" onclick="CalPinned(@QbTask.Id,false)" id="textPin-@QbTask.Id"><span id="textPin-@QbTask.Id"> Pin this</span></a></li>
+                                    }
+                                </ul>
+                            </div>
+
+                        </div>
+                        <div class="col titleblock">
+                            <a href="#" data-toggle="modal" data-target="#task-more" onclick="LoadTaskMoreModal('@QbTask.Key')">
+                                <p class="tasktitle">
+                                    <span class="label label-lg label-soft">Task</span>
+                                    &nbsp;@QbTask.Name
+                                </p>
+                            </a>
+                        </div>
+                        <div class="col dueblock hidden-xs">
+                            <p>
+                                @if (QbTask.ProgrammedEnd != null)
+                                {
+                                    if (taskStatus == 0)
+                                    {
+                                        <i class="fa fa-calendar iconlb"></i><span>&nbsp; @QbTask.ProgrammedEnd.Value.ToString(dateFormat + " hh:mmtt").ToLower()</span>
+                                    }
+                                    else if (taskStatus == 1)
+                                    {
+                                        <i class="fa fa-calendar iconlb"></i><span>&nbsp; @QbTask.ProgrammedEnd.Value.ToString(dateFormat + " hh:mmtt").ToLower()</span>
+                                    }
+                                    else if (taskStatus == 2)
+                                    {
+
+                                        <i class="fa fa-calendar iconlb"></i><span class="red">&nbsp; @QbTask.ProgrammedEnd.Value.ToString(dateFormat + " hh:mmtt").ToLower()</span>
+                                    }
+                                    else if (taskStatus == 3)
+                                    {
+                                        <i class="fa fa-calendar iconlb"></i><span>&nbsp;Completed @(QbTask.ActualEnd?.ToString(dateFormat + " hh:mmtt").ToLower() ?? "")</span>
+                                    }
+                                }
+
+                            </p>
+                        </div>
+
+                    </div>
+                </article>
+                break;
+            case QbicleActivity.ActivityTypeEnum.EventActivity:
+                var QbEvent = (QbicleEvent)item;
+                var css = "";
+                if (QbEvent.isComplete || QbEvent.End < DateTime.UtcNow)
+                {
+                    css = "complete oldevent";
+                }
+                <article class="@css">
+                    <div class="record">
+                        <div class="col" style="flex: 0 1 40px;">
+                            <div class="dropdown">
+                                <button class="btn btn-default dropdown-toggle more" type="button" data-toggle="dropdown" style="padding: 0;">
+                                    <i class="fa fa-ellipsis-v"></i>
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li>
+                                        @{isPinned = (pinned != null && pinned.Any(e => e == QbEvent.Id)) ? true : false;}
+                                        @if (isPinned)
+                                        {
+                                            <a class="dropdown-item" href="javascript:void(0);" onclick="CalPinned(@QbEvent.Id,false)">
+                                                <span id="textPin-@QbEvent.Id">&nbsp; Unpin this</span>
+                                            </a>
+
+                                        }
+                                        else
+                                        {
+                                            <a class="dropdown-item" href="javascript:void(0);" onclick="CalPinned(@QbEvent.Id,false)">
+                                                <span id="textPin-@QbEvent.Id">&nbsp; Pin this</span>
+                                            </a>
+                                        }
+                                    </li>
+                                </ul>
+                            </div>
+
+                        </div>
+                        <div class="col titleblock">
+                            <a href="#" data-toggle="modal" data-target="#event-more" onclick="LoadEventMoreModal('@QbEvent.Key')">
+                                <p class="tasktitle">
+                                    <span class="label label-lg label-soft">Event</span>
+                                    &nbsp;@QbEvent.Name
+                                </p>
+                            </a>
+                        </div>
+                        <div class="col dueblock hidden-xs">
+                            <p><i class="fa fa-calendar iconlb"></i> @QbEvent.Start.ToString(dateFormat + " hh:mmtt").ToLower()</p>
+                        </div>
+
+                    </div>
+                </article>
+                break;            
+            case QbicleActivity.ActivityTypeEnum.MediaActivity:
+                var QbMedia = (QbicleMedia)item;
+
+                <article>
+                    <div class="record">
+                        <div class="col" style="flex: 0 1 40px;">
+                            <div class="dropdown">
+                                <button class="btn btn-default dropdown-toggle more" type="button" data-toggle="dropdown" style="padding: 0;">
+                                    <i class="fa fa-ellipsis-v"></i>
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li>
+                                        @{isPinned = (pinned != null && pinned.Any(e => e == QbMedia.Id)) ? true : false;}
+                                        @if (isPinned)
+                                        {
+                                            <a class="dropdown-item" href="javascript:void(0);" onclick="CalPinned(@QbMedia.Id,false)">
+                                                <span id="textPin-@QbMedia.Id">&nbsp; Unpin this</span>
+                                            </a>
+
+                                        }
+                                        else
+                                        {
+                                            <a class="dropdown-item" href="javascript:void(0);" onclick="CalPinned(@QbMedia.Id,false)">
+                                                <span id="textPin-@QbMedia.Id">&nbsp; Pin this</span>
+                                            </a>
+                                        }
+                                    </li>
+                                </ul>
+                            </div>
+
+                        </div>
+                        <div class="col titleblock">
+                            <a href="#" data-toggle="modal" data-target="#media-more" onclick="LoadMediaMoreModal('@QbMedia.Key')">
+                                <p class="tasktitle">
+                                    <span class="label label-lg label-soft">Media</span>
+                                    &nbsp;@QbMedia.Name
+                                </p>
+                            </a>
+                        </div>
+                        <div class="col dueblock hidden-xs">
+                            <p><i class="fa fa-calendar iconlb"></i> &nbsp; @QbMedia.StartedDate.ToString(dateFormat + " hh:mmtt").ToLower()</p>
+                        </div>
+
+                    </div>
+                </article>
+                break;
+            case QbicleActivity.ActivityTypeEnum.Link:
+                var qbLink = (QbicleLink)item;
+                <article>
+                    <div class="record">
+                        <div class="col" style="flex: 0 1 40px;">
+                            <div class="dropdown">
+                                <button class="btn btn-default dropdown-toggle more" type="button" data-toggle="dropdown" style="padding: 0;">
+                                    <i class="fa fa-ellipsis-v"></i>
+                                </button>
+                                <ul class="dropdown-menu">
+                                    @{isPinned = (pinned != null && pinned.Any(e => e == qbLink.Id)) ? true : false;}
+                                    <li>
+                                        @if (isPinned)
+                                        {
+                                            <a href="javascript:void(0);" onclick="CalPinned(@qbLink.Id,false)" id="textPin-@qbLink.Id"><span id="textPin-@qbLink.Id"> Unpin this</span></a>
+                                        }
+                                        else
+                                        {
+                                            <a href="javascript:void(0);" onclick="CalPinned(@qbLink.Id,false)" id="textPin-@qbLink.Id"><span id="textPin-@qbLink.Id"> Pin this</span></a>
+                                        }
+                                    </li>
+                                </ul>
+                            </div>
+
+                        </div>
+                        <div class="col titleblock">
+                            <a href="#" data-toggle="modal" data-target="#link-more" onclick="LoadLinkMoreModal(@qbLink.Id)">
+                                <p class="tasktitle">
+                                    <span class="label label-lg label-soft">Link</span>
+                                    &nbsp;@qbLink.Name
+                                </p>
+                            </a>
+                        </div>
+                        <div class="col dueblock hidden-xs">
+                            <p><a href="@qbLink.URL" target="_blank"><i class="fa fa-external-link iconlb"></i> &nbsp; @qbLink.URL</a></p>
+                        </div>
+
+                    </div>
+                </article>
+                break;
+            case QbicleActivity.ActivityTypeEnum.DiscussionActivity:
+
+                var qbDiscussion = (QbicleDiscussion)item;
+                var isActive = true;
+                if (qbDiscussion.ExpiryDate != null && qbDiscussion.ExpiryDate <= DateTime.UtcNow) { isActive = false; }
+                else { isActive = true; }
+
+                <article class="@(isActive ? "started" : "complete discussed")">
+                    <div class="record">
+                        <div class="col" style="flex: 0 1 40px;">
+                            <div class="dropdown">
+                                <button class="btn btn-default dropdown-toggle more" type="button" data-toggle="dropdown" style="padding: 0;">
+                                    <i class="fa fa-ellipsis-v"></i>
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li>
+                                        @{isPinned = (pinned != null && pinned.Any(e => e == qbDiscussion.Id)) ? true : false;}
+                                        @if (isPinned)
+                                        {
+                                            <a href="javascript:void(0);" onclick="CalPinned(@qbDiscussion.Id,false)" id="textPin-@qbDiscussion.Id"><span id="textPin-@qbDiscussion.Id"> Unpin this</span></a>
+                                        }
+                                        else
+                                        {
+                                            <a href="javascript:void(0);" onclick="CalPinned(@qbDiscussion.Id,false)" id="textPin-@qbDiscussion.Id"><span id="textPin-@qbDiscussion.Id"> Pin this</span></a>
+                                        }
+                                    </li>
+                                </ul>
+                            </div>
+
+                        </div>
+                        <div class="col titleblock">
+                            <a href="#" data-toggle="modal" data-target="#discussion-more" onclick="LoadDiscussionMoreModal(@qbDiscussion.Id)">
+                                <p class="tasktitle">
+                                    <span class="label label-lg label-soft">Discussion</span>
+                                    &nbsp;@qbDiscussion.Name
+                                </p>
+                            </a>
+                        </div>
+                        <div class="col dueblock hidden-xs">
+                            <p>
+                                <i class="fa fa-user iconlb"></i> &nbsp;
+                                @qbDiscussion.ActivityMembers.Count() participants
+                            </p>
+                        </div>
+
+                    </div>
+                </article>
+                break;
+        }
+
+    }
+}

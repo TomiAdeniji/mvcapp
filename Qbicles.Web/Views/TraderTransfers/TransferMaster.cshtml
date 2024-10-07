@@ -1,0 +1,423 @@
+﻿@using Qbicles.BusinessRules
+@using Qbicles.Models
+@using Qbicles.Models.Trader.Movement;
+@model TraderTransfer
+@{
+    ViewBag.Title = $"Trader - Transfer #{Model.Reference?.FullRef ?? Model.Id.ToString()}";
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var transferType = "transfer";
+    if (Model.Sale != null && Model.Purchase == null)
+    {
+        transferType = "saleTransfer";
+    }
+    else if (Model.Sale == null && Model.Purchase != null)
+    {
+        transferType = "purchaseTransfer";
+    }
+
+    var today = (DateTime)ViewBag.Today;
+    var timeline = (List<ApprovalStatusTimeline>)ViewBag.Timeline;
+    var timelineDate = (List<DateTime>)ViewBag.TimelineDate;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+    var userId = ViewBag.CurrentUserId;
+    var isEdit = false;
+    if (Model.Workgroup != null)
+    {
+        isEdit = Model.Workgroup.Members.Any(u => u.Id == userId);
+
+    }
+    var goBackPage = (string)ViewBag.GoBackPage;
+}
+@{
+    <style>
+        .transfer .content-block-upper p {
+            text-align: left !important;
+        }
+    </style>
+}
+<input type="hidden" value="@api" id="api_url" />
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail" id="discussion-thread">
+    <div class="tabnav-spacer hidden-xs"></div>
+
+    <!-- Main content -->
+    <section class="content">
+
+        <div class="row">
+            <div class="col-xs-12 item_detail" style="padding-left: 15px;">
+
+                <br />
+
+                <div class="mod_title">
+                    <h5>Trader - Transfer</h5>
+                    <h4>Transfer #@(Model.Reference?.FullRef??"")</h4>
+                    <input type="hidden" value="@Model.Id" id="transfer_id" />
+                </div>
+
+                <div class="row">
+                    <div class="col-xs-12">
+                        <div class="app_filter">
+                            <div class="row">
+                                <div class="col-xs-12">
+                                    @if (!string.IsNullOrEmpty(goBackPage) && goBackPage == "BusinessReports")
+                                    {
+                                        <a href="~/BusinessReports?tab=transfers" class="btn btn-primary"><i class="fa fa-angle-left"></i> &nbsp; Transfers</a>
+                                    }
+                                    else
+                                    {
+                                        <a href="/Trader/AppTrader" onclick="setTabTrader('transfers')" class="btn btn-primary"><i class="fa fa-angle-left"></i> &nbsp; Transfers</a>
+                                    }
+
+                                    @{
+                                        if (transferType == "saleTransfer")
+                                        {
+                                            <a href="/TraderSales/SaleMaster?key=@Model.Sale.Key" class="btn btn-info"><i class="fa fa-eye"></i> &nbsp; View Sale</a>
+                                        }
+                                        else if (transferType == "purchaseTransfer")
+                                        {
+                                            <a href="/TraderPurchases/PurchaseMaster?id=@Model.Purchase.Id" class="btn btn-info"><i class="fa fa-eye"></i> &nbsp; View Purchase</a>
+                                        }
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+            <div class="col-xs-12">
+
+
+                <br /><br />
+
+                <div class="row">
+                    <div class="col-xs-12 col-sm-8">
+
+                        <div class="row">
+                            <div class="col-xs-12 col-md-6 col-lg-6">
+
+                                <article class="community-feature">
+
+                                    <div class="content-block transfer">
+                                        <div class="content-block-upper">
+                                            <smaller>Source</smaller>
+                                            @if (Model.Sale != null)
+                                            {
+
+                                                <h2>From @Model.OriginatingLocation.Name</h2>
+                                                if (Model.Sale.SalesChannel == Qbicles.Models.Trader.SalesChannel.SalesChannelEnum.B2C)
+                                                {
+                                                    if (Model.OriginatingLocation.Address != null)
+                                                    {
+                                                        <p>@Html.Raw(Model.OriginatingLocation.Address.ToAddress().Replace(",", "<br />"))</p>
+                                                    }
+                                                }
+                                                else if (Model.Sale.DeliveryAddress != null)
+                                                {
+                                                    <p>
+                                                        <strong>@Model.OriginatingLocation.Name</strong><br />
+                                                        @Html.Raw(Model.Sale.DeliveryAddress.ToAddress().Replace(",", "<br />"))
+
+                                                    </p>
+                                                }
+                                            }
+                                            else if (Model.Purchase != null)
+                                            {
+                                                <h2>From @Model.Purchase.Vendor.Name</h2>
+                                                <p>
+                                                    <strong>@(Model.Purchase.Vendor?.Name ?? "")</strong><br />
+                                                    @Html.Raw(Model.Purchase.Vendor?.Address?.ToAddress().Replace(",", "<br />"))
+
+                                                </p>
+                                            }
+                                            else
+                                            {
+                                                if (Model.OriginatingLocation == null && Model.Reason == TransferReasonEnum.ManufacturingJobAdjustment)
+                                                {
+                                                    <h2>From: Item Manufacturing</h2>
+                                                }
+                                                else
+                                                {
+                                                    <h2>From @(Model.OriginatingLocation?.Name)</h2>
+                                                    if (Model.OriginatingLocation?.Address != null)
+                                                    {
+                                                        <p>
+                                                            <strong>@Model.OriginatingLocation.Name, </strong><br />
+                                                            @Html.Raw(Model.OriginatingLocation.Address.ToAddress().Replace(",", "<br />"))
+                                                        </p>
+                                                    }
+                                                }
+                                            }
+                                        </div>
+                                    </div>
+                                </article>
+
+                            </div>
+                            <div class="col-xs-12 col-md-6 col-lg-6">
+
+                                <article class="community-feature">
+
+                                    <div class="content-block transfer">
+                                        <div class="content-block-upper">
+                                            <smaller>Recipient</smaller>
+                                            @if (Model.Sale != null)
+                                            {
+                                                <h2>To @Model.Sale.Purchaser.Name</h2>
+                                                if (Model.Sale.DeliveryAddress != null)
+                                                {
+                                                    <p>
+                                                        <strong>@Model.Sale.Purchaser.Name,</strong><br />
+                                                        @Html.Raw(Model.Sale.DeliveryAddress.ToAddress().Replace(",", "<br />"))
+                                                    </p>
+                                                }
+                                            }
+                                            else if (Model.Purchase != null)
+                                            {
+                                                <h2>To @Model.DestinationLocation.Name</h2>
+                                                if (Model.DestinationLocation.Address != null)
+                                                {
+                                                    <p>
+                                                        <strong>@Model.DestinationLocation.Name,</strong><br />
+                                                        @Html.Raw(Model.DestinationLocation.Address?.ToAddress().Replace(",", "<br />"))
+
+                                                    </p>
+                                                }
+                                            }
+                                            else
+                                            {
+                                                if (Model.DestinationLocation == null && Model.Reason == TransferReasonEnum.ManufacturingJobAdjustment)
+                                                {
+                                                    <h2>To: Item Manufacturing</h2>
+                                                }
+                                                else
+                                                {
+                                                    <h2>To @(Model.DestinationLocation?.Name)</h2>
+                                                    @Html.Raw(Model.DestinationLocation?.Address?.ToAddress().Replace(",", "<br />"))
+                                                }
+
+                                            }
+                                        </div>
+                                    </div>
+                                </article>
+
+                            </div>
+                        </div>
+
+
+                        <br />
+
+                        <div class="activity-overview task" style="padding: 20px;">
+                            <table id="trader-table" class="datatable table-striped" data-order='[[ 1, "asc" ]]' data-info="false" data-paging="false"
+                                   data-searching="false" style="width: 100%; background: #fff;">
+                                <thead>
+                                    <tr>
+                                        @if (Model.Sale == null && Model.Purchase == null)
+                                        {
+                                            <th style="width: 90px;" data-orderable="false" data-priority="3"></th>
+                                            <th data-priority="1">Item</th>
+                                            <th data-priority="3">Transfer unit</th>
+                                            <th data-priority="3">Transfer qty</th>
+                                        }
+                                        else
+                                        {
+                                            <th style="width: 90px;" data-orderable="false" data-priority="3"></th>
+                                            <th data-priority="1">Item</th>
+                                            <th data-priority="2">Unit</th>
+                                            <th data-priority="1">Qty</th>
+                                            <th data-priority="3">Transfer unit</th>
+                                            <th data-priority="3">Transfer qty</th>
+                                            @*<th data-priority="1" style="display:none">Remaining</th>*@
+                                        }
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @if (Model.Sale != null || Model.Purchase != null)
+                                    {
+                                        foreach (var item in Model.TransferItems)
+                                        {
+                                            //decimal totalPurchase = item.QuantityAtPickup;
+                                            decimal totalTransfer = 0;
+                                            decimal remaining = 0;
+
+                                            var totalPurchase = item.QuantityAtPickup;// * item.Unit?.QuantityOfBaseunit ?? 1;
+
+                                            //var qtty = (item.QuantityAtPickup / item.TransactionItem.Unit?.QuantityOfBaseunit ?? 1).ToDecimalPlace(currencySettings);
+
+                                            if (Model.Sale != null)
+                                            {
+                                                foreach (var traderTransfer in Model.Sale.Transfer)
+                                                {
+                                                    foreach (var traderTransferItem in traderTransfer.TransferItems)
+                                                    {
+                                                        if (traderTransferItem.TransactionItem != null && traderTransferItem.TransactionItem.Id == item.TransactionItem.Id)
+                                                        {
+                                                            totalTransfer += traderTransferItem.QuantityAtPickup;
+                                                        }
+
+                                                    }
+                                                }
+                                            }
+                                            if (Model.Purchase != null)
+                                            {
+                                                foreach (var traderTransfer in Model.Purchase.Transfer)
+                                                {
+                                                    foreach (var traderTransferItem in traderTransfer.TransferItems)
+                                                    {
+                                                        if (traderTransferItem.TransactionItem != null && traderTransferItem.TransactionItem.Id == item.TransactionItem.Id)
+                                                        {
+                                                            totalTransfer += traderTransferItem.QuantityAtPickup;
+                                                        }
+
+                                                    }
+                                                }
+                                            }
+                                            remaining = totalPurchase - totalTransfer;
+
+                                            remaining = remaining / item.TransactionItem.Unit?.QuantityOfBaseunit ?? 1;
+
+
+                                            <tr>
+                                                <td>
+                                                    <div class="table-avatar" style="background-image: url('@api@item.TraderItem.ImageUri&size=T');">&nbsp;</div>
+                                                </td>
+                                                <td>@item.TraderItem.Name</td>
+                                                <td>
+                                                    @(item.TransactionItem.Unit?.Name??"")
+                                                </td>
+                                                <td>@(item.TransactionItem.Quantity.ToDecimalPlace(currencySettings))</td>
+                                                @*<td>@qtty</td>*@
+                                                @*<td>@(item.QuantityAtPickup.ToDecimalPlace(currencySettings))</td>*@
+                                                <td>@(item.Unit?.Name??"")</td>
+                                                @*<td>@((item.QuantityAtPickup/ item.TransactionItem.Unit?.QuantityOfBaseunit??1).ToDecimalPlace(currencySettings))</td>*@
+                                                <td>@(item.QuantityAtPickup.ToDecimalPlace(currencySettings))</td>
+                                                @*<td style="display:none">@remaining.ToDecimalPlace(currencySettings)</td>*@
+                                            </tr>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        foreach (var item in Model.TransferItems)
+                                        {
+                                            <tr>
+                                                <td>
+                                                    <div class="table-avatar" style="background-image: url('@(api+item.TraderItem?.ImageUri)&size=T');">&nbsp;</div>
+                                                </td>
+                                                <td>@(item.TraderItem?.Name)</td>
+                                                <td>@(item.Unit?.Name)</td>
+                                                <td>@item.QuantityAtPickup.ToDecimalPlace(currencySettings)</td>
+                                            </tr>
+                                        }
+                                    }
+                                </tbody>
+                            </table>
+
+                            <br />
+                            @{
+                                if (isEdit)
+                                {
+                                    if (Model.Status != TransferStatus.Delivered)
+                                    {
+                                        if (Model.TransferApprovalProcess == null || (Model.TransferApprovalProcess != null && Model.TransferApprovalProcess.RequestStatus == ApprovalReq.RequestStatusEnum.Pending))
+                                        {
+                                            if (Model.Sale == null && Model.Purchase != null)
+                                            {
+                                                <a href="javascript:void(0);" data-toggle="modal" id="btn_change_@Model.Id" onclick="ShowEditPurchaseTransfer(@Model.Id, @Model.Purchase.Id)" data-target="#app-trader-purchase-transfer" class="btn btn-warning"><i class="fa fa-pencil"></i> &nbsp; Edit transfer items</a>
+                                            }
+                                            else if (Model.Sale != null && Model.Purchase == null)
+                                            {
+                                                <a href="javascript:void(0);" data-toggle="modal" id="btn_change_@Model.Id" onclick="ShowEditSaleTransfer(@Model.Id, '@Model.Sale.Key')" data-target="#app-trader-sale-transfer" class="btn btn-warning"><i class="fa fa-pencil"></i> &nbsp; Edit transfer items</a>
+                                            }
+                                            else
+                                            {
+                                                <a href="javascript:void(0);" data-toggle="modal" id="btn_change_@Model.Id" onclick="ShowEditTransfer(@Model.Workgroup.Location.Id, @Model.Id)" data-target="#app-trader-edit-items" class="btn btn-warning"><i class="fa fa-pencil"></i> &nbsp; Edit transfer items</a>
+                                            }
+                                        }
+
+                                    }
+                                }
+                            }
+
+
+
+
+                        </div>
+
+                    </div>
+
+                    <div class="col-xs-12 col-sm-4">
+
+
+                        <ul class="timeline">
+
+                            @foreach (var date in timelineDate)
+                            {
+                                var dateStart = @HelperClass.DatetimeToOrdinal(date);
+                                var dateStr = date.Date == today.Date ? "Today" : dateStart;
+
+                                <li class="time-label">
+                                    <span class="label label-lg label-primary">
+                                        @dateStr
+                                    </span>
+                                </li>
+                                foreach (var tl in timeline.Where(d => d.LogDate.Date == date.Date))
+                                {
+                                    <li>
+                                        <i class="@tl.Icon"></i>
+                                        <div class="timeline-item">
+                                            <span class="time"><i class="fa fa-clock-o"></i> @tl.Time</span>
+                                            <h4 class="timeline-header">@tl.Status</h4>
+                                        </div>
+                                    </li>
+                                }
+                                <br />
+                            }
+
+                        </ul>
+
+
+                    </div>
+
+
+
+
+
+
+
+                </div>
+
+            </div>
+        </div>
+
+    </section>
+    <!-- ./content -->
+
+</div>
+<!-- /.content-wrapper -->
+
+
+<div class="modal fade left" id="app-trader-edit-items" role="dialog" aria-labelledby="app-trader-edit-items">
+    <!-- /.modal-dialog -->
+</div><!-- /.modal -->
+<div class="modal fade left" id="app-trader-sale-transfer" role="dialog" aria-labelledby="app-trader-sale-transfer">
+
+</div><!-- /.modal -->
+<div class="modal fade left" id="app-trader-purchase-transfer" role="dialog" aria-labelledby="app-trader-purchase-transfer">
+
+</div><!-- /.modal -->
+<div class="modal fade left" id="app-trader-workgroup-preview" role="dialog" aria-labelledby="app-trader-workgroup-preview">
+
+</div><!-- /.modal -->
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/trader.transfer.manage.js"></script>
+        <script src="~/Scripts/dev/trader.domain.js"></script>
+        <script src="~/Scripts/dev/trader.transfer.quantity.change.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/trader.transfer.manage.js"></script>
+        <script src="~/Scripts/dev/trader.transfer.quantity.change.js"></script>
+        <script src="~/Scripts/dev/trader.domain.min.js"></script>
+    }
+}

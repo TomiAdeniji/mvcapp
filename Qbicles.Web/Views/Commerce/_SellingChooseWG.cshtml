@@ -1,0 +1,128 @@
+﻿@using Qbicles.Models.B2B
+@using Qbicles.BusinessRules
+@using Qbicles.Models.Trader
+@model TradeOrderB2B
+@{
+    var listPaymentAccount = (List<TraderCashAccount>)ViewBag.lstPaymentAcc;
+    var listWorkgroup = (List<WorkGroup>)ViewBag.lstWorkgroup;
+    TraderLocation location = (TraderLocation)ViewBag.Location;
+    var defaultSettings = (B2BOrderSettingDefault)ViewBag.OrderDefaultSettings;
+
+    var listSaleWG = listWorkgroup.Where(p => p.Processes.Any(x => x.Name == "Sale")).ToList();
+    var listInvoiceWG = listWorkgroup.Where(p => p.Processes.Any(x => x.Name == "Invoice")).ToList();
+    var listPaymentWG = listWorkgroup.Where(p => p.Processes.Any(x => x.Name == "Payment")).ToList();
+    var listTransferWG = listWorkgroup.Where(p => p.Processes.Any(x => x.Name == "Transfer")).ToList();
+
+    var isSaleWGDisabled = listSaleWG.Count <= 1 ? "disabled" : "";
+    var chosenSaleWGId = listSaleWG.Count <= 1 ? (listSaleWG.FirstOrDefault() == null ? 0 : listSaleWG.FirstOrDefault().Id) : (Model.SaleWorkGroup?.Id ?? 0);
+    var isInvoiceWGDisabled = listInvoiceWG.Count <= 1 ? "disabled" : "";
+    var chosenInvoiceWGId = listInvoiceWG.Count <= 1 ? (listInvoiceWG.FirstOrDefault() == null ? 0 : listInvoiceWG.FirstOrDefault().Id) : (Model.InvoiceWorkGroup?.Id ?? 0);
+    var isPaymentWGDisabled = listPaymentWG.Count <= 1 ? "disabled" : "";
+    var chosenPaymentWGId = listPaymentWG.Count <= 1 ? (listPaymentWG.FirstOrDefault() == null ? 0 : listPaymentWG.FirstOrDefault().Id) : (Model.PaymentWorkGroup?.Id ?? 0);
+    var isTransferWGDisabled = listTransferWG.Count <= 1 ? "disabled" : "";
+    var chosenTransferWGId = listTransferWG.Count <= 1 ? (listTransferWG.FirstOrDefault() == null ? 0 : listTransferWG.FirstOrDefault().Id) : (Model.TransferWorkGroup?.Id ?? 0);
+    var isAccChooserDisabled = listPaymentAccount.Count <= 1 ? "disabled" : "";
+    var chosenPaymentAccId = listPaymentAccount.Count <= 1 ? (listPaymentAccount.FirstOrDefault() == null ? 0 : listPaymentAccount.FirstOrDefault().Id) : (Model.PaymentAccount?.Id ?? 0);
+}
+<form id="orderprocessing-frm">
+    <div class="well custom">
+        <p style="font-size: 12px;">
+            It looks like you have more than one workgroup available. Please indicate which workgroups will handle various stages, before choosing
+            which of your Cash &amp; Bank accounts will handle payments.
+        </p>
+        <br />
+        <div class="form-group">
+            <label for="salewg">Sale processing Workgroup</label>
+            <select name="salewg" onchange="checkForSellingSubmitAbility()" required class="form-control select2" id="salewg" @isSaleWGDisabled style="width: 100%;" data-placeholder="Choose a workgroup">
+                <option value=""></option>
+                @foreach (var wgItem in listSaleWG)
+                {
+                    var iswgChosen = wgItem.Id == chosenSaleWGId || wgItem.Id == defaultSettings.DefaultSaleWorkGroupId ? "selected" : "";
+                    <option value="@wgItem.Id" @iswgChosen>@wgItem.Name</option>
+                }
+            </select>
+            @if (listSaleWG.Count == 0)
+            {
+                <label id="salewg-error" class="error" for="salewg">No WorkGroup is available. Please update the WorkGroups at @(location.Name) as necessary.</label>
+            }
+            else
+            {
+                <label id="salewg-error" style="display: none" class="error" for="salewg">This field is required.</label>
+            }
+
+        </div>
+        <div class="form-group">
+            <label for="invoicewg">Invoice processing Workgroup</label>
+            <select name="invoicewg" onchange="checkForSellingSubmitAbility()" required class="form-control select2" id="invoicewg" @isInvoiceWGDisabled style="width: 100%;" data-placeholder="Choose a workgroup">
+                <option value=""></option>
+                @foreach (var wgItem in listInvoiceWG)
+                {
+                    var iswgChosen = wgItem.Id == chosenInvoiceWGId || wgItem.Id == defaultSettings.DefaultInvoiceWorkGroupId ? "selected" : "";
+                    <option value="@wgItem.Id" @iswgChosen>@wgItem.Name</option>
+                }
+            </select>
+            @if (listInvoiceWG.Count == 0)
+            {
+                <label id="invoicewg-error" class="error" for="invoicewg">No WorkGroup is available. Please update the WorkGroups at @(location.Name) as necessary.</label>
+            }
+            else
+            {
+                <label id="invoicewg-error" style="display: none" class="error" for="invoicewg">This field is required.</label>
+            }
+        </div>
+        <div class="form-group">
+            <label for="paymentwg">Payment processing Workgroup</label>
+            <select name="paymentwg" onchange="checkForSellingSubmitAbility()" required class="form-control select2" id="paymentwg" @isPaymentWGDisabled style="width: 100%;" data-placeholder="Choose a workgroup">
+                <option value=""></option>
+                @foreach (var wgItem in listPaymentWG)
+                {
+                    var iswgChosen = wgItem.Id == chosenPaymentWGId || wgItem.Id == defaultSettings.DefaultPaymentWorkGroupId ? "selected" : "";
+                    <option value="@wgItem.Id" @iswgChosen>@wgItem.Name</option>
+                }
+            </select>
+
+            @if (listPaymentWG.Count == 0)
+            {
+                <label id="paymentwg-error" class="error" for="paymentwg">No WorkGroup is available. Please update the WorkGroups at @(location.Name) as necessary.</label>
+            }
+            else
+            {
+                <label id="paymentwg-error" style="display:none" class="error" for="paymentwg">This field is required.</label>
+            }
+        </div>
+        <div class="form-group">
+            <label for="transferwg">Transfer processing Workgroup</label>
+            <select name="transferwg" onchange="checkForSellingSubmitAbility()" required class="form-control select2" @isTransferWGDisabled id="transferwg" style="width: 100%;" data-placeholder="Choose a workgroup">
+                <option value=""></option>
+                @foreach (var wgItem in listTransferWG)
+                {
+                    var iswgChosen = wgItem.Id == chosenTransferWGId || wgItem.Id == defaultSettings.DefaultTransferWorkGroupId ? "selected" : "";
+                    <option value="@wgItem.Id" @iswgChosen>@wgItem.Name</option>
+                }
+            </select>
+
+            @if (listTransferWG.Count == 0)
+            {
+                <label id="salewg-error" class="error" for="transferwg">No WorkGroup is available. Please update the WorkGroups at @(location.Name) as necessary.</label>
+            }
+            else
+            {
+                <label id="transferwg-error" style="display: none" class="error" for="transferwg">This field is required.</label>
+            }
+        </div>
+        <div class="form-group" style="margin:0">
+            <label for="pwg">Cash & bank account</label>
+            <select name="paymentacc" onchange="checkForSellingSubmitAbility()" required class="form-control select2" id="paymentacc" style="width: 100%;" @isAccChooserDisabled data-placeholder="Choose a payment account">
+                <option value=""></option>
+                @foreach (var paymentAcc in listPaymentAccount)
+                {
+                    var isPaymentAccSelected = paymentAcc.Id == chosenPaymentAccId || paymentAcc.Id == defaultSettings.DefaultPaymentAccountId ? "selected" : ""; ;
+                    <option value="@paymentAcc.Id" @isPaymentAccSelected>@paymentAcc.Name</option>
+                }
+            </select>
+            <label id="paymentacc-error" style="display: none" class="error" for="paymentacc">This field is required.</label>
+        </div>
+    </div>
+    <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+    <button type="submit" class="btn btn-success">Proceed</button>
+</form>

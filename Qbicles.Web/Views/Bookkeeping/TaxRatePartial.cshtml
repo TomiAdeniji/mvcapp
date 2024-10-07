@@ -1,0 +1,194 @@
+﻿@using Qbicles.Models.Trader
+@{
+    var Taxrates = ((IQueryable<TaxRate>)ViewBag.TaxRates).ToList();
+    var canDel = Taxrates.Count == 1 ? "disabled" : "";
+}
+
+
+
+
+<div class="modal fade" id="app-coa-tax-add" role="dialog" aria-labelledby="app-coa-tax-add">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">New Tax Rate</h5>
+            </div>
+            <div class="modal-body">
+                <div class="well">
+                    <form class="form-group" id="form_taxrate_add" novalidate="novalidate">
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="name">Name <span class="required">*</span></label>
+                                    <input type="text" name="Name" id="add-taxrate-name" required class="form-control" placeholder="Tax rate name">
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="number">Rate (%)</label>
+                                    <input type="number" name="rate" id="add-taxrate-rate" class="form-control" placeholder="e.g. 25">
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-12">
+                                <div class="form-group">
+                                    <label for="Account">Account</label>
+                                    <br />
+                                    <button class="btn btn-info addbtnaccount" onclick="LoadAccountTree()" data-toggle="modal" data-target="#app-bookkeeping-treeview"><i class="fa fa-plus"></i> &nbsp; Choose account</button>
+                                    <p class="accountInfo" style="font-family: 'Roboto', Arial, sans-serif; font-size: 12px; display: inline-block; padding: 0 10px 0 0;"></p>
+                                    <button class="btn btn-small btn-warning editbtnaccount" style="display: none;" data-toggle="modal" onclick="LoadAccountTree()" data-target="#app-bookkeeping-treeview"><i class="fa fa-pencil"></i></button>
+                                </div>
+                            </div>
+
+                            <div class="col-xs-12 col-sm-12">
+                                <div class="form-group">
+                                    <label for="description">Description</label>
+                                    <textarea type="text" name="description" id="add-taxrate-description" rows="3" class="form-control"></textarea>
+                                </div>
+                            </div>
+
+                        </div>
+                    </form>
+                </div>
+
+                <button class="btn btn-success" onclick="addTaxRate()"><i class="fa fa-check"></i> &nbsp; Add now</button>
+                <button class="btn btn-danger modal-tax-rate-add-cancel" data-dismiss="modal"><i class="fa fa-remove"></i> &nbsp; Cancel</button>
+
+            </div>
+        </div> <!-- /.modal-content -->
+    </div> <!-- /.modal-dialog -->
+</div> <!-- /.modal add tax rate-->
+
+<div class="modal fade" id="app-coa-tax-edit" role="dialog" aria-labelledby="app-coa-tax-edit">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Edit Tax Rate</h5>
+            </div>
+            <div class="modal-body">
+                <input id="edit-taxrate-id" class="hidden" />
+                <div class="well">
+                    <form class="form-group" id="form_taxrate_edit" novalidate="novalidate">
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="name">Name <span class="required">*</span></label>
+                                    <input type="text" name="name" id="edit-taxrate-name" required class="form-control" placeholder="Tax rate name">
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="number">Rate (%)</label>
+                                    <input type="number" name="rate" id="edit-taxrate-rate" class="form-control" placeholder="e.g. 25">
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="Account">Account</label>
+                                    <br />
+                                    <button class="btn btn-info addbtnaccount" onclick="LoadAccountTree()" data-toggle="modal" data-target="#app-bookkeeping-treeview"><i class="fa fa-plus"></i> &nbsp; Choose account</button>
+                                    <p class="accountInfo" style="font-family: 'Roboto', Arial, sans-serif; font-size: 12px; display: inline-block; padding: 0 10px 0 0;"></p>
+                                    <button class="btn btn-small btn-warning editbtnaccount" data-toggle="modal" onclick="LoadAccountTree()" data-target="#app-bookkeeping-treeview"><i class="fa fa-pencil"></i></button>
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-12">
+                                <div class="form-group">
+                                    <label for="description">Description</label>
+                                    <textarea type="text" name="description" rows="3" id="edit-taxrate-description" class="form-control" placeholder="Description"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
+                <button class="btn btn-success" onclick="updateTaxrate()"><i class="fa fa-check"></i> &nbsp; Save</button>
+                <button class="btn btn-danger modal-tax-rate-edit-cancel" data-dismiss="modal"><i class="fa fa-remove"></i> &nbsp; Cancel</button>
+
+            </div>
+        </div> <!-- /.modal-content -->
+    </div> <!-- /.modal-dialog -->
+</div> <!-- /.modal Edit Tax rate-->
+
+<div class="soft_tan" style="margin-bottom: 15px;">
+
+    <table class="accgroup-table2 table table-hover t1style valignm custome-table" style="width: 100%; background: #fff;">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Rate %</th>
+                <th>Account</th>
+                <th>Description</th>
+                <th>Options</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Taxrates)
+            {
+                <tr>
+                    <td>@item.Name</td>
+                    <td>@item.Rate</td>
+                    <td>
+                        @if (item.AssociatedAccount != null)
+                        {
+                            @item.AssociatedAccount.Name
+                        }
+                    </td>
+                    <td>@item.Description</td>
+                    <td>
+                        <button class="btn btn-warning" onclick="editTaxRate(@item.Id)" data-toggle="modal" data-target="#app-coa-tax-edit"><i class="fa fa-pencil"></i></button>
+                        <button class="btn btn-danger" @canDel onclick="confirmDeleteTaxRate(@item.Id, '@item.Name')" data-toggle="modal" data-target="#app-taxrate-confirm"> <i class="fa fa-trash"></i></button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <a href="#" class="btn btn-success" data-toggle="modal" onclick="clickAdd()" data-target="#app-coa-tax-add"><i class="fa fa-plus"></i> &nbsp; Add new</a>
+</div> <!-- Table Taxrate-->
+
+<div class="modal fade" id="app-taxrate-confirm" role="dialog" aria-labelledby="app-taxrate-confirm">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" onclick="closeSelected()" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Delete tax rate</h5>
+            </div>
+            <div class="modal-body">
+                <div class="col-xs-12 col-sm-12" style="margin-bottom: 30px;">
+                    <span id="label-confirm-taxrate"></span>
+                    <input class="hidden" id="id-itemtaxrate-delete" />
+                </div>
+                <button class="btn btn-success" id="confirmtaxrate-delete" data-dismiss="modal" onclick="deleteTaxRate()"><i class="fa fa-check"></i> &nbsp; OK</button>
+                <button class="btn btn-danger" data-dismiss="modal"><i class="fa fa-remove"></i> &nbsp; Cancel</button>
+            </div>
+        </div> <!-- /.modal-content -->
+    </div> <!-- /.modal-dialog -->
+</div> <!-- /.modal Confirm delete-->
+
+<div class="modal fade left" id="app-bookkeeping-treeview" role="dialog" aria-labelledby="app-bookkeeping-treeview">
+    
+</div>
+
+<!-- Core -->
+<style>
+    /*.btnhide {
+        display: none;
+    }*/
+
+    li.selectaccount button {
+        display: block;
+    }
+</style>
+
+<script>
+    $(document).ready(function () {
+        $('.accgroup-table2').DataTable({
+            responsive: true,
+            "lengthChange": true,
+            "pageLength": 10,
+            "order": []
+        });
+        $('.accgroup-table2').show();
+    });
+</script>

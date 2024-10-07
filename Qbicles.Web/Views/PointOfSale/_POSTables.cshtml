@@ -1,0 +1,171 @@
+﻿@using Qbicles.Models.Trader.PoS;
+@using Qbicles.BusinessRules;
+@model POSTable
+@{
+    var listPosTable = (List<POSTable>)ViewBag.ListPosTables;
+    var posTableLayout = (POSTableLayout)ViewBag.PosTableLayout;
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var currentLocationId = ViewBag.CurrentLocationId == null ? 0 : (int)ViewBag.CurrentLocationId;
+    var timezone = (string)ViewBag.TimeZone;
+    var dateformat = (string)ViewBag.DateFormat;
+    var imgAcceptedType = (string)ViewBag.AcceptedImgExtensions;
+}
+
+<input type="hidden" id="pos-location-id" value="@currentLocationId" />
+<input type="hidden" id="img-accepted-types" value="@imgAcceptedType" />
+<!-- Table options -->
+<div class="well custom" style="padding-bottom: 5px;">
+    <div class="row">
+        <div class="col-xs-12 col-sm-4">
+            <div class="form-group">
+                <label for="search">Search</label>
+                <input type="text" name="search" class="form-control">
+            </div>
+        </div>
+        <div class="col-xs-12 col-sm-3">
+            <label>&nbsp;</label><br />
+            <button class="btn btn-success" onclick="showAddEditTable(0)" data-target="#app-trader-pos-table-add"><i class="fa fa-plus"></i> &nbsp; Add a Table</button>
+        </div>
+    </div>
+</div>
+
+<br />
+
+
+<div class="row">
+    <div class="col-xs-12 col-md-8">
+
+        <table class="datatable table-striped table-hover" id="pos-table-list" data-order='[[ 1, "asc" ]]' style="width: 100%;">
+            <thead>
+                <tr>
+                    <th data-orderable="true">Name</th>
+                    <th>Summary</th>
+                    <th>Options</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var posTable in listPosTable)
+                {
+                    <tr>
+                        <td>@posTable.Name</td>
+                        <td>@posTable.Summary</td>
+                        <td>
+                            <button class="btn btn-warning" onclick="showAddEditTable(@posTable.Id)" data-target="#app-trader-pos-table-edit"><i class="fa fa-pencil"></i></button>
+                            <button class="btn btn-danger" onclick="deletePosTable(@posTable.Id)"><i class="fa fa-trash"></i></button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+    </div>
+    <div class="col-xs-12 col-md-4">
+
+        <div class="flex-grid-fluid" style="margin-top: 34px;">
+            <div class="col">
+                <div class="media-folder-item activity-overview task">
+                    @if (posTableLayout != null && !string.IsNullOrEmpty(posTableLayout.ImageUri))
+                    {
+                        <div class="diagram-provided">
+                            <a href="@api@posTableLayout.ImageUri" data-fancybox class="image-pop" rel="resources" title="This document's description content here">
+                                <div class="preview" style="background-image: url('@api@posTableLayout.ImageUri');">
+                                </div>
+                            </a>
+                            <div class="meta_desc">
+                                <small style="padding: 10px 0 5px 0;">@posTableLayout.ImageType image &nbsp; | &nbsp; Updated @posTableLayout.LastUpdatedDate.ConvertTimeFromUtc(timezone).ToString(dateformat)</small>
+
+                                <br />
+                                <button class="btn btn-warning" onclick="$('#app-trader-pos-diagram-edit').modal('show')"><i class="fa fa-pencil"></i></button>
+                                <button class="btn btn-danger" onclick="DeleteTableLayout()"><i class="fa fa-trash"></i></button>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="no-diagram" style="padding: 15px;">
+
+                            <p>Add a photo or diagram to illustrate your floor plan...</p>
+                            <button class="btn btn-success" onclick="$('#app-trader-pos-diagram-edit').modal('show')"><i class="fa fa-plus"></i> &nbsp; Add a diagram</button>
+                        </div>
+                    }
+
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!--  END Table options -->
+<!--Add Edit Table modal-->
+<div class="modal fade left" id="app-trader-pos-table-add" role="dialog" aria-labelledby="app-trader-pos-table-add"></div>
+<!-- /.modal -->
+<!--Add Edit Table Layout Modal-->
+<div class="modal fade left" id="app-trader-pos-diagram-edit" role="dialog" aria-labelledby="app-trader-pos-diagram-edit">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">@(posTableLayout != null ? "Edit Diagram" : "Add Diagram")</h5>
+            </div>
+            <div class="modal-body">
+                <form id="table-layout-form">
+                    <div class="well custom" style="padding-bottom: 5px;">
+
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label for="file">@(posTableLayout != null ? "Replace current image" : "Add an image") <span class="red">*</span></label>
+                                    <input type="file" accept="@imgAcceptedType" id="layoutImageUri" name="file" class="form-control">
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <br />
+                    <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                    <button class="btn btn-success" type="submit">Confirm</button>
+                </form>
+
+            </div>
+        </div>
+    </div>
+</div>
+<!--Table Layout Modal-->
+
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/pos.tables.js"></script>
+        <script src="//cdnjs.cloudflare.com/ajax/libs/fancybox/3.5.7/jquery.fancybox.min.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/pos.tables.js"></script>
+        <script src="//cdnjs.cloudflare.com/ajax/libs/fancybox/3.5.7/jquery.fancybox.min.js"></script>
+    }
+}
+
+<script>
+    initSaveTableLayoutFrm();
+    $(document).ready(function () {
+        if (jQuery().fancybox) {
+            $(".image-pop").fancybox({
+                beforeLoad: function () {
+                    var el, id = $(this.element).data('title-id');
+
+                    if (id) {
+                        el = $('#' + id);
+
+                        if (el.length) {
+                            this.title = el.html();
+                        }
+                    }
+                },
+                padding: 0
+            });
+        }
+    });
+
+</script>

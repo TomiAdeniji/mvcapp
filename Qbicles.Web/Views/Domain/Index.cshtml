@@ -1,0 +1,500 @@
+﻿@using Qbicles.Models;
+@using Qbicles.BusinessRules;
+@using System.Linq;
+@model QbicleDomain
+@{
+    ViewBag.Title = ViewBag.PageTitle;
+    var userCurrentDomain = (List<ApplicationUser>)ViewBag.UserCurrentDomain;
+
+    var userDomains = (List<QbicleDomain>)ViewBag.Domains;
+    var currentDomain = (QbicleDomain)ViewBag.CurrentDomain;
+    if (currentDomain == null)
+    {
+        currentDomain = new QbicleDomain();
+    }
+
+    var cubeCurrentUserId = (string)ViewBag.CurrentUserId;
+    var cubeParameter = new QbicleSearchParameter
+    {
+        Open = true
+    };
+
+    var isShowCount = ViewBag.InvitationCount > 0 ? "display: inline-block;" : "display: none;";
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var timezone = (string)ViewBag.CurrentTimeZone;
+    var dateFormat = (string)ViewBag.CurrentDateFormat;
+    var imgAcceptedFile = (string)ViewBag.ImageAcceptedExtensions;
+
+    var pendingImg = Qbicles.BusinessRules.Helper.ConfigManager.CommunityPendingadd.ToDocumentUri();
+
+    var waitlistRequestRights = (WaitlistRequestRights)ViewBag.WaitlistRequestRights;
+
+}
+<style>
+    .modal.left .modal-dialog.modal-xl {
+        width: 1200px;
+    }
+</style>
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail mdv2-wrapper" id="create-domain-block" style="position: relative; min-height: 0; height: auto;" hidden>
+    <input hidden id="user-current-id" value="@cubeCurrentUserId" />
+
+    <!-- Main content -->
+    <section class="mdv2 dash" data-tooltip-color="teal" data-tooltip-delay="300" data-tooltip-animate-function="spin">
+
+
+        <!-- App bar -->
+        <div class="mdv2-col-app" style="margin-bottom:0px">
+
+            <div data-spy="affix" class="contained-sidebar affix">
+
+
+                <div class="spacing" style="padding: 30px 0;">
+
+                    <div class="domain-select" style="margin-bottom: 30px;">
+
+                        <div class="well custom" style="margin: 0 15px 0 15px;">
+
+                            <div class="form-group">
+                                <input type="text" id="searchDomain" name="search" class="form-control" placeholder="Search domains..." style="height: 50px;">
+                            </div>
+
+                            <div class="form-group" style="margin: 0;">
+                                <select name="order" id="order" class="form-control select2" style="width: 100%;">
+                                    <option value="0" selected>Recently updated</option>
+                                    <option value="1">Name A-Z</option>
+                                    <option value="2">Name Z-A</option>
+                                </select>
+
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <div class="flexbuts">
+                        <div class="flexbut">
+                            <button class="btn btn-primary community-button" onclick="ShowDomanInvited()">
+                                Invitations &nbsp; <span id="lblCountInvitation-@cubeCurrentUserId" style="@isShowCount" class="label label-info animated bounce">@ViewBag.InvitationCount</span>
+                            </button>
+                        </div>
+                        <div class="flexbut">
+                            <button class="btn btn-info community-button" data-toggle="modal" data-target="#domain-history">
+                                <i class="fa fa-history"></i> &nbsp; History
+                            </button>
+                        </div>
+                    </div>
+
+                    <style>
+
+                        .flexbuts {
+                            margin: 0 15px;
+                        }
+
+                            .flexbuts .flexbut {
+                                margin: 0 0 3px 0;
+                            }
+
+                        @@media all and (min-width: 768px) {
+
+                            .flexbuts {
+                                display: flex;
+                                flex-direction: row;
+                                justify-content: space-between;
+                                margin: 0 0 15px 0;
+                            }
+
+                                .flexbuts .flexbut {
+                                    flex: 1;
+                                    margin: 15px;
+                                }
+                        }
+                    </style>
+
+                    <ul class="qbicles-list-v2">
+                        @if (userDomains != null && userDomains.Any())
+                        {
+                            foreach (var item in userDomains)
+                            {
+                                if (item.Status == QbicleDomain.DomainStatusEnum.Open)
+                                {
+                                    <li>
+                                        <a href="#" onclick="DomainSelected('@item.Key', '')">
+                                            <div class="mdv2-activity dash" style="padding: 20px;">
+                                                @if (item.Administrators?.Any(x => x.Id == cubeCurrentUserId) ?? false)
+                                                {
+                                                    <span class="label label-lg label-info">Admin</span>
+                                                }
+                                                @if (item.QbicleManagers?.Any(x => x.Id == cubeCurrentUserId) ?? false)
+                                                {
+                                                    <br /><span class="label label-lg label-info">Manager</span>
+                                                }
+
+                                                <div class="flex-avatar">
+                                                    <div class="col-circleimg">
+                                                        <div class="image" style="background-image: url('@(item.LogoUri == null?"/Content/DesignStyle/img/icon_domain_default.png":api+""+item.LogoUri+"&size=T")');"></div>
+
+                                                    </div>
+                                                    <div class="col">
+                                                        <h2 style="margin: 5px 0 0 0;">@item.Name</h2>
+                                                        <ul class="breadcrumb" style="margin: 2px 0 0 0;">
+                                                            @{item.CreatedDate = item.CreatedDate.ConvertTimeFromUtc(timezone); }
+                                                            <li style="color: #acabbd;">Created on @item.CreatedDate.ToOrdinalString(dateFormat)  </li>
+                                                        </ul>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </a>
+                                    </li>
+                                }
+
+                            }
+
+                        }
+                    </ul>
+
+                </div>
+
+            </div>
+        </div>
+        <!-- END App bar -->
+        <!-- Main area -->
+        <div class="mdv2-col-dash bgdash" style="min-width: 0;">
+
+
+            <div class="owl-carousel owl-theme dash-carousel" style="display: block;">
+
+                <div class="item" style="background-image: url('/Content/DesignStyle/img/rb001.jpg')">
+                    <!--join waitlist-->
+                    <div class="waitlist-join-request" style="display: @waitlistRequestRights.waitRequest;">
+
+                        <div class="row pricing">
+
+                            <div class="col-sm-6 col-lg-5">
+
+
+                                <div class="activity-overview plain rounded">
+                                    <div class="titlezone">
+                                        <h5>Add your business</h5>
+                                    </div>
+
+                                    <p>
+                                        Add your business to Qbicles by registering a Qbicles Business Domain. We have a variety of plans tailored to suit different needs,
+                                        and all paid plans come with a <strong>14 day, risk-free trial!</strong>
+                                    </p>
+                                    <br />
+                                    <p>Only need basic business support? Our <strong>FREE</strong> plan might be of interest to you. Register your interest below to add yourself to the waitlist. As soon as a place becomes available you'll be notified by an adminstrator, and then you can begin setting up your new Qbicles Business Domain.</p>
+                                    <br />
+                                    <a href="#" onclick="ShowJoinWaitlistModal()" class="btn btn-info community-button w-auto">Join the waitlist</a>
+                                </div>
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    <!-- Pending join Custom -->
+                    <div class="wait-join-custom" style="display: @waitlistRequestRights.waitJoinCustom;">
+
+                        <div class="row pricing">
+
+                            <div class="col-sm-6 col-lg-5">
+
+                                <div class="activity-overview plain rounded">
+                                    <div class="titlezone">
+                                        <h5>Add your Business Domains</h5>
+                                    </div>
+
+                                    <p>Congratulations! Your request was approved, and you can now proceed to add your Business Domain.</p>
+
+                                    <br />
+                                    <a href="/Domain/CreateDomain" class="btn btn-success community-button w-auto">Add a Domain</a>
+                                </div>
+
+
+                                <div class="activity-overview plain rounded">
+                                    <img src="@pendingImg" style="width: 300px; max-width: 100%; height: auto; margin: 0 auto 15px auto;">
+
+                                    <div class="activity-overview generic help-text animated fadeIn" style="margin: 0;">
+                                        <i class="fa fa-info-circle"></i>
+                                        <p>
+                                            You're in the Custom Domain waitlist, and we'll notify you as soon as an adminstrator has responsed to your request.
+                                            If you're approved, you'll see some options appear here to begin the process.
+                                        </p>
+                                    </div>
+                                </div>
+
+
+                                <br />
+                            </div>
+
+                        </div>
+
+                    </div>
+                    <!-- Pending -->
+                    <div class="waitlist-pending" style="display: @waitlistRequestRights.waitPending;">
+
+                        <div class="row pricing">
+
+                            <div class="col-sm-6 col-lg-5">
+
+
+                                <div class="activity-overview plain rounded">
+                                    <img src="@pendingImg" style="width: 300px; max-width: 100%; height: auto; margin: 0 auto 15px auto;">
+
+                                    <div class="activity-overview generic help-text animated fadeIn" style="margin: 0;">
+                                        <i class="fa fa-info-circle"></i>
+                                        <p>
+                                            You're in the waitlist, and we'll notify you as soon as an adminstrator has responsed to your request.
+                                            If you're approved, you'll see some options appear here to begin the process.
+                                        </p>
+                                    </div>
+                                </div>
+                                <br />
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+
+
+                    <!-- Done -->
+                    <div class="both-domain-and-custom" style="display: @waitlistRequestRights.allDomainCustom;">
+
+                        <div class="row pricing">
+
+                            <div class="col-sm-6 col-lg-5">
+
+
+                                <div class="activity-overview plain rounded">
+                                    <div class="titlezone">
+                                        <h5>Add your Business Domains</h5>
+                                    </div>
+
+                                    <p>Congratulations! Your request was approved, and you can now proceed to add your Business Domain.</p>
+
+                                    <br />
+                                    <a href="/Domain/CreateDomain" class="btn btn-success community-button w-auto">Add a Domain</a>
+                                    <a href="#" onclick="ShowCreateDomainCustomModal()" data-toggle="modal" class="btn btn-primary community-button w-auto">Add a Custom Domain</a>
+                                </div>
+
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+
+
+                    <!-- Done (without Custom Domains) -->
+                    <div class="domain-without-custom" style="display: @waitlistRequestRights.domainWithoutCustom;">
+
+                        <div class="row pricing">
+
+                            <div class="col-sm-6 col-lg-5">
+
+
+                                <div class="activity-overview plain rounded">
+                                    <div class="titlezone">
+                                        <h5>Add your Business Domains</h5>
+                                    </div>
+
+                                    <p>Congratulations! Your request was approved, and you can now proceed to add your Business Domain. If you require Custom Domain support you'll have to join an additional waitlist below. The same procedure will apply, and if accepted you'll see the option to add a Custom Domain here.</p>
+
+                                    <br />
+                                    <a href="/Domain/CreateDomain" class="btn btn-success community-button w-auto">Add a Domain</a>
+                                    <a href="#" class="btn btn-info community-button w-auto" onclick="ShowJoinWaitlistModal()">Join Custom Domain waitlist</a>
+                                </div>
+
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+            </div>
+
+
+        </div>
+
+    </section>
+    <!-- ./content -->
+
+</div>
+<!-- /.content-wrapper -->
+
+
+
+<div id="create-domain" class="modal fade left" role="dialog" aria-labelledby="lblcreate-domain" data-focus-on="input:first" data-keyboard="true" data-backdrop="true" style="z-index:9999">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title" id="title-add-update-domain">Create a Domain</h5>
+            </div>
+            <div class="modal-body">
+                <form id="form_domain_addedit" enctype="multipart/form-data">
+                    <div class="row">
+                        <div class="col-xs-12">
+                            <ul class="app_subnav admintabs" style="padding-top: 0;">
+                                <li class="active"><a href="#dom-1" data-toggle="tab" aria-expanded="true">Domain</a></li>
+                                <li class=""><a href="#dom-2" data-toggle="tab" aria-expanded="false">Initial Qbicle</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                    <br />
+                    <div class="tab-content">
+                        <!-- Domain -->
+                        <div class="tab-pane fade active in" id="dom-1">
+                            <div class="well custom" style="padding-bottom: 5px;">
+                                <div class="row">
+                                    <div class="col-xs-12">
+                                        <div class="form-group">
+                                            <label for="domainName-UI">Domain title</label>
+                                            <input type="text" id="domainName-UI" required name="domain.Name" class="form-control">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-xs-12">
+                                        <div class="form-group" style="margin: 0;">
+                                            <input id="domain-logo-uri" type="hidden" name="domain.LogoUri" />
+                                            <label for="account_number">Domain image</label>
+                                            <input type="file" id="logoDomain-UI" accept="@imgAcceptedFile" filesize="true" name="logoDomain" data-target="#domainlogo_preview" class="form-control previewimg">
+                                        </div>
+                                        <img id="domainlogo_preview" src="" style="display: none; width: 100%; height: auto; margin-bottom: 30px;" />
+                                    </div>
+                                </div>
+                                <select id="sl_hdf_domainType" name="domainType" style="display:none;">
+                                    <option value="@QbicleDomain.DomainTypeEnum.Business">Business</option>
+                                    <option value="@QbicleDomain.DomainTypeEnum.Community" selected>Community</option>
+                                    <option value="@QbicleDomain.DomainTypeEnum.Premium">Premium</option>
+                                </select>
+                            </div>
+
+
+                            <br>
+                            <a href="#" class="btn btn-danger" data-dismiss="modal" onclick="clearDomainInputModalAddEdit()">Cancel</a>
+                            <a href="#dom-2" data-toggle="tab" class="btn btn-success btnNext" aria-expanded="true">Next &nbsp; <i class="fa fa-angle-right"></i></a>
+
+                        </div>
+                        <!-- END Domain -->
+                        <!-- Qbicle -->
+                        <div class="tab-pane fade" id="dom-2">
+
+                            <div class="activity-overview generic help-text animated bounce">
+                                <i class="fa fa-info-circle"></i>
+                                <p>
+                                    Configure your first Qbicle in your new Domain. This will be used to house configuration options required to get you up and running,
+                                    including the creation of your fully customisable Business Profile.
+                                </p>
+                            </div>
+
+                            <div class="well custom" style="padding-bottom: 5px;">
+                                <div class="row">
+                                    <div class="col-xs-12">
+                                        <div class="form-group">
+                                            <label for="initialQbicle.Name">Qbicle title</label>
+                                            <input type="text" name="initialQbicle.Name" class="form-control" required>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-xs-12">
+                                        <div class="form-group">
+                                            <label for="initialQbicle.LogoUri">Qbicle image</label>
+                                            <input id="qbicle-logo-uri" type="hidden" name="initialQbicle.LogoUri" />
+                                            <input type="file" accept="@imgAcceptedFile" id="logoQbicle-UI" class="form-control previewimg" filesize="true" name="logoQbicle" data-target="#qbiclelogo_preview">
+                                        </div>
+
+                                        <img id="qbiclelogo_preview" src="#" alt="Your image" style="display: none; width: 100%; height: auto; margin-bottom: 30px;">
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-xs-12">
+                                        <div class="form-group">
+                                            <label for="initialQbicle.Description">Qbicle description</label>
+                                            <textarea name="initialQbicle.Description" class="form-control" style="height: 80px;"></textarea>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <br>
+                            <a href="#dom-1" data-toggle="tab" class="btn btn-warning btnPrevious" aria-expanded="false"><i class="fa fa-angle-left"></i> &nbsp; Previous</a>
+                            <button type="button" class="btn btn-success" onclick="CreateDomainRequest()">Confirm</button>
+                        </div>
+                        <!-- END Qbicle -->
+                    </div>
+                </form>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+
+<div class="modal fade left" id="waitlist-modal" role="dialog" aria-labelledby="waitlist-modal">
+
+</div>
+
+<div class="modal fade left" id="custom-domain-create" role="dialog" aria-labelledby="custom-domain-create">
+
+</div>
+
+
+<link href="~/Content/DesignStyle/css/bootstrap-multiselect.css" rel="stylesheet" />
+<script src="~/Content/DesignStyle/js/bootstrap-multiselect.js"></script>
+
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/Domain.js"></script>
+        <script src="~/Scripts/dev/wait-list-domain.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/Domain.js"></script>
+        <script src="~/Scripts/dev/wait-list-domain.js"></script>
+    }
+}
+<script>
+    function nextslide(target) {
+        var owl = target;
+        $(owl).trigger('next.owl.carousel');
+    }
+
+    function prevslide(target) {
+        var owl = target;
+        $(owl).trigger('prev.owl.carousel');
+    }
+    $(document).ready(function () {
+        initDomainIndexView();
+    })
+
+    function ShowCreateDomainCustomModal() {
+        var ajaxUri = '/Domain/ShowCreateDomainCustomModal';
+        AjaxElementShowModal(ajaxUri, 'custom-domain-create');
+    }
+
+
+    function ShowJoinWaitlistModal() {
+        var ajaxUri = '/Domain/ShowJoinWaitlistModal';
+        AjaxElementShowModal(ajaxUri, 'waitlist-modal');
+    }
+
+
+
+
+
+
+</script>
+
+<style>
+    .dash-carousel .owl-item {
+        min-height: 100vh !important;
+    }
+</style>

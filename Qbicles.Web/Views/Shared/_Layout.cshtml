@@ -1,0 +1,583 @@
+﻿@using Qbicles.Models;
+@using Qbicles.BusinessRules;
+@using Qbicles.BusinessRules.Model;
+@{
+    //var userManager = Request.GetOwinContext().GetUserManager<ApplicationUserManager>();
+
+    var currentUserId = (string)ViewBag.CurrentUserId;
+    var user = (ApplicationUser)ViewBag.CurrentUser; //userManager.FindById(currentUserId) ?? new ApplicationUser();
+    var lstDomains = user.Domains;
+    lstDomains = lstDomains.OrderBy(d => d.Name).ToList();
+    var currentDomain = (QbicleDomain)ViewBag.CurrentDomain;
+    var currencySetting = (CurrencySetting)ViewBag.CurrencySettings;
+    var decimalPlace = (int)currencySetting.DecimalPlace;
+    if (currentDomain == null)
+    {
+        currentDomain = new QbicleDomain();
+    }
+
+    var currentDomainPlan = (DomainPlan)ViewBag.CurrentDomainPlan ?? null;
+    var currentDomainPlanLevel = currentDomainPlan?.Level?.Level ?? BusinessDomainLevelEnum.Free;
+
+    var userIdCurrent = currentUserId == "" ? "" : currentUserId;
+    var userPlaySound = user.NotificationSound;
+    var dateFormat = (string)ViewBag.CurrentDateFormat;
+    var timeFormat = (string)ViewBag.CurrentTimeFormat;
+
+    var currentSystemShortDateFormat = (string)ViewBag.CurrentSystemShortDateFormat;
+
+    var currentGoBackPage = ViewBag.CurrentGoBackPage == null ? "" : (string)ViewBag.CurrentGoBackPage;
+
+    var isMember = ViewBag.IsMember;
+    var api = (string)ViewBag.DocRetrievalUrl;
+
+    var isDomainAdmin = currentDomain.Administrators.Any(p => p.Id == currentUserId);
+
+    var rightApps = (List<string>)ViewBag.RightApps;
+
+    var visibleMenu = isDomainAdmin || rightApps.Any(r => r == RightPermissions.QbiclesBusinessAccess);
+    var systemRolesQbicles = (List<string>)ViewBag.SystemRolesQBicles;
+    var alertNotification = (AlertNotificationModel)ViewBag.AlertNotification;
+    var currentDomainPlanName = currentDomainPlanLevel.GetDescription();
+
+    var domainPlanLabelText = "";
+    switch (currentDomainPlanLevel)
+    {
+        case BusinessDomainLevelEnum.Free:
+            domainPlanLabelText = "Trial user";
+            break;
+        case BusinessDomainLevelEnum.Starter:
+            domainPlanLabelText = "Starter plan";
+            break;
+        case BusinessDomainLevelEnum.Standard:
+            domainPlanLabelText = "Standard plan";
+            break;
+        case BusinessDomainLevelEnum.Expert:
+            domainPlanLabelText = "Expert plan";
+            break;
+        case BusinessDomainLevelEnum.Existing:
+            domainPlanLabelText = "Existing plan";
+            break;
+    }
+}
+
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+
+    <title>@ViewBag.Title</title>
+    <link rel="shortcut icon" type="image/x-icon" href="/Content/DesignStyle/img/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="~/Content/DesignStyle/img/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="~/Content/DesignStyle/img/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="~/Content/DesignStyle/img/favicon-16x16.png">
+
+    <meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" name="viewport">
+
+    <!-- PAYSTACK -->
+    <script src="https://js.paystack.co/v2/inline.js"></script>
+
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Poppins:300,400,500,600,700|Roboto:300,400,500,600,700|Lato:300,400,500,600,700" />
+    @Styles.Render("~/Content/qbiclescss")
+    @Qbicles.Web.Helper.HtmlHelpers.LocalizedJsBundle("~/Scripts/ErrorMessages")
+</head>
+
+<body class="skin-default sidebar-mini sidebar-collapse">
+    <input id="currentSystemShortDateFormat" value="@currentSystemShortDateFormat" hidden="" />
+    <input id="formatDateByUser" value="@dateFormat" hidden="" />
+    <input id="formatTimeByUser" value="@timeFormat" hidden="" />
+    <!--if add from media tab in Qbicle dashboard - need return difference style-->
+    <input hidden id="add-media-on-tab" value="0" />
+    <!-- ./wrapper -->
+    <!--render modal dialog side notification bar-->
+    @{
+        Html.RenderAction("GenerateModalPartial", "Commons", new { currentPage = ViewBag.CurrentPage });
+    }
+
+    @Scripts.Render("~/bundles/qbiclesjs")
+    <audio id="notify-sound" class="sound-player" style="display: none;">
+        <source src="@Url.Content(System.Configuration.ConfigurationManager.AppSettings["NotifycationSoundPath"])" />
+        <embed src="@Url.Content(System.Configuration.ConfigurationManager.AppSettings["NotifycationSoundPath"])" hidden loop="false" />
+    </audio>
+    <div class="wrapper">
+        <input id="connection-hub-uri" value="@Url.Content(System.Configuration.ConfigurationManager.AppSettings["HubUrl"])" hidden="" />
+        <input id="api-uri" value="@api" hidden="" />
+        <input id="currentPage" value="@ViewBag.CurrentPage" hidden="" />
+        <input id="userNotificationMethod" value="@user.ChosenNotificationMethod" hidden="" />
+        <input id="NonNotification" value="@Notification.NotificationSendMethodEnum.None" hidden="" />
+        <input id="SoundNotification" value="@Notification.NotificationSound.Yes" hidden="" />
+        <input id="userPlaySound" value="@userPlaySound" hidden="" />
+
+        @{
+            if (isMember != null)
+            {
+                <!-- Main Header -->
+                <header class="main-header">
+                    <!-- Header Navbar -->
+                    <nav class="navbar navbar-fixed-top" role="navigation">
+                        <!-- Sidebar toggle button-->
+                        <a href="#" id="sidebar-toggle" class="sidebar-toggle" data-toggle="offcanvas" role="button" @*onclick="updateNavBarOpenStatus()"*@>
+                            <span class="sr-only">Toggle navigation</span>
+                        </a>
+                        <div class="qbicle-header"></div>
+
+                        <!-- Navbar Right Menu -->
+                        <div class="navbar-custom-menu" style="flex: 0 1 100px;">
+                            <ul class="nav navbar-nav">
+                                <li class="dropdown user user-menu">
+                                    <a href="#" data-toggle="dropdown" class="newtoplink larger text-center notify dropdown-toggle" data-tooltip="Options" data-tooltip-position="bottom" data-tooltip-color="slate" aria-expanded="false">
+                                        <img src="~/Content/DesignStyle/img/icon_cog.png" />
+                                    </a>
+                                    <ul class="dropdown-menu">
+                                        <li class="user-header">
+                                            <img src="@api@(user.ProfilePic)&size=T" class="user-header-top">
+                                            <p>
+                                                @HelperClass.GetFullNameOfUser(user)
+                                                <small>Member since @user.DateBecomesMember.ToString("MMM. yyyy")</small>
+                                            </p>
+                                        </li>
+
+                                        <!-- Menu Footer-->
+                                        <li class="user-footer">
+                                            <div>
+                                                <button onclick="gotoUserProfile()" class="btn btn-info"><i class="fa fa-id-card"></i> &nbsp; Profile</button>
+                                                <form id="logoutForm" method="post" action="/Account/LogOff" style="display: inline-block">
+                                                    @Html.AntiForgeryToken()
+                                                    <button type="submit" class="btn btn-danger"><i class="fa fa-sign-out"></i> &nbsp; Logout</button>
+                                                </form>
+                                            </div>
+                                        </li>
+                                    </ul>
+                                </li>
+
+                                <li class="user-menu chat-alerts" style="width: 60px; display: none;">
+                                    <a href="#" onclick="ShowChatAlertsModal()" class="newtoplink larger text-center notify"
+                                       data-tooltip="You have new messages" data-tooltip-stickto="left" data-tooltip-color="slate">
+                                        <img src="dist/img/icon_chat.png">
+                                        <span class="notifycircle info animated bounce"></span>
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+                    </nav>
+                </header>
+
+                @RenderBody()
+            }
+            else
+            {
+                <!-- Main Header -->
+                <header class="main-header">
+                    <!-- Header Navbar -->
+                    <nav class="navbar navbar-fixed-top" role="navigation">
+                        <!-- Sidebar toggle button-->
+                        <a href="#" id="sidebar-toggle" class="sidebar-toggle" data-toggle="offcanvas" role="button" @*onclick="updateNavBarOpenStatus()"*@>
+                            <span class="sr-only">Toggle navigation</span>
+                        </a>
+
+                        <!--The Qbicle selected-->
+                        <div class="qbicle-header">
+                            @{
+                                var displayAlert = false;
+                                if (ViewBag.CurrentPage != "Domain" && ViewBag.CurrentPage != "Profile" && ViewBag.CurrentPage != "ProfileAdmin" && ViewBag.CurrentPage != "AppProcDocItem"
+                                    && ViewBag.CurrentPage != "AppProcessDocumentation" && ViewBag.CurrentPage != "ApprovalRequest")
+                                {
+                                    if (ViewBag.CurrentPage == "Discussion" || ViewBag.CurrentPage == "Topic" || ViewBag.CurrentPage == "Task" || ViewBag.CurrentPage == "Alert" || ViewBag.CurrentPage == "Media" || ViewBag.CurrentPage == "Event" || ViewBag.CurrentPage == "Approval" || ViewBag.CurrentPage == "MediaFolder" || ViewBag.CurrentPage == "Link")
+                                    {
+                                        <div id="domain-logo-top-@currentDomain.Id" class="domain-icon-new" style="background-image: url('@ViewBag.LogoUri');">&nbsp;</div>
+
+                                        <div class="title-options">
+                                            <h1>@ViewBag.QbicleName</h1>
+                                        </div>
+                                    }
+                                    else if (ViewBag.CurrentPage == "bookkeeping" || ViewBag.CurrentPage == "Apps" || ViewBag.CurrentPage == "OurPeople" || ViewBag.CurrentPage == "SalesMarketing" || ViewBag.CurrentPage == "trader")
+                                    {
+                                        displayAlert = true;
+                                        <div class="avatarpicker minified">
+                                            <a href="#" data-toggle="modal" onclick="ShowChatAlertsModal()" class="chat-alerts newtoplink larger text-center notify" style="float: right !important;" data-target="#chatalerts"
+                                               data-tooltip="You have new messages" data-tooltip-stickto="left" data-tooltip-color="slate">
+                                                <img class="notifycircle-dot" src="~/Content/DesignStyle/img/icon_chat.png" />
+                                                <span id="notify-circle-web" class="notifycircle-web @alertNotification.NotifyCircleClass animated bounce"></span>
+                                            </a>
+
+                                            <div class="form-group" style="margin: 5px 0 0 0;">
+                                                @if (currentDomain != null && currentDomain.Id > 0)
+                                                {
+                                                    <a href="@(isDomainAdmin ? "/Administration/AdminPermissions" : "#")" class="newtoplink" style="align-self: center;">
+                                                        <button class="btn btn-primary btn-mini-rounded pull-right" style="margin: 11px 10px 0 0;" @*data-tooltip="Your free trial period expires in 12 days"*@ data-tooltip-color="steel" data-tooltip-stickto="left">@domainPlanLabelText</button>
+                                                    </a>
+                                                }
+
+                                                <select name="assignee" class="form-control select2avatarDomain" style="width: auto;" onchange="DomainSelectedChange()">
+                                                    <option value=""></option>
+                                                    @if (lstDomains != null)
+                                                    {
+                                                        foreach (var item in lstDomains)
+                                                        {
+                                                            if (item.Status == QbicleDomain.DomainStatusEnum.Open)
+                                                            {
+                                                                <option value="@item.Key" @(item.Id == currentDomain.Id ? "selected" : "") LogoUri="@(item.LogoUri)&size=T" api="@((string)ViewBag.DocRetrievalUrl)">@item.Name</option>
+                                                            }
+                                                        }
+                                                    }
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                    }
+                                    else if (ViewBag.CurrentPage == "Dashboard" || ViewBag.CurrentPage == "Discussions" || ViewBag.CurrentPage == "Tasks" || ViewBag.CurrentPage == "Alerts" || ViewBag.CurrentPage == "Medias" || ViewBag.CurrentPage == "Events" || ViewBag.CurrentPage == "Approvals" || ViewBag.CurrentPage == "Apps")
+                                    {
+                                        if (ViewBag.CurrentPage == "Dashboard")
+                                        {
+                                            displayAlert = true;
+                                            <div class="avatarpicker minified">
+                                                <a href="#" data-toggle="modal" onclick="ShowChatAlertsModal()" class="chat-alerts newtoplink larger text-center notify" style="float: right !important;" data-target="#chatalerts"
+                                                   data-tooltip="You have new messages" data-tooltip-stickto="left" data-tooltip-color="slate">
+                                                    <img class="notifycircle-dot" src="~/Content/DesignStyle/img/icon_chat.png" />
+                                                    <span id="notify-circle-web" class="notifycircle-web @alertNotification.NotifyCircleClass animated bounce"></span>
+                                                </a>
+
+                                                <div class="form-group" style="margin: 5px 0 0 0;">
+                                                    @if (currentDomain != null && currentDomain.Id > 0)
+                                                    {
+                                                        <a href="@(isDomainAdmin ? "/Administration/AdminPermissions" : "#")" class="newtoplink" style="align-self: center;">
+                                                            <button class="btn btn-primary btn-mini-rounded pull-right" style="margin: 11px 10px 0 0;" @*data-tooltip="Your free trial period expires in 12 days"*@ data-tooltip-color="steel" data-tooltip-stickto="left">@domainPlanLabelText</button>
+                                                        </a>
+                                                    }
+
+                                                    <select name="assignee" class="form-control select2avatarDomain" style="width: auto;display:none" onchange="DomainSelectedChange()">
+                                                        @if (lstDomains != null)
+                                                        {
+                                                            foreach (var item in lstDomains)
+                                                            {
+                                                                if (item.Status == QbicleDomain.DomainStatusEnum.Open)
+                                                                {
+                                                                    <option value="@item.Key" @(item.Id == currentDomain.Id ? "selected" : "") LogoUri="@item.LogoUri&size=T" api="@((string)ViewBag.DocRetrievalUrl)">@item.Name</option>
+                                                                }
+                                                            }
+                                                        }
+                                                    </select>
+                                                </div>
+                                            </div>
+
+                                        }
+                                        else
+                                        {
+                                            if (string.IsNullOrEmpty(currentDomain.LogoUri))
+                                            {
+                                                <div id="domain-logo-top-@currentDomain.Id" class="domain-icon-new" style="background-image: url('/Content/DesignStyle/img/icon_domain_default.png');">&nbsp;</div>
+                                            }
+                                            else
+                                            {
+                                                <div id="domain-logo-top-@currentDomain.Id" class="domain-icon-new" style="background-image: url('@(api + currentDomain.LogoUri)&size=T');">&nbsp;</div>
+                                            }
+                                            <div class="title-options">
+                                                <h1>@ViewBag.QbicleName</h1>
+                                            </div>
+                                        }
+
+                                    }
+                                }
+
+                            }
+                            @if (displayAlert == false)
+                            {
+                                <a href="#" data-toggle="modal" onclick="ShowChatAlertsModal()" class="chat-alerts newtoplink larger text-center notify" style="float: right !important;" data-target="#chatalerts"
+                                   data-tooltip="You have new messages" data-tooltip-stickto="left" data-tooltip-color="slate">
+                                    <img class="notifycircle-dot" src="~/Content/DesignStyle/img/icon_chat.png" />
+                                    <span id="notify-circle-web" class="notifycircle-web @alertNotification.NotifyCircleClass animated bounce"></span>
+                                </a>
+
+                                if (currentDomain != null && currentDomain.Id > 0)
+                                {
+                                    <a href="@(isDomainAdmin ? "/Administration/AdminPermissions" : "#")" class="newtoplink" style="align-self: center;">
+                                        <button class="btn btn-primary btn-mini-rounded pull-right" style="margin: 11px 10px 0 0;" @*data-tooltip="Your free trial period expires in 12 days"*@ data-tooltip-color="steel" data-tooltip-stickto="left">@domainPlanLabelText</button>
+                                    </a>
+                                }
+                            }
+                        </div>
+                        <!-- Navbar Right Menu -->
+                        <div id="check-verify-box" class="navbar-custom-menu" style="flex: 1;display:none">
+                            <a href="#check-verify" data-toggle="modal" class="newtoplink" style="align-self: center;">
+                                <button class="btn btn-info btn-mini-rounded animated bounce pull-right" style="margin: 11px 10px 0 0;">Verify email change</button>
+                            </a>
+                        </div>
+                    </nav>
+                </header>
+
+                <!-- Left side column. contains the logo and sidebar -->
+                <aside class="main-sidebar relative" style="padding-top:0;">
+                    <!-- sidebar: style can be found in sidebar.less -->
+                    <section class="sidebar" style="@(ViewBag.CurrentPage == "MyDesk" ? "padding-top: 0;" : null)">
+                        <!-- Sidebar Menu -->
+                        @{
+                            var lstBaseSubPages = new List<String>() { "Domain", "Qbicles", "BusinessProfile", "Commerce", "B2C", "OurPeople", "AdminPermissions", "Apps", "BusinessReports",
+                                "Dasboard", "trader", "bookkeeping", "manageaccounts", "bankmate", "Operator", "SalesMarketing", "Spannered", "CBTasks", "CBConfig", "Events", "OrderManagement" };
+                        }
+                        <ul class="sidebar-menu">
+                            @if (currentDomain != null && currentDomain.Id > 0)
+                            {
+                                <li class="activedomain @((lstBaseSubPages.Contains(ViewBag.CurrentPage) || (ViewBag.CurrentPage == SystemPageConst.SOCIALPOSTDISCUSSION && (currentGoBackPage == SystemPageConst.B2C || currentGoBackPage == SystemPageConst.COMMERCE))) ? "active" : null)">
+                                    <a href="#" class="haschildren" style="padding: 10px 10px 5.5px 10px;">
+                                        <div class="img" style="background-image: url('@api@currentDomain.LogoUri&size=T');"></div> <span id="domain-name-navigation">@currentDomain.Name</span>
+                                    </a>
+                                    <ul class="treeview-menu">
+                                        <li class="@(ViewBag.CurrentPage == "Qbicles" || ViewBag.CurrentPage == "Dasboard" || ViewBag.CurrentPage == "Events" ? "active" : null)">
+                                            <a href="~/Qbicles">Qbicles</a>
+                                        </li>
+                                        @if (visibleMenu)
+                                        {
+                                            <li class="@(ViewBag.CurrentPage == "BusinessProfile" ? "active" : null)">
+                                                <a href="~/Commerce/BusinessProfile">Profile & config</a>
+                                            </li>
+                                        }
+                                        @if ((visibleMenu || Utility.CheckHasAccessB2B(currentDomain.Id, currentUserId)) && currentDomainPlanLevel >= BusinessDomainLevelEnum.Standard)
+                                        {
+                                            <li class="@((ViewBag.CurrentPage == "Commerce" || (ViewBag.CurrentPage == SystemPageConst.SOCIALPOSTDISCUSSION && currentGoBackPage == SystemPageConst.COMMERCE)) ? "active" : null)">
+                                                <a href="~/Commerce" onclick="logAccess('Commerce');">B2B</a>
+                                            </li>
+                                        }
+                                        @if (visibleMenu || Utility.CheckHasAccessB2C(currentDomain.Id, currentUserId))
+                                        {
+                                            <li class="@((ViewBag.CurrentPage == "B2C" || (ViewBag.CurrentPage == SystemPageConst.SOCIALPOSTDISCUSSION && currentGoBackPage == SystemPageConst.B2C)) ? "active" : null)">
+                                                <a href="~/B2C">B2C</a>
+                                            </li>
+                                        }
+                                        @if ((visibleMenu || Utility.CheckBusinessUserRole(currentDomain.Id, currentUserId))
+                                            && currentDomainPlanLevel >= BusinessDomainLevelEnum.Standard)
+                                        {
+                                            <li class="@(ViewBag.CurrentPage == "DeliveryManagement" ? "active" : "")">
+                                                <a href="~/Delivery"> Delivery management</a>
+                                            </li>
+                                        }
+                                        @if (visibleMenu && currentDomainPlanLevel >= BusinessDomainLevelEnum.Standard)
+                                        {
+                                            <li class="@(ViewBag.CurrentPage == "OrderManagement" ? "active" : null)">
+                                                <a href="~/OrderManagement">Order management</a>
+                                            </li>
+                                        }
+                                        @if (visibleMenu && currentDomainPlanLevel >= BusinessDomainLevelEnum.Starter)
+                                        {
+                                            <li class="@(ViewBag.CurrentPage == "BusinessReports" ? "active" : "")">
+                                                <a href="~/BusinessReports">Reports</a>
+                                            </li>
+                                        }
+
+                                        @if (isDomainAdmin || systemRolesQbicles.Contains(SystemRoles.SystemAdministrator))
+                                        {
+                                            if (currentDomainPlanLevel >= BusinessDomainLevelEnum.Starter)
+                                            {
+                                                <li class="@(ViewBag.CurrentPage == "OurPeople" ? "active" : null)">
+                                                    <a href="/Qbicles/OurPeople">Members</a>
+                                                </li>
+                                            }
+                                            <li class="@(ViewBag.CurrentPage == "AdminPermissions" ? "active" : null)" style="margin: 0 0 5px 0;">
+                                                <a href="~/Administration/AdminPermissions">Domain administration</a>
+                                            </li>
+                                        }
+
+                                        @if (rightApps.Any())
+                                        {
+                                            <li class="@(ViewBag.CurrentPage == "Apps" ? "active" : null)">
+                                                <button class="btn btn-primary" style="text-align: left; padding: 13px 15px; width: 100%; margin: 0 0 5px 0; border-radius: 5px;" onclick="window.location.href = '/Apps/AppManagement';">
+                                                    <i class="fa fa-layer-group"></i> &nbsp; Bolt-ons
+                                                </button>
+                                            </li>
+                                        }
+                                        <li>
+                                            <button class="btn btn-info" style="text-align: left; padding: 13px 15px; margin: 0 0 5px 0; width: 100%; border-radius: 5px;" onclick="window.location.href='/Domain';">
+                                                <i class="fa fa-globe-africa"></i> &nbsp; All Domains
+                                            </button>
+                                        </li>
+                                    </ul>
+                                </li>
+                            }
+                            else
+                            {
+                                <li class="@((lstBaseSubPages.Contains(ViewBag.CurrentPage)) ? "active" : null)">
+                                    <a href="#" class="haschildren">
+                                        <i class="fa fa-globe-africa"></i> <span>Select a Domain</span>
+                                    </a>
+                                    <ul class="treeview-menu">
+                                        <li>
+                                            <button class="btn btn-info" style="text-align: left; padding: 13px 15px; margin: 0 0 5px 0; width: 100%; border-radius: 5px;" onclick="window.location.href='/Domain';"><i class="fa fa-globe-africa"></i> &nbsp; All Domains</button>
+                                        </li>
+                                    </ul>
+                                </li>
+                            }
+
+                            @{
+                                lstBaseSubPages = new List<string> { "C2C", "highlight", "Profile", "MyDesk", "MyOrders", "Monibac" };
+                            }
+                            <li class="activedomain @((lstBaseSubPages.Contains(ViewBag.CurrentPage) || (ViewBag.CurrentPage == SystemPageConst.SOCIALPOSTDISCUSSION && currentGoBackPage == SystemPageConst.C2C)) ? "active" : null)">
+                                <a href="#" class="haschildren" style="padding: 10px 10px 5.5px 10px;">
+                                    <div class="img" id="profile-icon" style="background-image: url('@api@(user.ProfilePic)&size=T');"></div> <span class="domainlabel">@HelperClass.GetFullNameOfUser(user)</span>
+                                </a>
+                                <ul class="treeview-menu">
+                                    <li class="@((ViewBag.CurrentPage == "C2C" || (ViewBag.CurrentPage == SystemPageConst.SOCIALPOSTDISCUSSION && currentGoBackPage == SystemPageConst.C2C)) ? "active" : null)">
+                                        <a href="~/C2C">Community</a>
+                                    </li>
+                                    <li class="@(ViewBag.CurrentPage == "MyOrders" ? "active" : null)"><a href="~/C2C/MyOrders">My Orders</a></li>
+                                    <li class="@(ViewBag.CurrentPage == "Profile" ? "active" : null)" onclick="gotoUserProfile()"><a href="#">My Profile</a></li>
+                                    <li class="@(ViewBag.CurrentPage == "MyDesk" ? "active" : null)"><a href="~/Qbicles/MyDesk">MyDesk</a></li>
+                                    <li class="@(ViewBag.CurrentPage == "highlight" ? "active" : null)"><a href="/Social/HighlightPost">Highlights</a></li>
+                                    <li class="@(ViewBag.CurrentPage == SystemPageConst.MONIBAC ? "active" : null)"><a href="/Monibac/MonibacManage">MoniBack</a></li>
+                                    <li><a href="#send-invite" data-toggle="modal" data-target="#send-invite">Send an invitation</a></li>
+                                </ul>
+                            </li>
+
+                            <li class="counted">
+                                <div class="notifycircle success animated bounce" style="display:none" id="CheckUnReadNotificationExist"></div>
+                                <a href="javascript:void(0)" onclick="InitNotificationsPagination()">
+                                    <i class="fa fa-envelope" style="font-size: 13px;"></i> <span>Notifications</span>
+                                </a>
+                            </li>
+
+                            @{
+                                lstBaseSubPages = new List<String>() { "Advertising", "Jobs", "News", "Events" };
+                            }
+                            @if (systemRolesQbicles.Contains(SystemRoles.SystemAdministrator) || systemRolesQbicles.Contains(SystemRoles.QbiclesBankManager))
+                            {
+                                <li class="@(ViewBag.CurrentPage == "Administration" ? "active" : null)">
+                                    <span class="notifycircle info animated bounce" style="display:none" id="administration-has-noti"></span>
+                                    <a href="/Administration/Manage" class="haschildren">
+                                        <i class="fa fa-cog"></i>
+                                        <span>Administration</span>
+                                    </a>
+                                    <ul class="treeview-menu">
+                                        @if (systemRolesQbicles.Contains(SystemRoles.SystemAdministrator))
+                                        {
+                                            <li class="@(ViewBag.CurrentPage == "Administration" && Request["tabActive"] == null ? "active" : null)"><a href="~/Administration/AdminSysManage">System</a></li>
+                                            <li class="@(ViewBag.CurrentPage == "Administration" && Request["tabActive"] == "Domains" ? "active" : null)"><a href="~/Administration/AdminSysManage?tabActive=Domains">Domains</a></li>
+                                            <li class="@(ViewBag.CurrentPage == "Administration" && Request["tabActive"] == "WaitlistRequest" ? "active" : null)">
+                                                <a href="~/Administration/AdminSysManage?tabActive=WaitlistRequest">
+                                                    Waitlist
+                                                    <span id="waitlist-request-count" class="label label-lg label-danger pull-right" style="position: relative; top: 6px; right: -5px; padding: 4px 7px; display:none;">0</span>
+                                                </a>
+                                            </li>
+                                            <li class="@(ViewBag.CurrentPage == "Administration" && Request["tabActive"] == "DomainRequest" ? "active" : null)">
+                                                <a href="~/Administration/AdminSysManage?tabActive=DomainRequest">
+                                                    Domain requests
+                                                    <span id="domain-request-count" class="label label-lg label-danger pull-right" style="position: relative; top: 6px; right: -5px; padding: 4px 7px; display:none;">0</span>
+                                                </a>
+                                            </li>
+                                            <li class="@(ViewBag.CurrentPage == "Administration" && Request["tabActive"] == "ExtensionRequest" ? "active" : null)">
+                                                <a href="~/Administration/AdminSysManage?tabActive=ExtensionRequest">
+                                                    Extension requests
+                                                    <span id="extension-request-count" class="label label-lg label-danger pull-right" style="position: relative; top: 6px; right: -5px; padding: 4px 7px; display:none;">0</span>
+                                                </a>
+                                            </li>
+
+                                        }
+                                        @if (systemRolesQbicles.Contains(SystemRoles.QbiclesBankManager))
+                                        {
+                                            <li class="@(ViewBag.CurrentPage == "Administration" && Request["tabActive"] == "Bankmatetrans" ? "active" : null)"><a href="~/Administration/AdminSysManage?tabActive=Bankmatetrans">BankMate transactions</a></li>
+                                        }
+                                        @if (systemRolesQbicles.Contains(SystemRoles.SystemAdministrator))
+                                        {
+                                            <li class="@(ViewBag.CurrentPage == "Administration" && Request["tabActive"] == "hlsetup" ? "active" : null)"><a href="~/Administration/AdminSysManage?tabActive=hlsetup">Categories & lists</a></li>
+                                        }
+
+                                        <li class="@(ViewBag.CurrentPage == "Administration" && Request["tabActive"] == "communityfeature" ? "active" : null)"><a href="~/Administration/AdminSysManage?tabActive=communityfeature">Community features</a></li>
+
+                                        @if (systemRolesQbicles.Contains(SystemRoles.SystemAdministrator))
+                                        {
+                                            <li class="@(ViewBag.CurrentPage == "Administration" && Request["tabActive"] == "monibackpromotion" ? "active" : null)"><a href="~/Administration/AdminSysManage?tabActive=monibackpromotion">Moniback promotions</a></li>
+                                            <li class="@(ViewBag.CurrentPage == "Administration" && Request["tabActive"] == "bulkdeal" ? "active" : null)"><a href="~/Administration/AdminSysManage?tabActive=bulkdeal">Bulk Deal</a></li>
+                                        }
+                                    </ul>
+                                </li>
+                            }
+                            <li>
+                                <form id="logoutForm" class="hidden" method="post" action="/Account/LogOff">
+                                    @Html.AntiForgeryToken()
+                                </form>
+                                <a href="#" onclick="document.getElementById('logoutForm').submit();">
+                                    <i class="fa fa-sign-out-alt"></i> <span>Logout</span>
+                                </a>
+                            </li>
+                        </ul>
+                        <!-- Sidebar Menu Notification -->
+                        <!-- /.sidebar-menu -->
+                        <br /><br />
+                        <!-- Sidebar Menu Notification -->
+                    </section>
+                    <!-- /.sidebar -->
+                </aside>
+
+                <div id="chatalert" style="display:none;min-width:350px !important;">
+                    <table id="chat-alert-content-table" class="table borderless" data-orderable="false" style="width: 100%;">
+                        <thead style="display: none;">
+                            <tr>
+                                <th></th>
+                                <th></th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+
+                            @*<tr class="chatbusiness">
+                                    <td>
+                                        <div class="avatar-circle sm" style="background-image: url('/Content/DesignStyle/img/avatar.png');"></div>
+                                    </td>
+                                    <td>
+                                        <p style="font-size: 11.5px; font-weight: 400; margin-bottom: 0;">Fancy hitting the gym after work tonight? Maybe around 8?</p>
+                                        <small>Michael Wilson</small>
+                                    </td>
+                                </tr>*@
+                        </tbody>
+                    </table>
+                </div>
+
+                @RenderBody()
+            }
+        }
+    </div>
+    @if (@currentDomain != null)
+    {
+        <input type="hidden" id="qbicleNameSelected" value="@currentDomain.Name" />
+        <input type="hidden" id="qbicleLogoSelect" />
+    }
+
+    @{
+        Html.RenderAction("ChatAlertsModal", "Qbicles");
+    }
+
+    <script src="~/Scripts/jquery.signalR-2.4.1.min.js"></script>
+    <script src='@Url.Content(System.Configuration.ConfigurationManager.AppSettings["HubUrl"])/hubs'></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@2.8.0" defer></script>
+    <script src="https://sdk.amazonaws.com/js/aws-sdk-2.1.24.min.js"></script>
+    <script src="~/Scripts/dev/s3.upload.medial.js"></script>
+    <script>
+        var $s3BucketName = '@ViewBag.S3BucketName';
+        var $s3BucketRegion = '@ViewBag.S3BucketRegion';
+        var $s3IdentityPoolId = '@ViewBag.S3IdentityPoolId';
+        var $decimalPlace = @decimalPlace;
+
+        $(document).ready(function () {
+            //var $currentPage = $("#currentPage").val();
+            //if ($currentPage != "C2C" && $currentPage != "B2C" && $currentPage != "B2B" && $currentPage != "SocialPostDiscussion") {
+            //    $(".chat-alerts").show();
+            //}
+            //else {
+            //    $(".chat-alerts").hide();
+            //}
+        });
+    </script>
+
+    @{
+
+        if (System.Diagnostics.Debugger.IsAttached)
+        {
+            <script src="~/Scripts/dev/qbicles.signalR.js"></script>
+            <script src="~/Scripts/dev/qbicles.layout.js"></script>
+        }
+        else
+        {
+            <script src="~/Scripts/dev/qbicles.signalR.js"></script>
+            <script src="~/Scripts/dev/qbicles.layout.js"></script>
+        }
+    }
+</body>
+</html>

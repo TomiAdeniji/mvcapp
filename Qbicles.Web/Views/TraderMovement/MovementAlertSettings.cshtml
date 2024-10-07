@@ -1,0 +1,442 @@
+﻿@using Qbicles.Models.Trader.Movement;
+@using Qbicles.Models.Trader;
+@using System.Diagnostics
+@using Qbicles.BusinessRules;
+
+@{
+    ViewBag.Title = "Trader - Inventory & Movement & Tolerance Settings";
+}
+@model AlertGroup
+@{
+    var listProductGroups = (List<TraderGroup>)ViewBag.ListProductGroups;
+    var _NoMovementAlertConstrains = Model.AlertConstraints.FirstOrDefault(p => p.Type == CheckType.NoMovement);
+    var _MinMaxAlertConstrains = Model.AlertConstraints.FirstOrDefault(p => p.Type == CheckType.MinMaxInventory);
+    var _AccumulationAlertConstrains = Model.AlertConstraints.FirstOrDefault(p => p.Type == CheckType.InventoryAccumulation);
+    var currentTimeZone = (string)ViewBag.CurrentTimeZone;
+    var dateFormat = (string)ViewBag.CurrentDateFormat;
+}
+
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail">
+
+
+    <!-- Main content -->
+    <section class="content">
+
+        <br /><br />
+
+        <div class="mod_title">
+            <h5>Trader &gt; Inventory &gt; Movement</h5>
+            <h4>Alert setup @(Model.Reference?.FullRef ?? "")</h4>
+        </div>
+
+
+
+        <div class="well custom" style="padding-bottom: 5px;">
+            <div class="row">
+                <div class="col-xs-12 col-sm-4 col-lg-3" id="productgroups-selector">
+                    <label for="groups">Included Product Groups</label>
+                    <div class="input-group">
+                        @if (Model?.Id > 0)
+                        {
+                            <select id="product-groups" name="groups" class="form-control checkmulti" multiple onchange="$('#applyc').removeAttr('disabled');" style="display: none">
+                                @foreach (var productGroupItem in listProductGroups)
+                                {
+                                    var isSelected = Model.ProductGroups.Any(p => p.Id == productGroupItem.Id) ? "selected" : "";
+                                    <option value="@productGroupItem.Id" @isSelected>@productGroupItem.Name</option>
+                                }
+                            </select>
+                        }
+                        else
+                        {
+                            <select id="product-groups" name="groups" class="form-control checkmulti" multiple onchange="$('#applyc').removeAttr('disabled');" style="display: none">
+                                @foreach (var productGroupItem in listProductGroups)
+                                {
+                                    <option value="@productGroupItem.Id">@productGroupItem.Name</option>
+                                }
+                            </select>
+                        }
+
+                        <span class="input-group-btn">
+                            <button class="btn btn-primary" id="applyc" onclick="SetProductGroups(@Model.Id)" disabled>Apply changes</button>
+                        </span>
+                    </div>
+                </div>
+                <div class="col-xs-12 col-sm-8 col-lg-9">
+                    <div class="form-group">
+                        <label>Options</label><br />
+                        <button class="btn btn-danger" onclick="window.location.href='/Trader/AppTrader'">Cancel</button>
+                        <button class="btn btn-success" onclick="ConfirmProductGroups(@Model.Id)">Confirm</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <br />
+
+        <div id="version-1">
+
+            <div class="well custom" style="padding: 30px;">
+                <div class="row equal">
+                    <div class="col-xs-12 col-sm-4 no-movement-alerts">
+
+                        <div class="activity-overview plain nopad">
+                            <div class="block-header">
+                                <h4 style="padding-bottom: 10px;">No movement alerts</h4>
+                                <p style="padding: 0; margin: 0;">Trigger an alert when there is no movement of an item within a specified period.</p>
+                            </div>
+
+                            <br /><br />
+                            <label>Benchmarking</label>
+                            <p class="formhelp" style="font-size: 11px !important;">Specify a date range then hit the generate button to calculate recommended thresholds.</p>
+                            <div class="well custom" style="padding-bottom: 5px;">
+                                <div class="row">
+                                    <div class="col-xs-12" id="nomovement-inputcontainer">
+                                        @{
+                                            var noMovementConstrains = Model.AlertConstraints.FirstOrDefault(p => p.Type == CheckType.NoMovement);
+                                            if (noMovementConstrains == null)
+                                            {
+                                                <div class="input-group" style="margin-bottom: 15px;">
+                                                    <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                                                    <input id="nomovement-daterange" type="text" class="form-control daterangetonow">
+                                                    <span class="input-group-btn"><button class="btn btn-info" onclick="GenerateNoMovementThresholds(@Model.Id)" id="nomovement-gener" disabled>Generate thresholds</button></span>
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                var noMovementDaterangeString = "";
+                                                var _startDateString = noMovementConstrains.BenchmarkStartDate.ConvertTimeFromUtc(currentTimeZone).ToString(dateFormat);
+                                                var _endDateString = noMovementConstrains.BenchmarkEndDate.ConvertTimeFromUtc(currentTimeZone).ToString(dateFormat);
+                                                noMovementDaterangeString = _startDateString + " - " + _endDateString;
+
+                                                <div class="input-group" style="margin-bottom: 15px;">
+                                                    <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                                                    <input id="nomovement-daterange" type="text" class="form-control daterangetonow" value="@noMovementDaterangeString">
+                                                    <span class="input-group-btn"><button class="btn btn-info" onclick="GenerateNoMovementThresholds(@Model.Id)" id="nomovement-gener">Generate thresholds</button></span>
+                                                </div>
+                                            }
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+
+                            <br />
+
+                            <label>Execution</label>
+                            <p class="formhelp" style="font-size: 11px !important;">Specify when you want tracking to begin, and at which interval it should occur.</p>
+
+                            <div class="well custom" style="margin: 0;">
+
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label>Check every</label>
+                                            <select name="period" id="no-movement_check-event" class="form-control select2" style="width: 100%;">
+                                                @foreach (CheckEvent checkEventItem in (CheckEvent[])Enum.GetValues(typeof(CheckEvent)))
+                                                {
+                                                    var isSelected = _NoMovementAlertConstrains?.CheckEvent == checkEventItem ? "selected" : "";
+                                                    <option @isSelected value="@checkEventItem">@checkEventItem.GetDescription()</option>
+                                                }
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                @{
+                                    var noMovementConstrain = Model.AlertConstraints.FirstOrDefault(p => p.Type == CheckType.NoMovement);
+                                    if (noMovementConstrain != null && noMovementConstrain.IsEnabled)
+                                    {
+                                        <button class="btn btn-danger" onclick="DisableScheduleJob(@Model.Id, @noMovementConstrain.Id, 'noMovement', this)">Disable</button>
+                                    }
+                                    else
+                                    {
+                                        <button class="btn btn-success" onclick="EnableNoMovementCheckJob(@Model.Id, 0, this)">Enable</button>
+                                    }
+                                }
+                            </div>
+
+
+                        </div>
+
+                    </div>
+                    <div class="col-xs-12 col-sm-4 inventory-min-max-alerts">
+
+                        <div class="activity-overview plain nopad">
+                            <div class="block-header">
+                                <h4 style="padding-bottom: 10px;">Inventory min/max alerts</h4>
+                                <p style="padding: 0; margin: 0;">Trigger an alert when your inventory levels fall below or exceed specific thresholds.</p>
+                            </div>
+
+                            <br /><br />
+                            <label>Benchmarking</label>
+                            <p class="formhelp" style="font-size: 11px !important;">Specify a date range then hit the generate button to calculate recommended thresholds.</p>
+                            <div class="well custom" style="padding-bottom: 5px;">
+                                <div class="row">
+                                    <div class="col-xs-12" id="minmax-inputcontainer">
+
+                                        @{
+                                            var minMaxConstrains = Model.AlertConstraints.FirstOrDefault(p => p.Type == CheckType.MinMaxInventory);
+                                            if (minMaxConstrains == null)
+                                            {
+                                                <div class="input-group" style="margin-bottom: 15px;">
+                                                    <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                                                    <input id="minmax-daterange" type="text" class="form-control daterangetonow">
+                                                    <span class="input-group-btn"><button class="btn btn-info" id="minmax-gener" onclick="GenerateMinMaxThresholds(@Model.Id)" disabled>Generate thresholds</button></span>
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                var minMaxDaterangeString = "";
+                                                var _startDateString = minMaxConstrains.BenchmarkStartDate.ConvertTimeFromUtc(currentTimeZone).ToString(dateFormat);
+                                                var _endDateString = minMaxConstrains.BenchmarkEndDate.ConvertTimeFromUtc(currentTimeZone).ToString(dateFormat);
+                                                minMaxDaterangeString = _startDateString + " - " + _endDateString;
+
+                                                <div class="input-group" style="margin-bottom: 15px;">
+                                                    <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                                                    <input id="minmax-daterange" type="text" class="form-control daterangetonow" value="@minMaxDaterangeString">
+                                                    <span class="input-group-btn"><button class="btn btn-info" id="minmax-gener" onclick="GenerateMinMaxThresholds(@Model.Id)">Generate thresholds</button></span>
+                                                </div>
+                                            }
+                                        }
+
+                                    </div>
+                                </div>
+                            </div>
+
+                            <br />
+
+                            <label>Execution</label>
+                            <p class="formhelp" style="font-size: 11px !important;">Specify when you want tracking to begin, and at which interval it should occur.</p>
+
+                            <div class="well custom" style="margin: 0;">
+
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label>Check every</label>
+                                            <select id="minmax_check-event" name="period" class="form-control select2" style="width: 100%;">
+                                                @foreach (CheckEvent checkEventItem in (CheckEvent[])Enum.GetValues(typeof(CheckEvent)))
+                                                {
+                                                    var isSelected = _MinMaxAlertConstrains?.CheckEvent == checkEventItem ? "selected" : "";
+                                                    <option @isSelected value="@checkEventItem">@checkEventItem.GetDescription()</option>
+                                                }
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                @{
+                                    var minMaxConstraint = Model.AlertConstraints.FirstOrDefault(p => p.Type == CheckType.MinMaxInventory);
+                                    if (minMaxConstraint != null && minMaxConstraint.IsEnabled)
+                                    {
+                                        <button class="btn btn-danger" onclick="DisableScheduleJob(@Model.Id, @minMaxConstraint.Id, 'minMax', this)">Disable</button>
+                                    }
+                                    else
+                                    {
+                                        <button class="btn btn-success" onclick="EnableMinMaxCheckJob(@Model.Id, 0, this)">Enable</button>
+                                    }
+                                }
+
+                            </div>
+
+
+                        </div>
+
+                    </div>
+                    <div class="col-xs-12 col-sm-4 inventory-accumulation-alerts">
+
+                        <div class="activity-overview plain nopad">
+                            <div class="block-header">
+                                <h4 style="padding-bottom: 10px;">Inventory accumulation alerts</h4>
+                                <p style="padding: 0; margin: 0;">Trigger an alert when inventory starts to accumulate beyond a specific threshold.</p>
+                            </div>
+
+                            <br /><br />
+                            <label>Benchmarking</label>
+                            <p class="formhelp" style="font-size: 11px !important;">Specify a date range then hit the generate button to calculate recommended thresholds.</p>
+                            <div class="well custom" style="padding-bottom: 5px;">
+                                <div class="row">
+                                    <div class="col-xs-12" id="accumulation-inputcontainer">
+                                        @{
+                                            var accumulationConstrains = Model.AlertConstraints.FirstOrDefault(p => p.Type == CheckType.InventoryAccumulation);
+                                            if (accumulationConstrains == null)
+                                            {
+                                                <div class="input-group" style="margin-bottom: 15px;">
+                                                    <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                                                    <input id="accumulation-daterange" type="text" class="form-control daterangetonow">
+                                                    <span class="input-group-btn"><button class="btn btn-info" id="accumulation-gener" onclick="GenerateAccumulationThresholds(@Model.Id)" disabled>Generate thresholds</button></span>
+                                                </div>
+
+                                                <div class="form-group">
+                                                    <label>Check period</label>
+                                                    <select name="period" id="accumulation_check-event" onchange="$('#accumulation-execution-interval').text($(this).find('option:selected').text())" class="form-control select2" style="width: 100%;">
+                                                        @foreach (CheckEvent checkEventItem in (CheckEvent[])Enum.GetValues(typeof(CheckEvent)))
+                                                        {
+                                                            var isSelected = checkEventItem == accumulationConstrains?.CheckEvent ? "selected" : "";
+                                                            <option @isSelected value="@checkEventItem">@checkEventItem.GetDescription()</option>
+                                                        }
+                                                    </select>
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                var accumulationDaterangeString = "";
+                                                var _startDateString = accumulationConstrains.BenchmarkStartDate.ConvertTimeFromUtc(currentTimeZone).ToString(dateFormat);
+                                                var _endDateString = accumulationConstrains.BenchmarkEndDate.ConvertTimeFromUtc(currentTimeZone).ToString(dateFormat);
+                                                accumulationDaterangeString = _startDateString + " - " + _endDateString;
+
+                                                <div class="input-group" style="margin-bottom: 15px;">
+                                                    <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                                                    <input id="accumulation-daterange" type="text" class="form-control daterangetonow" value="@accumulationDaterangeString">
+                                                    <span class="input-group-btn"><button class="btn btn-info" id="accumulation-gener" onclick="GenerateAccumulationThresholds(@Model.Id)">Generate thresholds</button></span>
+                                                </div>
+
+                                                <div class="form-group">
+                                                    <label>Check period</label>
+                                                    <select name="period" id="accumulation_check-event" onchange="$('#accumulation-execution-interval').text($(this).find('option:selected').text())" class="form-control select2" style="width: 100%;">
+                                                        @foreach (CheckEvent checkEventItem in (CheckEvent[])Enum.GetValues(typeof(CheckEvent)))
+                                                        {
+                                                            var isSelected = checkEventItem == accumulationConstrains?.CheckEvent ? "selected" : "";
+                                                            <option @isSelected value="@checkEventItem">@checkEventItem.GetDescription()</option>
+                                                        }
+                                                    </select>
+                                                </div>
+                                            }
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+
+                            <br />
+
+                            <label>Execution</label>
+                            <p class="formhelp" style="font-size: 11px !important;">Specify when you want tracking to begin, and at which interval it should occur.</p>
+
+                            <div class="well custom" style="margin: 0;">
+
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <label>Check every</label>
+                                        @{
+                                            var checkString = _AccumulationAlertConstrains?.CheckEvent != null ?
+                                                _AccumulationAlertConstrains.CheckEvent.GetDescription() : CheckEvent.Daily.GetDescription();
+                                        }
+                                        <p id="accumulation-execution-interval" style="padding-top: 8px;">@checkString</p>
+                                    </div>
+                                </div>
+                                @{
+                                    var accumulationConstrain = Model.AlertConstraints.FirstOrDefault(p => p.Type == CheckType.InventoryAccumulation);
+                                    if (accumulationConstrain != null && accumulationConstrain.IsEnabled)
+                                    {
+                                        <button class="btn btn-danger" onclick="DisableScheduleJob(@Model.Id, @accumulationConstrain.Id, 'accumulation', this)">Disable</button>
+                                    }
+                                    else
+                                    {
+                                        <button class="btn btn-success" onclick="EnableAccumulationJob(@Model.Id, 0, this)">Enable</button>
+                                    }
+                                }
+                            </div>
+
+
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+
+            <br />
+
+            <ul class="nav nav-pills group-selector" id="product-group-list">
+                @{
+                    var index = 0;
+                    foreach (var productGroupItem in Model.ProductGroups)
+                    {
+                        <li>
+                            <a href="#" id="item-tab-@index" onclick="ShowProductGroupItems(@productGroupItem.Id)"
+                               data-toggle="tab">@productGroupItem.Name</a>
+                        </li>
+                        index++;
+                    }
+                }
+            </ul>
+
+
+
+            <div class="tab-content mydesk in-community" style="min-height: 0;">
+
+
+                <!-- Group 1 -->
+                <div class="tab-pane fade in active" id="productgroup-items">
+
+                </div>
+                <!-- END Group 1 -->
+
+            </div> <!-- ./tab-content -->
+
+        </div>
+
+
+        <br />
+        <br />
+        @*<button class="btn btn-danger" onclick="window.location.href='/Trader/AppTrader'">Cancel</button>
+        <button class="btn btn-success" onclick="ConfirmProductGroups(@Model.Id)">Close</button>*@
+        <button class="btn btn-danger" onclick="window.location.href='/Trader/AppTrader'">Close</button>
+
+    </section>
+    <!-- ./content -->
+</div>
+<!-- /.content-wrapper -->
+<script src="~/Content/DesignStyle/js/bootstrap-multiselect.min.js"></script>
+<link rel="stylesheet" href="~/Content/DesignStyle/css/daterangepicker.css">
+<script src="~/Content/DesignStyle/js/daterangepicker.js"></script>
+@if (Debugger.IsAttached)
+{
+    <script src="~/Scripts/dev/trader.movement.js"></script>
+}
+else
+{
+    <script src="~/Scripts/dev/trader.movement.js"></script>
+
+}
+
+<script>
+
+    $("#item-tab-0").trigger("click");
+    $(".checkmulti").multiselect({
+        includeSelectAllOption: false,
+        enableFiltering: true,
+        buttonWidth: '100%',
+        maxHeight: 400,
+        enableClickableOptGroups: true,
+        includeSelectAllOption: false,
+
+    });
+
+    $('#nomovement-daterange').on('apply.daterangepicker', function (ev, picker) {
+        $('#nomovement-gener').prop('disabled', false);
+        $('#nomvnt-daterange-error').remove();
+    });
+
+    $('#nomovement-daterange').on('cancel.daterangepicker', function (ev, picker) {
+        $('#nomovement-gener').prop('disabled', true);
+    });
+
+    $('#minmax-daterange').on('apply.daterangepicker', function (ev, picker) {
+        $('#minmax-gener').prop('disabled', false);
+        $('#minmax-daterange-error').remove();
+    });
+
+    $('#minmax-daterange').on('cancel.daterangepicker', function (ev, picker) {
+        $('#minmax-gener').prop('disabled', true);
+    });
+
+    $('#accumulation-daterange').on('apply.daterangepicker', function (ev, picker) {
+        $('#accumulation-gener').prop('disabled', false);
+        $('#accumulation-daterange-error').remove();
+    });
+
+    $('#accumulation-daterange').on('cancel.daterangepicker', function (ev, picker) {
+        $('#accumulation-gener').prop('disabled', true);
+    });
+</script>
+

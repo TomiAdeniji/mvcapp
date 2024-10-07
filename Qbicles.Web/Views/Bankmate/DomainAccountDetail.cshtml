@@ -1,0 +1,214 @@
+﻿@using Qbicles.BusinessRules
+@using Qbicles.Models.Trader
+@{
+    ViewBag.Title = "DomainAccountDetail";
+    var api = (string)ViewBag.DocRetrievalUrl;
+
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+    var lstExternalBank = (List<TraderCashAccountCustom>)ViewBag.ListExternalAccounts;
+    //var lstPendingTransactions = (List<CashAccountTransaction>)ViewBag.ListPendingTransactions;
+    //var lstFailedTransactions = (List<CashAccountTransaction>)ViewBag.ListFailedTransactions;
+    //var lstApprovedTransactions = (List<IGrouping<DateTime, CashAccountTransaction>>)ViewBag.GroupedAprrovedTransactions;
+}
+@model TraderCashAccountCustom
+
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail mdv2-wrapper" style="position: relative;">
+
+
+    <!-- Main content -->
+    <section class="mdv2 dash" data-tooltip-color="teal" data-tooltip-delay="300" data-tooltip-animate-function="spin" style="border-top: 1px solid #f1f1f1;">
+
+
+        <!-- App bar -->
+        <div class="mdv2-col-app" style="margin-bottom: 0;">
+
+            <div data-spy="affix" class="contained-sidebar">
+
+
+                <div class="qbicle-overview">
+
+                    <div class="spacing-new alldomains" style="padding: 20px 15px 0 15px;">
+                        <a href="/Bankmate" class="btn btn-primary"><i class="fa fa-angle-left"></i> &nbsp; Accounts</a>
+                    </div>
+
+                    <div class="activity-overview plain company-overview welcome-info" style="flex: none; margin: 0; padding: 0 30px 20px 30px;">
+
+                        <div style="width: 90px; height: 90px; background-image: url('@api@Model.ImageUri'); background-size: cover; background-position: center center; margin: 0 auto; border-radius: 50%;"></div>
+                        <br>
+
+                        <h2 style="font-weight: 500; margin: 0; padding: 0 0 7px 0;">@(Model.Name)</h2>
+                        <smaller>@Model.Name</smaller>
+
+                        <br /><br />
+                        <div class="well custom" style="margin: 15px 0 0 0;">
+                            <div class="row">
+                                <div class="col-xs-12">
+                                    <label>Balance</label><br>
+                                    <h1 style="margin: 0; padding: 0;">@currencySettings.CurrencySymbol @(Model.BalanceAmount.ToDecimalPlace(currencySettings))</h1>
+
+                                    <div class="btn-group options" style="width: 100%; margin: 20px 0 0 0">
+                                        <button class="btn btn-success community-button dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                            Account options &nbsp; <i class="fa fa-angle-down"></i>
+                                        </button>
+                                        <ul class="dropdown-menu" style="min-width: 100%; top: 47px;">
+                                            <li><a href="#" onclick="addFundModalShow(@Model.TraderCashAccountId)" data-toggle="modal">Add funds</a></li>
+                                            <li><a href="#" onclick="addWithdrawFundModalShow(@Model.TraderCashAccountId)" data-toggle="modal">Withdraw funds</a></li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+
+
+                    </div>
+                </div>
+
+            </div>
+        </div>
+        <!-- END App bar -->
+        <!-- Main area -->
+        <div class="mdv2-col-dash">
+
+            <div class="spacing">
+
+                <div class="well custom" style="padding-bottom: 5px;">
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-3">
+                            <div class="form-group">
+                                <label for="search">Search</label>
+                                <input onchange="ListDomainBMTransactionsShow(@Model.TraderCashAccountId)" id="searchkey" type="text" name="search" class="form-control">
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-sm-3">
+                            <div class="form-group">
+                                <label for="search">Bank accounts</label>
+                                <select onchange="ListDomainBMTransactionsShow(@Model.TraderCashAccountId)" id="seachbankId" name="type" class="hidden form-control checkmulti" multiple>
+                                    @foreach (var bankItem in lstExternalBank)
+                                    {
+                                        <option value="@bankItem.TraderCashAccountId">@bankItem.Name / #Account-Reference</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-sm-3">
+                            <div class="form-group">
+                                <label for="search">Payment type</label>
+                                <select onchange="ListDomainBMTransactionsShow(@Model.TraderCashAccountId)" name="type" id="transactiontypeId" class="form-control select2" style="width: 100%;">
+                                    <option value="0" selected>Show all</option>
+                                    <option value="1">Credits only</option>
+                                    <option value="2">Debits only</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-sm-3">
+                            <label for="search">Date range</label>
+                            <div class="input-group" style="margin-bottom: 15px;">
+                                <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                                <input type="text" id="searchDateRange" class="form-control daterange">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+
+                <br />
+
+                <div id="list-transactions">
+
+
+                </div>
+
+
+            </div>
+            <!-- END Main area-->
+        </div>
+
+
+    </section>
+    <!-- ./content -->
+
+</div>
+<!-- /.content-wrapper -->
+<!--Modal-->
+<div class="modal fade left" id="app-mbm-funds-out" role="dialog" aria-labelledby="app-mbm-funds-out">
+
+</div>
+
+<div class="modal fade left" id="app-mbm-funds-in" role="dialog" aria-labelledby="app-mbm-funds-in">
+
+</div>
+
+<div class="modal fade" id="mbm-statement-detail" role="dialog" aria-labelledby="mbm-statement-detail">
+
+</div>
+<!--END Modal-->
+
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/mybankmate.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/mybankmate.min.js"></script>
+    }
+}
+
+<script src="https://code.jquery.com/jquery-2.2.4.min.js" integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44=" crossorigin="anonymous"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js" integrity="sha256-VazP97ZCwtekAsvgPBSUwPFKdrwD3unUfSGVYrahUqU=" crossorigin="anonymous"></script>
+
+<script src="~/Content/DesignStyle/js/html5tooltips.js"></script>
+<script src="~/Content/DesignStyle/js/jquery.fancybox.js"></script>
+<script src="~/Content/DesignStyle/js/jquery.waypoints.min.js"></script>
+<script src="~/Content/DesignStyle/js/select2.full.min.js"></script>
+<script src="~/Content/DesignStyle/js/jquery.datetimepicker.full.min.js"></script>
+<script src="~/Content/DesignStyle/js/moment.js"></script>
+<script src="~/Content/DesignStyle/js/daterangepicker.js"></script>
+<script src="~/Content/DesignStyle/js/jquery.countdown.min.js"></script>
+<script src="~/Content/DesignStyle/js/jquery.slimscroll.min.js"></script>
+<script src="~/Content/DesignStyle/js/bootstrap-tagsinput.js"></script>
+<script src="~/Content/DesignStyle/js/datepicker.min.js"></script>
+<script src="~/Content/DesignStyle/js/datepicker-en.js"></script>
+<script src="~/Content/DesignStyle/js/bootstrap-multiselect.js"></script>
+<script src="https://gitcdn.github.io/bootstrap-toggle/2.2.2/js/bootstrap-toggle.min.js"></script>
+<script src="~/Content/DesignStyle/js/app.js"></script>
+<script src="/Scripts/bootstrap.min.js"></script>
+<script src="~/Content/DesignStyle/js/loadingoverlay.min.js"></script>
+<script src="~/Content/DesignStyle/js/formvalidate.js"></script>
+<script src="~/Content/DesignStyle/js/jquery.validate.min.js"></script>
+
+<script>
+    $(".checkmulti").multiselect({
+        includeSelectAllOption: true,
+        selectAllJustVisible: true,
+        includeResetOption: false,
+        enableFiltering: false,
+        buttonWidth: '100%',
+        maxHeight: 400,
+        enableClickableOptGroups: true,
+        enableFiltering: true,
+        enableCaseInsensitiveFiltering: true
+
+    });
+
+    ListDomainBMTransactionsShow(@Model.TraderCashAccountId);
+
+    $(document).ready(function () {
+        $('#searchDateRange').on('apply.daterangepicker', function (ev, picker) {
+            ListDomainBMTransactionsShow(@Model.TraderCashAccountId);
+        });
+
+        $('#searchDateRange').on('cancel.daterangepicker', function (ev, picker) {
+            ListDomainBMTransactionsShow(@Model.TraderCashAccountId);
+        });
+    })
+
+</script>
+
+
+
+

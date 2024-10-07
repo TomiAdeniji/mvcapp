@@ -1,0 +1,313 @@
+﻿@using Qbicles.Models.Trader;
+@using Qbicles.BusinessRules.Model;
+@using Qbicles.BusinessRules;
+@{
+    var groups = (List<TraderGroup>)ViewBag.LstGroupItems;
+    var dateFormat = (string)ViewBag.CurrentDateFormat;
+    var timezone = (string)ViewBag.CurrentTimeZone;
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var bulkDealPromotions = (List<PromotionModel>)ViewBag.BulkDealPromotions;
+    var itemsInBasket = new List<PromotionModel>();
+
+    var extraCol = (bulkDealPromotions.Count() % 4 == 0 ? 0 : 4) - bulkDealPromotions.Count() % 4;
+    var dateformat = (string)ViewBag.CurrentDateFormat;
+    var currentDate = DateTime.UtcNow;
+
+}
+<style>
+    .hidden-column {
+        display: none;
+    }
+
+    .article-feature-shadow {
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    }
+
+    .tdaction {
+        width: 15%;
+    }
+
+    .tdSr {
+        width: 7%;
+    }
+
+    strong {
+        font-size: 24px !important;
+    }
+
+    input.largerCheckbox {
+        width: 20px;
+        height: 20px;
+    }
+
+    .dataTables_filter, .dataTables_info {
+        display: none;
+    }
+
+    .box {
+        box-sizing: border-box;
+        border: 3px solid transparent;
+        background-clip: padding-box;
+    }
+</style>
+<div class="tab-content app_general admin">
+
+
+    <div class="row">
+        <div class="col-xs-12">
+
+            <ul class="nav nav-pills traderv2 nav-marketing" style="margin-bottom: 30px;">
+                <li class="active"><a href="#" data-toggle="tab" data-target="#tab-bulkdeal">Bulk Deal</a></li>
+                <li><a href="#" data-toggle="tab" data-target="#tab-search-add">Search &amp; Add</a></li>
+            </ul>
+
+
+            <div class="tab-content">
+
+
+                <!-- Bulk Deal -->
+                <div class="tab-pane fade in active" id="tab-bulkdeal">
+
+
+                    <div class="well custom" style="padding-bottom: 5px;">
+
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-3">
+                                <div class="form-group">
+                                    <label for="search">Search</label>
+                                    <input type="text" name="search-bulk-deal" id="search-bulk-deal" class="form-control">
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-3">
+                                <label for="date">Date</label>
+                                <div class="input-group" style="margin-bottom: 15px;">
+                                    <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                                    <input type="text" id="bulk-deal-daterange-search" name="scheduleddate-bulk-deal" class="form-control daterange">
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-2">
+                                <div class="form-group" style="margin: 0;">
+                                    <label for="type">Type</label>
+                                    <select name="type-bulk-deal" id="bulk-deal-type" class="form-control select2" style="width: 100%;">
+                                        <option value="0" selected>Show all</option>
+                                        <option value="1">Active</option>
+                                        <option value="2">Deactivate</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-2">
+                                <label></label><br />
+                                <button class="btn btn-success" onclick="loadModalBulkAddEdit('')"><i class="fa fa-plus"></i> &nbsp; Add Bulk Deal</button>
+                            </div>
+                            @*<div class="col-xs-12 col-sm-2">
+                                    <label></label><br />
+                                    <button class="btn btn-danger" id="remove-filters" disabled onclick="RemoveFilter()"><i class="fa fa-remove"></i> &nbsp; Remove filters</button>
+                                </div>*@
+                        </div>
+
+                    </div>
+                    <br />
+                    <div class="flex-grid-quarters-lg from-community c1" style="width: 100%;">
+
+
+                    </div>
+                </div>
+                <!-- END Bulk Deal -->
+                <!-- Search and Add Bulk Deal :Using TraderItem-->
+                <div class="tab-pane fade" id="tab-search-add">
+
+                    <div class="well custom" style="padding-bottom: 5px;">
+                        <input type="hidden" id="api" value="@api" />
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-6 col-md-4">
+                                <div class="form-group">
+                                    <label for="search_dt">Search for Item</label>
+                                    <input type="text" name="search_dt" id="search_add_dt" class="form-control" placeholder="Search for item">
+                                </div>
+                            </div>
+
+                            <div class="col-xs-12 col-sm-6 col-md-4">
+                                <label>Options</label>
+                                <br />
+                                <div class="row form-group">
+                                    <button class="btn btn-account box" data-toggle="modal" data-target="#app-trader-item-filters"><i class="fa fa-shopping-cart"></i> &nbsp; Cart: <span style="color: red; font-weight:bold; font-size:large;" id="selectedElement"> 0 </span></button>
+                                    <button id="clearSelectedItems" type="button" onclick="ClearSelectedItems()" class="btn btn-warning dropdown-toggle box" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                        <i class="fa fa-minus"></i> &nbsp; Clear
+                                    </button>
+                                    <button id="addToBulkDeal" type="button" onclick="AddToBulkDealPromotion()" class="btn btn-success dropdown-toggle box" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                        <i class="fa fa-plus"></i> &nbsp; Add to Bulk Deal
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <br />
+                    <table class="datatable table-hover table-striped" id="tblSearchAddToBulkDeal" style="width: 100%; background: #fff;" data-order='[[ 1, "asc" ]]'>
+                        <thead>
+                            <tr>
+                                <th data-priority="1" data-orderable="false">
+                                    <input type="checkbox" class="largerCheckbox" id="chkAll" />
+                                </th>
+                                <th data-priority="3" data-orderable="false" style="width: 60px;"></th>
+                                <th data-priority="1">Item Name</th>
+                                <th data-priority="1">SKU</th>
+                                <th data-priority="1">Barcode</th>
+                                <th data-priority="1">Business</th>
+                                <th data-priority="1">Location</th>
+                                <th style="display:none;" data-orderable="false">ItemId</th>
+                                <th style="display:none;" data-orderable="false">DomainId</th>
+                                @*<th data-priority="1"></th>*@
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="6" id="trLoader">
+                                    <div class="text-center">
+                                        Please search to add to the bulk deal.
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                </div>
+                <!-- END Search and Add Bulk Deal -->
+
+            </div> <!-- END .tab-content -->
+
+        </div>
+    </div>
+
+</div>
+
+
+<!--Modal list-->
+<div class="modal fade left" id="bulkdeal-promo-view" role="dialog" aria-labelledby="bulkdeal-promo-view"></div>
+<div class="modal fade left" id="bulkdeal-promo-add" role="dialog" aria-labelledby="bulkdeal-promo-add"></div>
+<div class="modal fade left" id="add-to-bulkdeal" role="dialog" aria-labelledby="add-to-bulkdeal">
+    @*<div class="modal-dialog  modal-xl" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                    <h5 class="modal-title">Bulk Deal Creation</h5>
+                    <div id="local-manage-div" class="app_filter" style="margin: 5px 0 10px 0;">
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <div style="display: flex; flex-direction: row; align-items: center;">
+                                    <div class="input-group" style="flex: 1; max-width: 400px;">
+                                        <span class="input-group-addon"><strong>Location</strong></span>
+                                        <select id="local-manage-select" onchange="UpdateCurrentLocationManage()" class="form-control select2" style="width: 100%;">
+                                            @foreach (var l in traderLocations)
+                                            {
+                                                if (l.Id == locationManage)
+                                                {
+                                                    <option selected="" value="@l.Id">@l.Name</option>
+                                                }
+                                                else
+                                                {
+                                                    <option value="@l.Id">@l.Name</option>
+                                                }
+                                            }
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+                <div class="modal-body">
+
+                    <div id="dealCreationDataTablesWrapper" class="dataTables_wrapper form-inline dt-bootstrap no-footer">
+                        <div class="row">
+                            <div class="col-sm-12">
+                                <table class="datatable table-hover table-striped" id="tblBulkDealCreation" style="width: 100%; background: #fff;" data-order='[[ 1, "asc" ]]'>
+                                    <thead>
+                                        <tr>
+                                            <th data-priority="1" data-orderable="false">
+                                                <input type="checkbox" class="largerCheckbox" id="chkAll" />
+                                            </th>
+                                            <th data-priority="3" data-orderable="false" style="width: 60px;"></th>
+                                            <th data-priority="1">Item Name</th>
+                                            <th data-priority="1">SKU</th>
+                                            <th data-priority="1">Barcode</th>
+                                            <th data-priority="1">Business</th>
+                                            <th data-priority="1">Location</th>
+                                            <th style="display:none;" data-orderable="false">ItemId</th>
+                                            <th style="display:none;" data-orderable="false">DomainId</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                    </tbody>
+                                </table>
+
+                            </div>
+                            <div class="col-sm-12" style="margin: 35px auto; float: right; text-align: right; padding: 30px;">
+                                <button type="button" class="btn btn-secondary margin-r-5" data-dismiss="modal" aria-label="Close">Cancel</button>
+                                <button type="button" onclick="SaveBulkDeal()" class="btn btn-success">Create</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>*@
+
+</div>
+<!--END: Modal list-->
+@{
+    <link href="~/Content/DesignStyle/css/bootstrap-multiselect.css" rel="stylesheet" />
+    <script src="~/Content/DesignStyle/js/html5tooltips.js"></script>
+    <script src="~/Content/DesignStyle/js/bootstrap-multiselect.min.js"></script>
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/monibackpromo.js?v=@DateTime.Now.Ticks"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/monibackpromo.js"></script>
+    }
+}
+<script>
+    $('.activity-overview').hide();
+
+    $('#bulk-deal-daterange-search').daterangepicker({
+        autoUpdateInput: false,
+        singleDatePicker: false,
+        timePicker: false,
+        showDropdowns: true,
+        cancelClass: "btn-danger",
+        opens: "left",
+        startDate: moment().startOf('day').format($dateFormatByUser),
+        endDate: moment().endOf('day').format($dateFormatByUser),
+        locale: {
+            cancelLabel: 'Clear',
+            dateFormat: $dateFormatByUser
+        }
+    });
+
+
+    LoadFilterToBulkDealPromotions(true);
+</script>
+
+@*@if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/monibackpromo.js?v=@DateTime.Now.Ticks"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/monibackpromo.min.js"></script>
+    }
+    <link href="~/Content/DesignStyle/css/bootstrap-multiselect.css" rel="stylesheet" />
+    <script src="~/Content/DesignStyle/js/bootstrap-multiselect.js"></script>
+    <link rel="stylesheet" href="~/Content/DesignStyle/css/daterangepicker.css">
+    <script src="~/Content/DesignStyle/js/daterangepicker.js"></script>
+    <script src="~/Content/DesignStyle/js/jquery.timer.js"></script>
+    <script src="~/Content/DesignStyle/js/dataTables.checkboxes.js"></script>
+    <link href="~/Content/DesignStyle/css/dataTables.checkboxes.min.css" rel="stylesheet" />*@

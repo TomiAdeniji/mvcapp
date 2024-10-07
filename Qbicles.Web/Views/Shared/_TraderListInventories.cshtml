@@ -1,0 +1,227 @@
+﻿@using Qbicles.BusinessRules;
+@{
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+}
+<div class="row">
+    <div class="col-xs-12">
+        <ul class="app_subnav admintabs" style="margin-bottom: 30px;">
+            <li class="active"><a href="#inv-current" onclick="SaveInventoryTab('inv-current')" data-toggle="tab" data-target="#inv-current" aria-expanded="true">Current inventory</a></li>
+            <li><a href="#inv-reorders" data-toggle="tab" onclick="SaveInventoryTab('inv-reorders')" data-target="#inv-reorders" aria-expanded="true">Reorders</a></li>
+        </ul>
+        <div class="tab-content">
+
+
+            <!-- Current inventory -->
+            <div class="tab-pane fade in active" id="inv-current">
+
+                <div class="well custom" style="padding-bottom: 5px;">
+
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-6 col-lg-2">
+                            <div class="form-group">
+                                <label for="search_dt">Search for something</label>
+                                <input type="text" id="inventory_search_text" class="form-control" placeholder="Search for something">
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-sm-6 col-lg-2">
+                            <div class="form-group">
+                                <label for="showvalues">Inventory total basis</label>
+                                <select id="inventory-basis-select" class="form-control inventory-select2" style="width: 100%;">
+                                    <option value="average" selected>Average cost (FIFO)</option>
+                                    <option value="latest">Latest cost</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-sm-6 col-lg-2">
+                            <div class="form-group">
+                                <label for="showvalues">Days to last basis</label>
+                                <select id="day-to-last-basis-select" class="form-control inventory-select2" style="width: 100%;">
+                                    <option selected="" value="1">Last one week sales</option>
+                                    <option value="2">Last one month sales</option>
+                                    <option value="3" class="singledate">Custom range</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div id="div-filter-by-date-range" class="col-xs-12 col-sm-6 col-md-2" style="display: none">
+                            <label for="datefilter">Filter by date</label>
+                            <div class="input-group" style="margin-bottom: 15px;">
+                                <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                                <input type="text" id="filter_daterange" name="datefilter" class="form-control datetimerange" placeholder="Choose a range">
+                            </div>
+                        </div>
+
+                        <div class="col-xs-12 col-sm-6 col-lg-2">
+                            <div class="form-group">
+                                <label for="maxdays">Max days to last</label>
+                                <input id="max-day-to-last" type="number" min="0" value="12" name="maxdays" class="form-control">
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-lg-3">
+                            <label>Options</label>
+                            <br />
+                            <div class="form-group">
+
+                                <div class="btn-group options">
+                                    <button type="button" class="btn btn-success dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                        Actions &nbsp; <i class="fa fa-angle-down"></i>
+                                    </button>
+                                    <ul class="dropdown-menu">
+                                        @*<li>
+                                            <a href="#" data-toggle="modal" data-target="#app-trader-inventory-count-add">Add an inventory count</a>
+                                        </li>*@
+                                        <li>
+                                            <a href="#" onclick="ConfirmReorderProcess()">Reorder items</a>
+                                        </li>
+                                    </ul>
+                                </div>
+                                <div class="btn-group options">
+                                    <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                        <i class="fa fa-sliders"></i> &nbsp; Manage display
+                                    </button>
+                                    <ul class="dropdown-menu primary manage-columns manage-inventory-columns">
+                                        <li><label><input type="checkbox" data-column="0"> Icon</label></li>
+                                        <li><label><input type="checkbox" data-column="1" checked> Item</label></li>
+                                        <li><label><input type="checkbox" data-column="2"> Description</label></li>
+                                        <li><label><input type="checkbox" data-column="3" checked> Unit</label></li>
+                                        <li><label><input type="checkbox" data-column="4" checked> Average cost</label></li>
+                                        <li><label><input type="checkbox" data-column="5" checked> Latest cost</label></li>
+                                        <li><label><input type="checkbox" data-column="6" checked> Current inventory</label></li>
+                                        <li><label><input type="checkbox" data-column="7" checked> Days to last</label></li>
+                                        <li><label><input type="checkbox" data-column="8" checked> Min inventory</label></li>
+                                        <li><label><input type="checkbox" data-column="9" checked> Max inventory</label></li>
+                                        <li><label><input type="checkbox" data-column="10" checked> Inventory total</label></li>
+                                        <li><label><input type="checkbox" data-column="11" checked> Associated</label></li>
+                                    </ul>
+                                </div>
+                                @*<div class="activity-overview alert-detail animated bounce" style="display: none; padding: 20px;">
+                                    <p>You have <strong>2</strong> inventory alerts requiring your attention</p>
+                                    <button class="btn btn-warning" data-toggle="modal" data-target="#inventory-alert-show"><i class="fa fa-bell"></i> &nbsp; View alerts</button>
+                                </div>*@
+                                @*<button class="btn btn-warning animated bounce" data-toggle="modal" data-target="#inventory-alert-show"><i class="fa fa-bell"></i> &nbsp; 2 alerts</button>*@
+
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+                <br />
+                <table id="tb_inventories" class="datatable table-striped table-hover" style="width: 100%;" data-order='[[1, "asc"]]'>
+                    <thead>
+                        <tr>
+                            <th data-priority="3" style="width: 90px;" data-orderable="false"></th>
+                            <th data-priority="1">Item</th>
+                            <th data-priority="3">Description</th>
+                            <th data-priority="3">Unit</th>
+                            <th data-priority="2">Average Cost <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                            <th data-priority="2">Latest Cost <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                            <th data-priority="1">Current inventory</th>
+                            <th data-priority="1">Can reorder</th>
+                            <th data-priority="1">Days to last</th>
+                            <th data-priority="2">Min inventory</th>
+                            <th data-priority="2">Max inventory</th>
+                            <th data-priority="2">Inventory total <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                            <th data-priority="4">Associated</th>
+                            <th data-priority="1" data-orderable="false"></th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <!-- END Current Inventory -->
+            <!-- Reorders -->
+            <div class="tab-pane fade" id="inv-reorders">
+
+                <div class="well custom" style="padding-bottom: 5px;">
+                    <div class="row">
+
+                        <div class="col-xs-12 col-sm-4 col-lg-3">
+                            <div class="form-group">
+                                <label for="search">Search</label>
+                                <input type="text" id="txtSearchReorder" class="form-control">
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-sm-4 col-lg-3">
+                            <div class="form-group">
+                                <label for="status">Filter by status</label>
+                                <select id="slReorderStatus" name="status" class="form-control inventory-select2" style="width: 100%;" tabindex="-1" aria-hidden="true">
+                                    <option value="2" selected="">Show all</option>
+                                    <option value="1">Complete</option>
+                                    <option value="0">Incomplete</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-sm-4 col-lg-3">
+                            <label for="search">Date range</label>
+                            <div class="input-group">
+                                <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                                <input id="txtReorderDateRanger" type="text" class="form-control daterange">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <br>
+
+
+                <table class="datatable table-striped table-hover" id="tblReorders" style="width: 100%;" data-order='[[1, "desc"]]'>
+                    <thead>
+                        <tr>
+                            <th data-priority="1">Reference</th>
+                            <th data-priority="1">Date</th>
+                            <th data-priority="2">Items</th>
+                            <th data-priority="1">Total (@currencySettings.CurrencySymbol)</th>
+                            <th data-priority="1">Status</th>
+                            <th data-priority="1" data-orderable="false"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                </table>
+
+            </div>
+            <!-- END Reorders -->
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="associated-items-view" role="dialog" aria-labelledby="associated-items-view">
+
+</div>
+
+<div class="modal fade" id="app-trader-change-unit" role="dialog" aria-labelledby="app-trader-change-unit">
+
+</div>
+<div class="modal fade" id="app-trader-inventory-reorder" role="dialog" aria-labelledby="app-trader-inventory-reorder" style="display: none;">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+                <h5 class="modal-title">Reorder low stock items</h5>
+            </div>
+            <div class="modal-body">
+
+                <div class="activity-overview alert-detail" style="padding: 20px;">
+                    <p>You are about to reorder <strong id="countReorderItems">0</strong> items based on your days to last threshold of <strong id="maxdayshow"></strong></p>
+
+                    <button data-dismiss="modal" class="btn btn-danger">Cancel</button>
+                    <button class="btn btn-success" onclick="AgreeReorderProcess()">Confirm</button>
+                </div>
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+<div class="modal fade left" id="reorder-breakdown" role="dialog" aria-labelledby="reorder-breakdown" style="display: none;">
+</div>
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/trader.inventory.list.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/trader.inventory.list.min.js"></script>
+    }
+}

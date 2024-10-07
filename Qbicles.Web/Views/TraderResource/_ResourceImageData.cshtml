@@ -1,0 +1,89 @@
+﻿@using Qbicles.Models.Trader.Resources
+@model List<ResourceImage>
+@{
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var dateFormat = (string)ViewBag.CurrentDateFormat;
+}
+
+<table class="datatable table-striped table-hover" id="resouce_image_datatable" style="width: 100%;" data-order='[[1, "asc"]]'>
+    <thead>
+        <tr>
+            <th data-orderable="false" style="width: 80px;">Image</th>
+            <th>Name</th>
+            <th>Category</th>
+            <th>Type</th>
+            <th>Description</th>
+            <th>Uploaded</th>
+            <th>Options</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            if (item.Description == null)
+            {
+                item.Description = "";
+            }
+            <tr>
+                <td>
+                    <a href="@api@item.FileUri" class="table-avatar image-pop" rel="resources" style="display: block; background-image: url('@api@item.FileUri&size=t');">&nbsp;</a>
+                </td>
+                <td>@item.Name</td>
+                <td>@item.Category.Name</td>
+                <td>@item.Type.Extension.ToUpper()</td>
+                <td>@Html.Raw(item.Description.Replace(Environment.NewLine, "<br/>"))</td>
+                <td>@item.CreatedDate.ToString(dateFormat)</td>
+                <td><button class="btn btn-danger" onclick="deleteResourceImage('@item.Id', '@item.Name')"><i class="fa fa-trash"></i></button></td>
+            </tr>
+        }
+    </tbody>
+</table>
+<script>
+    if (jQuery().fancybox) {
+        $(".image-pop").fancybox({
+            beforeLoad: function () {
+                var el, id = $(this.element).data('title-id');
+
+                if (id) {
+                    el = $('#' + id);
+
+                    if (el.length) {
+                        this.title = el.html();
+                    }
+                }
+            },
+            padding: 0
+        });
+    }
+    var $tableImages;
+    $(document).ready(function () {
+        $tableImages = $('#resouce_image_datatable').DataTable();       
+        // Override default search function
+        $.fn.dataTable.ext.search.push(function (settings, searchData, index, rowData, counter) {
+            if (settings.nTable.id !== 'resouce_image_datatable') {
+                // Return true to include row in other DataTable instances
+                return true;
+            }
+                var searchKey = $('#key_search_image').val().toLowerCase();
+                var searchCagegory = $('#cagegory_search_image').val().toLowerCase();
+
+                var colName = searchData[1].toLowerCase();
+                var colCategory = searchData[2].toLowerCase();
+                var colType = searchData[3].toLowerCase();
+                var colDescription = searchData[4].toLowerCase();
+
+                // Apply filtering conditions with AND operator
+                var matchName = colName.includes(searchKey);
+                var matchCategory = colCategory.includes(searchCagegory);
+                var matchType = colType.includes(searchKey);
+                var matchDescription = colDescription.includes(searchKey);
+
+                return (matchName || matchType || matchDescription) && matchCategory;
+            }
+        );
+    });
+
+    function searchOnDataImages() {
+        $tableImages.draw();
+    }
+</script>

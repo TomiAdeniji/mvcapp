@@ -1,0 +1,702 @@
+﻿@using Qbicles.BusinessRules
+@using Qbicles.Models
+@using Qbicles.Models.Trader
+@using Qbicles.Models.Qbicles
+@using Qbicles.BusinessRules.Helper
+@model TraderContact
+@{
+    ViewBag.Title = "Trader - Customers #" + Model.Id;
+    var imgAcceptedFile = (string)ViewBag.ImageAcceptedExtensions;
+    var workGroups = (List<WorkGroup>)ViewBag.WorkGroups;
+    var contactGroups = (List<TraderContactGroup>)ViewBag.ContactGroups;
+    var dateTimeFormat = (string)ViewBag.CurrentDateTimeFormat;
+    var countries = (List<Country>)ViewBag.Countries;
+    var today = (DateTime)ViewBag.Today;
+    var timeline = (List<ApprovalStatusTimeline>)ViewBag.Timeline;
+    var timelineDate = (List<DateTime>)ViewBag.TimelineDate;
+
+    if (Model.Address == null)
+    {
+        Model.Address = new TraderAddress();
+    }
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var pageSize = HelperClass.activitiesPageSize;
+    var timeZone = (string)ViewBag.CurrentTimeZone ?? "";
+    var userId = ViewBag.CurrentUserId;
+    var userAvatar = ViewBag.CurrentUserAvatar;
+    var userRight = "none";
+    var traderAppRight = (IsReviewerAndApproverModel)ViewBag.TraderApprovalRight;
+    var isUpdate = (bool)ViewBag.IsUpdate;
+    //o1
+    if (!traderAppRight.IsInitiators && !traderAppRight.IsReviewer && !traderAppRight.IsApprover)
+    {
+        userRight = "none";
+
+    }//hiden approval, no edit
+     //o2
+    else if (traderAppRight.IsInitiators && !traderAppRight.IsReviewer && !traderAppRight.IsApprover)
+    { userRight = "initiator"; } // readonly approval, no edit
+                                 //o3
+    else if (traderAppRight.IsReviewer && Model.ContactApprovalProcess?.RequestStatus == ApprovalReq.RequestStatusEnum.Pending)
+    {
+        userRight = "reviewer";
+    }//If the user is an ApprovalReq.ApprovalRequestDefinition.Reviewer and the Status of the ApprovalReq is Pending, the drop down displays the items Discard, or Send to Approval.
+     //o4
+    else if (traderAppRight.IsApprover && Model.ContactApprovalProcess?.RequestStatus == ApprovalReq.RequestStatusEnum.Reviewed)
+    {
+        userRight = "approver";
+    }
+    //o4.1
+    else if (traderAppRight.IsApprover && Model.ContactApprovalProcess?.RequestStatus == ApprovalReq.RequestStatusEnum.Pending)
+    {
+        userRight = "initiator";
+    }
+    //o5
+    else if (Model.ContactApprovalProcess?.RequestStatus == ApprovalReq.RequestStatusEnum.Approved
+             || Model.ContactApprovalProcess?.RequestStatus == ApprovalReq.RequestStatusEnum.Denied
+             || Model.ContactApprovalProcess?.RequestStatus == ApprovalReq.RequestStatusEnum.Discarded)
+    {
+        userRight = "completed";
+    }
+
+    var confirm = "";
+    var isChange = "";
+    var cursor = "default";
+    if (userRight == "initiator" || userRight == "completed" || userRight == "none" || !isUpdate)
+    {
+        cursor = "not-allowed";
+        isChange = "disabled";
+        confirm = "hidden";
+    }
+    if (isChange == "disabled")
+    {
+        confirm = "hidden";
+    }
+
+    var accId = 0;
+    var accName = "";
+    if (Model.CustomerAccount != null)
+    {
+        accId = Model.CustomerAccount.Id;
+        accName = Model.CustomerAccount.Name;
+    }
+    var dateFormat = (string)ViewBag.CurrentDateFormat;
+
+    var apiKey = ConfigManager.GoogleMapApiKey;
+}
+
+<!-- App bar -->
+<div class="mdv2-col-app" style="margin-bottom: 0;">
+
+    <div data-spy="affix" class="contained-sidebar">
+
+        <div class="activity-overview plain company-overview welcome-info" style="text-align: left !important; flex: none; margin: 0 0 30px 0; padding-top: 30px; padding-bottom: 0;">
+            <input type="hidden" id="map-key" value="@apiKey" />
+            <div class="pull-left" style="margin-bottom: 15px;">
+                <a onclick="javascript:QbicleSelected('@(Model.Workgroup?.Qbicle.Key??"0")','Dashboard');" class="btn btn-primary"><i class="fa fa-angle-up"></i> &nbsp; Qbicle</a>
+                <a href="/Trader/AppTrader" onclick="setTabTrader('contacts')" class="btn btn-info"><i class="fa fa-th"></i> &nbsp; Trader Contacts</a>
+            </div>
+            <div class="clearfix"></div>
+
+            <br />
+
+            <h6 class="subhead">Trader Contact Approval Request</h6>
+            @if (Model.ContactRef != null)
+            {
+                <h1 class="contact_ref" style="line-height: 1.2;">@Model.ContactRef.Reference</h1>
+            }
+            else
+            {
+                <h1 class="contact_ref" style="line-height: 1.2;">@(Model.ContactApprovalProcess?.Name ?? "")</h1>
+            }
+
+            @if (Model.ContactApprovalProcess != null)
+            {
+                var label = "";
+                switch (Model.ContactApprovalProcess.RequestStatus)
+                {
+                    case ApprovalReq.RequestStatusEnum.Approved:
+                        label = StatusLabelStyle.Approved;
+                        break;
+                    case ApprovalReq.RequestStatusEnum.Denied:
+                        label = StatusLabelStyle.Denied;
+                        break;
+                    case ApprovalReq.RequestStatusEnum.Discarded:
+                        label = StatusLabelStyle.Discarded;
+                        break;
+                    case ApprovalReq.RequestStatusEnum.Pending:
+                        label = StatusLabelStyle.Pending;
+                        break;
+                    case ApprovalReq.RequestStatusEnum.Reviewed:
+                        label = StatusLabelStyle.Reviewed;
+                        break;
+                }
+                <span class="label label-lg label-primary">@Model.ContactApprovalProcess.Topic.Name</span>
+                <span class="label label-lg @label">@(Model.ContactApprovalProcess?.RequestStatus.GetDescription())</span>
+            }
+            <div class="clearfix"></div>
+
+
+            <br /><br /><br />
+            <div class="row">
+                <div class="col-xs-12 col-sm-6">
+                    <label>Created</label><br />
+                    @if (Model.CreatedDate != DateTime.MinValue)
+                    {
+                        <p>@Model.CreatedDate.FormatDateTimeByUser(dateTimeFormat)    </p>
+                    }
+                </div>
+                <div class="col-xs-12 col-sm-6">
+                    <label>Creator</label><br />
+                    @if (Model.CreatedBy != null)
+                    {
+                        <p><a href="/Community/UserProfilePage?uId=@(Model.CreatedBy.Id)">@HelperClass.GetFullNameOfUser(Model.CreatedBy)</a></p>
+                    }
+                </div>
+            </div>
+
+
+            <br /><br />
+            <div class="row">
+                <div class="col-xs-12 col-sm-6">
+                    <button class="btn btn-primary community-button" style="margin-bottom: 3px;" data-toggle="modal" data-target="#team-view">
+                        <i class="fa fa-users"></i> &nbsp; Team
+                    </button>
+                </div>
+                <div class="col-xs-12 col-sm-6">
+                    <button class="btn btn-info community-button" data-toggle="modal" onclick="$('#view-timeline').empty(); $('#view-timeline').append($('#timeline_review').html());" data-target="#history-view"><i class="fa fa-history"></i> &nbsp; History</button>
+                </div>
+            </div>
+
+        </div>
+
+
+    </div>
+</div>
+<!-- END App bar -->
+<!-- Main area -->
+<div class="mdv2-col-dash">
+
+    <div class="spacing">
+        @if (confirm == "")
+        {
+            <div style="width: 500px; max-width: 100%; margin-bottom: 40px;">
+                <div class="alert activity-overview generic reviewer" style="padding: 10px 20px !important; margin: 0;">
+                    <div style="padding: 10px 0;">
+                        <label for="status">Approval options available to you</label>
+                        <div class="input-group">
+                            @if (Model.ContactApprovalProcess != null)
+                            {
+                                <input type="hidden" id="action_approval_default" value="@Model.ContactApprovalProcess.RequestStatus" />
+                            }
+                            else
+                            {
+                                <input type="hidden" id="action_approval_default" value="" />
+                            }
+                            <select @isChange id="action_approval" class="form-control select2" style="width: 100%;" data-placeholder="Please choose...">
+                                @{
+                                    switch (userRight)
+                                    {
+                                        case "initiator":
+                                            <option>@(Model.ContactApprovalProcess?.RequestStatus)</option>
+                                            break;
+                                        case "reviewer":
+                                            <option value="Reviewed" selected>Send to Approval</option>
+                                            <option value="Discarded">Discard</option>
+                                            break;
+                                        case "approver":
+                                            <option value="Approved" selected>Approve</option>
+                                            <option value="Pending">Send back to Review</option>
+                                            <option value="Denied">Deny</option>
+                                            break;
+                                        case "completed":
+                                            <option>@(Model.ContactApprovalProcess?.RequestStatus)</option>
+                                            break;
+                                    }
+                                }
+                            </select>
+                            <span class="input-group-btn">
+                                @{if (confirm == "")
+                                    {
+                                        var approvalId = Model.ContactApprovalProcess?.Id.Encrypt();
+                                        <button onclick="javascript:UpdateStatusApproval('@approvalId');" class="btn btn-success @confirm">Confirm</button>
+                                    }
+                                }
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <br />
+        }
+
+        <section class="associated_forms">
+
+
+            <ul class="nav nav-pills alt" style="margin: 0 0 30px 0;">
+                <li class="active"><a href="#" data-toggle="tab" data-target="#approval-0">Contact Info</a></li>
+                <li><a href="#" data-toggle="tab" data-target="#approval-1">Comments &amp; Files</a></li>
+            </ul>
+
+
+            <div class="tab-content">
+
+
+                <!-- Contact Info -->
+                <div class="tab-pane fade in active @isChange" style="cursor: @cursor" id="approval-0">
+
+                    <form method="POST" id="form_contact_add" action="/TraderContact/SaveTraderContact" enctype="multipart/form-data" novalidate="novalidate">
+                        <div class="flex-avatar">
+                            <div class="col-thumb" style="flex: 0 0 80px;">
+                                <img src="@api@Model.AvatarUri" class="img-circle img-responsive contact-avatar">
+                            </div>
+                            <div class="col">
+                                <div class="form-group" style="margin: 0; padding-top: 4px;">
+                                    <label for="avatar">Change avatar</label>
+                                    <input type="hidden" id="trader-contact-object-key" name="mediaObjectKey" />
+                                    <input type="hidden" id="trader-contact-object-name" name="mediaObjectName" />
+                                    <input type="hidden" id="trader-contact-object-size" name="mediaObjectSize" />
+                                    <input type="file" id="trader-contact-avatar-upload" accept="@imgAcceptedFile" onchange="changeImageLogo(this)" class="form-control" name="contactAvatar">
+                                </div>
+                            </div>
+                        </div>
+                        <br />
+                        <div class="activity-overview task" style="padding: 20px;">
+                            <input id="contact-id" name="Id" value="@Model.Id" hidden="" />
+                            <input id="contact-status" name="contactStatus" value="@Model.Status" hidden="" />
+                            <div class="row">
+                                <div class="col-xs-12">
+                                    <div class="form-group">
+                                        <label for="reference">Contact reference</label>
+                                        <div class="show-ref">
+                                            <p>
+                                                @if (Model.ContactRef != null)
+                                                {
+                                                    <input type="hidden" name="ContactReferenceId" id="contactReferenceId" value="@Model.ContactRef.Id" />
+                                                    <span id="numberRef">@Model.ContactRef.Reference</span>
+                                                }
+                                                else
+                                                {
+                                                    <input type="hidden" name="ContactReferenceId" id="contactReferenceId" value="0" />
+                                                    <span id="numberRef"></span>
+                                                }
+
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label id="contact-workgroup-label" for="workgroup">Assign to a Workgroup <span>*</span> </label>
+                                        <select id="group-workgroup-id" onchange="selectWorkGroupContact()" name="workgroupId" class="form-control select2" style="width: 100%;">
+                                            @if (workGroups != null && workGroups.Any())
+                                            {
+                                                foreach (var group in workGroups)
+                                                {
+                                                    if (group.Id == Model.Workgroup?.Id)
+                                                    {
+                                                        <option selected="" value="@group.Id" domain="@group.Domain.Name.Replace(" ", "").Substring(0, 3).ToUpper()">@group.Name</option>
+                                                    }
+                                                    else
+                                                    {
+                                                        <option value="@group.Id" domain="@group.Domain.Name.Replace(" ", "").Substring(0, 3).ToUpper()">@group.Name</option>
+                                                    }
+                                                }
+                                            }
+
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label id="contact-group-label" for="group">Assign to a Contact group <span>*</span> </label>
+                                        <select id="group-contact-id" name="groupId" class="form-control select2" style="width: 100%;">
+                                            @if (contactGroups != null && contactGroups.Any())
+                                            {
+                                                foreach (var group in contactGroups)
+                                                {
+                                                    if (group.Id == Model.ContactGroup.Id)
+                                                    {
+                                                        <option selected="" value="@group.Id">@group.Name</option>
+                                                    }
+                                                    else
+                                                    {
+                                                        <option value="@group.Id">@group.Name</option>
+                                                    }
+                                                }
+                                            }
+
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label for="name">Name <span>*</span></label>
+                                        <input onfocusout="OnFocusOutControl(this.value)" onfocus="OnFocusControl(this.value)" id="contact-name" type="text" name="Name" required="" value="@Model.Name" class="form-control">
+                                    </div>
+                                </div>
+                                @*<div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="avatar">Avatar</label>
+                                            <input id="contactAvatar" type="file" name="contactAvatar" class="form-control">
+                                        </div>
+                                    </div>*@
+                            </div>
+
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label for="company">Company</label>
+                                        <input onfocusout="OnFocusOutControl(this.value)" onfocus="OnFocusControl(this.value)" id="contact-company" type="text" name="CompanyName" value="@Model.CompanyName" class="form-control">
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label for="job">Job title </label>
+                                        <input onfocusout="OnFocusOutControl(this.value)" onfocus="OnFocusControl(this.value)" id="contact-job" type="text" name="JobTitle" value="@Model.JobTitle" class="form-control">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label for="phone">Phone</label>
+                                        <input onfocusout="OnFocusOutControl(this.value)" onfocus="OnFocusControl(this.value)" id="contact-phone" type="text" name="PhoneNumber" value="@Model.PhoneNumber" class="form-control">
+                                    </div>
+                                    <input id="contact-address-id" name="addressId" hidden="" value="@(Model.Address?.Id)" />
+                                </div>
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label for="email">Email <span>*</span></label>
+                                        <input onfocusout="OnFocusOutControl(this.value)" onfocus="OnFocusControl(this.value)" id="contact-email" type="email" name="Email" required="" value="@Model.Email" class="form-control">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label for="address1">Address line 1 <span>*</span></label>
+                                        <input onfocusout="OnFocusOutControl(this.value)" onfocus="OnFocusControl(this.value)" type="text" id="AddressLine1" name="AddressLine1" value="@(Model.Address?.AddressLine1)" class="form-control">
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label for="address2">Address line 2</label>
+                                        <input onfocusout="OnFocusOutControl(this.value)" onfocus="OnFocusControl(this.value)" type="text" id="AddressLine2" name="AddressLine2" value="@(Model.Address?.AddressLine2)" class="form-control">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label for="city">City</label>
+                                        <input onfocusout="OnFocusOutControl(this.value)" onfocus="OnFocusControl(this.value)" type="text" id="City" name="City" value="@(Model.Address?.City)" class="form-control">
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label for="state">State</label>
+                                        <input onfocusout="OnFocusOutControl(this.value)" onfocus="OnFocusControl(this.value)" type="text" id="State" name="State" value="@(Model.Address?.State)" class="form-control">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label for="country">Country</label>
+                                        <select id="CountryName" name="CountryName" class="form-control select2" style="width: 100%;">
+                                            @if (countries != null && countries.Any())
+                                            {
+                                                foreach (var c in countries)
+                                                {
+                                                    if (c.CommonName == Model.Address?.Country.CommonName)
+                                                    {
+                                                        <option value="@c.CommonName" selected="">@c.CommonName</option>
+                                                    }
+                                                    else if (c.CommonName == "Nigeria")
+                                                    {
+                                                        <option value="@c.CommonName" selected>@c.CommonName</option>
+                                                    }
+                                                    else
+                                                    {
+                                                        <option value="@c.CommonName">@c.CommonName</option>
+                                                    }
+                                                }
+                                            }
+
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label for="postcode">Postcode</label>
+                                        <input onfocusout="OnFocusOutControl(this.value)" onfocus="OnFocusControl(this.value)" type="text" id="PostCode" name="PostCode" value="@(Model.Address?.PostCode)" class="form-control">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label for="Longitude">Longitude</label>
+                                        <input id="contact-longitude" onfocusout="OnFocusOutControl(this.value)" onfocus="OnFocusControl(this.value)" type="number" value="@Model.Address.Longitude" name="Longitude" class="form-control">
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label for="Latitude">Latitude</label>
+                                        <input id="contact-Latitude" onfocusout="OnFocusOutControl(this.value)" onfocus="OnFocusControl(this.value)" type="number" name="Latitude" value="@Model.Address.Latitude" class="form-control">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-xs-12">
+                                    <div class="form-group" style="margin: 0;">
+                                        <label for="customer-account">Select customer account</label><br />
+                                        <br />
+
+                                        <input id="accountId" name="accountId" hidden="" value="@accId" />
+                                        <button class="btn btn-info addbtnaccount" onclick="javascript: LoadAccountTree();" data-toggle="modal" data-target="#app-bookkeeping-treeview"><i class="fa fa-plus"></i> &nbsp; Choose account</button>
+                                        <p class="accountInfo" style="display: inline-block; font-family: 'Roboto', Arial, sans-serif; font-size: 12px; padding: 0 10px 0 0;">@accName</p>
+                                        <button class="btn btn-small btn-warning editbtnaccount" style="display: none;" data-toggle="modal" onclick="javascript: LoadAccountTree();" data-target="#app-bookkeeping-treeview">
+                                            <i class="fa fa-pencil"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </form>
+
+
+                </div>
+                <!-- END Contact Info -->
+                <!-- Comments & Files -->
+                <div class="tab-pane fade" id="approval-1">
+                    @* comment and media*@
+                    <div class="app_topnav entity_adds" style="background: #fff; padding: 0;">
+                        <ul class="nav nav-pills app_main_nav">
+                            <li role="presentation" class="active">
+                                <a href="#tab1" data-toggle="tab">
+                                    <i class="fa fa-comments"></i>
+                                    Comments
+                                </a>
+                            </li>
+                            <li role="presentation">
+                                <a href="#tab2" data-toggle="tab">
+                                    <i class="fa fa-folder-open"></i>
+                                    Files
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                    <br />
+                    <div class="row">
+                        <div class="col-xs-12">
+                            <div class="tab-content">
+                                <div class="tab-pane fade in active" id="tab1">
+                                    <div class="row">
+                                        <div class="col-xs-12">
+                                            <div class="well" style="max-width: 800px;">
+                                                <div class="form-group">
+                                                    <label for="add-comment">Add a comment</label>
+                                                    <textarea id="txt-comment-approval" name="add-comment" class="form-control"></textarea>
+                                                </div>
+                                                <button onclick="javascript:addCommentForApproval('@(Model.ContactApprovalProcess?.Key ?? "")');" class="btn btn-success">Submit</button>
+                                            </div>
+                                            <br />
+                                        </div>
+                                    </div>
+                                    <div id="list-comments-approval">
+                                        @if (Model.ContactApprovalProcess != null)
+                                        {
+                                            foreach (var post in Model.ContactApprovalProcess?.Posts.OrderByDescending(x => x.StartedDate).Take(pageSize))
+                                            {
+                                                <!-- General post -->
+                                                var fullName = HelperClass.GetFullNameOfUser(post.CreatedBy, userId);
+                                                <article id="post-@post.Id" class="activity post">
+                                                    <img style="background-image: url('@api@post.CreatedBy.ProfilePic')" class="activity-avatar" />
+                                                    <div class="activity-detail">
+                                                        <div class="activity-meta">
+                                                            <h4>@fullName</h4>
+                                                            <small>@post.StartedDate.ConvertTimeFromUtc(timeZone).ToString(dateFormat + ", hh:mmtt")</small>
+                                                        </div>
+                                                        <div class="activity-overview media-comment">
+                                                            <p>
+                                                                @Html.Raw(post.Message.Replace(Environment.NewLine, "<br />"))
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    <div class="clearfix"></div>
+                                                </article>
+                                                <!-- END General post -->
+                                            }
+                                        }
+
+                                    </div>
+                                    @if (Model.ContactApprovalProcess?.Posts.Count() > pageSize)
+                                    {
+                                        <button id="btnLoadPosts" onclick="javascript:LoadMorePosts('@(Model.ContactApprovalProcess?.Key ?? "")', @pageSize,'list-comments-approval');" class="btn btn-info trigger_load">Load older posts</button>
+                                    }
+                                </div>
+
+                                <div class="tab-pane fade" id="tab2">
+                                    <br />
+                                    <a href="javascript:void(0)" class="btn btn-success" id="btnAddFile" data-toggle="modal" data-target="#create-media"><i class="fa fa-upload"></i> &nbsp; Upload a file</a>
+
+                                    <br /><br />
+                                    <div id="list-medias">
+                                        @if (Model.ContactApprovalProcess?.SubActivities.Count > 0)
+                                        {
+                                            foreach (var item in Model.ContactApprovalProcess?.SubActivities.OrderByDescending(x => x.Id).Take(pageSize))
+                                            {
+                                                var media = (QbicleMedia)item;
+                                                var createdByName = HelperClass.GetFullNameOfUser(media.StartedBy, userId);
+                                                var createdDate = media.StartedDate.Date == DateTime.UtcNow.Date ? "Today, " + media.StartedDate.ConvertTimeFromUtc(timeZone).ToString("hh:mmtt").ToLower() : media.StartedDate.ConvertTimeFromUtc(timeZone).ToString(dateFormat + " hh:mmtt").ToLower();
+                                                var mediaLastupdate = media.VersionedFiles.Where(e => !e.IsDeleted).OrderByDescending(x => x.UploadedDate).First() ?? null;
+                                                var lastUpdateFile = mediaLastupdate != null ? (mediaLastupdate.UploadedDate.Date == DateTime.UtcNow.Date ? "Today, " + mediaLastupdate.UploadedDate.ConvertTimeFromUtc(timeZone).ToString("hh:mmtt").ToLower() : mediaLastupdate.UploadedDate.ConvertTimeFromUtc(timeZone).ToString(dateFormat + " hh:mmtt").ToLower()) : createdDate;
+                                                //Media post
+                                                <article class="activity media">
+                                                    <img style="background-image: url('@api@media.StartedBy.ProfilePic')" class="activity-avatar" />
+                                                    <div class="activity-detail">
+                                                        <div class="activity-meta">
+                                                            <h4>@createdByName</h4>
+                                                            <small>@createdDate</small>
+                                                            <br class="visible-xs">
+                                                        </div>
+                                                        <div class="activity-overview media">
+                                                            <div class="row">
+                                                                <div class="col-xs-12 col-sm-5 col-md-6 col-lg-5">
+                                                                    <a href="javascript:void(0)" onclick="javascript:ShowMediaPage('@media.Key');">
+                                                                        @if (media.FileType.Type == "Image File")
+                                                                        {
+                                                                            <img id="media-@item.Id" class="img-responsive" src='@api@mediaLastupdate.Uri' />
+                                                                        }
+                                                                        else
+                                                                        {
+                                                                            <img src="@media.FileType.IconPath" class="img-responsive">
+                                                                        }
+                                                                    </a>
+                                                                </div>
+                                                                <div class="col-xs-12 col-sm-7 col-md-6 col-lg-7 description">
+                                                                    <h5>@media.Name</h5>
+                                                                    <p>
+                                                                        @media.Description
+                                                                    </p>
+                                                                    <small>@media.FileType.Type | Update @lastUpdateFile</small>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="clearfix"></div>
+                                                </article>
+                                                <!-- END Media post -->
+                                            }
+                                        }
+                                    </div>
+                                    @if (Model.ContactApprovalProcess?.SubActivities.Count() > pageSize)
+                                    {
+                                        <button id="btnLoadMedias" onclick="javascript:LoadMoreMedias(@Model.ContactApprovalProcess.Id,@pageSize,'list-medias');" class="btn btn-info trigger_load">Load older medias</button>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- END Comments & Files -->
+
+
+            </div>
+
+        </section>
+
+        <br /><br /><br />
+
+    </div>
+
+</div>
+<div id="timeline_review" style="display: none;">
+    <ul class="timeline">
+        @foreach (var date in timelineDate)
+        {
+            var dateStart = date.ConvertTimeFromUtc(timeZone).FormatDateTimeByUser(dateFormat);
+            var dateStr = date.Date == today.Date ? "Today" : dateStart;
+
+            <li class="time-label">
+                <span class="label label-lg label-info">
+                    @dateStr
+                </span>
+            </li>
+            foreach (var tl in timeline.Where(d => d.LogDate.Date == date.Date))
+            {
+                <li>
+                    <div class="person" style="background-image: url('@api@tl.UserAvatar');"></div>
+                    <div class="timeline-item">
+                        <span class="time"><i class="fa fa-clock-o"></i> @tl.Time</span>
+                        <h4 class="timeline-header">@tl.Status</h4>
+                    </div>
+                </li>
+            }
+            <br />
+        }
+    </ul>
+</div>
+
+
+
+
+
+
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/trader.contact.review.js"></script>
+        <script src="~/Scripts/dev/trader.domain.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/trader.contact.review.min.js"></script>
+        <script src="~/Scripts/dev/trader.domain.min.js"></script>
+
+    }
+}
+<script>
+    $('#contact-content .select2').select2({
+        placeholder: 'Please choose...'
+    });
+    if (@accId > 0) {
+        $(".accountInfo").empty();
+        $(".accountInfo").append('@accName');
+    } else {
+        $(".accountInfo").empty();
+    }
+
+    if ($(".accountInfo").text().length > 0) {
+        $(".addbtnaccount").attr("style", "display:none;");
+        $(".editbtnaccount").removeAttr("style");
+    } else if ($(".accountInfo").text().length === 0) {
+        $(".editbtnaccount").attr("style", "display:none;");
+        $(".addbtnaccount").removeAttr("style");
+    }
+    if ($($('.domain_name')[0]).text().replace(/\s/g, "") === "") {
+        selectWorkGroupContact();
+    }
+    if ($("#numberRef").val() === "" || $("#numberRef").val() === "0") {
+        getNewContactRef();
+    }
+
+    $("#form_contact_add").validate({
+        rules: {
+            Name: {
+                required: true,
+                maxlength: 71
+            }
+        }
+    })
+</script>

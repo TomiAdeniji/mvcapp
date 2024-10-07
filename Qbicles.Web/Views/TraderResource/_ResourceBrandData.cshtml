@@ -1,0 +1,82 @@
+﻿@using Qbicles.Models.Trader.Resources
+@using Qbicles.BusinessRules
+@model List<AdditionalInfo>
+@{ 
+    var type = (AdditionalInfoType)ViewBag.Type;
+    var currentUserId = (string)ViewBag.CurrentUserId;
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var isSysAdmin = (bool)ViewBag.IsSysAdmin;
+
+
+    var dataModel = Model;
+    switch (type)
+    {
+       
+        case AdditionalInfoType.Need:
+        case AdditionalInfoType.QualityRating:
+            dataModel = dataModel.Where(e => e.Domain.Id == domainId).ToList();
+            break;
+    }
+
+}
+<table class="datatable table-striped table-hover" id="resource_brand_datatable" style="width: 100%;">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>My associated products</th>
+            <th>Options</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@item.Name</td>
+                <td>@item.TraderItems.Count</td>
+                <td>
+                    @{
+                        var canDelete = true;
+                        var canEdit = true;
+                        switch (type)
+                        {
+                            case AdditionalInfoType.Need:
+                            case AdditionalInfoType.QualityRating:
+
+                                break;
+                            case AdditionalInfoType.Brand:
+                            case AdditionalInfoType.ProductTag:
+                                canDelete = ((isSysAdmin || item.CreatedBy.Id == currentUserId) && item.Domain.Id == domainId);
+                                canEdit = ((isSysAdmin || item.CreatedBy.Id == currentUserId) && item.Domain.Id == domainId);
+                                break;
+                        }
+
+                        if (item.TraderItems.Count > 0)
+                        {
+                            canDelete = false;
+                            canEdit = false;
+                        }
+                    }
+
+                    @if (canEdit)
+                    {
+                        <button class="btn btn-warning" data-toggle="modal" onclick="addEditBrand('@item.Id', '@item.Type.ToString()')" data-target="#app-trader-resources-brand-add"><i class="fa fa-pencil"></i></button>
+
+                    }
+                    @if (canDelete)
+                    {
+
+                        <button class="btn btn-danger" onclick="deleteAdditional('@item.Id', '@item.Name', '@item.Type.ToString()')"><i class="fa fa-trash"></i></button>
+                    }
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<style>
+    .dataTables_wrapper .dataTables_filter {
+        float: right;
+        text-align: right;
+        visibility: hidden;
+    }
+</style>

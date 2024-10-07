@@ -1,0 +1,144 @@
+﻿@using Qbicles.BusinessRules
+@using Qbicles.BusinessRules.Model
+@using Qbicles.Models.B2C_C2C
+@using Qbicles.Models;
+@model List<B2CC2CModel>
+@{
+    var currentUserId = (string)ViewBag.CurrentUserId;
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var c2CQbiceSelectedId = (int)ViewBag.C2CQbiceSelectedId;
+    if (c2CQbiceSelectedId == 0)//default is first of collections C2CQbicle
+    {
+        c2CQbiceSelectedId = Model.FirstOrDefault()?.QbicleId ?? 0;
+    }
+}
+@foreach (var item in Model)
+{
+    var domainKey = item.LinkBusiness?.Domain.Key ?? "";
+
+    var linkId = "";
+    var forename = "";
+    var logoUri = "";
+    var fullname = "";
+    var communityEmail = "";
+    var communityId = "";
+    var linkUser = item.LinkUsers.Where(u => u.Id != currentUserId).FirstOrDefault();
+    var isliked = "";
+    if (linkUser != null)
+    {
+        linkId = linkUser.Id;
+        forename = (!string.IsNullOrEmpty(linkUser.Forename) ? linkUser.Forename : linkUser.DisplayUserName);
+        logoUri = api + linkUser.ProfilePic + "&size=T";
+        fullname = linkUser.GetFullName();
+        communityEmail = linkUser.Email;
+        communityId = linkUser.Id;
+    }
+    else if (item.LinkBusiness != null)
+    {
+        linkId = item.LinkBusiness.Id.ToString();
+        forename = item.LinkBusiness.BusinessName;
+        fullname = item.LinkBusiness.BusinessName;
+        logoUri = api + item.LinkBusiness.LogoUri + "&size=T";
+        communityEmail = item.LinkBusiness.BusinessEmail;
+        communityId = item.LinkBusiness.Id.ToString();
+    }
+
+    if (item.LikedBy.Any(u => (linkUser != null && u.Id == linkUser.Id) || (item.LinkBusiness != null && u.Id == currentUserId)))
+    {
+        isliked = "true";
+    }
+    else
+    {
+        isliked = "false";
+    }
+    var encryptedKey = item.QbicleId.Encrypt();
+
+    <li data-c2cqbicleid="@encryptedKey" data-status="@item.Status" data-linkid="@linkId" data-type="@item.Type"
+        data-iscurrentreq="@(item.SourceUser?.Id == currentUserId ? true : false)"
+        data-forename="@forename" data-logoUrl="@logoUri" data-isliked="@isliked"
+        data-communityemail="@communityEmail"
+        data-c2cdomainid="@domainKey"
+        class="@(c2CQbiceSelectedId==item.QbicleId?"active":"")">
+        <a href="@(item.Status==CommsStatus.Approved||item.Status==CommsStatus.Blocked?"#comms-activities":"#comms-waiting-approve")">
+            <div class="contact-avatar">
+                <div style="background-image: url('@logoUri');">&nbsp;</div>
+            </div>
+            <div class="contact-info">
+                <h5>
+                    @fullname
+                    @if (item.Status == CommsStatus.Pending)
+                    {
+                        <span class="label label-warning" style="position: relative; font-size: 10px; top: -2px; left: 5px;">Pending</span>
+                    }
+                    else if (item.Status == CommsStatus.Blocked)
+                    {
+                        <span class="label label-danger" style="position: relative; font-size: 10px; top: -2px; left: 5px;">Blocked</span>
+                    }
+                </h5>
+                @{
+                    var noteStr = "";
+                    noteStr = item.Type == 2 ? "Individual" : "Business";
+                    if (item.LikedBy.Any(u => (linkUser != null && u.Id == linkUser.Id) || (item.LinkBusiness != null && u.Id == currentUserId)))
+                    {
+                        noteStr += ", Favourites";
+                    }
+                }
+                <p>@(noteStr)</p>
+                <div id="typing-chat-@communityId">
+                    @*<img class="typing-chat" src='https://secure.skypeassets.com/wcss/8-73-0-92/images/typing/bubble/dark.gif' style='width: 10%;height: 100%;'>*@
+                </div>
+            </div>
+            <div class="comms-newstuff" @(item.NotViewed ? "" : "hidden")></div>
+        </a>
+
+        <div class="dropdown contactoptside">
+            <button class="btn btn-primary dropdown-toggle" type="button" data-toggle="dropdown">
+                <i class="fa fa-ellipsis-h"></i>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-right">
+                @if (linkUser != null)
+                {
+                    <li><a href="/Community/UserProfilePage?uId=@linkUser.Id">View profile</a></li>
+                }
+                else
+                {
+                    <li><a href="/Commerce/PublishBusinessProfile?id=@(item.LinkBusiness?.Id)">View profile</a></li>
+                }
+
+
+                @if (item.Status == CommsStatus.Approved)
+                {
+                    if (item.LikedBy.Any(u => (linkUser != null && u.Id == linkUser.Id) || (item.LinkBusiness != null && u.Id == currentUserId)))
+                    {
+                        <li><a href="javascript:void(0)" name="fav-option" onclick="setLikeBy(@item.QbicleId,'@linkId',@item.Type,false,event)">Remove from Favourites</a></li>
+                    }
+                    else
+                    {
+                        <li><a href="javascript:void(0)" name="fav-option" onclick="setLikeBy(@item.QbicleId,'@linkId',@item.Type,true,event)">Add to Favourites</a></li>
+                    }
+                }
+
+                @if (item.Status == CommsStatus.Approved)
+                {
+                    <li><a href="javascript:void(0)" name="block-option" onclick="blockContact('@encryptedKey', @item.Type)">Block</a></li>
+                }
+                else if (item.Status == CommsStatus.Blocked)
+                {
+                    <li><a href="javascript:void(0)" name="block-option" onclick="setC2CStatusBy('@encryptedKey', '@CommsStatus.Approved', @item.Type);">Unblock</a></li>
+                }
+                //Request from other Customer
+                else if (item.Status == CommsStatus.Pending && item.Type == 2 && item.SourceUser.Id != currentUserId)
+                {
+                    <li><a href="javascript:void(0)" name="req-accept-option" onclick="setC2CStatusBy('@encryptedKey', '@CommsStatus.Approved', @item.Type);">Accept</a></li>
+                    <li><a href="javascript:void(0)" name="req-decline-option" onclick="removeCommunityQbicleById('@encryptedKey', 'c2c');">Decline</a></li>
+                }
+                //Sent from current user
+                else if (item.Status == CommsStatus.Pending && item.Type == 2 && item.SourceUser.Id == currentUserId)
+                {
+                    <li><a href="javascript:void(0)" name="sent-cancel-option" onclick="setC2CStatusBy('@encryptedKey', '@CommsStatus.Cancel', @item.Type);">Cancel request</a></li>
+                }
+                <li><a href="javascript:void(0)" name="remove-option" onclick="setQbicleRemoved('@encryptedKey')">Remove</a></li>
+            </ul>
+        </div>
+    </li>
+}

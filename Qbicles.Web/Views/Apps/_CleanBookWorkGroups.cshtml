@@ -1,0 +1,104 @@
+﻿@using CleanBooksData
+@using Qbicles.BusinessRules
+@using Qbicles.Models
+@using Qbicles.Models.Trader
+@model List<CleanBooksData.CBWorkGroup>
+@{
+    var qbicles = (List<Qbicle>)ViewBag.Qbicles;
+    var process = (List<CBProcess>)ViewBag.Process;
+    var domainRoles = (List<DomainRole>)ViewBag.DomainRoles;
+    var domain = (QbicleDomain)ViewBag.CurrentDomain;
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var canDel = Model.Count == 1 ? "disabled" : "";
+    var dateFormat = (string)ViewBag.CurrentDateFormat;
+}
+
+<!-- Groups (People) -->
+
+<div class="activity-overview generic help-text animated bounce">
+    <i class="fa fa-info-circle"></i>
+    <p>
+        Workgroups are a feature that allow you to determine who's responsible for managing Cleanbooks processes.
+        Create a group for viewing your Chart of Accounts, for example, to control who can access what data.
+    </p>
+</div>
+
+
+<table class="table-hover table-striped datatable" id="wg-table" style="width: 100%;">
+    <thead>
+        <tr>
+            <th data-priority="1">Name</th>
+            <th data-priority="3">Creator</th>
+            <th data-priority="3">Created</th>
+            <th data-priority="2">Process</th>
+            <th data-priority="2">Qbicle</th>
+            <th data-priority="2">Members</th>
+            <th data-priority="1">Options</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var wg in Model)
+        {
+            <tr id="tr_workgroup_user_@wg.Id">
+                <td>@wg.Name</td>
+                <td>@HelperClass.GetFullNameOfUser(wg.CreatedBy)</td>
+                <td data-sort="@wg.CreatedDate.ToString("yyyy-MM-dd")">@wg.CreatedDate.ToString(dateFormat)</td>
+                <td>
+                    @{
+                        foreach (var name in wg.Processes.Select(n => n.Name))
+                        {
+                            @name <br />
+                        }
+                    }
+                </td>
+                <td>@wg.Qbicle.Name</td>
+                <td>@wg.Members.Count</td>
+                <td>
+                    <button class="btn btn-warning" onclick="addEditWg(@wg.Id)" data-toggle="modal" data-target="#app-trader-group-add"><i class="fa fa-pencil"></i></button>
+                    @if ((wg.Accounts != null && wg.Accounts.Any()) || (wg.Tasks != null && wg.Tasks.Any()))
+                    {
+                        <button class="btn btn-danger" disabled=""><i class="fa fa-trash"></i></button>
+                    }
+                    else
+                    {
+                        <button @canDel class="btn btn-danger" onclick="Delete('wg-table', '@wg.Id')"><i class="fa fa-trash"></i></button>
+                    }
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<br />
+<a href="#" onclick="addEditWg(0)" class="btn btn-success" data-toggle="modal" data-target="#app-trader-group-add"><i class="fa fa-plus"></i> &nbsp; Add new</a>
+
+<!-- END Groups (People) -->
+
+
+<div class="modal fade" id="app-trader-group-add" role="dialog" aria-labelledby="app-trader-group-add"></div>
+
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/cleanbooks.config.workgroup.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/cleanbooks.config.workgroup.min.js"></script>
+    }
+}
+
+<script>
+
+    $(".chosen-multiple").select2({ multiple: true });
+    $("#wg-table_filter").show();
+    $('select.select2').select2();
+    $("#wg-table").DataTable().draw();
+</script>
+<style>
+    .dataTables_filter {
+        display: none;
+    }
+</style>
+
+

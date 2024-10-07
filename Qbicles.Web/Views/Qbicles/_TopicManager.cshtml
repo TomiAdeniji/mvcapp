@@ -1,0 +1,241 @@
+﻿@using Qbicles.BusinessRules;
+@using Qbicles.Models;
+@{
+    var view = ViewBag.view as string;
+    var currentTimeZone = ViewBag.currentTimeZone as string;
+    var dateFormat = (string)ViewBag.CurrentDateFormat;
+}
+
+<div class="btn-group dropup options" style="position: fixed; bottom: 25px; right: 20px; z-index: 2000;"
+     data-step="3" data-intro="Add a media item here" data-position='right'>
+    <button class="btn btn-success fab dropdown-toggle" data-toggle="modal" data-target="#topic-add" onclick="$('#topicId').val('0')">
+        <i class="fa fa-plus"></i>
+    </button>
+</div>
+
+
+@if (view == "list")
+{
+    var listTopics = ViewBag.ListTopics as List<TopicCustom>;
+    <div id="topic-list">
+        <table class="table-hover table-striped datatable" id="table-topic-list" data-order='[[0, "asc"]]' style="width: 100%; background: #fff;">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Summary</th>
+                    <th>Created</th>
+                    <th>Creator</th>
+                    <th>App</th>
+                    <th>Instances</th>
+                    <th>Options</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in listTopics)
+                {
+                    <tr id="tp@(item.Id)">
+                        <td>@item.Name</td>
+                        <td>@item.Summary</td>
+                        <td>@(item.CreatedDate.HasValue ? item.CreatedDate.Value.ToString(dateFormat) : "")</td>
+                        <td>@HelperClass.GetFullNameOfUser(item.Creator)</td>
+                        <td>
+                            @if (item.isTrader)
+                            {<span class="label label-lg label-info">Trader</span>}
+                        </td>
+                        <td>@item.Instances</td>
+                        <td>
+                            <button class="btn btn-warning" data-toggle="modal" data-target="#topic-add" onclick="$('#topicId').val(@item.Id)"><i class="fa fa-pencil"></i></button>
+                            @if (item.Name.ToLower() != "general")
+                            {
+                                <button class="btn btn-danger" data-toggle="modal" data-target="#delete-topic" onclick="$('#topicDeleteId').val(@item.Id);"><i class="fa fa-trash"></i></button>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        <!-- /.modal -->
+
+    </div>
+    <script>
+        $(document).ready(function () {
+            $('#table-topic-list').DataTable({
+                responsive: true,
+                paging: true,
+                ordering: true,
+                searching: true
+            });
+        });
+    </script>
+}
+else
+{
+    var pipelineTopics = ViewBag.Topics as List<TopicCustom>;
+    <!-- Topic pipeline -->
+    <div id="topic-pipeline">
+        <div class="pipeline" style="min-height: 85vh;max-height:87vh; overflow-y: auto; padding: 30px 30px 100px 30px;">
+            @foreach (var item in pipelineTopics)
+            {
+                <div class="pipeline-block">
+                    <div class="topic-detail">@item.Name</div>
+                    <div class="horizontal-portlets">
+                        <div id="tp_line_@item.Id" topicid="@item.Id" class="column ui-sortable">
+                            @foreach (var it in item.Activities.BusinessMapping(currentTimeZone))
+                            {
+                                switch (it.ActivityType)
+                                {
+                                    case QbicleActivity.ActivityTypeEnum.TaskActivity:
+                                        var tk = (QbicleTask)it;
+                                        var status = "";
+                                        if (!tk.isComplete && tk.ActualStart != null && tk.ProgrammedEnd >= DateTime.UtcNow)
+                                        { status = "green"; }
+                                        else if (!tk.isComplete && tk.ProgrammedEnd < DateTime.UtcNow)
+                                        { status = "red"; }
+                                        else if (!tk.isComplete && tk.ProgrammedEnd >= DateTime.UtcNow && tk.ActualStart == null)
+                                        { status = "amber"; }
+                                        else if (tk.isComplete) { status = "Grey"; }
+                                        else { status = "red"; }
+                                        <div avid="@tk.Id" c-topicid="@item.Id" class="portlet rework ui-widget ui-widget-content ui-helper-clearfix ui-corner-all">
+                                            <div class="portlet-side"></div>
+                                            <div class="portlet-content ui-sortable-handle">
+                                                <div class="status @status"></div>
+                                                <div class="row">
+                                                    <div class="col-xs-9">
+                                                        <a href="javascript:ShowTaskPage('@tk.Key', false);">
+                                                            <small>Task</small>
+                                                            <p>@tk.Name</p>
+                                                        </a>
+                                                    </div>
+                                                    <div class="col-xs-3 text-right">
+                                                        <button data-toggle="modal" data-target="#move-to-group" class="btn btn-info" onclick="$('#move_cr_topicId').val(@item.Id);$('#move_cr_AvId').val(@tk.Id)"><i class="fa fa-exchange"></i></button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        break;
+                                    case QbicleActivity.ActivityTypeEnum.EventActivity:
+                                        var ev = (QbicleEvent)it;
+                                        <div avid="@ev.Id" c-topicid="@item.Id" class="portlet rework ui-widget ui-widget-content ui-helper-clearfix ui-corner-all">
+                                            <div class="portlet-side"></div>
+                                            <div class="portlet-content ui-sortable-handle">
+                                                <div class="row">
+                                                    <div class="col-xs-9">
+                                                        <a href="javascript:ShowEventPage('@ev.Key', false);">
+                                                            <small>Event</small>
+                                                            <p>@ev.Name</p>
+                                                        </a>
+                                                    </div>
+                                                    <div class="col-xs-3 text-right">
+                                                        <button data-toggle="modal" data-target="#move-to-group" class="btn btn-info" onclick="$('#move_cr_topicId').val(@item.Id);$('#move_cr_AvId').val(@ev.Id)"><i class="fa fa-exchange"></i></button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        break;
+                                    case QbicleActivity.ActivityTypeEnum.AlertActivity:
+                                        var al = (QbicleAlert)it;
+                                        <div avid="@al.Id" c-topicid="@item.Id" class="portlet rework ui-widget ui-widget-content ui-helper-clearfix ui-corner-all">
+                                            <div class="portlet-side"></div>
+                                            <div class="portlet-content ui-sortable-handle">
+                                                <div class="row">
+                                                    <div class="col-xs-9">
+                                                        <a href="javascript:ShowAlertPage('@al.Key', false);">
+                                                            <small>Alert</small>
+                                                            <p>@al.Name</p>
+                                                        </a>
+                                                    </div>
+                                                    <div class="col-xs-3 text-right">
+                                                        <button data-toggle="modal" data-target="#move-to-group" class="btn btn-info" onclick="$('#move_cr_topicId').val(@item.Id);$('#move_cr_AvId').val(@al.Id)"><i class="fa fa-exchange"></i></button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        break;
+                                    case QbicleActivity.ActivityTypeEnum.MediaActivity:
+                                        var me = (QbicleMedia)it;
+                                        <div avid="@me.Id" c-topicid="@item.Id" class="portlet rework ui-widget ui-widget-content ui-helper-clearfix ui-corner-all">
+                                            <div class="portlet-side"></div>
+                                            <div class="portlet-content ui-sortable-handle">
+                                                <div class="row">
+                                                    <div class="col-xs-9">
+                                                        <a href="javascript:ShowMediaPage('@me.Key', false);">
+                                                            <small>Media</small>
+                                                            <p>@me.Name</p>
+                                                        </a>
+                                                    </div>
+                                                    <div class="col-xs-3 text-right">
+                                                        <button data-toggle="modal" data-target="#move-to-group" class="btn btn-info" onclick="$('#move_cr_topicId').val(@item.Id);$('#move_cr_AvId').val(@me.Id)"><i class="fa fa-exchange"></i></button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        break;
+                                    case QbicleActivity.ActivityTypeEnum.Link:
+                                        var lk = (QbicleLink)it;
+                                        <div avid="@lk.Id" c-topicid="@item.Id" class="portlet rework ui-widget ui-widget-content ui-helper-clearfix ui-corner-all">
+                                            <div class="portlet-side"></div>
+                                            <div class="portlet-content ui-sortable-handle">
+                                                <div class="row">
+                                                    <div class="col-xs-9">
+                                                        <a href="javascript:ShowLinkPage('@lk.Key', false);">
+                                                            <small>Link</small>
+                                                            <p>@lk.Name</p>
+                                                        </a>
+                                                    </div>
+                                                    <div class="col-xs-3 text-right">
+                                                        <button data-toggle="modal" data-target="#move-to-group" class="btn btn-info" onclick="$('#move_cr_topicId').val(@item.Id);$('#move_cr_AvId').val(@lk.Id)"><i class="fa fa-exchange"></i></button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        break;
+                                }
+
+                            }
+                        </div> <!-- ./column -->
+                    </div> <!-- ./horizontal-portlets -->
+                </div> <!-- ./pipeline-block -->
+            }
+        </div>
+        <!-- ./pipeline -->
+    </div>
+    <!-- END Topic pipeline -->
+    <script>
+        $(document).ready(function () {
+            if (jQuery().sortable) {
+                $(function () {
+                    $(".column").sortable({
+                        connectWith: ".column",
+                        handle: ".portlet-content",
+                        revert: 0,
+                        cancel: ".portlet-toggle",
+                        placeholder: "portlet-placeholder ui-corner-all",
+                        receive: function (event, ui) {
+                            var item = ui.item[0];
+                            if (item) {
+
+                                //avid="tk.Id" c-topicid="item.Id"
+                                var avid = $(item).attr("avid");
+                                var c_topicid = $(item).attr("c-topicid");
+                                var topicid = $(item.parentElement).attr("topicid");
+                                viewFunc.dragMoveToTopic(topicid, c_topicid, avid);
+                            }
+                        }
+                    });
+
+                    $(".portlet")
+                        .addClass("ui-widget ui-widget-content ui-helper-clearfix ui-corner-all")
+                        .find(".portlet-header")
+                        .addClass("ui-widget-header ui-corner-all")
+                        .prepend("<span class='ui-icon ui-icon-minusthick portlet-toggle'></span>");
+
+                    $(".portlet-toggle").on("click", function () {
+                        var icon = $(this);
+                        icon.toggleClass("ui-icon-minusthick ui-icon-plusthick");
+                        icon.closest(".portlet").find(".portlet-content").toggle();
+                    });
+                });
+            }
+        });
+    </script>
+}

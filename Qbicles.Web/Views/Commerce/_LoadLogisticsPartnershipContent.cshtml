@@ -1,0 +1,196 @@
+﻿@using Qbicles.Models.Trader
+@using Qbicles.Models.B2B
+@using Qbicles.Models
+@using Qbicles.BusinessRules
+@model LogisticsPartnership
+@{
+    var currentDomain = (QbicleDomain)ViewBag.CurrentDomain;
+    var consumerBusinesProfile = Model.ConsumerDomain.Id.BusinesProfile();
+    var providerBusinessProfile = Model.ProviderDomain.Id.BusinesProfile();
+    var consumerBusinessName = consumerBusinesProfile?.BusinessName ?? Model.ConsumerDomain.Name;
+    var providerBusinessName = providerBusinessProfile?.BusinessName ?? Model.ProviderDomain.Name;
+    var consumerLocations = (List<TraderLocation>)ViewBag.ConsumerLocations;
+    //var providerLocations = (List<TraderLocation>)ViewBag.ProviderLocations;
+    var currentLogisticsAgreement = Model.LogisticsAgreements.FirstOrDefault(s => s.Status==AgreementStatus.IsDraft);
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var isExistLogisticsAgreement = Model.IsConsumerConfirmed || Model.IsProviderConfirmed;
+}
+<input type="hidden" id="hdfParnershipId" value="@Model.Id"/>
+<input type="hidden" id="hdfIsExistLogisticsAgreement" value="@(isExistLogisticsAgreement?1:0)"/>
+<ul class="audit-steps infoblob" style="max-width: 700px;margin-top: 40px;">
+
+    <li style="padding: 35px 40px;">
+        <h5>B2B Logistics</h5>
+        <br>
+
+        <p>
+            The logistics provider will first supply a list of prices that can be negotiated freely by both parties until an agreement has been reached. Once this agreement has been reached, the partnership can be formed and logistics can be provided as required.
+
+            <br><br>
+            <button class="btn btn-primary" onclick="$(this).parent().parent().hide();">Dismiss</button>
+        </p>
+    </li>
+</ul>
+<div class="row">
+    <div class="col-xs-12">
+        <ul class="nav nav-pills traderv2" style="padding-top: 0;">
+            <li id="activetab" style="@(Model.LogisticsAgreements.Any(s=>s.Status==AgreementStatus.IsActive)?"":"display: none;")">
+                <a href="#logs-active" data-toggle="tab" aria-expanded="true">Active</a>
+            </li>
+            <li class="active">
+                <a href="#logs-draft" data-toggle="tab" id="returns" aria-expanded="true">Draft</a>
+            </li>
+            @{ 
+                var sd=(Model.LogisticsAgreements.Any(s => s.Status == AgreementStatus.IsArchived) ? "" : "disabled");
+            }
+            <li class="@sd" style="@(!string.IsNullOrEmpty(sd)? "opacity: 0.5;":"")">
+                <a href="#logs-archive" data-toggle="tab" @sd  aria-expanded="false">Archive</a>
+            </li>
+        </ul>
+    </div>
+</div>
+<br><br>
+    <div class="tab-content">
+        <!-- Active -->
+        <div class="tab-pane fade" id="logs-active">
+            <div class="flex-grid-fluid qbicles-dash-grid noalt gridfix">
+                @Html.Partial("_LoadActiveContent", Model)
+            </div>
+        </div>
+        <!-- END Active -->
+        <!-- Draft -->
+        <div class="tab-pane fade active in" data-draftagreementid="@(currentLogisticsAgreement?.Id??0)" id="logs-draft">
+            <div class="flex-grid-fluid qbicles-dash-grid noalt gridfix">
+
+                <article class="col">
+
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-6">
+
+                            <a href="#">
+                                <div class="avatar" style="background-image: url('@(api+consumerBusinesProfile.LogoUri)&size=T');">&nbsp;</div>
+                                <h1 style="color: #333;">@consumerBusinessName</h1>
+                            </a>
+                            <p class="qbicle-detail">Choose the locations you require coverage for</p>
+
+                        </div>
+
+                        <div class="col-xs-12 col-sm-6">
+
+                            <a href="#">
+                                <div class="avatar" style="background-image: url('@(api+providerBusinessProfile.LogoUri)&size=T');">&nbsp;</div>
+                                <h1 class="provider-name" style="color: #333;">@providerBusinessName</h1>
+                            </a>
+                            <p class="qbicle-detail">@providerBusinessName's proposals will appear here as they add them</p>
+
+                        </div>
+                    </div>
+
+
+                    <br><br>
+
+
+                    <div class="well custom rounded text-left">
+                        @if (currentDomain.Id == Model.ConsumerDomain.Id)
+                        {
+                            <div class="row">
+
+                                <div class="col-xs-12 col-sm-6">
+
+                                    <div class="activity-overview plain rounded" style="margin: 0;">
+
+                                        <div class="row">
+                                            <div class="col-xs-12">
+                                                <label>Locations requiring coverage</label><br>
+                                                <div class="form-group" style="margin: 0;">
+                                                    <span class="multiselect-native-select">
+                                                        <select name="loc" class="form-control checkmulti" onchange="updateLocations(@Model.Id,this)" multiple="" style="width: 100%;">
+                                                            @foreach (var item in consumerLocations)
+                                                            {
+                                                                <option @(currentLogisticsAgreement != null && currentLogisticsAgreement.IsConsumerAgreed ? "disabled" : "") value="@item.Id" @(currentLogisticsAgreement != null && currentLogisticsAgreement.ConsumerLocations.Any(s => s.Id == item.Id) ? "selected" : "")>@item.Name</option>
+                                                            }
+                                                        </select>
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                    </div>
+
+                                </div>
+
+                                <div class="col-xs-12 col-sm-6 provider-pricelist">
+                                    @Html.Partial("_ProviderPriceList", Model)
+                                </div>
+                            </div>
+                        }
+                        else if (currentDomain.Id == Model.ProviderDomain.Id)
+                        {
+                            <div class="row">
+
+                                <div class="col-xs-12 col-sm-6">
+
+                                    <div class="activity-overview plain rounded" style="margin: 0;">
+
+                                        <div class="row">
+                                            <div class="col-xs-12">
+                                                <label>Location(s) requiring coverage</label>
+                                                <br><br>
+                                                <table class="table table-condensed table-borderless app_specific" style="margin: 6.5px 0 6.5px -4px;">
+                                                    <tbody>
+                                                        @if (currentLogisticsAgreement != null && currentLogisticsAgreement.ConsumerLocations.Any())
+                                                        {
+                                                            foreach (var item in currentLogisticsAgreement.ConsumerLocations)
+                                                            {
+                                                                <tr>
+                                                                    <td style="max-width:30%;width:20%"><strong>@item.Name</strong></td>
+                                                                    <td><i class="fa fa-map-marker red"></i> &nbsp; @item.Address.ToAddress()</td>
+                                                                    <td style="text-align: right;@(item.Address.Latitude != 0 && item.Address.Longitude != 0?"width:80px":"")">
+                                                                        @if (item.Address.Latitude != 0 && item.Address.Longitude != 0)
+                                                                        {
+                                                                            <a href="https://www.google.com/maps/@("@"+item.Address.Latitude),@(item.Address.Longitude),15z" target="_blank">View map</a>
+                                                                        }
+                                                                    </td>
+                                                                </tr>
+                                                            }
+                                                        }
+                                                        else
+                                                        {
+                                                            <tr>
+                                                                <td colspan="3"><span class="label label-warning label-lg">@consumerBusinessName reviewing</span></td>
+                                                            </tr>
+                                                        }
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+
+                                    </div>
+
+                                </div>
+
+                                <div class="col-xs-12 col-sm-6 provider-pricelist">
+                                    @Html.Partial("_ProviderPriceList", Model)
+                                </div>
+                            </div>
+                        }
+                    </div>
+
+
+
+                </article>
+
+
+
+            </div>
+            <div class="action_button">
+                @Html.Partial("_LogisticsPartnershipButton", Model)
+            </div>
+        </div>
+        <!-- END Draft -->
+        <div class="tab-pane fade" id="logs-archive">
+            <div class="flex-grid-fluid qbicles-dash-grid noalt gridfix">
+                @Html.Partial("_LoadArchiveContent", Model)
+            </div>
+        </div>
+    </div>

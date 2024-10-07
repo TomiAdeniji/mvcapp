@@ -1,0 +1,494 @@
+﻿
+@using Qbicles.BusinessRules;
+
+@{
+    ViewBag.Title = "Cleanbooks - Tasks - Transaction Matching Report";
+    var ReportParameter = (TransactionMatchingReportParameter)ViewBag.ReportParameter;
+    if (ReportParameter == null)
+    {
+        HttpContext.Current.Server.ClearError();
+        HttpContext.Current.Response.Redirect("/Apps/Tasks", false);
+
+        if (!Response.IsRequestBeingRedirected)
+        {
+            Response.Redirect("/Apps/Tasks");
+        }
+    }
+}
+<div class="content-wrapper qbicle-detail cleanbooks">
+    <section class="content app_general" style="min-height: 0;">
+
+        <br><br>
+
+
+        <div class="alert_matches">
+            <p></p>
+            <button class="btn btn-success">Manual match</button>
+        </div>
+
+
+        <div class="mod_title">
+            <img src="~/Content/DesignStyle/images/cleanbooks_logo.png" style="width: 200px; height: auto; margin-bottom: 30px;">
+        </div>
+
+        <div class="row">
+            <div class="col-xs-12">
+                <div class="app_filter">
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-4 col-lg-4">
+                            <a href="/Apps/Accounts" class="btn btn-info"><i class="fa fa-home"></i> &nbsp; App home</a>
+                            <a href="/Apps/Tasks" class="btn btn-info"><i class="fa fa-angle-up"></i> &nbsp; All tasks</a>
+                            <a href="javascript:void(0)" onclick="ShowTaskPage('@ReportParameter.taskKey',false)" class="btn btn-primary"><i class="fa fa-eye"></i> &nbsp; View in Qbicles</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <br><br>
+
+        <div class="mod_title">
+            <h5>Transaction Matching</h5>
+            <h4>@ReportParameter.accountName vs @ReportParameter.accountName2</h4>
+        </div>
+
+        <table class="table " id="tabRunby">
+            <thead>
+                <tr>
+                    <th>Executed By</th>
+                    <th>Date</th>
+                    <th>Time</th>
+                    <th>Using</th>
+                    <th style="width: 90px;">Automatic</th>
+                    <th style="width: 90px;">Manual</th>
+                    <th style="width: 90px;">Unreconciled</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+
+        <hr />
+
+        <div class="row" id="stage-2" style="">
+            <div class="col-xs-12">
+                <div class="activity-overview alert-detail">
+                    <div class="task_progress">
+                        <label>Matching Progress</label>
+                        <div class="progress" id="progressReport2">
+                        </div>
+                    </div>
+                </div>
+
+                <hr />
+                <br>
+
+
+
+                <div id="task-tm-close" style="">
+
+                    <div class="row">
+                        <div class="col-xs-12 col-md-8 col-lg-6">
+                            <div class="activity-overview task" style="padding: 20px;">
+
+                                <label>Show...</label>
+
+                                <ul class="app_subnav" id="mask-tab" style="display: none;">
+                                    <li class="active"><a href="#sectionA" data-toggle="tab">Reconciliation statement</a></li>
+                                    <li><a href="#sectionB" data-toggle="tab"></a></li>
+                                    <li><a href="#sectionC" data-toggle="tab"></a></li>
+                                    <li><a href="#sectionD" data-toggle="tab"></a></li>
+                                    <li><a href="#sectionE" data-toggle="tab"></a></li>
+                                </ul>
+
+                                <select name="tab_switcher" class="form-control">
+                                    <option value="#sectionA">Reconciliation statement</option>
+                                    <option id="Account1Unmatched" value="#sectionB"></option>
+                                    <option id="Account2Unmatched" value="#sectionC"></option>
+                                    <option id="Account1Matched" value="#sectionD"></option>
+                                    <option id="Account2Matched" value="#sectionE"></option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-md-8 col-lg-6">
+                            <div class="activity-overview task" style="padding: 20px;">
+                                <a href="javascript:void(0)" onclick="Dowloading()" class="btn btn-success"><i class="fa fa-download"></i> &nbsp; Download report</a>
+                            </div>
+                            
+                        </div>
+                    </div>
+
+                    <br>
+
+                    <div class="tab-content">
+
+                        <div class="tab-pane fade in active" id="sectionA">
+                            <div class="row">
+                                <div class="col-xs-12">
+                                    <div class="activity-overview task" style="padding: 30px 25px 15px 25px; float: left;">
+                                        <dl class="hidden" id="divErrReconciliationReport2">
+                                            <dt>A Reconciliation report has not been generate for this Transaction Matching task because:</dt>                                          
+                                            <dt id="contentErrReconciliationReport2"></dt>
+                                        </dl>
+                                        <dl id="hasValueReconciliationReport2">
+                                           
+                                        </dl>
+
+                                    </div>
+                                    <div class="clearfix"></div>
+                                </div>
+                            </div>
+                        </div>
+
+
+                        <div class="tab-pane fade" id="sectionB">
+                            <div class="row">
+                                <div class="col-xs-12">
+                                    <table class="table table-hover " id="tabAccount1Unmatched" cellspacing="0" width="100%">
+                                        <thead>
+                                            <tr>
+                                                <th>Date</th>
+                                                <th>Reference</th>
+                                                <th>Description</th>
+                                                <th>Debit</th>
+                                                <th>Credit</th>
+
+                                            </tr>
+                                        </thead>
+                                        <tbody></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+
+                        <div class="tab-pane fade" id="sectionC">
+                            <div class="row">
+                                <div class="col-xs-12">
+                                    <table class="table table-hover " id="tabAccount2Unmatched" cellspacing="0" width="100%">
+                                        <thead>
+                                            <tr>
+                                                <th>Date</th>
+                                                <th>Reference</th>
+                                                <th>Description</th>
+                                                <th>Debit</th>
+                                                <th>Credit</th>
+
+                                            </tr>
+                                        </thead>
+                                        <tbody></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+
+                        <div class="tab-pane fade" id="sectionD">
+                            <div class="row">
+                                <div class="col-xs-12">
+                                    <table class="table table-hover " id="tabAccount1Matched" cellspacing="0" width="100%">
+                                        <thead>
+                                            <tr>
+                                                <th>Date</th>
+                                                <th>Reference</th>
+                                                <th>Description</th>
+                                                <th>Debit</th>
+                                                <th>Credit</th>
+
+                                            </tr>
+                                        </thead>
+                                        <tbody></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+
+                        <div class="tab-pane fade" id="sectionE">
+                            <div class="row">
+                                <div class="col-xs-12">
+                                    <table class="table table-hover " id="tabAccount2Matched" cellspacing="0" width="100%">
+                                        <thead>
+                                            <tr>
+                                                <th>Date</th>
+                                                <th>Reference</th>
+                                                <th>Description</th>
+                                                <th>Debit</th>
+                                                <th>Credit</th>
+
+                                            </tr>
+                                        </thead>
+                                        <tbody></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+        <br><br>
+
+        
+    </section>
+</div>
+
+<script>
+    $(document).ready(function () {
+        Loading('Transaction Matching Report');
+        $("#progressReport2").empty();
+
+        GetMatchingProgress('@ReportParameter.taskid','@ReportParameter.accountId','@ReportParameter.accountId2');
+        $("#tabRunby tbody tr").remove();
+        var str = "<tr>";
+        str += " <td><a href='#'>" + '@ReportParameter.userName' + "</a></td>";
+        str += "<td>" + '@ReportParameter.date' + "</td>";
+        str += "<td>" + '@ReportParameter.time' + "</td>";
+        str += "<td>" + '@ReportParameter.accountName' + " vs " + '@ReportParameter.accountName2' + "</td>";
+        str += "<td>" + '@ReportParameter.countTransactionsMatched' + "</td>";
+        str += "<td>" + '@ReportParameter.countTransactionsManual' + "</td>";
+        str += "<td>" + '@ReportParameter.countTransactionsUnMatched' + "</td>";
+        str += "</tr>";
+        $("#tabRunby tbody").append(str);
+        $("#Account1Unmatched").html('@ReportParameter.accountName' + ' Unmatched');
+        $("#Account2Unmatched").html('@ReportParameter.accountName2' + ' Unmatched');
+        $("#Account1Matched").html('@ReportParameter.accountName' + ' Matched');
+        $("#Account2Matched").html('@ReportParameter.accountName2' + ' Matched');
+
+        bindingForReconciliationStatement('@ReportParameter.accountId', '@ReportParameter.accountName', '@ReportParameter.accountId2', '@ReportParameter.accountName2', '@ReportParameter.taskid', '@ReportParameter.transactionmatchingTaskId');
+        $("#transaction tbody tr").remove();
+
+        //account 1 unmatched
+        $("#tabAccount1Unmatched").dataTable().fnDestroy();
+        $("#tabAccount1Unmatched").dataTable({
+            "dom": '<"top"fl<"clear">>rt<"bottomtable"ip<"clear">>',
+            "processing": true, // control the processing indicator.
+            "serverSide": true, // recommended to use serverSide when data is more than 10000 rows for performance reasons
+            "info": true,   // control table information display field
+            "stateSave": true,  //restore table state on page reload,
+            "lengthMenu": [[10, 20, 50, 100], [10, 20, 50, 100]],    // use the first inner array as the page length values and the second inner array as the displayed options
+            "ajax": {
+                "url": "/TransactionMatchingReport/binTableMatchingReport",
+                "type": "GET",
+                "data": {
+                    accountId1: @ReportParameter.accountId,
+                    accountId2: @ReportParameter.accountId2,
+                    transactionmatchingtaskId: @ReportParameter.transactionmatchingTaskId,
+                    type: 1
+                }
+            },
+            "columns": [
+                { "data": "Date", "class": "Date", "orderable": true },
+                { "data": "Reference", "class": "Reference", "orderable": true },
+                { "data": "Description", "class": "Description", "orderable": true },
+                  { "data": "Debit", "class": "Debit", "orderable": true },
+                { "data": "Credit", "class": "Credit", "orderable": true }
+            ],
+            "order": [[0, "asc"]]
+        });
+
+        // account 2 unmatched
+        $("#tabAccount2Unmatched").dataTable().fnDestroy();
+        $("#tabAccount2Unmatched").dataTable({
+            "dom": '<"top"fl<"clear">>rt<"bottomtable"ip<"clear">>',
+            "processing": true, // control the processing indicator.
+            "serverSide": true, // recommended to use serverSide when data is more than 10000 rows for performance reasons
+            "info": true,   // control table information display field
+            "stateSave": true,  //restore table state on page reload,
+            "lengthMenu": [[10, 20, 50, 100], [10, 20, 50, 100]],    // use the first inner array as the page length values and the second inner array as the displayed options
+            "ajax": {
+                "url": "/TransactionMatchingReport/binTableMatchingReport",
+                "type": "GET",
+                "data":
+                    {
+                        accountId1: @ReportParameter.accountId,
+                        accountId2: @ReportParameter.accountId2,
+                        transactionmatchingtaskId: @ReportParameter.transactionmatchingTaskId,
+                        type: 2
+                    }
+            },
+            "columns": [
+                { "data": "Date", "class": "Date", "orderable": true },
+                { "data": "Reference", "class": "Reference", "orderable": true },
+                { "data": "Description", "class": "Description", "orderable": true },
+                 { "data": "Debit", "class": "Debit", "orderable": true },
+                { "data": "Credit", "class": "Credit", "orderable": true }
+            ],
+            "order": [[0, "asc"]]
+        });
+        // account 1 Matched
+        $("#tabAccount1Matched").dataTable().fnDestroy();
+        $("#tabAccount1Matched").dataTable({
+            "dom": '<"top"fl<"clear">>rt<"bottomtable"ip<"clear">>',
+            "processing": true, // control the processing indicator.
+            "serverSide": true, // recommended to use serverSide when data is more than 10000 rows for performance reasons
+            "info": true,   // control table information display field
+            "stateSave": true,  //restore table state on page reload,
+            "lengthMenu": [[10, 20, 50, 100], [10, 20, 50, 100]],    // use the first inner array as the page length values and the second inner array as the displayed options
+            "ajax": {
+                "url": "/TransactionMatchingReport/binTableMatchingReport",
+                "type": "GET",
+                "data":
+                    {
+                        accountId1: @ReportParameter.accountId,
+                        accountId2: @ReportParameter.accountId2,
+                        transactionmatchingtaskId: @ReportParameter.transactionmatchingTaskId,
+                        type: 3
+                    }
+            },
+            "columns": [
+                { "data": "Date", "class": "Date", "orderable": true },
+                { "data": "Reference", "class": "Reference", "orderable": true },
+                { "data": "Description", "class": "Description", "orderable": true },
+                 { "data": "Debit", "class": "Debit", "orderable": true },
+                { "data": "Credit", "class": "Credit", "orderable": true }
+            ],
+            "order": [[0, "asc"]]
+        });
+        // account 2 Matched
+        $("#tabAccount2Matched").dataTable().fnDestroy();
+        $("#tabAccount2Matched").dataTable({
+            "dom": '<"top"fl<"clear">>rt<"bottomtable"ip<"clear">>',
+            "processing": true, // control the processing indicator.
+            "serverSide": true, // recommended to use serverSide when data is more than 10000 rows for performance reasons
+            "info": true,   // control table information display field
+            "stateSave": true,  //restore table state on page reload,
+            "lengthMenu": [[10, 20, 50, 100], [10, 20, 50, 100]],    // use the first inner array as the page length values and the second inner array as the displayed options
+            "ajax": {
+                "url": "/TransactionMatchingReport/binTableMatchingReport",
+                "type": "GET",
+                "data":
+                    {
+                        accountId1: @ReportParameter.accountId,
+                        accountId2: @ReportParameter.accountId2,
+                        transactionmatchingtaskId: @ReportParameter.transactionmatchingTaskId,
+                        type: 4 }
+            },
+            "columns": [
+                { "data": "Date", "class": "Date", "orderable": true },
+                { "data": "Reference", "class": "Reference", "orderable": true },
+                { "data": "Description", "class": "Description", "orderable": true },
+                { "data": "Debit", "class": "Debit", "orderable": true },
+                { "data": "Credit", "class": "Credit", "orderable": true }
+            ],
+            "order": [[0, "asc"]]
+        });
+        EndLoading();
+    });
+
+    function GetMatchingProgress(taskId,accountId,accountId2){
+        $.ajax({
+            type: 'GET',
+            url: '/TransactionMatchingReport/GetMatchingProgress',
+            dataType: 'json',
+            data: { accountId: accountId, accountId2: accountId2,  taskId: taskId },
+            success: function (refModel) {
+                if (refModel.result)
+                    $("#progressReport2").append(refModel.msg);
+
+            }
+        });
+    }
+
+    function bindingForReconciliationStatement(accountId, accountName, accountId2, accountName2, taskid, transactionmatchingtaskId) {
+        var arrResult = [];
+        $.ajax({
+            type: 'GET',
+            url: '/TransactionMatchingReport/bindingForReconciliationStatement',
+            dataType: 'json',
+            data: { accountId: accountId, accountId2: accountId2, transactionmatchingtaskId: transactionmatchingtaskId, taskId: taskid },
+            success: function (rs) {
+
+                if (rs.kq == "Succ") {
+                    if (rs.Object.TransactionMatchingTypeId == 3) {
+                        var html = "<dt>Balance of <strong>" + accountName + "</strong></dt>";
+                        html += "<dd>" + rs.Object.Acc1Balance + "</dd>";
+
+                        html += "<dt>Less <strong>" + accountName + "</strong> unmatched debit transactions</dt>";
+                        html += "<dd>" + rs.Object.Acc1UnMatchedDebits + "</dd>";
+
+                        html += "<dt>Plus <strong>" + accountName + "</strong> unmatched credit transactions</dt>";
+                        html += "<dd>" + rs.Object.Acc1UnMatchedCredits + "</dd>";
+
+                        html += "<dt>Less <strong>" + accountName2 + "</strong> unmatched debit transactions</dt>";
+                        html += "<dd>" + rs.Object.Acc2UnMatchedDebits + "</dd>";
+
+                        html += "<dt>Plus <strong>" + accountName2 + "</strong> unmatched credit transactions</dt>";
+                        html += "<dd>" + rs.Object.Acc2UnMatchedCredits + "</dd>";
+
+                        html += "<dt>Adjusted Balance of <strong>" + accountName + "</strong></dt>";
+                        html += "<dd>" + rs.Object.Acc1AdjustedBalance + "</dd>";
+
+                        html += "<dt>Balance of <strong>" + accountName2 + "</strong></dt>";
+                        html += "<dd>" + rs.Object.Acc2Balance + "</dd>";
+
+                        $("#hasValueReconciliationReport2").html(html);
+                    } else if (rs.Object.TransactionMatchingTypeId == 2) {
+
+                        html = "<dt>Balance of <strong>" + accountName + "</strong></dt>";
+                        html += "<dd>" + rs.Object.Acc1Balance + "</dd>";
+
+                        html = "<dt>Plus <strong>" + accountName + "</strong>unmatched debit transactions</dt>";
+                        html += "<dd>" + rs.Object.Acc1UnMatchedDebits + "</dd>";
+
+                        html = "<dt>Less <strong>" + accountName + "</strong> unmatched credit transactions</dt>";
+                        html += "<dd>" + rs.Object.Acc1UnMatchedCredits + "</dd>";
+
+                        html = "<dt>Less <strong>" + accountName2 + "</strong> unmatched debit transactions</dt>";
+                        html += "<dd>" + rs.Object.Acc2UnMatchedDebits + "</dd>";
+
+                        html = "<dt>Plus <strong>" + accountName2 + "</strong> unmatched credit transactions</dt>";
+                        html += "<dd>" + rs.Object.Acc2UnMatchedCredits + "</dd>";
+
+                        html = "<dt>Adjusted Balance of <strong>" + accountName + "</strong></dt>";
+                        html += "<dd>" + rs.Object.Acc1AdjustedBalance + "</dd>";
+
+                        html = "<dt>Balance of <strong>" + accountName2 + "</strong></dt>";
+                        html += "<dd>" + rs.Object.Acc2Balance + "</dd>";
+
+                        $("#hasValueReconciliationReport2").html(html);
+                    }
+                } else {
+                    var errhtml = "";
+                    for (var i = 0; i < rs.listErr.length; i++) {
+                        errhtml += (i + 1) + ". " + rs.listErr[i] + "<br/>";
+                    }
+                    $("#contentErrReconciliationReport2").html(errhtml);
+                    $("#hasValueReconciliationReport2").addClass("hidden");
+                    $("#divErrReconciliationReport2").removeClass("hidden");
+                }
+            }
+        });
+        return arrResult;
+    }
+
+
+    function Dowloading() {
+        Loading('Downloading ...')
+        $.ajax({
+            type: 'post',
+            url: '/TransactionMatchingReport/ExportToExcel',
+            dataType: 'json',
+            data: {
+                accountId1: '@ReportParameter.accountId',
+                account1Name: '@ReportParameter.accountName',
+                accountId2: '@ReportParameter.accountId2',
+                account2Name: '@ReportParameter.accountName2',
+                transactionmatchingtaskId: '@ReportParameter.transactionmatchingTaskId',
+                taskId: '@ReportParameter.taskid'
+            },
+            success: function (response) {
+                if (response.result == true) {
+                    window.location.href = response.Object;
+                }
+                EndLoading();
+            },
+            error: function () {
+                EndLoading();
+            }
+        });
+    }
+
+</script>

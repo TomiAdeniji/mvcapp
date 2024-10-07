@@ -1,0 +1,234 @@
+﻿@{
+    var categoryExclusion = (List<Qbicles.Models.Trader.ODS.CategoryExclusionSet>)ViewBag.CategoryExclutionSet;
+    var listPrepDevices = (List<Qbicles.Models.Trader.ODS.PrepDisplayDevice>)ViewBag.PrepDisplayDevices;
+}
+
+<div class="modal-dialog" role="document">
+    @if (categoryExclusion == null)
+    {
+
+
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Add a Category exclusion set</h5>
+            </div>
+            <div class="modal-body">
+
+                <div class="row">
+                    <div class="col-xs-12">
+                        <ul class="app_subnav admintabs" style="padding-top: 0;">
+                            <li class="active"><a href="#pds-exset-1" data-toggle="tab">Exclusions</a></li>
+                            <li><a href="#pds-exset-2" data-toggle="tab">Associated devices</a></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <br /><br />
+
+                <div class="tab-content">
+
+                    <!-- Exclusions -->
+                    <div class="tab-pane fade in active" id="pds-exset-1">
+
+                        <button class="btn btn-primary community-button w-auto sm"
+                                data-toggle="modal" data-target="#app-trader-pds-catexclusionset-select">
+                            <i class="fa fa-list"></i> &nbsp; Select categories
+                        </button>
+                        <br /><br /><br />
+
+                        <div class="well custom" style="padding-bottom: 5px;">
+                            <div class="form-group">
+                                <label for="name">Exclusion set name</label>
+                                <input id="exclusion-name" type="text" name="name" class="form-control input-lg" exclusionId="0">
+                            </div>
+                        </div>
+
+                        <br />
+
+                        <h5>Categories</h5>
+                        <hr />
+                        <table class="table table-hover table-condensed table-borderless app_specific" id="exclution-categories-list">
+                            <tbody>
+                            </tbody>
+                        </table>
+                    </div>
+
+
+
+                    <!-- END Exclusions -->
+                    <!-- Associated devices -->
+
+                    <div class="tab-pane fade" id="pds-exset-2">
+
+                        <div class="well custom rounded" style="padding-bottom: 5px;">
+                            <div class="form-group">
+                                <label for="assocdevices">Choose associated devices</label>
+                                <select id="assocdevices-list" name="assocdevices" class="form-control checkmulti" multiple>
+                                    @foreach (var prepDevice in listPrepDevices)
+                                    {
+                                        <option value="@prepDevice.Id" selected>@prepDevice.Name</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+
+                    </div>
+                    <!-- END Exclusions -->
+
+                </div>
+            </div>
+
+            <div class="model-footer">
+                <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                <button id="confirmBtn" class="btn btn-success" onclick="createNewCategoryExclutionSet()">Confirm</button>
+            </div>
+        </div><!-- /.modal-content -->
+        
+
+    }
+    else
+    {
+        var item = categoryExclusion.FirstOrDefault();
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Edit @item.Name exclusion set</h5>
+            </div>
+            <div class="modal-body">
+
+
+                <div class="row">
+                    <div class="col-xs-12">
+                        <ul class="app_subnav admintabs" style="padding-top: 0;">
+                            <li class="active"><a href="#pds-exset-1" data-toggle="tab">Exclusions</a></li>
+                            <li><a href="#pds-exset-2" data-toggle="tab">Associated devices</a></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <br /><br />
+
+
+                <div class="tab-content">
+
+                    <!-- Exclusions -->
+
+                    <div class="tab-pane fade in active" id="pds-exset-1">
+
+                        <button class="btn btn-primary community-button w-auto sm"
+                                data-toggle="modal" data-target="#app-trader-pds-catexclusionset-select">
+                            <i class="fa fa-list"></i> &nbsp; Select categories
+                        </button>
+                        <br /><br /><br />
+
+                        <div class="well custom" style="padding-bottom: 5px;">
+                            <div class="form-group">
+                                <label for="name">Exclusion set name</label>
+                                <input id="exclusion-name" type="text" name="name" class="form-control input-lg" value="@item.Name" exclusionId="@item.Id">
+                            </div>
+                        </div>
+
+                        <br />
+
+                        <h5>Categories</h5>
+                        <hr />
+                        <table class="table table-hover table-condensed table-borderless app_specific" id="exclution-categories-list">
+                            <tbody>
+                                @foreach (var category in item.CategoryNames)
+                                {
+                                    <tr>
+                                        <td class="option-selected-table" value="@category.CategoryName">@category.CategoryName</td>
+                                        <td class="text-right"><button class="btn btn-danger" onclick="removeCategoryExclution('@category.CategoryName')"><i class="fa fa-trash"></i></button></td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- END Exclusions -->
+                    <!-- Associated devices -->
+
+                    <div class="tab-pane fade" id="pds-exset-2">
+
+                        <div class="well custom rounded" style="padding-bottom: 5px;">
+                            <div class="form-group">
+                                <label for="assocdevices">Choose associated devices</label>
+                                <select id ="assocdevices-list" name="assocdevices" class="form-control checkmulti" multiple>
+                                    @foreach (var prepDevice in listPrepDevices)
+                                    {
+                                        <option value="@prepDevice.Id" @(item.PrepDisplayDevices.Select(e => e.Id).Contains(prepDevice.Id) ? "Selected" : "")>@prepDevice.Name</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+
+                    </div>
+                    <!-- END Associated Exclusions -->
+
+
+                </div>
+            </div>
+
+
+            <div class="model-footer">
+                <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                <button class="btn btn-success" onclick="updateCategoryExclutionSet(@item.Id)">Confirm</button>
+            </div>
+
+        </div><!-- /.modal-content -->
+    }
+</div><!-- /.modal-dialog -->
+
+<style>
+    .model-footer {
+        position: fixed;
+        bottom: 0;
+        padding: 15px;
+        background-color: #fff;
+        width: 100%;
+    }
+</style>
+
+<script>
+    $('#exclusion-name').keyup(delay(function () {
+        $.ajax({
+            type: "POST",
+            url: "/PDS/IsUniqueNameCategoryExclsion/",
+            data: { name: $("#exclusion-name").val(), categoryExclutionSetId: $("#exclusion-name").attr("exclusionId") },
+            dataType: "JSON",
+            success: function (response) {
+                if (response && $("#exclusion-name").val().length > 0) {
+                    cleanBookNotification.clearmessage();
+                    cleanBookNotification.error("The name is already exists. Please try another name", "Qbicles");
+                    $("#exclusion-name").attr("isValid", "false");
+                }
+                else if ($("#exclusion-name").val().length == 0) {
+                    cleanBookNotification.clearmessage();
+                    cleanBookNotification.error("The name is invalid. Please try another name", "Qbicles");
+                    $("#exclusion-name").attr("isValid", "false");
+                }
+                else {
+                    cleanBookNotification.clearmessage();
+                    $("#exclusion-name").attr("isValid", "true");
+                }
+            }
+        });
+    }, 1500));
+
+    $("#assocdevices-list").multiselect({
+        includeSelectAllOption: false,
+        selectAllJustVisible: true,
+        includeResetOption: false,
+        enableFiltering: false,
+        buttonWidth: '100%',
+        maxHeight: 400,
+        enableClickableOptGroups: true,
+        enableFiltering: false,
+        enableCaseInsensitiveFiltering: true,
+        selectedClass: 'active option-selected',
+    });
+
+</script>
+<link href="~/Content/DesignStyle/css/bootstrap-multiselect.css" rel="stylesheet" />
+<script src="~/Content/DesignStyle/js/bootstrap-multiselect.js"></script>

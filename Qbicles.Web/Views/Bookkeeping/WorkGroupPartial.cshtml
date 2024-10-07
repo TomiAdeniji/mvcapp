@@ -1,0 +1,381 @@
+﻿@using Qbicles.BusinessRules
+@using Qbicles.Models.Bookkeeping;
+@using Qbicles.Models;
+@using System.Linq;
+@model List<BKWorkGroup>
+@{
+    var qbicles = (List<Qbicle>)ViewBag.Qbicles;
+    var process = (List<BookkeepingProcess>)ViewBag.Process;
+    var domainRoles = (List<DomainRole>)ViewBag.DomainRoles;
+    var domain = (QbicleDomain)ViewBag.CurrentDomain;
+    var api = (string)ViewBag.DocRetrievalUrl;
+
+}
+
+<!-- WorkGroup -->
+<div class="tab-pane fade in active" id="tab-groups-work">
+
+    <div class="activity-overview generic help-text animated bounce">
+        <i class="fa fa-info-circle"></i>
+        <p>
+            Workgroups are a feature that allow you to determine who's responsible for managing Bookkeeping processes.
+            Create a group for your Journal Entry team, for example, to designate reviewers and approvers for creating Journal and allowing
+            chosen members of the group to initiate said processes.
+        </p>
+    </div>
+
+    <div class="activity-overview task" style="padding: 20px;">
+
+        <table class="table-hover datatable" id="wg-table" style="width: 100%; background: #fff;">
+            <thead>
+                <tr>
+                    <th data-priority="1">Name</th>
+                    <th data-priority="3">Creator</th>
+                    <th data-priority="3">Created</th>
+                    <th data-priority="2">Process</th>
+                    <th data-priority="2">Qbicle</th>
+                    <th data-priority="2">Members</th>
+                    <th data-priority="1">Options</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var wg in Model)
+                {
+                    <tr id="tr_workgroup_user_@wg.Id">
+                        <td><span id="wg-name-main-@wg.Id">@wg.Name</span></td>
+                        <td>@HelperClass.GetFullNameOfUser(wg.CreatedBy)</td>
+                        <td>@wg.CreatedDate.ToString("dd/MM/yyyy")</td>
+
+                        <td>
+                            @{
+                                foreach (var name in wg.Processes.Select(n => n.Name))
+                                {
+                                    @name <br />
+                                }
+                            }
+                        </td>
+                        <td>@wg.Qbicle.Name</td>
+                        <td>@wg.Members.Count</td>
+                        <td>
+                            <button class="btn btn-warning" onclick="Edit(@wg.Id)"><i class="fa fa-pencil"></i></button>
+                            @if ((wg.JournalEntries != null && wg.JournalEntries.Any()) && (wg.BKAccounts != null && wg.BKAccounts.Any()))
+                            {
+                                <button class="btn btn-danger" disabled=""><i class="fa fa-trash"></i></button>
+                            }
+                            else
+                            {
+                                <button class="btn btn-danger" onclick="ConfirmDeleteWg(@wg.Id)"><i class="fa fa-trash"></i></button>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <br />
+        <a href="javascript:void(0)" onclick="ClearForm('form-wg-add')" class="btn btn-success"><i class="fa fa-plus"></i> &nbsp; Add new</a>
+    </div>
+</div>
+<!-- END WorkGroup -->
+
+<div class="modal fade left" id="app-trader-group-add" role="dialog" aria-labelledby="app-trader-group-add">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Add a Workgroup</h5>
+            </div>
+            <div class="modal-body">
+
+                <div class="row">
+                    <div class="col-xs-12">
+                        <ul class="app_subnav" style="list-style-type: none;">
+                            <li id="step_1_add" class="active"><a id="step1-vtab_add" href="#add-specifics" data-toggle="tab">Specifics</a></li>
+                            <li id="step_2_add" class=""><a id="step2-vtab_add" href="#add-members" data-toggle="tab">Members add &amp; roles</a></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <br />
+
+
+
+                <div class="tab-content">
+
+                    <!-- Specifics -->
+                    <div class="tab-pane fade in active" id="add-specifics">
+                        <form id="form-wg-add" action="" novalidate="novalidate">
+                            <div class="activity-overview task" style="padding: 20px 20px 10px 20px;">
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="name">Workgroup name <span>*</span></label>
+                                            <input type="text" name="wgNameAdd" id="wg-name-add" class="form-control" required="">
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="qbicle">Qbicle <span>*</span></label>
+                                            <select id="wg-qbicle-add" class="form-control select2" style="width: 100%;" required="">
+                                                @foreach (var q in qbicles)
+                                                {
+                                                    <option value="@q.Id">@q.Name</option>
+                                                }
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="qbicle">Default topic <span>*</span></label>
+                                            <select id="wg-topic-add" class="form-control select2" style="width: 100%;" required=""></select>
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="process">Associated process <span>*</span></label>
+                                            @*<select id="wg-process-add" class="form-control select2" style="width: 100%;" required="">*@
+                                            <select id="wg-process-add" name="wgprocessselect" class="form-control select2 chosen-multiple" style="width: 100%;" multiple required="">
+                                                @foreach (var p in process)
+                                                {
+                                                    <option value="@p.Id">@p.Name</option>
+                                                }
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </form>
+
+
+                        <br />
+                        <a class="btn btn-success btnNextAdd">Next &nbsp; <i class="fa fa-angle-right"></i></a>
+                    </div>
+                    <!-- END Specifics -->
+                    <!-- Members -->
+                    <div class="tab-pane fade" id="add-members">
+
+                        <div class="well custom" style="padding-bottom: 5px;">
+
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-5">
+                                    <div class="form-group">
+                                        <label for="search_dt">Search memeber</label>
+                                        <input type="text" id="search-member-add" class="form-control" placeholder="...">
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-4">
+                                    <div class="form-group">
+                                        <label for="search_dt">Show me</label>
+                                        <select id="search-right-add" name="role" class="form-control select2" style="width: 100%;">
+                                            <option value="">All members</option>
+                                            <option value="Approvers">Approvers</option>
+                                            <option value="Reviewers">Reviewers</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-3">
+                                    <label>Options</label><br />
+                                    <button class="btn btn-success" data-toggle="modal" data-target="#app-trader-people-select"><i class="fa fa-user-plus"></i> &nbsp; Add people</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <br /><br />
+
+                        <table class="datatable our-people table-hover table-striped" id="wg-table-members-add" style="width: 100%;" data-order='[[ 1, "asc" ]]'>
+                            <thead>
+                                <tr>
+                                    <th data-priority="3" data-orderable="false" style="width: 80px;"></th>
+                                    <th data-priority="1">Name</th>
+                                    <th data-priority="1">Approver</th>
+                                    <th data-priority="1">Reviewer</th>
+                                    <th data-priority="1" data-orderable="false" style="width: 80px;">Options</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+
+
+                        <br />
+                        <a class="btn btn-warning btnPreviousAdd"><i class="fa fa-angle-left"></i> &nbsp; Previous</a>
+                        <a href="javascript:void(0)" onclick="CreateWorkgroup()" class="btn btn-success trigger-setup">Confirm</a>
+
+                    </div>
+                    <!-- END Members -->
+
+                </div>
+
+
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+
+
+<div class="modal fade left" id="app-trader-group-edit" role="dialog" aria-labelledby="app-trader-group-edit">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Edit Workgroup</h5>
+            </div>
+            <div class="modal-body">
+
+                <div class="row">
+                    <div class="col-xs-12">
+                        <ul class="app_subnav" style="list-style-type: none;">
+                            <li id="step_1_edit" class="active"><a id="step1-vtab_edit" href="#edit-specifics" data-toggle="tab">Specifics</a></li>
+                            <li id="step_2_edit" class=""><a id="step2-vtab_edit" href="#edit-members" data-toggle="tab">Members add &amp; roles</a></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <br />
+
+
+
+                <div id="workgroup-content-edit" class="tab-content">
+
+
+
+                </div>
+
+
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+
+<div class="modal fade left" id="app-trader-people-select" role="dialog" aria-labelledby="app-trader-people-select">
+    <div class="modal-lg modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Add people to your Workgroup</h5>
+            </div>
+            <div class="modal-body">
+
+                <div class="activity-overview task" style="padding: 30px 30px 15px 30px;">
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group">
+                                <label for="search_dt">Search Qbicle members</label>
+                                <input type="text" id="search-member-all" class="form-control" placeholder="Search for something">
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group">
+                                <label for="tags">Limit to app role(s)</label>
+                                <select id="search-right-all" name="tags" class="form-control select2 chosen-multiple" style="width: 100%;" multiple required="">
+                                    @foreach (var role in domainRoles)
+                                    {
+                                        <option value="@role.Name">@role.Name</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+
+                <br />
+                <table class="datatable our-people table-hover table-striped" id="user-list" style="width: 100%;" data-order='[[ 2, "asc" ]]'>
+                    <thead>
+                        <tr>
+                            <th data-priority="3" data-orderable="false" style="width: 50px;"></th>
+                            <th data-priority="1">Name</th>
+                            <th data-priority="1">Domain App Role(s)</th>
+                            <th data-priority="1">In this Workgroup</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var u in domain.Users)
+                        {
+                            var fullName = @HelperClass.GetFullNameOfUser(u);
+                            <tr>
+                                <td>
+                                    <div class="table-avatar mini" style="background-image: url('@api@u.ProfilePic');">&nbsp;</div>
+                                </td>
+                                <td>@fullName</td>
+                                <td>
+                                    @{
+                                        var roleAll = "";
+                                        foreach (var r in u.DomainRoles.Where(d => d.Domain.Id == domain.Id))
+                                        {
+                                            roleAll += r.Name + ",";
+                                            <span class="label label-lg label-info">@r.Name</span>
+                                        }
+                                        <span class="hidden">@roleAll</span>
+                                    }
+                                </td>
+                                <td>
+                                    <div class="checkbox toggle">
+                                        <input data-fullname="@fullName" onchange="AddUsersToMembers(this.checked,'@u.Id', $(this).data('fullname'),'@api@u.ProfilePic')" class="check-right" data-toggle="toggle" data-onstyle="success" data-on="<i class='fa fa-check'></i>" data-off=" " type="checkbox">
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+
+
+                <br />
+                <button class="btn btn-danger" data-dismiss="modal"><i class="fa fa-remove"></i> &nbsp; Cancel</button>
+                <button onclick="AddMemberToWorkgroup()" class="btn btn-success" data-dismiss="modal"><i class="fa fa-save"></i> &nbsp; Add</button>
+
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+
+
+<div class="modal fade" style="z-index: 9999" id="confirm-delete" role="dialog" aria-labelledby="confirm-delete">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-body">
+
+                <div class="activity-overview generic help-text" style="margin: 0;">
+                    <i class="fa fa-info-circle"></i>
+                    <p>You are about to delete this <strong><span id="name-delete"></span></strong> permanently. This action cannot be undone. If you are sure you wish to proceed, please confirm below...</p>
+
+
+                    <button class="btn btn-danger" onclick="CancelDelete()">Cancel</button>
+                    <button class="btn btn-success" onclick="DeleteWG()">Confirm &amp; Delete</button>
+                </div>
+
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/bookkeeping-configuration-workgroups.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/bookkeeping-configuration-workgroups.min.js">
+        </script>
+    }
+}
+
+<script>
+
+    //$(".chosen-multiple").select2({ multiple: true });
+    InitTopic($("#wg-qbicle-add").val(), "wg-topic-add");
+    $("#wg-table_filter").show();
+    $('select.select2').select2();
+</script>
+<style>
+    .dataTables_filter {
+        display: none !important;
+    }
+</style>

@@ -1,0 +1,108 @@
+﻿@{
+    Layout = "~/Views/Retriever/DocViewerLayout.cshtml";
+
+}
+
+<style>
+    #divDocViewer {
+        width: 100%;
+        border-radius: 6px;
+        background-color: whitesmoke;
+        border: 1px grey;
+    }
+
+    .ui-state-disabled {
+        opacity: 1;
+        filter: alpha(opacity = 100);
+    }
+
+    /* GD New addition for button styling */
+    .btn {
+        font-family: "Roboto", Arial, sans-serif !important;
+        font-weight: 400 !important;
+        padding: 7px 12px !important;
+        border-radius: 0 !important;
+        color: #fff !important;
+        background-color: #3c8dbc !important;
+        border: 0 !important;
+    }
+    /* GD END New addition */
+</style>
+
+<!-- GD Edited block -->
+<div id="divDocViewer">
+    <div id="div_@ViewBag.ViewerID" style="margin-bottom: 25px;"></div>
+    <input name="ZoomIn" type="button" class="btn" onclick="zoomIn()" value="Zoom In" />
+    <input name="ZoomOut" type="button" class="btn" onclick="zoomOut()" value="Zoom Out" />
+</div>
+<!-- GD END Edited block -->
+
+@section css {
+    @* CSS for the Viewer *@
+    @Html.Raw(ViewBag.ViewerCSS)
+}
+
+@section scripts {
+
+    <!-- Viewer header scripts include-->
+    @Html.Raw(ViewBag.ViewerScripts)
+
+    <script language="javascript" type="text/javascript">
+
+        var objctlDoc = null; // Server object id is "ctlDoc"
+
+        function zoomIn() {
+            objctlDoc.Zoom(true);
+        }
+
+        function zoomOut() {
+            objctlDoc.Zoom(false);
+        }
+
+        function Resize() {
+
+            var h = "innerHeight" in window ? window.innerHeight : document.documentElement.offsetHeight;
+            //var w = "innerWidth" in window ? window.innerWidth : document.documentElement.offsetWidth;
+            // use width variable w if required
+
+            $("#divDocViewer").height(h - 120);
+            //$("#divDocViewer").width(w - 80);
+
+        }
+
+        function OpenDocument(fileName) {
+
+            $("#btnOpenFile").addClass("disabled");
+
+            $.ajax({
+                type: "POST",
+                cache: false,
+                url: "/Home/OpenFile?name=" + fileName,
+                success: function (data) {
+                    objctlDoc.View(data); // use global object to view any document
+                },
+                error: function (textStatus, errorThrown, data) {
+                    alert("Unable to open document. Fatal error. (" + data + ")");
+                    $("#btnOpenFile").removeClass("disabled");
+                }
+            });
+        }
+
+        function ctlDoc_OnViewerReady() {
+            // Use this ready & other such events
+        }
+
+        $(window).load(function () {
+
+            Resize();
+
+            /* Init code for viewer */
+            @Html.Raw(ViewBag.ViewerInit)
+
+        });
+
+        $(window).resize(function () {
+            Resize();
+        });
+    </script>
+}

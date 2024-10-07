@@ -1,0 +1,276 @@
+﻿@*@using Qbicles.BusinessRules
+@using Qbicles.Models.B2B
+@using Qbicles.BusinessRules.Model
+@model B2BProfile
+@{
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var relationship = (B2BRelationship)ViewBag.Relationship;
+    var localtions = relationship.Partnerships.Select(s => s.ProviderLocation).Distinct().ToList();
+    var verhicleTypeIcons = B2bVerhicleTypeIcon.vehicleTypes;
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+    var count = 0;
+    var invitationId = (int)ViewBag.InvitationId;
+}
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail mdv2-wrapper" style="position: relative;">
+
+
+    <!-- Main content -->
+    <section class="mdv2 dash" data-tooltip-color="teal" data-tooltip-delay="300" data-tooltip-animate-function="spin" style="border-top: 1px solid #f1f1f1;">
+
+
+        <!-- App bar -->
+        <div class="mdv2-col-app" style="margin-bottom: 0;">
+
+            <div data-spy="affix" class="contained-sidebar">
+
+                <div class="activity-overview plain company-overview welcome-info" style="flex: none; margin: 0; padding-top: 30px; padding-bottom: 0;">
+
+                    <div class="pull-left" style="margin-bottom: 15px;">
+                        <a href="/Commerce" class="btn btn-primary"><i class="fa fa-angle-left"></i> &nbsp; Commerce</a>
+                    </div>
+                    <div class="clearfix"></div>
+
+                    <div style="width: 90px; height: 90px; background-image: url('@(api+Model.LogoUri)&size=T'); background-size: cover; background-position: center center; margin: 0 auto; border-radius: 50%;"></div>
+                    <br />
+                    <h2 style="font-weight: 500;">@Model.BusinessName</h2>
+
+                    <br />
+                    <p style="color: rgba(0, 0, 0, 0.8); text-align: center;">
+                        @Model.BusinessSummary
+                    </p>
+
+
+                    <br /><br />
+                    <div class="text-left">
+                        <h5>We've included proposals for...</h5>
+                        <br />
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <ul class="nav nav-pills nav-stacked traderv2" style="padding-top: 0;">
+                                    @{ var currentLocationName = "";}
+                                    @foreach (var item in localtions)
+                                    {
+                                        if (count == 0)
+                                        {
+                                            currentLocationName = item.Name;
+                                        }
+                                        <li class="@(count==0?"active":"")">
+                                            <a href="#loc-@item.Id" onclick="$('.tabactivetext').text('@(item.Name.FixQuoteCode())')" data-toggle="tab">@item.Name</a>
+                                        </li>
+                                        count++;
+                                    }
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <br />
+
+
+
+
+            </div>
+        </div>
+        <!-- END App bar -->
+        <!-- Main area -->
+        <div class="mdv2-col-dash" style="min-width: 0; background: #f5f5f5;">
+
+            <div class="spacing">
+
+                <!-- Relationships -->
+                <div class="profile-view commstab" id="rel-logistics">
+
+                    <div class="community-v2-content" style="padding-left: 0;">
+
+                        <div class="row">
+
+                            <!-- Main block -->
+                            <div class="col-xs-12">
+
+                                <!-- Article main -->
+                                <article class="v2-full" style="padding-bottom: 10px;">
+                                    <br />
+
+                                    <h1>Proposal for <strong class="tabactivetext">@(currentLocationName)</strong></h1>
+                                    <br />
+
+                                    <h5>
+                                        We can offer services from the following locations. Find which works best for you and, if you are happy with the costs, accept the proposal to get started.
+                                        If you're unhappy with all proposals please decline them and we can continue to negotiate.
+                                    </h5>
+
+                                    <br /><br />
+
+
+                                    <div class="tab-content">
+                                        @{
+                                            count = 0;
+                                        }
+                                        @foreach (var item in localtions)
+                                        {
+                                            var partnerships = relationship.Partnerships.Where(s => s.ProviderLocation.Id == item.Id).ToList();
+                                            <!-- Location 1 -->
+                                            <div class="tab-pane fade @(count==0?"in active":"")" id="loc-@item.Id">
+
+                                                <ul class="nav nav-pills traderv2" style="padding-top: 0;">
+                                                    @{ var count1 = 0;}
+                                                    @foreach (var p in partnerships)
+                                                    {
+                                                        var logisticspartnership = (LogisticsPartnership)p;
+                                                        var priceName = logisticspartnership.PriceList?.Name;
+                                                        <li class="@(count1==0?"active":"")">
+                                                            <a href="#0-prop-@logisticspartnership.Id" data-toggle="tab">@(priceName)</a>
+                                                        </li>
+                                                        count1++;
+                                                    }
+                                                </ul>
+
+
+                                                <br /><br />
+
+
+                                                <div class="tab-content">
+                                                    @{ count1 = 0;}
+                                                    @foreach (var p in partnerships)
+                                                    {
+                                                        var logisticspartnership = (LogisticsPartnership)p;
+
+                                                        <!-- Prop 1 -->
+                                                        <div class="tab-pane fade @(count1==0?"in active":"")" id="0-prop-@logisticspartnership.Id">
+
+                                                            <div class="flex-grid-thirds-lg qbicles-dash-grid criteria-tables">
+                                                                @if (logisticspartnership.PriceList != null)
+                                                                {
+                                                                    foreach (var chargeFramework in logisticspartnership.PriceList.ChargeFrameworks)
+                                                                    {
+                                                                        <article class="col">
+                                                                            <a href="#" style="cursor: initial !important;">
+                                                                                <div class="avatar" style="border-radius: 0; background-image: url('@(Url.Content(verhicleTypeIcons.FirstOrDefault(s=>s.Key==chargeFramework.VehicleType).Value))');">&nbsp;</div>
+                                                                                <h1 style="color: #333;">@chargeFramework.VehicleType.GetDescription()</h1>
+                                                                            </a>
+                                                                            <br>
+
+                                                                            <div class="text-left">
+                                                                                <table class="table app_specific table-borderless">
+                                                                                    <thead>
+                                                                                        <tr>
+                                                                                            <th colspan="2">Distance travelled</th>
+                                                                                        </tr>
+                                                                                    </thead>
+                                                                                    <tbody>
+                                                                                        <tr>
+                                                                                            <td style="width: 70%;">Flat fee</td>
+                                                                                            <td>@chargeFramework.DistanceTravelledFlatFee.ToCurrencySymbol(currencySettings)</td>
+                                                                                        </tr>
+                                                                                        <tr>
+                                                                                            <td style="width: 70%;">Per km</td>
+                                                                                            <td>@chargeFramework.DistanceTravelPerKm.ToCurrencySymbol(currencySettings)</td>
+                                                                                        </tr>
+                                                                                    </tbody>
+                                                                                </table>
+
+
+                                                                                <table class="table app_specific table-borderless">
+                                                                                    <thead>
+                                                                                        <tr>
+                                                                                            <th colspan="2">Time taken</th>
+                                                                                        </tr>
+                                                                                    </thead>
+                                                                                    <tbody>
+                                                                                        <tr>
+                                                                                            <td style="width: 70%;">Flat fee</td>
+                                                                                            <td>@chargeFramework.TimeTakenFlatFee.ToCurrencySymbol(currencySettings)</td>
+                                                                                        </tr>
+                                                                                        <tr>
+                                                                                            <td style="width: 70%;">Per second</td>
+                                                                                            <td>@chargeFramework.TimeTakenPerSecond.ToCurrencySymbol(currencySettings)</td>
+                                                                                        </tr>
+                                                                                    </tbody>
+                                                                                </table>
+
+
+                                                                                <table class="table app_specific table-borderless" style="margin-bottom: 0;">
+                                                                                    <thead>
+                                                                                        <tr>
+                                                                                            <th colspan="2">Value of delivery</th>
+                                                                                        </tr>
+                                                                                    </thead>
+                                                                                    <tbody>
+                                                                                        <tr>
+                                                                                            <td style="width: 70%;">Flat fee</td>
+                                                                                            <td>@chargeFramework.ValueOfDeliveryFlatFee.ToCurrencySymbol(currencySettings)</td>
+                                                                                        </tr>
+                                                                                        <tr>
+                                                                                            <td style="width: 70%;">Percentage</td>
+                                                                                            <td>@(chargeFramework.ValueOfDeliveryPercentTotal)%</td>
+                                                                                        </tr>
+                                                                                    </tbody>
+                                                                                </table>
+                                                                            </div>
+
+                                                                        </article>
+                                                                    }
+                                                                }
+                                                            </div>
+
+
+                                                            <br />
+                                                            @if (logisticspartnership.Status == PartnershipStatus.Pending)
+                                                            {
+                                                                <div id="groupbtn@(logisticspartnership.Id)" class="well custom">
+                                                                    <button onclick="updateStatus(@(invitationId),@(logisticspartnership.Id),3)" class="btn btn-danger"><i class="fa fa-thumbs-down"></i> &nbsp; Decline</button>
+                                                                    <button onclick="updateStatus(@(invitationId),@(logisticspartnership.Id),2)" class="btn btn-success"><i class="fa fa-check"></i> &nbsp; Approve</button>
+                                                                </div>
+                                                            }
+                                                        </div>
+                                                        <!-- END Prop 1 -->
+                                                        count1++;
+                                                    }
+                                                </div> <!-- ./tab-content -->
+
+
+                                            </div>
+                                            <!-- Location 1 -->
+                                            count++;
+                                        }
+                                    </div>
+
+                                </article>
+                                <!-- END Article main -->
+
+                            </div>
+                            <!-- END Main block -->
+
+
+                        </div>
+
+                    </div>
+
+                </div>
+                <!-- END Relationships -->
+
+            </div>
+
+        </div>
+        <!-- END Main area -->
+
+
+    </section>
+    <!-- ./content -->
+
+</div>
+<!-- /.content-wrapper -->
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/commerce.logisticsproposal.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/commerce.logisticsproposal.min.js"></script>
+    }
+}*@

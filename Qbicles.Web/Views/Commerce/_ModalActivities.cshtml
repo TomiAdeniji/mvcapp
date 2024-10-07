@@ -1,0 +1,63 @@
+﻿@using Qbicles.Models
+@using Qbicles.BusinessRules
+@model Qbicle
+@{
+    var currentUserId = (string)ViewBag.CurrentUserId;
+    var currentDomain = (QbicleDomain)ViewBag.CurrentDomain;
+    var locations = currentDomain.TraderLocations;
+    var isDomainAdmin = currentDomain.Administrators.Any(p => p.Id == currentUserId);
+}
+@{
+    var isRelationshipManager = false;
+    Html.RenderAction("GenerateModalMedia", "Qbicles");
+    Html.RenderAction("GenerateModalDiscussion", "Qbicles", new { disId = 0 });
+    if (isDomainAdmin || Model.Members.Any(s => s.Id == currentUserId))
+    {
+        isRelationshipManager = Model.Members.Any(s => s.Id == currentUserId);
+        <div class="modal fade right" id="b2b-managers" role="dialog" aria-labelledby="b2b-managers" style="display: none;">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+                        <h5 class="modal-title">Relationship managers</h5>
+                    </div>
+                    <div class="modal-body">
+
+                        <div class="activity-overview generic help-text animated bounce" style="margin-bottom: 15px;">
+                            <i class="fa fa-info-circle"></i>
+                            <p>
+                                Configure the people in your organisation that are allowed to communicate with <span class="txt-fullname"></span>. These relationship
+                                managers will be the only people able to see the contact and interact with them.
+                            </p>
+                        </div>
+
+                        <div class="well custom">
+                            <div class="form-group" style="margin: 0;">
+                                <label for="folder">Current manager(s)</label>
+                                <span class="multiselect-native-select">
+                                    <select id="slrelationshipmanagers" name="slrelationshipmanagers" class="form-control checkmulti" multiple="">
+                                        @foreach (var user in currentDomain.Users)
+                                        {
+                                            <option value="@user.Id" @(user.Id == currentUserId && Model.Members.Any(s => s.Id == user.Id) ? "disabled" : "") @(Model.Members.Any(s => s.Id == user.Id) ? "selected" : "")>@HelperClass.GetFullNameOfUser(user)</option>
+                                        }
+                                    </select>
+                                </span>
+                            </div>
+                        </div>
+
+                        <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-success" onclick="updateManagers()">Confirm</button>
+
+                    </div>
+                </div><!-- /.modal-content -->
+            </div><!-- /.modal-dialog -->
+        </div>
+    }
+}
+<script>
+    if ('@isRelationshipManager.ToString().ToLower()' == 'false') {
+            $(".rl-manager-option").hide();
+        } else {
+            $(".rl-manager-option").show();
+        }
+</script>

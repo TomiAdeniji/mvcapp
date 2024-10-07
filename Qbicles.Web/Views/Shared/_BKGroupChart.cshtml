@@ -1,0 +1,148 @@
+﻿@using Qbicles.Models.Bookkeeping;
+@using Qbicles.BusinessRules;
+@using Qbicles.Models;
+@{
+    var breadcrumb = ViewBag.Breadcrumb;
+    var breadcrumbName = ViewBag.BreadcrumbName;
+    var accountAmount = (AccountAmount)ViewBag.AccountAmount;
+    var modelNode = (CoANode)ViewBag.ModelNode;
+    var nodeAccounts = (List<BKAccount>)ViewBag.NodeAccounts;
+
+
+    var rightAccountManager = ViewBag.rightManagerAccountTab;
+    var rightAccount = (bool)(ViewBag.rightAccount == null ? false : ViewBag.rightAccount);
+    var currencySettings = (CurrencySetting)ViewBag.CurrencySettings;
+}
+
+<br />
+<div class="mod_title">
+    <h5>@breadcrumb</h5>
+    <h4 id="group-name">@breadcrumbName</h4>
+</div>
+
+
+<div class="app_upper_dash text-center">
+    <div class="row">
+        <div class="col-xs-12 col-lg-4">
+            <div class="stat_label">
+                <span>Balance</span>
+                <h3>@accountAmount.Balance.ToCurrencySymbol(currencySettings)</h3>
+            </div>
+        </div>
+        <div class="col-xs-12 col-lg-4">
+            <div class="stat_label">
+                <span>Debits</span>
+                <h3>@accountAmount.Debit.ToCurrencySymbol(currencySettings)</h3>
+            </div>
+        </div>
+        <div class="col-xs-12 col-lg-4">
+            <div class="stat_label">
+                <span>Credits</span>
+                <h3>@accountAmount.Credit.ToCurrencySymbol(currencySettings)</h3>
+            </div>
+        </div>
+    </div>
+</div>
+
+@{
+    if (modelNode.Parent != null && rightAccountManager)
+    {
+        <a href="javascript:" data-toggle="modal" data-target="#app-coa-subgroup-edit" onclick="showModalRename()" class="btn btn-warning"><i class="fa fa-pencil"></i> &nbsp; Rename</a>
+    }
+}
+
+@{
+    if (rightAccountManager)
+    {
+        <div class="btn-group options">
+            <button type="button" class="btn btn-success dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                Create a new &nbsp; <i class="fa fa-angle-down"></i>
+            </button>
+            <ul class="dropdown-menu">
+                <li><a href="javascript:" onclick="GetNumber()" data-toggle="modal" data-target="#app-coa-subgroup-add">Subgroup</a></li>
+                <li><a href="javascript:" onclick="AddBkAccount();" data-toggle="modal" data-target="#app-coa-account-add">Account</a></li>
+            </ul>
+        </div>
+        if (@modelNode.NodeType == CoANode.BKCoANodeTypeEnum.SubGroup && !rightAccount)
+        {
+            <button class="btn btn-danger" onclick="DeleteSubNode(@modelNode.Id)">
+                <i class="fa fa-trash"></i> &nbsp; Delete
+            </button>
+        }
+    }
+}
+
+
+<br />
+<br />
+<br />
+
+
+<h5>Accounts</h5>
+<hr />
+
+<table class="datatable app_specific bk-account-table" style="width: 100%;">
+    <thead>
+        <tr>
+            <th data-priority="1">Name</th>
+            <th data-priority="2">ID Number</th>
+            <th data-priority="2">Balance <strong>(@(currencySettings.CurrencySymbol))</strong></th>
+            <th data-priority="1" style="width: 90px;">Options</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var node in nodeAccounts)
+        {
+            <tr>
+                <td>@node.Name</td>
+                <td>@node.Number</td>
+                <td>@node.Balance.ToDecimalPlace(currencySettings)</td>
+                <td>
+                    <div class="btn-group options">
+                        <button type="button" class="btn btn-success dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            <i class="fa fa-cog"></i> &nbsp; Options
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-right" style="right: 0;">
+                            <li><a class="trigger_ledger" href="javascript:void(0)" onclick="BKChartOfAccountContent(@node.Id, true)">View transactions</a></li>
+
+                            @if (rightAccountManager)
+                            {
+                                <li><a href="javascript:">View associated journal entries</a></li>
+                                <li><a href="javascript:">Move</a></li>
+                                <li><a href="javascript:" onclick="EditBkAccount(@node.Id)" data-toggle="modal" data-target="#app-coa-account-edit">Edit</a></li>
+                                <li><a href="javascript:">Delete</a></li>
+                            }
+                        </ul>
+                    </div>
+                </td>
+            </tr>
+        }
+
+
+    </tbody>
+</table>
+
+
+@if (rightAccountManager)
+{
+    Html.RenderPartial("_AddEditSubGroupModalPartial");
+    <div id="account_addedit">
+
+    </div>
+}
+
+<script>
+    $(document).ready(function () {
+        $('.bk-account-table').DataTable({
+            "destroy": true,
+            responsive: true,
+            "lengthChange": true,
+            "pageLength": 10,
+            "order": []
+        });
+
+        $('.bk-account-table').show();
+    });
+    // Custom select box elements
+    $('div#account_addedit select').not('.multi-select').select2();
+</script>

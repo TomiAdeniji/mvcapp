@@ -1,0 +1,334 @@
+﻿@using CleanBooksData;
+@using Qbicles.BusinessRules
+@using System.Globalization;
+@model List<taskgroup>
+
+@{
+    var memberTaskExecution = (bool)ViewBag.MemberTaskExecution;
+    var memberTask = (bool)ViewBag.MemberTask;
+    var UserRoles = (List<string>)ViewBag.UserRoles;
+    var dateFormat = (string)ViewBag.CurrentDateFormat;
+}
+<!-- Content Wrapper. Contains page content -->
+@if (memberTaskExecution || memberTask)
+{
+    <div class="app_general task-view" id="grid_view">
+        @foreach (var taskGroup in Model)
+        {
+            <h5><span id="task-group-name-grid-@taskGroup.Id">@taskGroup.Name</span></h5>
+            <hr />
+            if (memberTask)
+            {
+                <button id="button_edit_group_grid" onclick="EditGroup('@taskGroup.Id','button_edit_group_grid')" class="btn btn-warning"><i class="fa fa-pencil"></i> &nbsp; Edit group</button>
+                <button id="button_add_account_grid" class="btn btn-success" onclick="AddTask('@taskGroup.Id','button_add_account_grid')"><i class="fa fa-plus"></i> &nbsp; Add a task</button>
+            }
+
+            <br /><br />
+            <ul id="ul-task-@taskGroup.Id" class="grid-list">
+                @foreach (var task in taskGroup.tasks)
+                {
+                    var accountRoles = task.DomainRoles.Select(n => n.Name).ToList();
+
+                    //var role3 = UserRoles.Intersect(accountRoles).Any();
+                    //if (!role3)
+                    //{
+                    //    continue;
+                    //}
+                    <li class="grid-list-item" id="task-@task.Id">
+                        <div class="grid-list-content">
+                            <div class="cb-grid-heading cb-task">
+                                <span class="label label-info">@task.tasktype.Name</span>
+                                <h4><a href="#">@task.Name</a></h4>
+
+                                @{
+                                    var lastUpdated = task.taskinstances.OrderByDescending(e => e.DateExecuted).FirstOrDefault();
+                                    if (lastUpdated != null)
+                                    {
+                                        <h6>
+                                            Last updated
+                                            <span id="last-update-@task.Id">@(lastUpdated.DateExecuted.ToString(dateFormat+" hh:mmtt"))</span>
+                                        </h6>
+                                    }
+                                    else
+                                    {
+                                        <h6>
+                                            <span id="last-update-@task.Id"></span>
+                                        </h6>
+                                    }
+                                }
+                            </div>
+                            <div class="cb-grid-details cb-task">
+                                <div class="additional-details"><span><i class="fa fa-user"></i></span> @task.user1.Forename @task.user1.Surname</div>
+
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <span>Account 1 Balance</span>
+                                        @{
+                                            var balance1 = HelperClass.Converter.Obj2Decimal(task.taskaccounts.Where(o => o.Order == 1).FirstOrDefault()?.account?.LastBalance);
+                                            var balanceDisplay1 = balance1.ToString("#,###.##", CultureInfo.InvariantCulture.NumberFormat);
+                                            if (balanceDisplay1.Contains("."))
+                                            {
+                                                var balanceBeforeDecimalPoint = @balanceDisplay1.Split('.')[0];
+                                                var balanceAfterDecimalPoint = '.' + @balanceDisplay1.Split('.')[1];
+                                                <h2 @(balance1 < 0 ? "style=color:indianred" : "")>@balanceBeforeDecimalPoint<span @(balance1 < 0 ? "style=color:indianred" : "")>@balanceAfterDecimalPoint</span></h2>
+                                            }
+                                            else
+                                            {
+                                                <h2 @(balance1 < 0 ? "style=color:indianred" : "")>@balanceDisplay1</h2>
+                                            }
+                                        }
+                                    </div>
+                                    <div class="col-xs-12 col-sm-6">
+                                        <span>Account 2 Balance</span>
+                                        @{
+                                            var balance2 = HelperClass.Converter.Obj2Decimal(task.taskaccounts.Where(o => o.Order == 2).FirstOrDefault()?.account?.LastBalance);
+                                            var balanceDisplay2 = balance2.ToString("#,###.##", CultureInfo.InvariantCulture.NumberFormat);
+                                            if (balanceDisplay2.Contains("."))
+                                            {
+                                                var balanceBeforeDecimalPoint = @balanceDisplay2.Split('.')[0];
+                                                var balanceAfterDecimalPoint = '.' + @balanceDisplay2.Split('.')[1];
+                                                <h2 @(balance2 < 0 ? "style=color:indianred" : "")>@balanceBeforeDecimalPoint<span @(balance2 < 0 ? "style=color:indianred" : "")>@balanceAfterDecimalPoint</span></h2>
+                                            }
+                                            else
+                                            {
+                                                <h2 @(balance2 < 0 ? "style=color:indianred" : "")>@balanceDisplay2</h2>
+                                            }
+                                        }
+
+                                    </div>
+                                </div>
+                                <div class="row substats">
+                                    <div class="col-xs-12 col-sm-4">
+                                        <span>Unmatched</span>
+                                        <h2>@task.transactionmatchingunmatcheds.Count()</h2>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-8">
+                                        <span>Instances</span>
+                                        <h2>@task.taskinstances.Count()</h2>
+                                    </div>
+                                </div>
+
+                                <div class="btn-group dropup options">
+                                    <button type="button" class="btn btn-success dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                        <i class="fa fa-cog"></i>
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-right" style="right: 0;">
+                                        @if (memberTask)
+                                        {
+                                            <li><a href="javascript:void(0)" onclick="EditTask(@task.Id, '@task.Name', this)">Edit task</a></li>
+                                        }
+
+                                        @{
+                                            var disableCss = "";
+                                            if (task.taskinstances == null || task.taskinstances.Count == 0)
+                                            {
+                                                disableCss = "a-btn-disabled";
+                                            }
+                                            if (memberTask || memberTaskExecution)
+                                            {
+                                                <li><a href="javascript:void(0)" class="@disableCss" onclick="ViewInstanceMatchingTask(@task.Id, '@task.Name', this)">Instance statuses & reports</a></li>
+                                            }
+
+                                            if (memberTaskExecution)
+                                            {
+                                                disableCss = "";
+                                                if (task.taskinstances == null || task.taskinstances.Any(c => c.IsComplete == 0))
+                                                {
+                                                    disableCss = "a-btn-disabled";
+                                                }
+                                                var account = task.taskaccounts.FirstOrDefault(o => o.Order == 1).account;
+                                                var account2 = task.taskaccounts.FirstOrDefault(o => o.Order == 2).account;
+                                                var taskInstance = task.taskinstances.OrderByDescending(i => i.id).FirstOrDefault()?.id;
+                                                <li>
+                                                    <a href="javascript:void(0)"
+                                                       onclick="RunTask('@account.Name', @account.Id, '@account2.Name', @account2.Id, @task.Id, '@task.Name', @task.TransactionMatchingTypeId, '@taskInstance', this)"
+                                                       class="@disableCss">Run task</a>
+                                                </li>
+                                            }
+
+                                        }
+                                        @if (memberTask)
+                                        {
+                                            <li><a href="javascript:void(0)" onclick="TaskDelete(@task.Id, '@task.Name', '@task.Description', this)">Delete task</a></li>
+                                        }
+
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </li>
+                }
+            </ul>
+        }
+
+
+
+
+    </div>
+
+
+
+    <div class="app_general task-view" id="list_view" style="display: none;">
+        @foreach (var taskGroup in Model)
+        {
+            <h5><span id="task-group-name-list-@taskGroup.Id">@taskGroup.Name</span></h5>
+            <hr />
+            if (memberTask)
+            {
+                <button id="button_edit_group_grid" onclick="EditGroup('@taskGroup.Id','button_edit_group_grid')" class="btn btn-warning"><i class="fa fa-pencil"></i> &nbsp; Edit group</button>
+                <button id="button_add_account_grid" class="btn btn-success" onclick="AddTask('@taskGroup.Id','button_add_account_grid')"><i class="fa fa-plus"></i> &nbsp; Add a task</button>
+            }
+
+            <br />
+            <br />
+
+            <table id="tableList-@taskGroup.Id" class="accgroup-table table table-hover t1style valignm custome-table" style="width:100%" cellspacing="0">
+                <thead>
+                    <tr>
+                        <th data-priority="1">Name</th>
+                        <th data-priority="3">Last Updated</th>
+                        <th data-priority="1">Type</th>
+                        <th data-priority="2">Account 1 Balance</th>
+                        <th data-priority="2">Account 2 Balance</th>
+                        <th data-priority="2">Unmatched</th>
+                        <th data-priority="2">Instances</th>
+                        <th data-priority="1" data-orderable="false">Options</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var task in taskGroup.tasks)
+                    {
+                        var accountRoles = task.DomainRoles.Select(n => n.Name).ToList();
+
+                        //var role3 = UserRoles.Intersect(accountRoles).Any();
+                        //if (!role3)
+                        //{
+                        //    continue;
+                        //}
+                        <tr id="task-tr-@task.Id">
+                            <td>@task.Name</td>
+
+                            @{
+                                var lastUpdated = task.taskinstances.OrderByDescending(e => e.DateExecuted).FirstOrDefault();
+                                if (lastUpdated != null)
+                                {
+                                    <td><span id="last-update-tr-@task.Id">@(lastUpdated.DateExecuted.ToString(dateFormat+" hh:mmtt"))</span></td>
+                                }
+                                else
+                                {
+                                    <td><span id="last-update-tr-@task.Id"></span></td>
+                                }
+                            }
+                            <td>@task.tasktype.Name</td>
+                            <td><span id="last-balance1-tr-@task.Id">@(HelperClass.Converter.Obj2Decimal(task.taskaccounts.Where(o => o.Order == 1).FirstOrDefault()?.account?.LastBalance).ToString("#,###.##", CultureInfo.InvariantCulture.NumberFormat))</span></td>
+                            <td><span id="last-balance2-tr-@task.Id">@(HelperClass.Converter.Obj2Decimal(task.taskaccounts.Where(o => o.Order == 2).FirstOrDefault()?.account?.LastBalance).ToString("#,###.##", CultureInfo.InvariantCulture.NumberFormat))</span></td>
+                            <td>@task.transactionmatchingunmatcheds.Count()</td>
+                            <td>@task.taskinstances.Count()</td>
+                            <td>
+                                <div class="btn-group options">
+                                    <button type="button" class="btn btn-account dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                        <i class="fa fa-cog"></i> &nbsp; Actions
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-right" style="right: 0;">
+                                        @if (memberTask)
+                                        {
+                                            <li><a href="javascript:void(0)" onclick="EditTask(@task.Id, '@task.Name', this)">Edit task</a></li>
+                                        }
+
+                                        @{
+                                            var disableCss = "";
+                                            if (task.taskinstances == null || task.taskinstances.Count == 0)
+                                            {
+                                                disableCss = "a-btn-disabled";
+                                            }
+                                            if (memberTask || memberTaskExecution)
+                                            {
+                                                <li><a href="javascript:void(0)" class="@disableCss" onclick="ViewInstanceMatchingTask(@task.Id, '@task.Name', this)">Instance statuses & reports</a></li>
+                                            }
+                                            
+                                            if (memberTaskExecution)
+                                            {
+                                                disableCss = "";
+                                                if (task.taskinstances == null || task.taskinstances.Any(c => c.IsComplete == 0))
+                                                {
+                                                    disableCss = "a-btn-disabled";
+                                                }
+                                                var account = task.taskaccounts.FirstOrDefault(o => o.Order == 1).account;
+                                                var account2 = task.taskaccounts.FirstOrDefault(o => o.Order == 2).account;
+                                                var taskInstance = task.taskinstances.OrderByDescending(i => i.id).FirstOrDefault()?.id;
+                                                <li>
+                                                    <a href="javascript:void(0)"
+                                                       onclick="RunTask('@account.Name', @account.Id, '@account2.Name', @account2.Id, @task.Id, '@task.Name', '@task.TransactionMatchingTypeId', '@taskInstance', this)"
+                                                       class="@disableCss">Run task</a>
+                                                </li>
+                                            }
+                                            
+                                        }
+                                        @if (memberTask)
+                                        {
+                                            <li><a href="javascript:void(0)" onclick="TaskDelete(@task.Id, '@task.Name', '@task.Description', this)">Delete task</a></li>    
+                                        }
+                                    </ul>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            <br /><br />
+        }
+
+
+
+
+    </div>
+
+}
+
+
+<!-- ./content -->
+
+
+
+<script>
+    $(document).ready(function () {
+
+        $('.accgroup-table').DataTable({
+            responsive: true,
+            "lengthChange": false,
+            "pageLength": 10,
+            "order": []
+        });
+
+        $('.accgroup-table').show();
+
+    });
+
+    function RunTask(accountName, accountId, accountName2, accountId2, taskid, taskname, transactionMatchingTypeId, taskinstanceId, ev) {
+        if (ev.className.indexOf('isDisabled') >= 0) {
+            return;
+        }
+        if (taskinstanceId === null || taskinstanceId === "")
+            taskinstanceId = 0;
+        $.ajax({
+            type: 'post',
+            url: '/Tasks/RedirectTransactionMatching',
+            dataType: 'json',
+            data: {
+                accountName: accountName,
+                accountId: accountId,
+                accountName2: accountName2,
+                accountId2: accountId2,
+                taskid: taskid,
+                taskname: taskname,
+                transactionMatchingTypeId: transactionMatchingTypeId,
+                transactionanalysistaskId: 0,
+                taskInstanceId: taskinstanceId
+            },
+            success: function (response) {
+                if (response.result = true)
+                    window.location.href = "/TransactionMatching/TransactionMatchingRecords";
+            }
+        });
+    }
+</script>

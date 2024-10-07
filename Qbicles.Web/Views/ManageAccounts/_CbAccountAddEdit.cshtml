@@ -1,0 +1,365 @@
+﻿@using CleanBooksData
+@using Qbicles.BusinessRules
+@using Qbicles.Models
+@model Account
+@{
+    var accountGroups = (List<accountgroup>)ViewBag.AccountGroups;
+    var uploadfieldsData = HelperClass.uploadFielsData();
+    var dataManager = (IEnumerable<ApplicationUser>)ViewBag.DataManager;
+    var wgs = (List<CBWorkGroup>) ViewBag.CBWorkgroups;
+    var frequencys = (IEnumerable<accountupdatefrequency>)ViewBag.AccountUpdateFrequency;
+    var roles = (List<DomainRole>)ViewBag.Roles;
+    var timeZone = ViewBag.CurrentTimeZone;
+    var nodes = ViewBag.BkAccountNodes;
+    var createdDate =  ViewBag.CreatedDate;
+}
+
+<div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <h5 class="modal-title">@(Model.Id == 0 ? "Add an Account" : "Update Account")</h5>
+        </div>
+        <div class="modal-body">
+
+            <div class="well">
+                <form id="form_accout" novalidate="novalidate">
+                    <input type="hidden" id="input_account_id" name="Id" value="@Model.Id" />
+                    <input type="hidden" id="input_account_isactive" name="IsActive" value="@Model.IsActive" />
+                    <input type="hidden" id="input_account_createddate" name="CreatedDate" value="@Model.CreatedDate" />
+                    <input type="hidden" id="input_account_createdbyid" name="CreatedById" value="@Model.CreatedById" />
+                    @{
+                        var hidenCreated = Model.Id == 0 ? "hidden" : "";
+                    }
+                    <div class="row @hidenCreated">
+                        <div id="create-by-div" class="col-xs-12 col-sm-6">
+                            <div class="form-group">
+                                <label for="account_creator">Created By</label>
+                                <input type="text" class="form-control" id="CreatedByName" disabled value="@(Model.user == null ?"":HelperClass.GetFullNameOfUser(Model.user))">
+                            </div>
+                        </div>
+                        <div id="create-date-div" class="col-xs-12 col-sm-6">
+                            <div class="form-group">
+                                <label for="account_created">Date Created</label>
+                                <input type="text" class="form-control" id="CreatedDateValue" disabled value='@createdDate'>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group">
+                                <label for="account_group">Account Group&nbsp;<span>*</span></label>
+                                <select id="select_account_workgroup" name="workgroup" required class="chosen-select form-control select2" style="width: 100%;">
+                                    @foreach (var wg in wgs)
+                                    {
+                                        if (Model.WorkGroup != null && wg.Id == Model.WorkGroup.Id)
+                                        {
+                                            <option selected="" value="@wg.Id">@wg.Name</option>
+                                        }
+                                        else
+                                        {
+                                            <option value="@wg.Id">@wg.Name</option>
+                                        }
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group validate-control">
+                                <label for="account_name">Name of Account&nbsp;<span>*</span></label>
+                                <input type="text" id="input_account_name" name="Name" value="@Model.Name" class="form-control" required/>
+                            </div>
+                        </div>
+                        <div id="link-bookkeeping-account" class="col-xs-12 col-sm-6">
+                            <div class="form-group noaccount" style="display: @(Model.BookkeepingAccount == null? "":"none");">
+
+                                @if (Model.uploads.Count > 0)
+                                {
+                                    <label for="task_groups">Link a Bookkeeping account</label><br />
+                                    <a class="btn btn-warning isDisabled"><i class="fa fa-link"></i> &nbsp; No linked account</a>
+                                }
+                                else
+                                {
+                                    <label for="task_groups">Link a Bookkeeping account</label><br />
+                                    <a class="btn btn-info" onclick="$('.notbk').hide(); $('.bk').show(); OpenSelectBkAccount();"><i class="fa fa-link"></i> &nbsp; Select account</a>
+                                }
+
+                            </div>
+                            <div class="form-group chosenaccount" style="display: @(Model.BookkeepingAccount == null ? "none" : "");">
+                                <input hidden="" id="selected-bookkeeping-account-id" value="@(Model.BookkeepingAccount?.Id??0)" />
+                                <label for="task_groups" id="selected-bookkeeping-account">@(Model.BookkeepingAccount?.Number + " " + Model.BookkeepingAccount?.Name)</label><br />
+                                @if (Model.uploads.Count > 0)
+                                {
+                                    <a class="btn btn-warning isDisabled"><i class="fa fa-pencil"></i></a>
+                                    <a class="btn btn-danger isDisabled"><i class="fa fa-trash"></i></a>
+                                }
+                                else
+                                {
+                                    <a class="btn btn-warning" onclick="OpenSelectBkAccount();"><i class="fa fa-pencil"></i></a>
+                                    <a class="btn btn-danger" onclick="RemoveBkAccount()"><i class="fa fa-trash"></i></a>
+                                }
+
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group">
+                                <label for="account_group">Account Group&nbsp;<span>*</span></label>
+                                <select id="select_account_group" name="GroupId" required class="chosen-select form-control" style="width: 100%;">
+                                    @{
+                                        foreach (var item in accountGroups)
+                                        {
+                                            if (item.Id == Model.GroupId)
+                                            {
+                                                <option selected="" value="@item.Id">@item.Name</option>
+                                            }
+                                            else
+                                            {
+                                                <option value="@item.Id">@item.Name</option>
+                                            }
+                                        }
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group validate-control">
+                                <label for="account_number">Account Number&nbsp;<span>*</span></label>
+                                <input type="text" id="input_account_number" name="Number" class="form-control" value="@Model.Number" required/>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group">
+                                <label for="account_opening_balance">Opening Balance</label>
+                                @{
+                                    var uploadReadonly = "";
+                                    var uploadcss = "";
+                                    var uploadDisable = "";
+                                    if (Model.uploads.Count > 0)
+                                    {
+                                        uploadReadonly = "readonly";
+                                        uploadcss = "input-readonly";
+                                        uploadDisable = "disabled";
+
+                                        <input type="hidden" id="isEditLastbalance" name="isEditLastbalance" value="false" />
+                                    }
+                                    else
+                                    {
+                                        <input type="hidden" id="isEditLastbalance" name="isEditLastbalance" value="true" />
+                                    }
+                                    <input value="@Model.LastBalance" type="text" id="input_account_lastbalance" name="LastBalance" placeholder="Input Opening Balance" @uploadReadonly class="form-control @uploadcss"
+                                           oninput="this.value = this.value.replace(/[^0-9.\,-]/g, '').replace(/(\..*)\./g, '$1').replace(/(\,,*)\./g, '$1');" />
+
+                                }
+
+                                @*this.value = this.value.replace(/(\..*)\./g, '$1');"*@
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group validate-control">
+                                <label for="account_required_fields">Required Fields&nbsp;<span>*</span></label>
+                                <select @uploadDisable id="select_user_role" name="uploadfields[]" class="single-select select_uploadfieldsData form-control chosen-select" required="" multiple="multiple" style="width: 100%;">
+                                    @foreach (var ufd in uploadfieldsData)
+                                    {
+                                        var fieldSelected = Model.uploadfields.FirstOrDefault(e => e.Name == ufd.Value) == null ? "" : "selected";
+                                        if (ufd.Value == "Date" || ufd.Value == "Description")
+                                        {
+                                            <option value="@ufd.Value" @fieldSelected selected="selected">@ufd.Value</option>
+                                        }
+                                        else
+                                        {
+                                            <option @fieldSelected value="@ufd.Value">@ufd.Value</option>
+                                        }
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group validate-control">
+                                <label for="account_update_frequency">Expected Update Frequency&nbsp;<span>*</span></label>
+                                <select id="select_Frequency_type" name="UpdateFrequencyId" class="single-select form-control chosen-select" required="" style="width: 100%;">
+                                    @foreach (var frequency in frequencys)
+                                    {
+                                        if (frequency.Id == Model.UpdateFrequencyId)
+                                        {
+                                            <option selected="" value="@frequency.Id">@frequency.frequency</option>
+                                        }
+                                        else
+                                        {
+                                            <option value="@frequency.Id">@frequency.frequency</option>
+                                        }
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group validate-control">
+                                <label for="account_data_manager">Data Manager&nbsp;<span>*</span></label>
+                                <select id="select_datamanager_type" name="DataManagerId" class="single-select form-control chosen-select" style="width: 100%;" required>
+                                    @foreach (var u in dataManager)
+                                    {
+                                        if (u.Id == Model.DataManagerId)
+                                        {
+                                            <option value="@u.Id">@HelperClass.GetFullNameOfUser(u)</option>
+                                        }
+                                        else
+                                        {
+                                            <option value="@u.Id">@HelperClass.GetFullNameOfUser(u)</option>
+                                        }
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    @*<div class="row">
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group">
+                                <label for="role_grant">Grant access to groups <span>*</span></label>
+                                <select id="role_grant" name="role_grant[]" class="single-select form-control chosen-select" multiple="multiple" style="width: 100%;">
+                                    @foreach (var role in roles)
+                                    {
+                                        var roleSelected = Model.DomainRoles.FirstOrDefault(e => e.Name == role.Name) == null ? "" : "selected";
+                                        <option @roleSelected value="@role.Id">@role.Name</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                    </div>*@
+                </form>
+            </div>
+
+            <button type="button" onclick="SaveCBAccount()" class="btn btn-success"><i class="fa fa-check"></i> &nbsp; Confirm</button>
+            <button class="btn btn-danger" data-dismiss="modal"><i class="fa fa-remove"></i> &nbsp; Cancel</button>
+
+        </div>
+    </div> <!-- /.modal-content -->
+</div>
+
+<div class="modal fade left" id="app-cb-account-bk" role="dialog" aria-labelledby="app-cb-account-bk">
+    <div class="modal-dialog modal-xl" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Link a Bookkeeping account</h5>
+            </div>
+            <div class="modal-body">
+
+                <div class="row">
+                    <div class="col-xs-12 col-md-4">
+
+                        <div class="activity-overview generic treeview">
+
+                            <h5>Navigate your Chart of Accounts</h5>
+                            <p>Use this widget to quickly find and view accounts within your Chart of Accounts. You can search by account name or number too.</p>
+
+                            <div class="form-group" style="padding-top: 10px;">
+                                <input type="text" name="search-tree" class="search-tree form-control" placeholder="Search for...">
+                            </div>
+                            <div id="bk-acc-tree-content">
+                                @{ Html.RenderAction("BookkeepingChartOfAccounts", "CleanBooksAccount"); }@*, new { accountId = Model.BookkeepingAccount?.Id ?? 0 });}*@
+                            </div>
+
+
+
+
+
+                        </div>
+
+
+
+                    </div>
+
+
+                    <div class="col-xs-12 col-md-8">
+
+                        <div id="content" tabindex="1">
+
+                            <div class="activity-overview generic help-text animated bounce">
+                                <i class="fa fa-info-circle"></i>
+                                <p>Select an account from your Chart of Accounts tree and its information will display here...</p>
+                            </div>
+
+                        </div>
+
+                    </div>
+
+
+                </div>
+
+                <br /><br />
+                <button onclick="CloseSelectAccount()" class="btn btn-danger">Cancel</button>
+
+            </div>
+
+
+
+        </div> <!-- /.modal-content -->
+    </div> <!-- /.modal-dialog -->
+</div> <!-- /.modal -->
+<script>
+    $(".chosen-select").select2();
+    $("#select_user_role").on("select2:unselecting",
+        function (e) {
+            if (e.params.args.data.id === 'Date' || e.params.args.data.id === 'Description')
+                e.preventDefault();
+        });
+    CloseSelectAccount = function () {
+        $("#app-cb-account-bk").modal("hide");
+    };
+    RemoveBkAccount = function () {
+        $('.chosenaccount').hide(); $('.noaccount').show(); $('.bk').hide(); $('.notbk').show();
+        $("#selected-bookkeeping-account-id").val(0);
+
+    };
+
+    var $selectedNodeIds = @Html.Raw(Json.Encode(nodes));
+
+    OpenSelectBkAccount = function() {
+
+        var accountId = parseInt($("#selected-bookkeeping-account-id").val());
+
+
+        $('#jstree_id').jstree("deselect_all");//$("#jstree_id").jstree("close_all");
+        for (var i = 0; i < $selectedNodeIds.length; i++) {
+            if (accountId === $selectedNodeIds[i]) {
+                $("div#jstree_id").jstree("select_node", ".groupaccount_" + $selectedNodeIds[i]);
+                CleanBooksBKChartOfAccountContent($selectedNodeIds[i]);
+            } else {
+                $("div#jstree_id").jstree("open_node", ".groupaccount_" + $selectedNodeIds[i]);
+            }
+        }
+        $("#app-cb-account-bk").modal("show");
+    };
+
+    function SelectedLinkAccount() {
+
+
+        $('.noaccount').hide(); $('.chosenaccount').show();
+        $("#selected-bookkeeping-account").html($("#account-link-name").text());
+        var accountId = parseInt($("#account-link-id").val());
+        $("#selected-bookkeeping-account-id").val(accountId);
+        $selectedNodeIds.push(accountId);
+        $("#app-cb-account-bk").modal("hide");
+    };
+
+    function CleanBooksBKChartOfAccountContent(id) {
+        var ajaxUri = '/CleanBooksAccount/BookkeepingChartOfAccountContent?value=' + id;
+        AjaxElementLoad(ajaxUri, 'content');
+    };
+</script>
+
+<style>
+    .isDisabled {
+        color: currentColor;
+        cursor: not-allowed;
+        opacity: 0.5;
+        text-decoration: none;
+    }
+</style>

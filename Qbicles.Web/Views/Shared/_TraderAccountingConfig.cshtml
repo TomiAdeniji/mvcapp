@@ -1,0 +1,282 @@
+﻿@using Qbicles.BusinessRules;
+@using Qbicles.Models.Bookkeeping
+@using Qbicles.Models.Trader;
+@model List<TaxRateModel>
+@{
+    var traderSetting = (TraderSettings)ViewBag.traderSetting;
+    var journalGroups = (IQueryable<JournalGroup>)ViewBag.JournalGroups;
+
+    
+    var canDel = Model.Count == 1 ? "disabled" : "";
+}
+
+
+<!-- Bookkeeping -->
+<div class="tab-pane fade in active" id="tab-bookkeeping">
+    <div class="well custom" style="padding-bottom: 5px;">
+        <div class="row">
+            <div class="col-xs-12 col-sm-6 col-md-4">
+                <div class="form-group">
+                    <label>Journal Entry Group</label>
+                    <select id="journal-group-default" onchange="UpdateJournalGroupDefault(@traderSetting.Id)" class="form-control select2" style="width: 100%;" tabindex="-1" aria-hidden="true">
+                        <option value="0"></option>
+                        @foreach (var group in journalGroups)
+                        {
+                            if (group.Id == traderSetting.JournalGroupDefault?.Id)
+                            {
+                                <option value="@group.Id" selected="">@group.Name</option>
+                            }
+                            else
+                            {
+                                <option value="@group.Id">@group.Name</option>
+                            }
+                        }
+                    </select>
+
+                </div>
+            </div>
+        </div>
+    </div>
+    <br />
+    <table id="tblTaxrates" class="table table-hover app_specfic datatable" style="width: 100%; background: #fff;">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Rate (%)</th>
+                <th>
+                    Accounted for
+                    <i class="fa fa-info-circle" data-tooltip="Indicates whether or not this tax rate is taken into account"></i>
+                </th>
+                <th>Transaction type</th>
+                <th>Credit or Debit</th>
+                <th style="max-width:30%">Description</th>
+                <th>Options</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model)
+            {
+                <tr>
+                    <td>@item.Name</td>
+                    <td>@item.Rate</td>
+                    <td>@(item.IsAccounted?"Yes":"No")</td>
+                    <td>@(item.IsPurchaseTax? "Purchase" : "Sale")</td>
+                    <td>@(item.IsCreditToTaxAccount? "Credit" : "Debit")</td>
+                    <td>@item.Description</td>
+                    <td>
+                        <button class="btn btn-warning" onclick="editTaxRate(@item.Id)" data-toggle="modal" data-target="#app-coa-tax-edit"><i class="fa fa-pencil"></i></button>
+                        <button @item.CanDelete @canDel class="btn btn-danger" onclick="confirmDeleteTaxRate(@item.Id, '@item.Name')" data-toggle="modal" data-target="#app-taxrate-confirm"> <i class="fa fa-trash"></i></button>
+                    </td>
+                </tr>
+            }
+
+        </tbody>
+    </table>
+
+    <a href="javascript:void(0)" class="btn btn-success" data-toggle="modal" onclick="clickAdd()" data-target="#app-coa-tax-add"><i class="fa fa-plus"></i> &nbsp; Add new</a>
+</div>
+<!-- END Bookkeeping -->
+
+
+<div class="modal fade" id="app-coa-tax-add" role="dialog" aria-labelledby="app-coa-tax-add">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">New Tax Rate</h5>
+            </div>
+            <div class="modal-body app-coa-tax-add">
+                <div class="activity-overview task" style="padding: 20px;">
+                    <form class="form-group" id="form_taxrate_add" style="padding: 0">
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="name">Display as <span>*</span></label>
+                                    <input type="text" name="Name" id="add-taxrate-name" required class="form-control" placeholder="Tax rate name">
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="number">Rate (%)</label>
+                                    <input type="number" name="rate" id="add-taxrate-rate" required class="form-control" placeholder="e.g. 25">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-4">
+                                <div class="form-group">
+                                    <label for="IsAccounted">Accounted for</label>
+                                    <select id="add-isAccounted" name="IsAccounted" class="form-control select2" style="width: 100%;" onchange="if($(this).val() == '1') { $('.transtype-add').fadeIn(); $('.associated-add').fadeIn(); } else { $('.transtype-add').hide(); $('.associated-add').hide(); }" tabindex="-1" aria-hidden="true">
+                                        <option value=""></option>
+                                        <option value="0">No</option>
+                                        <option value="1">Yes</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-4">
+                                <div class="form-group transtype-add" style="display: none;">
+                                    <label for="IsPurchaseTax">Transaction type</label>
+                                    <select id="add-isPurchaseTax" name="IsPurchaseTax" class="form-control select2" style="width: 100%;" onchange="if($(this).val() !== '') { $('.creditordebit-add').fadeIn(); } else { $('.creditordebit-add').hide(); }" tabindex="-1" aria-hidden="true">
+                                        <option value=""></option>
+                                        <option value="0">Sale</option>
+                                        <option value="1">Purchase</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-4">
+                                <div class="form-group creditordebit-add" style="display: none;">
+                                    <label for="IsCreditToTaxAccount">Credit or Debit</label>
+                                    <select id="add-isCreditToTaxAccount" name="IsCreditToTaxAccount" class="form-control select2" style="width: 100%;" tabindex="-1" aria-hidden="true">
+                                        <option value=""></option>
+                                        <option value="1">Credit</option>
+                                        <option value="0">Debit</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row associated-add" style="display: none;">
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="account_1">Associated account</label>
+                                    <br>
+                                    <button class="btn btn-info addbtnaccount" onclick="LoadAccountTree()" data-toggle="modal" data-target="#app-bookkeeping-treeview"><i class="fa fa-plus"></i> &nbsp; Choose account</button>
+                                    <p class="accountInfo" style="font-family: 'Roboto', Arial, sans-serif; font-size: 12px; display: inline-block; padding: 0 10px 0 0;"></p>
+                                    <button class="btn btn-small btn-warning editbtnaccount" data-toggle="modal" onclick="LoadAccountTree()" data-target="#app-bookkeeping-treeview"><i class="fa fa-pencil"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-12">
+                                <div class="form-group">
+                                    <label for="description">Description</label>
+                                    <textarea type="text" name="description" id="add-taxrate-description" rows="3" class="form-control"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <br />
+                <button class="btn btn-success" onclick="addTaxRate()"><i class="fa fa-check"></i> &nbsp; Add now</button>
+                <button class="btn btn-danger modal-tax-rate-add-cancel" data-dismiss="modal"><i class="fa fa-remove"></i> &nbsp; Cancel</button>
+
+            </div>
+        </div> <!-- /.modal-content -->
+    </div> <!-- /.modal-dialog -->
+</div> <!-- /.modal add tax rate-->
+
+<div class="modal fade" id="app-coa-tax-edit" role="dialog" aria-labelledby="app-coa-tax-edit">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Edit Tax Rate</h5>
+            </div>
+            <div class="modal-body app-coa-tax-edit">
+                <input id="edit-taxrate-id" class="hidden" />
+                <div class="activity-overview task" style="padding: 20px;">
+                    <form class="form-group" id="form_taxrate_edit" novalidate="novalidate" style="padding: 0">
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="name">Display as <span>*</span></label>
+                                    <input type="text" name="name" id="edit-taxrate-name" required class="form-control" placeholder="Tax rate name">
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="number">Rate (%)</label>
+                                    <input type="number" name="rate" id="edit-taxrate-rate" class="form-control" placeholder="e.g. 25">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-4">
+                                <div class="form-group">
+                                    <label for="accounted">Accounted for</label>
+                                    <select id="edit-isAccounted" name="IsAccounted" class="form-control select2" style="width: 100%;" onchange="if($(this).val() == '1') { $('.edit-transtype').fadeIn(); $('.edit-associated').fadeIn();$('.edit-creditordebit').fadeIn();} else { $('.edit-transtype').hide(); $('.edit-associated').hide();$('.edit-creditordebit').hide(); }" tabindex="-1" aria-hidden="true">
+                                        <option value=""></option>
+                                        <option value="0">No</option>
+                                        <option value="1">Yes</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-4">
+                                <div class="form-group edit-transtype" style="display: none;">
+                                    <label for="purchase">Transaction type</label>
+                                    <select id="edit-isPurchaseTax" name="IsPurchaseTax" class="form-control select2" style="width: 100%;" onchange="if ($(this).val() !== '' && $('#edit-isAccounted').val()=='1') { $('.edit-creditordebit').fadeIn(); } else { $('.edit-creditordebit').hide(); }" tabindex="-1" aria-hidden="true">
+                                        <option value=""></option>
+                                        <option value="0">Sale</option>
+                                        <option value="1">Purchase</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-4">
+                                <div class="form-group edit-creditordebit" style="display: none;">
+                                    <label for="sale">Credit or Debit</label>
+                                    <select id="edit-isCreditToTaxAccount" name="IsCreditToTaxAccount" class="form-control select2" style="width: 100%;" tabindex="-1" aria-hidden="true">
+                                        <option value=""></option>
+                                        <option value="1">Credit</option>
+                                        <option value="0">Debit</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row edit-associated" style="display: none;">
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="account_1">Associated account</label>
+                                    <br>
+                                    <button class="btn btn-info addbtnaccount" onclick="LoadAccountTree()" data-toggle="modal" data-target="#app-bookkeeping-treeview"><i class="fa fa-plus"></i> &nbsp; Choose account</button>
+                                    <p class="accountInfo" style="font-family: 'Roboto', Arial, sans-serif; font-size: 12px; display: inline-block; padding: 0 10px 0 0;"></p>
+                                    <button class="btn btn-small btn-warning editbtnaccount" data-toggle="modal" onclick="LoadAccountTree()" data-target="#app-bookkeeping-treeview"><i class="fa fa-pencil"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-12">
+                                <div class="form-group">
+                                    <label for="description">Description</label>
+                                    <textarea type="text" name="description" rows="3" id="edit-taxrate-description" class="form-control" placeholder="Description"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <br />
+                <button class="btn btn-success" onclick="updateTaxrate()"><i class="fa fa-check"></i> &nbsp; Save</button>
+                <button class="btn btn-danger modal-tax-rate-edit-cancel" data-dismiss="modal"><i class="fa fa-remove"></i> &nbsp; Cancel</button>
+
+            </div>
+        </div> <!-- /.modal-content -->
+    </div> <!-- /.modal-dialog -->
+</div> <!-- /.modal Edit Tax rate-->
+
+<div class="modal fade" id="app-taxrate-confirm" role="dialog" aria-labelledby="app-taxrate-confirm">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" onclick="closeSelected()" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Delete tax rate</h5>
+            </div>
+            <div class="modal-body">
+                <div class="col-xs-12 col-sm-12" style="margin-bottom: 30px;">
+                    <span id="label-confirm-taxrate"></span>
+                    <input class="hidden" id="id-itemtaxrate-delete" />
+                </div>
+                <button @canDel class="btn btn-success" id="confirmtaxrate-delete" data-dismiss="modal" onclick="deleteTaxRate()"><i class="fa fa-check"></i> &nbsp; OK</button>
+                <button class="btn btn-danger" data-dismiss="modal"><i class="fa fa-remove"></i> &nbsp; Cancel</button>
+            </div>
+        </div> <!-- /.modal-content -->
+    </div> <!-- /.modal-dialog -->
+</div> <!-- /.modal Confirm delete-->
+
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/trader.config.accounting.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/trader.config.accounting.js"></script>
+    }
+}

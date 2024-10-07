@@ -1,0 +1,105 @@
+﻿@using Qbicles.BusinessRules
+@{
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+    var lastBalance = (decimal)ViewBag.LastBalance;
+    var lastBalanceStr = lastBalance.ToCurrencySymbol(currencySettings);
+}
+<div class="modal-dialog modal-xl" role="document">
+    <input type="hidden" id="associated-till-id" value="@ViewBag.Till.Id" />
+    <input type="hidden" id="associated-safe-id" value="@ViewBag.Safe.Id" />
+    <input type="hidden" id="pay-type" value="payout" />
+    <div class="modal-content">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <h5 class="modal-title">Add a Payment Out to @ViewBag.Till.Name</h5>
+        </div>
+        <div class="modal-body">
+
+            <div class="row">
+                <div class="col-xs-12 col-md-4 col-lg-3">
+
+                    <div class="activity-overview generic" style="padding: 20px; max-width: 600px;">
+                        <div class="form-group" style="margin: 0;">
+                            <label for="workgroup">Assign a Workgroup to this process</label>
+                            <select name="workgroup" id="payment-workgroup-select" class="form-control select2" style="width: 100%;" onchange="ChangeWorkGroup()">
+                                <option value="" selected></option>
+                                @foreach (var workGroupItem in ViewBag.WorkGroups)
+                                {
+                                    <option value="@workGroupItem.Id">@workGroupItem.Name</option>
+                                }
+                            </select>
+                        </div>
+
+                        <div class="preview-workgroup" style="display: none;">
+                            <br />
+                            <table class="table app_specific" style="margin: 0;">
+                                <tr>
+                                    <td><h5>Location</h5></td>
+                                    <td class="location_name">Location name</td>
+                                </tr>
+                                <tr>
+                                    <td><h5>Process</h5></td>
+                                    <td class="workgroup_process">Transfers</td>
+                                </tr>
+                                <tr>
+                                    <td><h5>Qbicle</h5></td>
+                                    <td class="workgroup_qbicle">Qblicle Name</td>
+                                </tr>
+                                <tr>
+                                    <td><h5>Members</h5></td>
+                                    <td class="workgroup_member"><button class="btn btn-info" onclick="ShowGroupMember()" data-toggle="modal" data-target="#app-trader-workgroup-preview"><i class="fa fa-user"></i> &nbsp; <span></span></button></td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+
+                </div>
+                <div class="col-xs-12 col-md-8 col-lg-9">
+
+                    <div class="well custom">
+
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-6">
+                                <label for="amount">Device</label>
+                                <p>@ViewBag.Till.Name</p>
+                            </div>
+                            <div class="col-xs-12 col-sm-6">
+                                <label for="amount">Safe</label>
+                                <p>@ViewBag.Safe.Name</p>
+                            </div>
+                        </div>
+                        <br />
+                        <form id="form-pay-out" class="row">
+                            <div class="col-xs-12 col-sm-6">
+                                <label for="amount">Amount to Pay Out</label> <small> (Till balance @lastBalanceStr)</small>
+                                <div class="input-group" style="margin: 0;">
+                                    <span class="input-group-addon">@(currencySettings.CurrencySymbol ?? "")</span>
+                                    <input hidden id="till-last-balance" type="number" value="@lastBalance" />
+                                    <input type="number" min="0" onkeypress="return ((event.charCode >= 48 && event.charCode <= 57) || event.charCode == 46)" name="amountpaymentout" id="amount-payment" class="form-control">
+                                </div>
+                                <label style="display: none;" id="till-last-balance-error" class="error">The amount to pay out must be less than or equal to the Till balance @lastBalanceStr</label>
+                            </div>
+                        </form>
+
+                    </div>
+
+                    <br />
+                    <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                    <button class="btn btn-success" id="tillpayment-submit-btn" disabled data-dismiss="modal" onclick="SaveTillPayOutReview()">Send to Review</button>
+
+                </div>
+            </div>
+
+
+
+        </div>
+    </div><!-- /.modal-content -->
+</div><!-- /.modal-dialog -->
+
+<div class="modal fade" id="app-trader-workgroup-preview" role="dialog" aria-labelledby="app-trader-workgroup-preview">
+</div><!-- /.modal -->
+
+<script>
+    $("#payment-workgroup-select").select2();
+</script>

@@ -1,0 +1,75 @@
+﻿@using Qbicles.Models.Trader.PoS;
+@using Qbicles.BusinessRules;
+@using Qbicles.Models.Catalogs
+@model List<Extra>
+@{
+
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+}
+<table name="extras" id="extras_table_view" class="datatable extras_table table-hover table-striped" style="width: 100%;">
+    <thead>
+        <tr>
+            <th>Item</th>
+            <th>SKU</th>
+            <th>Unit</th>
+            <th>Quantity</th>
+            <th>Price</th>
+            <th data-orderable="false"></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr onchange="changerow('@item.Id')">
+
+                <td>@item.Name</td>
+                <td>@item.TraderItem.SKU</td>
+                <td>
+                    <select name="base" id="table_unit_@item.Id" class="form-control select2" style="width: 100%;">
+                        <option value=""></option>
+                        @foreach (var unit in item.TraderItem.Units)
+                        {
+                            if (item.Unit != null && unit.Id == item.Unit.Id)
+                            {
+                                <option value="@unit.Id|@unit.QuantityOfBaseunit" selected>@unit.Name</option>
+                            }
+                            else
+                            {
+                                <option value="@unit.Id|@unit.QuantityOfBaseunit">@unit.Name</option>
+                            }
+                        }
+                    </select>
+                </td>
+                <td>
+                    @{
+                        var qty = item.Unit?.QuantityOfBaseunit ?? 0;
+                        if (item.Unit != null)
+                        {
+                            <input type="number" id="table_qty_@item.Id" class="form-control" disabled value="@qty" name="qty">
+                        }
+                        else
+                        {
+                            <input type="number" id="table_qty_@item.Id" class="form-control" disabled value="@qty" name="qty">
+                        }
+                    }
+                </td>
+                <td>
+                    <div class="input-group">
+                        <span class="input-group-addon">@currencySettings.CurrencySymbol</span>
+                        <input type="hidden" name="price" id="table_price_base_@item.Id" value="@(item.Price?.GrossPrice ?? 0)" class="form-control" disabled>
+                        <input type="text" name="price" id="table_price_@item.Id" value="@(item.Price?.GrossPrice ?? 0)" class="form-control">
+                    </div>
+                </td>
+                <td>
+                    <button class="btn btn-danger" onclick="deletePosVariants('@item.Id')"><i class="fa fa-trash"></i></button>
+                </td>
+            </tr>
+        }
+
+    </tbody>
+</table>
+<script>
+
+    $("#extras_table_view select").select2({ placeholder: 'Please select' });
+</script>

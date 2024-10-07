@@ -1,0 +1,140 @@
+
+@using Qbicles.BusinessRules
+@model listB2BPartnershipInCatalog
+@{ 
+    var sortListB2B = Model.consumerDomain.GroupBy(e => e.Name.FirstOrDefault()).Select(g => new
+    {
+        keyword = g.Key,
+        listB2B = g.Select(domain => domain)
+    });
+} 
+<div class="modal-dialog" role="document">
+    <div class="modal-content">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <h5 class="modal-title">Businesses using this B2B Catalogue</h5>
+        </div>
+        <div class="modal-body">
+
+
+            <div class="tab-content">
+
+                <!-- Members view -->
+                <div class="tab-pane fade in active" id="members-view">
+
+                    <div class="contact-list">
+
+                        <div class="well custom" style="margin-bottom: 30px;">
+
+                            <div class="form-group" style="margin: 0;">
+                                <label for="search">Search</label>
+                                <input type="text" name="search" class="form-control" id="search-contact-js">
+                            </div>
+
+                        </div>
+
+                        <ul id="widget-contacts-id" class="widget-contacts" style="margin-bottom: 30px;">
+                            @foreach (var aToZ in sortListB2B)
+                            {
+                                <li class="letters">@aToZ.keyword</li>
+                                foreach (var item in aToZ.listB2B)
+                                {
+                                    <li class="track-contact">
+                                        <a href="#" onclick="$('.contact-list').hide(); $('.contact-@item.ConsumerDomainId').fadeIn();">
+                                            <div class="contact-avatar">
+                                                <div style="background-image: url('@item.LogoUriDomain');">&nbsp;</div>
+                                            </div>
+                                            <div class="contact-info">
+                                                <h5 class="contact-name">@item.Name</h5>
+                                                <p>Since @item.DateCoOp</p>
+                                            </div>
+                                        </a>
+                                    </li>
+                                }
+                            }
+                        </ul>
+
+                    </div>
+
+                    @foreach (var item in Model.consumerDomain)
+                    {
+                        <div class="contact contact-@item.ConsumerDomainId" style="display: none;">
+
+                            <a href="#" class="btn btn-info" onclick="$('.contact').hide(); $('.contact-list').fadeIn();"><i class="fa fa-angle-left"></i> &nbsp; Back to list</a>
+
+                            <div class="activity-overview plain company-overview welcome-info" style="flex: none; margin: 0; padding-top: 15px;">
+                                <a href="#">
+                                    <div class="contact-avatar-profile" style="background-image: url('@item.LogoUriDomain');">&nbsp;</div>
+
+                                    <h2>@item.Name</h2>
+                                    <p>@item.BusinessSummary</p>
+                                </a>
+
+                                <ul class="user-meta" style="margin: 0 auto;">
+                                    @if (item.Phone.IsEmpty())
+                                    {
+                                        <li style="max-width:unset;">
+                                            <h6>Email</h6>
+                                            <p><a href="mailto:@item.BusinessMail">@item.BusinessMail</a></p>
+                                        </li>
+                                    }  
+                                    else
+                                    {
+                                        <li>
+                                            <h6>Tel</h6>
+                                            <p>@item.Phone</p>
+                                        </li>
+                                        <li>
+                                            <h6>Email</h6>
+                                            <p><a href="mailto:@item.BusinessMail">@item.BusinessMail</a></p>
+                                        </li>
+                                    }
+                                </ul>
+
+                                <br />
+                                <div class="row">
+                                    <div class="col-xs-12">
+                                        <a href="/Commerce/PublishBusinessProfile?isDomainId=true&id=@item.ConsumerDomainId">
+                                            <button class="btn btn-primary community-button"><i class="fa fa-address-card"></i> &nbsp; View profile</button>
+                                        </a>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+                     }
+
+                </div>
+                <!-- END Members view -->
+
+            </div>
+
+        </div>
+    </div><!-- /.modal-content -->
+</div><!-- /.modal-dialog -->
+
+<script>
+    $("#search-contact-js").keyup(delay(function () {
+        searchingContact();
+    }, 500));
+
+    function searchingContact() {
+        $("#widget-contacts-id").LoadingOverlay("show");
+        var keysearch2 = $("#search-contact-js").val();
+        var url = '/PointOfSaleMenu/GetListPartnershipInCatalog'
+        $.ajax({
+            type: "POST",
+            url: url,
+            data: { catalogId: @Model.id, keysearch: keysearch2 },
+            success: function (data) {
+
+                var test = $.parseHTML(data);
+                var widgetContacts = $(test[1]).find("#widget-contacts-id");
+                $("#widget-contacts-id").html(widgetContacts);
+            },
+            complete: function(){
+                $("#widget-contacts-id").LoadingOverlay("hide");
+            }
+        });
+    }
+</script>

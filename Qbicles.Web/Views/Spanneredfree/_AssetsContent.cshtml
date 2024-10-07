@@ -1,0 +1,81 @@
+﻿@using Qbicles.Models.Spannered;
+@using Qbicles.BusinessRules.Model
+@model List<Asset>
+@{
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var currentUserId = (string)ViewBag.CurrentUserId;
+    var count = Model.Count;
+    var extraCol = (Model.Count() % 4 == 0 ? 0 : 4) - count % 4;
+}
+@if (count > 0)
+{
+    foreach (var item in Model)
+    {
+        <div class="col article-feature @(item.Options==Asset.OptionsEnum.Hide?"asset-hidden":"")">
+            <a href="/Spanneredfree/Asset?id=@item.Id">
+                <div class="article-feature-img" style="background: url('@(api+item.FeaturedImageUri)');">&nbsp;</div>
+            </a>
+            <div class="info">
+                @{
+                    var tranfer = item.Transfers.OrderByDescending(s => s.Id).FirstOrDefault();
+                }
+                <span id="spIsTransferring@(item.Id)" class="label label-lg label-info asset-status" style="@(tranfer!=null&&tranfer.Status!=Qbicles.Models.Trader.Movement.TransferStatus.Delivered?"":"display:none;")">Transferring</span>
+                <div class="btn-group optsnew defaulted dropdown">
+                    <button class="btn btn-default dropdown-toggle" data-toggle="dropdown">
+                        <i class="fa fa-cog"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-right">
+                        @if (item.Workgroup.Processes.Any(p => p.Name.Equals(ProcessesConst.Assets)) && (item.Workgroup.CreatedBy.Id.Equals(currentUserId) || item.Workgroup.Members.Any(m => m.Id == currentUserId) || item.Workgroup.ReviewersApprovers.Any(r => r.Id == currentUserId)))
+                        {
+                            <li><a href="#" onclick="loadModalAsset(@item.Id);">Edit</a></li>
+                        }
+
+                        @if (item.Workgroup.Processes.Any(p => p.Name.Equals(ProcessesConst.Transfers))&&item.AssociatedTraderItem != null && (tranfer == null || (tranfer != null && tranfer.Status == Qbicles.Models.Trader.Movement.TransferStatus.Delivered)))
+                        {
+                            <li><a href="#" onclick="loadModalTransfer(@item.Id)">Transfer</a></li>
+                        }
+                        else
+                        {
+                            <li><a href="#" disabled="">Transfer</a></li>
+
+                        }
+                        @if (item.Options == Asset.OptionsEnum.Show)
+                        {
+                            <li><a href="#" onclick="updateOptionAsset(@item.Id,2);">Hide</a></li>
+                        }
+                        else
+                        {
+                            <li><a href="#" onclick="updateOptionAsset(@item.Id,3);">show</a></li>
+                        }
+                    </ul>
+                </div>
+
+                <a href="/Spanneredfree/Asset?id=@item.Id">
+                    <h1>@item.Title</h1>
+                    <p>
+                        @item.Description
+                    </p>
+                </a>
+
+                <p class="qbicle-detail">
+                    <label style="color: #333;">Identification</label><br>
+                    @item.Identification
+                </p>
+
+                <div style="padding: 0 20px;">
+                    @if (item.Tags != null)
+                    {
+                        foreach (var t in item.Tags)
+                        {
+                            <span class="label label-lg label-primary">@t.Name</span>
+                        }
+                    }
+                </div>
+            </div>
+        </div>
+    }
+    for (int i = 1; i <= extraCol; i++)
+    {
+        <div class="col">&nbsp;</div>
+    }
+}

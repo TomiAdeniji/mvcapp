@@ -1,0 +1,637 @@
+﻿@using System.Globalization
+@using Qbicles.Models.Trader;
+@using Qbicles.BusinessRules
+@model Invoice
+@{
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var workGroupTransfer = (List<WorkGroup>)ViewBag.WorkgroupTransfer;
+    var sale = (TraderSale)ViewBag.Sale ?? (new TraderSale());
+    var refFull = sale.Reference == null ? "" : sale.Reference.FullRef;
+    Model.InvoiceAddress = Model.InvoiceAddress ?? "";
+    Model.PaymentDetails = Model.PaymentDetails ?? "";
+    var showGroup = "none";
+    if (Model.Id > 0)
+    {
+        showGroup = "block";
+    }
+    var itemGroups = sale.SaleItems.Select(g => g.TraderItem.Group.Name).Distinct();
+    var dateFormat = (string)ViewBag.CurrentDateFormat;
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+}
+<div class="modal-dialog modal-xl" role="document">
+    <div class="modal-content">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            @if (Model.Id > 0)
+            {
+                <h5 class="modal-title">Edit an invoice for Sale #@refFull</h5>
+            }
+            else
+            {
+                <h5 class="modal-title">Create an invoice for Sale  #@refFull</h5>
+            }
+
+        </div>
+        <input type="hidden" value="@sale.Id" id="sale_id" />
+        <input type="hidden" value="@sale.Key" id="sale_key" />
+        <input type="hidden" value="@Model.Id" id="invoice_id" />
+        <input type="hidden" value="@Model.Key" id="invoice_key" />
+        <div class="modal-body">
+            @if (Model.Id == 0)
+            {
+
+
+                <div class="row">
+                    <div class="col-xs-12">
+                        <ul class="app_subnav" style="margin-top: -15px;">
+                            <li class="active"><a href="#setup" data-toggle="tab">Setup</a></li>
+                            <li><a href="#invitems" data-toggle="tab">Items &amp; Products</a></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <br /><br />
+
+                <div class="tab-content">
+
+                    <!-- Overview -->
+                    <div class="tab-pane fade in active" id="setup">
+
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-4">
+                                <div class="activity-overview generic" style="padding: 20px; margin-bottom: 30px;">
+                                    <div class="form-group" style="margin: 0;">
+                                        <label for="workgroup">Assign a Workgroup to this Invoice</label>
+                                        <select id="transfer-workgroup-select" name="workgroup" class="form-control select2" style="width: 100%;" onchange="WorkGroupSelectedChange()">
+                                            <option></option>
+                                            @foreach (var wg in workGroupTransfer)
+                                            {
+                                                if (Model.Id > 0 && Model.Workgroup != null && Model.Workgroup.Id == wg.Id)
+                                                {
+                                                    <option value="@wg.Id" selected>@wg.Name</option>
+                                                }
+                                                else
+                                                {
+                                                    <option value="@wg.Id">@wg.Name</option>
+                                                }
+
+                                            }
+                                        </select>
+                                    </div>
+
+                                    @if (@Model.Workgroup != null)
+                                    {
+                                        <div class="preview-workgroup" style="display: @showGroup;">
+                                            <br />
+                                            <table class="table app_specific" style="margin: 0;">
+                                                <tr>
+                                                    <td><h5>Location</h5></td>
+
+                                                    <td class="location_name">@Model.Workgroup.Location.Name</td>
+                                                </tr>
+                                                <tr>
+                                                    <td><h5>Process</h5></td>
+                                                    <td class="workgroup_process">@Model.Status.ToString()</td>
+                                                </tr>
+                                                <tr>
+                                                    <td><h5>Qbicle</h5></td>
+                                                    <td class="workgroup_qbicle">@Model.Workgroup.Qbicle.Name</td>
+                                                </tr>
+                                                <tr>
+                                                    <td><h5>Product Group</h5></td>
+                                                    <td class="workgroup_item">
+                                                        <ul class='unstyled' style='margin: 0; padding: 8px 0;'>
+                                                            @{
+                                                                foreach (var item in itemGroups)
+                                                                {
+                                                                    <li>@item</li>
+                                                                    ;
+                                                                }
+                                                            }
+                                                        </ul>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td><h5>Members</h5></td>
+                                                    <td><button class="btn btn-info" onclick="ShowGroupMember()" data-toggle="modal" data-target="#app-trader-workgroup-preview"><i class="fa fa-user"></i> &nbsp; <span>@Model.Workgroup.Members.Count</span></button></td>
+                                                </tr>
+                                            </table>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="preview-workgroup" style="display: @showGroup;">
+                                            <br />
+                                            <table class="table app_specific" style="margin: 0;">
+                                                <tr>
+                                                    <td><h5>Location</h5></td>
+                                                    <td class="location_name"></td>
+                                                </tr>
+                                                <tr>
+                                                    <td><h5>Process</h5></td>
+                                                    <td class="workgroup_process"> </td>
+                                                </tr>
+                                                <tr>
+                                                    <td><h5>Qbicle</h5></td>
+                                                    <td class="workgroup_qbicle"></td>
+                                                </tr>
+                                                <tr>
+                                                    <td><h5>Product Group</h5></td>
+                                                    <td class="workgroup_item">
+                                                        <ul class='unstyled' style='margin: 0; padding: 8px 0;'>
+                                                            @{
+                                                                foreach (var item in itemGroups)
+                                                                {
+                                                                    <li>@item</li>
+                                                                }
+                                                            }
+                                                        </ul>
+                                                    </td>
+                                                </tr>
+
+                                                <tr>
+                                                    <td><h5>Members</h5></td>
+                                                    <td class="workgroup_member"><button class="btn btn-info" onclick="ShowGroupMember()" data-toggle="modal" data-target="#app-trader-workgroup-preview"><i class="fa fa-user"></i> &nbsp; <span></span></button></td>
+                                                </tr>
+                                            </table>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-8">
+                                <div class="activity-overview task" style="padding: 20px;">
+                                    <div class="row">
+                                        <div class="col-xs-12 col-sm-6">
+
+                                            <div class="form-group">
+                                                <label for="reference">Reference</label>
+                                                <input type="hidden" value="@Model.Reference.Id" id="referenceInvoice_id" />
+                                                <input type="hidden" value="@Model.Reference.Type.ToString()" id="referenceInvoice_type" />
+                                                <input type="hidden" value="@Model.Reference.Prefix" id="referenceInvoice_prefix" />
+                                                <input type="hidden" value="@Model.Reference.Suffix" id="referenceInvoice_suffix" />
+                                                <input type="hidden" value="@Model.Reference.Delimeter" id="referenceInvoice_delimeter" />
+                                                <input type="hidden" value="@Model.Reference.FullRef" id="referenceInvoice_fullref" />
+                                                <div class="show-ref">
+                                                    <p>
+                                                        @Model.Reference.Prefix@Model.Reference.Delimeter<span id="refeditInvoice">@Model.Reference.NumericPart</span>@Model.Reference.Delimeter@Model.Reference.Suffix &nbsp; &nbsp;
+                                                    </p>
+                                                </div>
+
+                                            </div>
+
+                                        </div>
+                                        <div class="col-xs-12 col-sm-6">
+                                            <div class="form-group">
+                                                <label for="date">Due date</label>
+                                                <input type="text" id="invoice_dueDate" value="@Model.DueDate.ToString(dateFormat)" name="date" class="form-control singledate">
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-xs-12 col-sm-6">
+                                            <div class="form-group">
+                                                <label for="date">Block 1 (e.g. your address)</label>
+                                                <textarea name="block1" id="invoice_address" class="form-control" style="height: 100px;">@Html.Raw(Model.InvoiceAddress.Replace(Environment.NewLine, "<br />"))</textarea>
+                                            </div>
+                                        </div>
+                                        <div class="col-xs-12 col-sm-6">
+                                            <div class="form-group">
+                                                <label for="date">Block 2 (e.g. payment info)</label>
+                                                <textarea name="block1" id="invoice_paymentdetails" class="form-control" style="height: 100px;">@Html.Raw(Model.PaymentDetails.Replace(Environment.NewLine, "<br />"))</textarea>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+
+
+
+                        <br /><br />
+                        <a href="#invitems" data-toggle="tab" class="btn btn-success btnNext" aria-expanded="true">Next &nbsp; <i class="fa fa-angle-right"></i></a>
+
+                    </div>
+                    <!-- END Overview -->
+                    <!-- Items & Products -->
+                    <div class="tab-pane fade" id="invitems">
+
+                        <div class="activity-overview generic help-text animated bounce">
+                            <i class="fa fa-info-circle"></i>
+                            <p>
+                                Choose the items from the Sales Order you want to include in this invoice. If you need to split your order across multiple invoices, simply modify the item quantities
+                                to your liking (0 will remove it from the Invoice)
+                            </p>
+                        </div>
+
+
+                        <div class="activity-overview task" style="padding: 20px;">
+
+                            <table class="datatable table-hover" id="table_invoiceitems" style="width: 100%; background: #fff;" data-order='[[1, "asc"]]'>
+                                <thead>
+                                    <tr>
+                                        <th data-orderable="false" style="width: 90px;">In this invoice</th>
+                                        <th data-orderable="false" style="width: 80px;"></th>
+                                        <th>Name</th>
+                                        <th>Unit</th>
+                                        <th>Price Per Unit <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                        <th>Qty</th>
+                                        <th>Discount</th>
+                                        <th>Total Item Tax <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                        <th>Sale value <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                        <th>Invoice qty</th>
+                                        <th>Invoice tax <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                        <th>Invoice discount <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                        <th>Invoice value <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @*Thomas: Update fix bug https://atomsinteractive.atlassian.net/browse/QBIC-3182*@
+                                    @*@foreach (var item in Model.Sale.SaleItems)
+                                    {
+                                        var invoice = new InvoiceTransactionItems();
+                                        if (Model.InvoiceItems.Count > 0 && Model.InvoiceItems.Any(q => q.TransactionItem.Id == item.Id))
+                                        {
+                                            invoice = Model.InvoiceItems.FirstOrDefault(q => q.TransactionItem.Id == item.Id);
+                                            if (invoice.InvoiceTaxValue <= 0 && item.TraderItem.TaxRates != null)
+                                            {
+                                                invoice.InvoiceTaxValue = item.Quantity * item.SalePricePerUnit * item.TraderItem.SumTaxRatesPercent(true) / 100;
+                                            }
+                                        }
+                                        string taxrateName = "(Tax free)";
+                                        decimal taxRate = 0;
+                                        decimal taxValue = 0;
+                                        if (item.Taxes != null)
+                                        {
+                                            taxRate = item.SumTaxRates();
+                                            taxrateName = item.StringTaxRates(currencySettings);
+
+
+                                            var priceIncludeTax = item.SalePricePerUnit * item.Quantity * (1 - (item.Discount / 100)) * (1 + taxRate);
+                                            var priceExcludeTax = priceIncludeTax / (1 + taxRate);
+                                            taxValue = priceIncludeTax - priceExcludeTax;
+                                        }
+                                        <tr class="invoice_tr_@item.Id">
+                                            <td>
+                                                <div class="checkbox toggle">
+                                                    <label>
+                                                        <input class="rowmask invoice_checked" data-toggle="toggle" data-onstyle="success" data-on="True" data-off="False" type="checkbox" checked>
+                                                    </label>
+                                                </div>
+                                            </td>
+                                            <td class="maskable">
+                                                <div class="table-avatar" style="background-image: url('@api@item.TraderItem.ImageUri');"></div>
+                                                <input type="hidden" value="@item.Id" class="transaction_id" />
+                                                <input type="hidden" value="@invoice.Id" class="invoiceitem_id" />
+                                            </td>
+                                            <td class="maskable">@item.TraderItem.Name</td>
+                                            <td>
+                                                @if (item.Unit != null)
+                                                {
+                                                    <span>@item.Unit.Name</span>
+                                                }
+                                            </td>
+                                            <td>@item.SalePricePerUnit.ToDecimalPlace(currencySettings)</td>
+                                            <td class="maskable">
+                                                <span class="quantity_value_@item.Id">
+                                                    @item.Quantity.ToDecimalPlace(currencySettings)
+                                                </span>
+                                            </td>
+                                            <td class="maskable">
+                                                <span class="discount_value_@item.Id">@item.Discount.ToDecimalPlace(currencySettings)</span>%
+                                            </td>
+                                            <td class="maskable">
+                                                <span hidden="" class="taxrate_value_@item.Id">@taxRate</span>
+                                                @Html.Raw(taxrateName)
+                                            </td>
+
+                                            <td class="maskable">
+                                                <span class="sale_value_@item.Id">@item.Price.ToDecimalPlace(currencySettings)</span>
+                                            </td>
+                                            <td class="maskable">
+                                                <input maxlength='15' onkeypress='decimalKeyPress(this, event)' onpaste='decimalOnPaste(this, event)' type='text' onkeyup="ChangeInvoiceValue(this,@item.Id,@item.SalePricePerUnit)" value="@invoice.InvoiceItemQuantity.ToDecimalPlace(currencySettings)" name="invqty" min="0" class="form-control invoice_quantity isnumber" style="width: 110px;">
+                                            </td>
+                                            <td class="maskable">
+                                                <span class="invoice_taxvalue invoice_taxvalue_@item.Id">@(invoice.InvoiceTaxValue.HasValue ? invoice.InvoiceTaxValue.Value.ToDecimalPlace(currencySettings) : ((decimal)0).ToDecimalPlace(currencySettings))</span>
+                                                <div id="taxInvoive_@item.Id" style="display:none">
+                                                    @Html.Raw(taxrateName)
+                                                </div>
+                                            </td>
+                                            <td class="maskable">
+                                                <span class="invoice_discountValue invoice_discountValue_@item.Id">@invoice.InvoiceDiscountValue.ToDecimalPlace(currencySettings)</span>
+                                            </td>
+                                            <td class="maskable invoice_td_value_@item.Id">
+                                                <span class="invoice_value">@invoice.InvoiceValue.ToDecimalPlace(currencySettings)</span>
+                                            </td>
+                                        </tr>
+                                    }*@
+                                </tbody>
+                            </table>
+
+                        </div>
+
+
+                        <br /><br />
+                        <a href="#setup" data-toggle="tab" class="btn btn-warning btnPrevious" aria-expanded="true"><i class="fa fa-angle-left"></i> &nbsp; Previous</a>
+                        <button class="btn btn-primary" onclick="SaveInvoice('Draft')">Save draft</button>
+                        <button class="btn btn-success" onclick="SaveInvoice('PendingReview')">Send to review</button>
+
+                    </div>
+
+                </div> <!-- /.tab-content -->
+
+
+            }
+            else
+            {
+                <div class="row">
+                    <div class="col-xs-12 col-md-4">
+
+                        <div class="activity-overview generic" style="padding: 20px;">
+                            <div class="form-group" style="margin: 0;">
+                                <label for="workgroup">Assign a Workgroup to this Invoice</label>
+                                <select id="transfer-workgroup-select" name="workgroup" class="form-control select2" style="width: 100%;" onchange="WorkGroupSelectedChange()">
+                                    <option></option>
+                                    @foreach (var wg in workGroupTransfer)
+                                    {
+                                        if (Model.Id > 0 && Model.Workgroup != null && Model.Workgroup.Id == wg.Id)
+                                        {
+                                            <option value="@wg.Id" selected>@wg.Name</option>
+                                        }
+                                        else
+                                        {
+                                            <option value="@wg.Id">@wg.Name</option>
+                                        }
+
+                                    }
+                                </select>
+                            </div>
+
+                            @if (@Model.Workgroup != null)
+                            {
+                                <div class="preview-workgroup" style="display: @showGroup;">
+                                    <br />
+                                    <table class="table app_specific" style="margin: 0;">
+                                        <tr>
+                                            <td><h5>Location</h5></td>
+
+                                            <td class="location_name">@Model.Workgroup.Location.Name</td>
+                                        </tr>
+                                        <tr>
+                                            <td><h5>Process</h5></td>
+                                            <td class="workgroup_process">@Model.Status.ToString()</td>
+                                        </tr>
+                                        <tr>
+                                            <td><h5>Qbicle</h5></td>
+                                            <td class="workgroup_qbicle">@Model.Workgroup.Qbicle.Name</td>
+                                        </tr>
+                                        <tr>
+                                            <td><h5>Product Group</h5></td>
+                                            <td class="workgroup_item">
+                                                <ul class='unstyled' style='margin: 0; padding: 8px 0;'>
+                                                    @{
+                                                        foreach (var item in itemGroups)
+                                                        {
+                                                            <li>@item</li>
+                                                            ;
+                                                        }
+                                                    }
+                                                </ul>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td><h5>Members</h5></td>
+                                            <td><button class="btn btn-info" onclick="ShowGroupMember()" data-toggle="modal" data-target="#app-trader-workgroup-preview"><i class="fa fa-user"></i> &nbsp; <span>@Model.Workgroup.Members.Count</span></button></td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="preview-workgroup" style="display: @showGroup;">
+                                    <br />
+                                    <table class="table app_specific" style="margin: 0;">
+                                        <tr>
+                                            <td><h5>Location</h5></td>
+                                            <td class="location_name"></td>
+                                        </tr>
+                                        <tr>
+                                            <td><h5>Process</h5></td>
+                                            <td class="workgroup_process"> </td>
+                                        </tr>
+                                        <tr>
+                                            <td><h5>Qbicle</h5></td>
+                                            <td class="workgroup_qbicle"></td>
+                                        </tr>
+                                        <tr>
+                                            <td><h5>Product Group</h5></td>
+                                            <td class="workgroup_item">
+                                                <ul class='unstyled' style='margin: 0; padding: 8px 0;'>
+                                                    @{
+                                                        foreach (var item in itemGroups)
+                                                        {
+                                                            <li>@item</li>
+                                                            ;
+                                                        }
+                                                    }
+                                                </ul>
+                                            </td>
+                                        </tr>
+
+                                        <tr>
+                                            <td><h5>Members</h5></td>
+                                            <td class="workgroup_member"><button class="btn btn-info" onclick="ShowGroupMember()" data-toggle="modal" data-target="#app-trader-workgroup-preview"><i class="fa fa-user"></i> &nbsp; <span></span></button></td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            }
+                        </div>
+
+                        <br />
+
+                        <div class="activity-overview task" style="padding: 20px; margin-bottom: 30px;">
+
+                            <div class="form-group" style="margin: 0;">
+                                <label for="date">Invoice date</label>
+                                <input type="text" id="invoice_dueDate" value="@Model.DueDate.ToString(dateFormat)" name="date" class="form-control singledate">
+                            </div>
+
+                        </div>
+
+                    </div> <!-- ./div -->
+                    <div class="col-xs-12 col-md-8">
+
+
+                        <div class="activity-overview generic help-text animated bounce">
+                            <i class="fa fa-info-circle"></i>
+                            <p>
+                                Choose the items from the Sales Order you want to include in this invoice. If you need to split your order across multiple invoices, simply modify the item quantities
+                                to your liking (0 will remove it from the Invoice)
+                            </p>
+                        </div>
+
+
+                        <div class="activity-overview task" style="padding: 20px;">
+
+                            <table class="datatable table-hover" id="table_invoiceitems" style="width: 100%; background: #fff;" data-order='[[1, "asc"]]'>
+                                <thead>
+                                    <tr>
+                                        <th data-orderable="false" style="width: 90px;">In this invoice</th>
+                                        <th data-orderable="false" style="width: 80px;"></th>
+                                        <th>Name</th>
+                                        <th>Unit</th>
+                                        <th>Price Per Unit <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                        <th>Qty</th>
+                                        <th>Discount</th>
+                                        <th>Tax <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                        <th>Sale value <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                        <th>Invoice qty</th>
+                                        <th>Invoice tax <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                        <th>Invoice discount <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                        <th>Invoice value <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @*Thomas: Update fix bug https://atomsinteractive.atlassian.net/browse/QBIC-3182*@
+                                    @*@foreach (var item in Model.Sale.SaleItems)
+                                    {
+                                        var invoice = new InvoiceTransactionItems();
+                                        if (Model.InvoiceItems.Count > 0 && Model.InvoiceItems.Any(q => q.TransactionItem.Id == item.Id))
+                                        {
+                                            invoice = Model.InvoiceItems.FirstOrDefault(q => q.TransactionItem.Id == item.Id);
+                                            if (invoice.InvoiceTaxValue <= 0 && item.TraderItem.TaxRates != null)
+                                            {
+                                                invoice.InvoiceTaxValue = item.TraderItem.SumTaxRatesPercent(true);
+                                            }
+                                        }
+                                        string ivRateName = "0";
+                                        if (invoice.TransactionItem.Taxes != null)
+                                        {
+                                            var priceIvi = (item.SalePricePerUnit * invoice.InvoiceItemQuantity)-invoice.InvoiceDiscountValue;
+                                            ivRateName = priceIvi.InvoiceTaxRatesHtml(invoice.TransactionItem.Taxes, currencySettings);
+                                        }
+
+                                        string taxrateName = "0";
+                                        decimal taxRate = 0;
+                                        decimal taxValue = 0;
+                                        if (item.Taxes != null)
+                                        {
+                                            taxRate = item.SumTaxRates();
+                                            taxrateName = item.StringTaxRates(currencySettings);
+
+
+                                            var priceIncludeTax = item.SalePricePerUnit * item.Quantity * (1 - (item.Discount / 100)) * (1 + item.TraderItem.SumTaxRates(true));
+                                            var priceExcludeTax = priceIncludeTax / (1 + item.TraderItem.SumTaxRates(true));
+                                            taxValue = priceIncludeTax - priceExcludeTax;
+                                        }
+
+                                        <tr class="invoice_tr_@item.Id">
+                                            <td>
+                                                <div class="checkbox toggle">
+                                                    <label>
+                                                        <input class="rowmask invoice_checked" data-toggle="toggle" data-onstyle="success" data-on="True" data-off="False" type="checkbox" checked>
+                                                    </label>
+                                                </div>
+                                            </td>
+                                            <td class="maskable">
+                                                <div class="table-avatar" style="background-image: url('@api@item.TraderItem.ImageUri');"></div>
+                                                <input type="hidden" value="@item.Id" class="transaction_id" />
+                                                <input type="hidden" value="@invoice.Id" class="invoiceitem_id" />
+                                            </td>
+                                            <td class="maskable">@item.TraderItem.Name</td>
+                                            <td>
+                                                @if (item.Unit != null)
+                                                {
+                                                    <span>@item.Unit.Name</span>
+                                                }
+                                            </td>
+                                            <td class="maskable"><span class="quantity_value_@item.Id">@item.Quantity.ToDecimalPlace(currencySettings)</span></td>
+                                            <td class="maskable">
+                                                <span class="discount_value_@item.Id">@item.Discount.ToDecimalPlace(currencySettings)%</span>
+                                            </td>
+                                            <td class="maskable">
+
+                                                <span hidden="" class="taxrate_value_@item.Id">@taxRate</span>
+                                                @Html.Raw(taxrateName)
+                                            </td>
+
+                                            <td class="maskable">
+                                                <span class="sale_value_@item.Id">@item.Price.ToDecimalPlace(currencySettings)</span>
+                                            </td>
+
+
+                                            <td class="maskable">
+                                                <input maxlength='15' onkeypress='decimalKeyPress(this, event)' onpaste='decimalOnPaste(this, event)' type='text' onkeyup="ChangeInvoiceValue(this,@item.Id,@item.SalePricePerUnit)" value="@invoice.InvoiceItemQuantity.ToDecimalPlace(currencySettings)" name="invqty" min="0" class="form-control invoice_quantity isnumber" style="width: 110px;">
+                                            </td>
+                                            <td class="maskable">
+                                                <span class="invoice_taxvalue invoice_taxvalue_@item.Id" style="display:none">
+                                                    @invoice.InvoiceTaxValue
+                                                </span>
+                                                <div id="taxInvoive_@item.Id">
+                                                    @Html.Raw(ivRateName)
+                                                </div>
+                                            </td>
+                                            <td class="maskable">
+                                                <span class="invoice_discountValue invoice_discountValue_@item.Id">@invoice.InvoiceDiscountValue.ToDecimalPlace(currencySettings)</span>
+                                            </td>
+                                            <td class="maskable invoice_td_value_@item.Id">
+                                                <span class="invoice_value">@invoice.InvoiceValue.ToDecimalPlace(currencySettings)</span>
+                                            </td>
+                                        </tr>
+                                    }*@
+                                </tbody>
+                            </table>
+
+                        </div>
+
+                    </div>
+                </div>
+
+                <br />
+                <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                <button class="btn btn-primary" onclick="SaveInvoice('Draft')">Save draft</button>
+                <button class="btn btn-success" onclick="SaveInvoice('PendingReview')">Generate invoice</button>
+            }
+
+
+        </div>
+    </div><!-- /.modal-content -->
+</div><!-- /.modal-dialog -->
+<script src="~/Scripts/dev/qbicle.formatnumber.min.js"></script>
+<script>
+    $('#transfer-workgroup-select').select2({
+        placeholder: 'Please select a Workgroup'
+    });
+    //$('.invoice_checked').bootstrapToggle();
+    $('.singledate').daterangepicker({
+        singleDatePicker: true,
+        showDropdowns: true,
+        autoUpdateInput: true,
+        cancelClass: "btn-danger",
+        opens: "left",
+        locale: {
+            cancelLabel: 'Clear',
+            format: $dateFormatByUser.toUpperCase()
+        }
+    });
+    $('.btnNext').click(function () {
+        $('.modal .app_subnav > .active').next('li').find('a').trigger('click');
+    });
+
+    $('.btnPrevious').click(function () {
+        $('.modal .app_subnav > .active').prev('li').find('a').trigger('click');
+    });
+    //$('#table_invoiceitems').DataTable({
+    //    responsive: true,
+    //    "lengthChange": true,
+    //    "pageLength": 10,
+    //    "columnDefs": [{
+    //        "targets": 3,
+    //        "orderable": false
+    //    }],
+    //    "order": []
+    //});
+    //$('#table_invoiceitems').show();
+</script>

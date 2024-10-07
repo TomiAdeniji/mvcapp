@@ -1,0 +1,372 @@
+﻿@using Qbicles.Models.ProfilePage
+@model BusinessPage
+@if (Model != null)
+{
+    var isPreview = ViewBag.IsPreview != null ? (bool)ViewBag.IsPreview : false;
+    var api = (string)ViewBag.DocRetrievalUrl;
+    foreach (var item in Model.Blocks.OrderBy(s => s.DisplayOrder))
+    {
+        if (item.Type == BusinessPageBlockType.Hero)
+        {
+            var hero = item as Hero;
+            Guid nvlogo;
+            Guid nvfeature;
+            var isGuidTypeHeroLogo = Guid.TryParse(hero.HeroLogo, out nvlogo);
+            var isGuidTypeHeroFeaturedImage = Guid.TryParse(hero.HeroFeaturedImage, out nvfeature);
+            var bgstyle = "";
+            if (hero.HeroBackgroundType == HeroBackgroundType.Gradient)
+            {
+                bgstyle = $"background:linear-gradient(140deg, {hero.HeroGradientColour1} 0%, {hero.HeroGradientColour2} 100%";
+            }
+            else if (hero.HeroBackgroundType == HeroBackgroundType.SingleColour)
+            {
+                bgstyle = $"background-color:{hero.HeroBackgroundColour}";
+            }
+            else if (hero.HeroBackgroundType == HeroBackgroundType.Image)
+            {
+                bgstyle = $"background-image:url('{api + hero.HeroBackGroundImage}');background-size: cover;-webkit-background-size: cover;-moz-background-size: cover;-ms-background-size: cover;-o-background-size: cover;";
+            }
+            <!-- Hero -->
+            <div class="profile-pageblock nvhero1 modify animated bounceIn" style="@bgstyle" data-type="Hero" data-id="@(item.Id)" id="block@(item.Id)">
+                @if (!isPreview)
+                {
+                    <div class="editing">
+                        <div class="block-options">
+                            <button onclick="bindDataForBlock('block@(item.Id)','Hero')" class="btn btn-warning community-button w-auto btn-edit-block"
+                                    data-tooltip="Edit this block" style="margin-right:5px">
+                                <i class="fa fa-pencil"></i>
+                            </button>
+                            <button onclick="moveUpDown('block@(item.Id)',true)" class="btn btn-primary community-button w-auto moveup"
+                                    data-tooltip="Move this block down the page" style="margin-right:5px">
+                                <i class="fa fa-arrow-up"></i>
+                            </button>
+                            <button onclick="moveUpDown('block@(item.Id)',false)" class="btn btn-primary community-button w-auto movedown"
+                                    data-tooltip="Move this block down the page" style="margin-right:5px">
+                                <i class="fa fa-arrow-down"></i>
+                            </button>
+                            <button onclick="removeBlock('block@(item.Id)')" class="btn btn-danger community-button w-auto btn-delete-block"
+                                    data-tooltip="Delete this block">
+                                <i class="fa fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                }
+
+
+                <h1 class="block-heading" style="@("font-size:"+hero.HeroHeadingFontSize+"px")@(";color:"+hero.HeroHeadingColour)">@Html.Raw(hero.HeroHeadingText)</h1>
+                <h2 class="block-subheading" style="@("font-size:"+hero.HeroSubHeadingFontSize+"px")@(";color:"+hero.HeroSubHeadingColour)">@hero.HeroSubHeadingText</h2>
+                <img src="@(isGuidTypeHeroLogo?(api+hero.HeroLogo):hero.HeroLogo)" class="nvlogo">
+                <img src="@(isGuidTypeHeroFeaturedImage?(api+hero.HeroFeaturedImage):hero.HeroFeaturedImage)" class="nvfeature" style="bottom: -1px;">
+                <script>
+                    $('#block@(item.Id) h1.block-heading span').css('color', '@hero.HeroHeadingAccentColour');
+                </script>
+            </div>
+            <!-- END Hero -->
+        }
+        else if (item.Type == BusinessPageBlockType.FeatureList)
+        {
+            var feature = item as FeatureList;
+            <!-- Features -->
+            <div class="profile-pageblock modify nvfeatures animated bounceIn" data-type="Features" data-id="@(item.Id)" id="block@(item.Id)">
+                @if (!isPreview)
+                {
+                    <div class="editing">
+                        <div class="block-options">
+                            <button onclick="bindDataForBlock('block@(item.Id)','Features')" class="btn btn-warning community-button w-auto btn-edit-block"
+                                    data-tooltip="Edit this block" style="margin-right:5px">
+                                <i class="fa fa-pencil"></i>
+                            </button>
+                            <button onclick="moveUpDown('block@(item.Id)',true)" class="btn btn-primary community-button w-auto moveup"
+                                    data-tooltip="Move this block down the page" style="margin-right:5px">
+                                <i class="fa fa-arrow-up"></i>
+                            </button>
+                            <button onclick="moveUpDown('block@(item.Id)',false)" class="btn btn-primary community-button w-auto movedown"
+                                    data-tooltip="Move this block down the page" style="margin-right:5px">
+                                <i class="fa fa-arrow-down"></i>
+                            </button>
+                            <button onclick="removeBlock('block@(item.Id)')" class="btn btn-danger community-button w-auto btn-delete-block"
+                                    data-tooltip="Delete this block">
+                                <i class="fa fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                }
+
+
+                <h1 class="block-heading" style="@("font-size:"+feature.HeadingFontSize+"px")@(";color:"+feature.HeadingColour)">@Html.Raw(feature.HeadingText)</h1>
+                <h5 class="block-subheading" style="@("font-size:"+feature.SubHeadingFontSize+"px")@(";color:"+feature.SubHeadingColour)">@feature.SubHeadingText</h5>
+
+
+                <div class="flex-grid-half-lg gridfix nvfeaturelist">
+                    @foreach (var featureItem in feature.FeatureItems.OrderBy(s => s.DisplayOrder))
+                    {
+                        <div class="col">
+                            <div class="nvicon" style="color:@featureItem.FeatureColour"><i class="@featureItem.FeatureIcon"></i></div>
+                            <div class="nvfeaturecontent">
+                                <h6 class="block-feature-heading">@featureItem.FeatureTitle</h6>
+                                <p class="block-feature-content">@featureItem.FeatureContent</p>
+                            </div>
+                        </div>
+                    }
+                </div>
+                <script>
+                    $('#block@(item.Id) h1.block-heading span').css('color', '@feature.FeatureHeadingAccentColour');
+                </script>
+            </div>
+            <!-- END Features -->
+        }
+        else if (item.Type == BusinessPageBlockType.TextImage)
+        {
+            var textImage = item as TextImage;
+            Guid rightsideimg;
+            var isGuidType = Guid.TryParse(textImage.FeaturedImage, out rightsideimg);
+            <!-- Text and image -->
+            <div class="profile-pageblock modify nvtextimg animated bounceIn" data-type="TextAndImage" data-id="@(item.Id)" id="block@(item.Id)" style="padding: 0; overflow: hidden; ">
+                @if (!isPreview)
+                {
+                    <div class="editing">
+                        <div class="block-options">
+                            <button onclick="bindDataForBlock('block@(item.Id)','TextAndImage')" class="btn btn-warning community-button w-auto btn-edit-block"
+                                    data-tooltip="Edit this block" style="margin-right:5px">
+                                <i class="fa fa-pencil"></i>
+                            </button>
+                            <button onclick="moveUpDown('block@(item.Id)',true)" class="btn btn-primary community-button w-auto moveup"
+                                    data-tooltip="Move this block down the page" style="margin-right:5px">
+                                <i class="fa fa-arrow-up"></i>
+                            </button>
+                            <button onclick="moveUpDown('block@(item.Id)',false)" class="btn btn-primary community-button w-auto movedown"
+                                    data-tooltip="Move this block down the page" style="margin-right:5px">
+                                <i class="fa fa-arrow-down"></i>
+                            </button>
+                            <button onclick="removeBlock('block@(item.Id)')" class="btn btn-danger community-button w-auto btn-delete-block"
+                                    data-tooltip="Delete this block">
+                                <i class="fa fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                }
+                <div class="flexing">
+                    <div class="leftside">
+                        <h1 class="block-heading" style="@("font-size:"+textImage.HeadingFontSize+"px")@(";color:"+textImage.HeadingColour)">@Html.Raw(textImage.HeadingText)</h1>
+                        <p class="block-content" style="padding: 0;@("font-size:"+textImage.ContentFontSize+"px")@(";color:"+textImage.ContentColour)">@textImage.Content</p>
+                        @{
+                            textImage.ExternalLink = textImage.ExternalLink?.Replace("https://", "");
+                        }
+                        <button class="btn nvbutton" onclick="window.open('@(textImage.ButtonJumpTo=="0"?$"https://{textImage.ExternalLink}":textImage.ButtonJumpTo)');" style="margin-top: 20px;background-color:@(textImage.ButtonColour);display:@(textImage.IsIncludeButton?"":"none")">@textImage.ButtonText</button>
+                    </div>
+                    <div class="rightside block-img" style="background-image: url('@(isGuidType?(api+textImage.FeaturedImage):textImage.FeaturedImage)'); ">&nbsp;</div>
+                </div>
+                <script>
+                    $('#block@(item.Id) h1.block-heading span').css('color', '@textImage.HeadingAccentColour');
+                </script>
+            </div>
+            <!-- END Text and image -->
+        }
+        else if (item.Type == BusinessPageBlockType.Testimonial)
+        {
+            var testimonial = item as TestimonialList;
+            <!-- Testimonials -->
+            <div class="profile-pageblock modify nvtestimonials animated bounceIn" data-type="Testimonial" data-id="@(item.Id)" id="block@(item.Id)" style="background: transparent; padding: 0;">
+                @if (!isPreview)
+                {
+                    <div class="editing">
+                        <div class="block-options">
+                            <button onclick="bindDataForBlock('block@(item.Id)','Testimonial')" class="btn btn-warning community-button w-auto btn-edit-block"
+                                    data-tooltip="Edit this block" style="margin-right:5px">
+                                <i class="fa fa-pencil"></i>
+                            </button>
+                            <button onclick="moveUpDown('block@(item.Id)',true)" class="btn btn-primary community-button w-auto moveup"
+                                    data-tooltip="Move this block down the page" style="margin-right:5px">
+                                <i class="fa fa-arrow-up"></i>
+                            </button>
+                            <button onclick="moveUpDown('block@(item.Id)',false)" class="btn btn-primary community-button w-auto movedown"
+                                    data-tooltip="Move this block down the page" style="margin-right:5px">
+                                <i class="fa fa-arrow-down"></i>
+                            </button>
+                            <button onclick="removeBlock('block@(item.Id)')" class="btn btn-danger community-button w-auto btn-delete-block"
+                                    data-tooltip="Delete this block">
+                                <i class="fa fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                }
+
+
+                <div class="owl-carousel owl-theme nvtestimonialsowl">
+                    @foreach (var testimonialItem in testimonial.TestimonialItems.OrderBy(s => s.DisplayOrder))
+                    {
+                        Guid nvavatar;
+                        var isGuidType = Guid.TryParse(testimonialItem.AvatarUri, out nvavatar);
+                        <div class="item">
+                            <div class="nvtestimonial">
+                                <div class="nvavatar" style="background-image: url('@(isGuidType?(api+testimonialItem.AvatarUri):testimonialItem.AvatarUri)');">&nbsp;</div>
+                                <h2 class="testimonial-name">@testimonialItem.PersonName</h2>
+                                <h3 class="testimonial-info">@testimonialItem.FurtherInfo</h3>
+                                <p class="testimonial-content">"@testimonialItem.Content"</p>
+                            </div>
+                        </div>
+                    }
+                </div>
+
+            </div>
+            <!-- END Testimonials -->
+        }
+        else if (item.Type == BusinessPageBlockType.Promotion)
+        {
+            var promotion = item as Promotion;
+            <!-- Promo -->
+            <div class="profile-pageblock modify nvpromo animated bounceIn" data-type="Promo" data-id="@(item.Id)" id="block@(item.Id)" style="background: transparent; padding: 0; text-align: left !important;">
+                @if (!isPreview)
+                {
+                    <div class="editing">
+                        <div class="block-options">
+                            <button onclick="bindDataForBlock('block@(item.Id)','Promo')" class="btn btn-warning community-button w-auto btn-edit-block"
+                                    data-tooltip="Edit this block" style="margin-right:5px">
+                                <i class="fa fa-pencil"></i>
+                            </button>
+                            <button onclick="moveUpDown('block@(item.Id)',true)" class="btn btn-primary community-button w-auto moveup"
+                                    data-tooltip="Move this block down the page" style="margin-right:5px">
+                                <i class="fa fa-arrow-up"></i>
+                            </button>
+                            <button onclick="moveUpDown('block@(item.Id)',false)" class="btn btn-primary community-button w-auto movedown"
+                                    data-tooltip="Move this block down the page" style="margin-right:5px">
+                                <i class="fa fa-arrow-down"></i>
+                            </button>
+                            <button onclick="removeBlock('block@(item.Id)')" class="btn btn-danger community-button w-auto btn-delete-block"
+                                    data-tooltip="Delete this block">
+                                <i class="fa fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                }
+
+                <div class="row">
+                    <div class="col-xs-12 col-md-6">
+
+                        <h1 class="block-heading" style="@("font-size:"+promotion.HeadingFontSize+"px")@(";color:"+promotion.HeadingColour)">@Html.Raw(promotion.HeadingText)</h1>
+                        <h3 class="block-subheading" style="@("font-size:"+promotion.SubHeadingFontSize+"px")@(";color:"+promotion.SubHeadingColour)">@promotion.SubHeadingText</h3>
+
+                        <br />
+                        <ul class="promo-features">
+                            @foreach (var promotionItem in promotion.Items.OrderBy(s => s.DisplayOrder))
+                            {
+                                <li><i class="@promotionItem.Icon" style="color:@promotionItem.Colour"></i> <span class="promo-list-item">@promotionItem.Text</span></li>
+                            }
+                        </ul>
+                        @{
+                            promotion.ExternalLink = promotion.ExternalLink?.Replace("https://", "");
+                        }
+                        <button class="btn nvbutton" onclick="window.open('@(promotion.ButtonJumpTo=="0"?$"https://{promotion.ExternalLink}":promotion.ButtonJumpTo)');" style="margin-top: 15px;background-color:@(promotion.ButtonColour);display:@(promotion.IsIncludeButton?"":"none")">@promotion.ButtonText</button>
+                    </div>
+                    <div class="col-xs-12 col-md-6 text-center">
+                        @{
+                            Guid promoimg;
+                            var isGuidType = Guid.TryParse(promotion.FeaturedImage, out promoimg);
+                        }
+                        <img src="@(isGuidType?(api+promotion.FeaturedImage):promotion.FeaturedImage)" class="promo-img">
+                    </div>
+                </div>
+                <script>
+                    $('#block@(item.Id) h1.block-heading span').css('color', '@promotion.HeadingAccentColour');
+                </script>
+            </div>
+            <!-- END Promo -->
+        }
+        else if (item.Type == BusinessPageBlockType.Gallery)
+        {
+            var gallery = item as GalleryList;
+            <!-- Gallery -->
+            <div class="profile-pageblock modify nvgallery animated bounceIn" data-type="Gallery" data-id="@(item.Id)" id="block@(item.Id)" style="background: transparent; padding: 0;">
+                @if (!isPreview)
+                {
+                    <div class="editing">
+                        <div class="block-options">
+                            <button onclick="bindDataForBlock('block@(item.Id)','Gallery')" class="btn btn-warning community-button w-auto btn-edit-block"
+                                    data-tooltip="Edit this block" style="margin-right:5px">
+                                <i class="fa fa-pencil"></i>
+                            </button>
+                            <button onclick="moveUpDown('block@(item.Id)',true)" class="btn btn-primary community-button w-auto moveup"
+                                    data-tooltip="Move this block down the page" style="margin-right:5px">
+                                <i class="fa fa-arrow-up"></i>
+                            </button>
+                            <button onclick="moveUpDown('block@(item.Id)',false)" class="btn btn-primary community-button w-auto movedown"
+                                    data-tooltip="Move this block down the page" style="margin-right:5px">
+                                <i class="fa fa-arrow-down"></i>
+                            </button>
+                            <button onclick="removeBlock('block@(item.Id)')" class="btn btn-danger community-button w-auto btn-delete-block"
+                                    data-tooltip="Delete this block">
+                                <i class="fa fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                }
+
+                <div class="owl-carousel owl-theme nvgalleryowl">
+                    @foreach (var galleryItem in gallery.GalleryItems.OrderBy(s => s.DisplayOrder))
+                    {
+                        Guid guid;
+                        var isGuidType = Guid.TryParse(galleryItem.FeaturedImage, out guid);
+                        <div class="item">
+                            <div class="nvgalleryitem" style="background-image: url('@(isGuidType?(api+galleryItem.FeaturedImage):galleryItem.FeaturedImage)');">
+                                <div class="nvcaption">
+                                    <h5 class="block-gal-title">@galleryItem.Title</h5>
+                                    <p class="block-gal-caption">@galleryItem.Content</p>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+
+            </div>
+            <!-- END Gallery -->
+        }
+    }
+}
+@*<script src="~/Content/DesignStyle/js/masonry.pkgd.min.js"></script>*@
+<script src="https://cdnjs.cloudflare.com/ajax/libs/masonry/3.3.0/masonry.pkgd.min.js" integrity="sha512-coKEwkkVJR6lO1aL/rJeVFojNKG1DRNbAfuxcvFC98W9TYBO9TQIVFXiHBBx6dRL9+effSNEYIr/5vLe5HENVg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.imagesloaded/5.0.0/imagesloaded.pkgd.min.js" integrity="sha512-kfs3Dt9u9YcOiIt4rNcPUzdyNNO9sVGQPiZsub7ywg6lRW5KuK1m145ImrFHe3LMWXHndoKo2YRXWy8rnOcSKg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+@*<script src="~/Content/DesignStyle/js/imagesloaded.pkgd.min.js"></script>*@
+<script>
+    $(document).ready(function () {
+        $('.nvgalleryowl').owlCarousel({
+            loop: true,
+            nav: false,
+            dots: true,
+            autoplay: true,
+            autoplayTimeout: 3000,
+            autoplayHoverPause: true,
+            margin: 30,
+            responsive: {
+                0: {
+                    items: 1
+                },
+                768: {
+                    items: 2
+                },
+                1400: {
+                    items: 3
+                }
+            }
+        });
+        $('.nvtestimonialsowl').owlCarousel({
+            loop: true,
+            nav: false,
+            dots: true,
+            autoplay: true,
+            autoplayTimeout: 3000,
+            autoplayHoverPause: true,
+            margin: 30,
+            responsive: {
+                0: {
+                    items: 1
+                },
+                600: {
+                    items: 2
+                },
+                1024: {
+                    items: 3
+                }
+            }
+        });
+    });
+</script>

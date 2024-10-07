@@ -1,0 +1,81 @@
+﻿@using Qbicles.BusinessRules;
+@{
+    ViewBag.Title = ViewBag.PageTitle;
+    var QbicleName = (string)ViewBag.QbicleName;
+    var LogoUri = (string)ViewBag.LogoUri;
+}
+
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail">
+    <div class="tabnav-spacer">&nbsp;</div>
+
+    <!-- Main content -->
+    <section class="content" style="padding: 0;">
+        <div id="activity-page-display" class="block-container lazy">
+            <div id="previous">
+
+            </div>
+        </div>
+
+
+
+    </section>
+    <!-- ./content -->
+
+</div>
+<!-- /.content-wrapper -->
+<script>
+    var loadCountActivity = 0;
+    var previous_shown = false;
+
+    jQuery(function ($) {
+        // set name,logo for Qbicle selected
+        $('#qbicleNameSelected').text('@QbicleName');
+        $("#qbicleLogoSelect").attr("src", "@LogoUri");
+
+        setTimeout(function() {
+            $('html, body').animate({
+                scrollTop: $(document).height()
+            }, 0);
+        }, 300);
+        LoadMoreMedias();
+    });
+    $(window).scroll(function () {
+        if ($(this).scrollTop()  <= 5 ) {
+
+            if(previous_shown == false) {
+                $('#previous').html('<div id="divImgLoading" class="text-center"><img src="../Content/DesignStyle/img/loading.gif" style="width: 40px; height: auto;"></div><br />');
+                LoadMoreMedias();
+                return previous_shown;
+            }
+        }
+    });
+
+    function LoadMoreMedias() {
+        var url = "/Qbicles/LoadMoreMedias";
+        $.ajax({
+            url: url,
+            data: {
+                size: loadCountActivity * @HelperClass.qbiclePageSize},
+            cache: false,
+            type: "POST",
+            success: function (data) {
+                if (data.length !== 0) {
+                    var ScrollFromBottom = $(document).height() - $(window).scrollTop();
+                    $(data.ModelString).insertAfter("#previous").hide().fadeIn(1000);
+                    $(window).scrollTop($(document).height() - ScrollFromBottom);
+                }
+                var ajaxModelCount = data.ModelCount - (loadCountActivity * @HelperClass.qbiclePageSize);
+                if (ajaxModelCount <= 0) {
+                    previous_shown = true;
+                }
+                $("#divImgLoading").remove();
+            },
+            error: function (xhr, status, error) {
+                cleanBookNotification.error(xhr.responseText, "Qbicles");
+                $("#divImgLoading").remove();
+            }
+        });
+        loadCountActivity = loadCountActivity + 1;
+    }
+</script>

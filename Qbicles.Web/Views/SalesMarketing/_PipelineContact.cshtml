@@ -1,0 +1,175 @@
+﻿@using Qbicles.Models.SalesMkt;
+@model Pipeline
+@{
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var lstContact = (List<SMContact>)ViewBag.Contacts;
+    var lstContactInPipeline = (List<PipelineContact>)ViewBag.PipelineContacts;
+}
+<input type="hidden" id="pipelineId" value="@Model.Id">
+<div class="modal-dialog" role="document">
+    <div class="modal-content">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close" onclick="location.reload();"><span aria-hidden="true">&times;</span></button>
+            <h5 class="modal-title">Manage Pipeline Contacts</h5>
+        </div>
+        <div class="modal-body" style="padding-bottom: 50px;">
+
+            <div class="row">
+                <div class="col-xs-12">
+                    <ul class="app_subnav admintabs" style="padding-top: 0;">
+                        <li class="active"><a href="#manage-contacts-existing" onclick="LoadExistPipelineContacts($('#txtPipelineContactSearch').val(), @Model.Id)" data-toggle="tab">In the Pipeline</a></li>
+                        <li><a href="#manage-contacts-new" data-toggle="tab" onclick="LoadNewPipelineContacts($('#txtContactSearch').val(), $('#pipelineId').val())">Add other Contacts</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <br />
+
+
+            <div class="tab-content">
+
+                <!-- Existing -->
+                <div class="tab-pane fade in active" id="manage-contacts-existing">
+
+                    <div class="contact-list" style="margin: 0 15px;">
+
+                        <div class="well custom">
+                            <div class="row">
+                                <div class="col-xs-12">
+                                    <div class="form-group" style="margin: 0;">
+                                        <label for="search">Search currently included Contacts</label>
+                                        <input type="text" id="txtPipelineContactSearch" name="txtPipelineContactSearch" onkeyup="LoadExistPipelineContacts($(this).val(), @Model.Id)" class="form-control">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="margin: 25px 0 0 0;">
+                            <div>
+                                <ul class="widget-contacts" id="pipelineContacts">
+                                    @{
+                                        var preChar = "";
+                                    }
+                                    @foreach (var pipelineContact in lstContactInPipeline)
+                                    {
+                                        var firstChar = (pipelineContact.Contact.Name != null ? pipelineContact.Contact.Name[0].ToString().ToUpper() : "");
+                                        if (!preChar.Equals(firstChar))
+                                        {
+                                            preChar = firstChar;
+                                            <li class="letters" style="padding-top: 0;">@firstChar</li>
+                                        }
+                                        <li>
+                                            <a href="#" onclick="$('.contact-list').hide(); $('.contact').fadeIn(); showExistPipelineContact(@pipelineContact.Id)">
+                                                <div class="contact-avatar">
+                                                    <div style="background-image: url('@(api + pipelineContact.Contact.AvatarUri + "&size=T")');">&nbsp;</div>
+                                                </div>
+                                                <div class="contact-info">
+                                                    <h5>@pipelineContact.Contact.Name</h5>
+                                                    <p class="prospect-rating">
+                                                        @{
+                                                            var num = 0;
+                                                            switch (pipelineContact.Rating)
+                                                            {
+                                                                case ProspectRating.Star_1: num = 1; break;
+                                                                case ProspectRating.Star_2: num = 2; break;
+                                                                case ProspectRating.Star_3: num = 3; break;
+                                                                case ProspectRating.Star_4: num = 4; break;
+                                                                case ProspectRating.Star_5: num = 5; break;
+                                                            }
+                                                        }
+                                                        @for (var i = 1; i <= num; i++)
+                                                        {
+                                                            <i class="fa fa-star"></i>
+                                                        }
+                                                    </p>
+                                                </div>
+                                            </a>
+                                        </li>
+                                    }
+                                </ul>
+                            </div>
+                        </div>
+                        <br /><br />
+                        <a href="#" data-dismiss="modal" class="btn btn-primary">Close</a>
+
+                    </div>
+
+                    <div class="contact" style="display: none;">
+
+
+
+                    </div>
+
+                </div>
+                <!-- END Existing -->
+                <!-- New -->
+                <div class="tab-pane fade" id="manage-contacts-new">
+
+                    <div class="contact-list-2" style="margin: 0 15px;">
+
+                        <div class="well custom">
+                            <div class="row">
+                                <div class="col-xs-12">
+                                    <div class="form-group" style="margin: 0;">
+                                        <label for="search">Search available Contacts</label>
+                                        <input type="text" id="txtContactSearch" name="txtContactSearch" onkeyup="LoadNewPipelineContacts($(this).val())" class="form-control">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="margin: 25px 0 0 0;">
+                            <div>
+                                <ul class="widget-contacts" id="newContacts">
+                                    @{
+                                        var preChar1 = "";
+                                    }
+                                    @foreach (var contact in lstContact)
+                                    {
+                                        var firstChar = (contact.Name != null ? contact.Name[0].ToString().ToUpper() : "");
+                                        if (!preChar1.Equals(firstChar))
+                                        {
+                                            preChar1 = firstChar;
+                                            <li class="letters" style="padding-top: 0;">@firstChar</li>
+                                        }
+
+                                        <li>
+                                            <a href="#" onclick="$('.contact-list-2').hide(); $('.contact-2').fadeIn(); showNewPipelineContact(@contact.Id)">
+                                                <div class="contact-avatar">
+                                                    <div style="background-image: url('@(api + contact.AvatarUri + "&size=T")');">&nbsp;</div>
+                                                </div>
+                                                <div class="contact-info">
+                                                    <h5>@contact.Name</h5>
+                                                    <p>@String.Join(", ", @contact.Segments.Select(s => s.Name).ToArray())</p>
+                                                </div>
+                                            </a>
+                                        </li>
+                                    }
+                                </ul>
+                            </div>
+
+                        </div>
+
+
+                        <br /><br />
+                        <a href="#" data-dismiss="modal" class="btn btn-primary">Close</a>
+
+                    </div>
+
+                    <div class="contact-2" style="display: none;">
+
+
+
+                    </div>
+
+                </div>
+                <!-- END New -->
+
+
+            </div> <!-- ./tab-content -->
+
+
+
+        </div>
+    </div><!-- /.modal-content -->
+</div><!-- /.modal-dialog -->

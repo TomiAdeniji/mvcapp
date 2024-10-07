@@ -1,0 +1,139 @@
+﻿@using Qbicles.Models.Trader
+
+@{
+    var workGroups = (List<WorkGroup>)ViewBag.WorkGroups;
+    var workGroupsOfMember = (List<WorkGroup>)ViewBag.WorkGroupsOfMember ?? (new List<WorkGroup>());
+}
+
+    <div class="well custom" style="padding-bottom: 5px;">
+
+        <div class="row">
+            <div class="col-xs-12 col-sm-6 col-md-3">
+                <div class="form-group">
+                    <label for="search_dt">Search for something</label>
+                    <input type="text" name="search_transfer" id="search_transfer" class="form-control" placeholder="Search for something">
+                </div>
+            </div>
+            <div class="col-xs-12 col-sm-6 col-md-2">
+                <div class="form-group">
+                    <label for="group">Filter by route</label>
+                    <select id="subfilter_route" name="group" class="form-control select2" style="width: 100%;" data-placeholder="Display routes">
+                        <option value=" " selected>Show all</option>
+                        <option value="Inbound">Inbound</option>
+                        <option value="Outbound">Outbound</option>
+                    </select>
+                </div>
+            </div>
+            <div class="col-xs-12 col-sm-6 col-md-2">
+                <div class="form-group">
+                    <label for="group">Filter Workgroup</label>
+                    <select id="filter-group" class="form-control select2" style="width: 100%;">
+                        <option value="0" selected>Show all</option>
+                        @foreach (var g in workGroups)
+                        {
+                            if(g != null)
+                            {
+                                <option value="@g.Id">@g.Name</option>
+                            }
+                        }
+                    </select>
+                </div>
+            </div>
+            <div class="col-xs-12 col-sm-6 col-md-2">
+                <label for="datefilter">Filter by date</label>
+                <div class="input-group" style="margin-bottom: 15px;">
+                    <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                    <input type="text" id="filter_daterange" name="datefilter" class="form-control datetimerange" placeholder="Choose a range">
+                </div>
+            </div>
+            <div class="col-xs-12 col-md-2">
+                <label>Options</label>
+                <br />
+                <div class="form-group">
+                    @if (workGroupsOfMember.Any())
+                    {
+                        <div class="btn-group options">
+                            <button type="button" class="btn btn-success dropdown-toggle" onclick="AddTransferAll()">
+                                <i class="fa fa-plus"></i>&nbsp;&nbsp;Add a transfer
+                            </button>
+                        </div>
+                    }
+                    <div class="btn-group options">
+                        <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            <i class="fa fa-sliders"></i> &nbsp; Manage display
+                        </button>
+                        <ul class="dropdown-menu primary manage-columns">
+                            <li><label><input type="checkbox" data-column="1" checked> Workgroup</label></li>
+                            <li><label><input type="checkbox" data-column="2" checked> From</label></li>
+                            <li><label><input type="checkbox" data-column="3" checked> To</label></li>
+                            <li><label><input type="checkbox" data-column="4" checked> Route</label></li>
+                            <li><label><input type="checkbox" data-column="5" checked> Date</label></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="visible-xs" style="width: 100%; height: 15px;">&nbsp;</div>
+
+    </div>
+<div class="row no-search" style="padding: 20px 20px 5px 20px;">
+    <table class="datatable table-striped table-hover" style="width: 100%;" id="trader-transfer-list">
+        <thead>
+            <tr>
+                <th data-priority="1">#</th>
+                <th data-priority="2">Workgroup</th>
+                <th data-priority="2">Route</th>
+                <th data-priority="1">From</th>
+                <th data-priority="1">To</th>
+                <th data-priority="2">Date</th>
+                <th data-priority="2">Reason</th>
+                <th data-priority="2">Status</th>
+                <th data-priority="1" data-orderable="false">Options</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+</div>
+
+
+<script>
+    FilterDataTransferByServerSide();
+    //------------ filter -----------------------
+    $("#filter-group").select2();
+    $("#subfilter_route").select2();
+    //-----------End filter -------------
+    $("#search_transfer").keyup(delay(function () {
+        $("#trader-transfer-list").DataTable().ajax.reload();
+    }, 1000));
+    $("#filter_daterange").change(delay(function () {
+        $("#trader-transfer-list").DataTable().ajax.reload();
+    }, 1000));
+    $("#filter-group").on("change", function () {
+        CallBackFilterDataTransferServeSide();
+    });
+    $("#subfilter_route").on("change", function () {
+        CallBackFilterDataTransferServeSide();
+    });
+    var _dateFormat = $dateFormatByUser.toUpperCase();
+    $('.datetimerange').daterangepicker({
+        autoUpdateInput: true,
+        timePicker: true,
+        cancelClass: "btn-danger",
+        opens: "right",
+        locale: {
+            cancelLabel: 'Clear',
+            format: _dateFormat
+        }
+    });
+    $('.datetimerange').val("");
+    $('.datetimerange').on('apply.daterangepicker', function (ev, picker) {
+        $(this).val(picker.startDate.format(_dateFormat) + ' - ' + picker.endDate.format(_dateFormat));
+        $('.datetimerange').html(picker.startDate.format(_dateFormat) + ' - ' + picker.endDate.format(_dateFormat));
+        CallBackFilterDataTransferServeSide();
+    });
+    $('.datetimerange').on('cancel.daterangepicker', function (ev, picker) {
+        $(this).val(null);
+        $('.datetimerange').html('full history');
+        CallBackFilterDataTransferServeSide();
+    });
+</script>

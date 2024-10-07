@@ -1,0 +1,339 @@
+﻿@using Qbicles.Models.B2C_C2C
+@using Qbicles.Models.TraderApi
+@using Qbicles.BusinessRules
+@using Qbicles.Models
+@using Qbicles.Models.Trader
+@model TradeOrder
+@{
+    var currencySetting = (CurrencySetting)ViewBag.CurrencySetting;
+    var isAllowEdit = Model.IsAgreedByCustomer && Model.IsAgreedByBusiness ? false : true;
+    var businessName = Model.SellingDomain?.Id.BusinesProfile()?.BusinessName ?? Model.SellingDomain?.Name;
+    var customerName = Model.Customer == null ? "" : Model.Customer.GetFullName();
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var currentUser = (ApplicationUser)ViewBag.CurrentUser;
+    var deliveryMethod = Model.DeliveryMethod;
+    var _order = (Order)ViewBag.Order;
+    var voucher = (VoucherModel)ViewBag.Voucher;
+
+    var isVoucher = voucher.Id > 0 ? "" : "none";
+    var dbContext = new Qbicles.BusinessRules.Model.ApplicationDbContext();
+    var paymentRemainTxt = ViewBag.PaymentRemainTxt;
+    var paymentRemain = ViewBag.PaymentRemain;
+
+    var invoicetotalTxt = ViewBag.InvoiceTotalTxt;
+    var invoicetotal = ViewBag.InvoiceTotal;
+
+    var associatedSellingDomain = Model.SellingDomain ?? null;
+    var subAccountCode = associatedSellingDomain?.SubAccountCode ?? "";
+
+    var orderStatus = Model.GetDescription();
+    var orderStatusCss = Model.GetClass();
+}
+
+
+<!-- Cart -->
+@*<input id="payment-amount-remain" value="@paymentRemain"/>*@
+<div class="col-xs-12 col-lg-7">
+    @if (_order == null || _order.Items == null || _order.Items.Count <= 0)
+    {
+        <div id="cart-empty">
+            <p>Your cart is currently empty. Any items you add to your order will appear here.</p>
+        </div>
+        <div id="cart">
+            <div class="activity-overview plain shadowed rounded" style="padding: 15px 20px; margin-top: 0;">
+                <div class="row" id="choosevoucher" style="display: @(voucher.Id==0?"":"none");">
+                    <div class="col-xs-8">
+                        <p style="position: relative; top: 9px;"><strong id="voucher-count"></strong> vouchers are eligible for this order</p>
+                    </div>
+                    <div class="col-xs-4 text-right">
+                        @if (Model.OrderStatus != TradeOrderStatusEnum.Draft && Model.OrderStatus != TradeOrderStatusEnum.AwaitingProcessing)
+                        {
+                            <button class="btn btn-info" disabled>Use a voucher</button>
+                        }
+                        else
+                        {
+                            <button class="btn btn-info" data-toggle="modal" data-target="#apply-voucher" id="applyvoucher">Use a voucher</button>
+                        }
+
+                    </div>
+                </div>
+                <div class="row" id="voucher" style="display: @(voucher.Id>0?"":"none");">
+                    <div class="col-xs-8">
+                        <p style="position: relative; top: 9px;"><strong id="voucher-name">@voucher.Name</strong> - <strong id="voucher-code">@voucher.Code</strong> voucher applied
+                    </div>
+                    <div class="col-xs-4 text-right">
+                        <button class="btn btn-warning" data-toggle="modal" data-target="#apply-voucher" id="applyvoucher"><i class="fa fa-pencil"></i></button>
+                        <button class="btn btn-danger" onclick="RemoveVoucher()"><i class="fa fa-trash"></i></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div id="cart">
+            <div class="activity-overview plain shadowed rounded" style="padding: 15px 20px; margin-top: 0;">
+
+                <div class="row" id="choosevoucher" style="display: @(voucher.Id==0?"":"none");">
+                    <div class="col-xs-8">
+                        <p style="position: relative; top: 9px;"><strong id="voucher-count"></strong> vouchers are eligible for this order</p>
+                    </div>
+                    <div class="col-xs-4 text-right">
+                        @if (Model.OrderStatus != TradeOrderStatusEnum.Draft && Model.OrderStatus != TradeOrderStatusEnum.AwaitingProcessing)
+                        {
+                            <button class="btn btn-info" disabled>Use a voucher</button>
+                        }
+                        else
+                        {
+                            <button class="btn btn-info" data-toggle="modal" data-target="#apply-voucher" id="applyvoucher">Use a voucher</button>
+                        }
+                    </div>
+                </div>
+                <div class="row" id="voucher" style="display: @(voucher.Id>0?"":"none");">
+                    <div class="col-xs-8">
+                        <p style="position: relative; top: 9px;"><strong id="voucher-name">@voucher.Name</strong> - <strong id="voucher-code">@voucher.Code</strong> voucher applied
+                    </div>
+                    @if (isAllowEdit)
+                    {
+                        <div class="col-xs-4 text-right">
+                            <button class="btn btn-warning" data-toggle="modal" data-target="#apply-voucher" id="applyvoucher"><i class="fa fa-pencil"></i></button>
+                            <button class="btn btn-danger" onclick="RemoveVoucher()"><i class="fa fa-trash"></i></button>
+                        </div>
+                    }
+
+                </div>
+            </div>
+
+            <ul class="unstyled">
+                @foreach (var orderItem in _order.Items)
+                {
+                    var posItem = dbContext.PosCategoryItems.Find(orderItem.TraderId);
+                    <li class="basket-item" style="border: 0;">
+                        <div class="item-thumb" style="background: url('@api@(orderItem.ImageUri)'), url(@orderItem.ImageUri);"></div>
+                        <div class="item-detail" style="padding-left: 0;">
+                            <a href="#">@orderItem.Name</a>
+
+                            <div class="row">
+                                @if (posItem != null && posItem.PosVariants != null && posItem.PosVariants.Count > 1)
+                                {
+                                    <div class="col-xs-6">@orderItem.Variant.Name</div>
+                                }
+                                else
+                                {
+                                    <div class="col-xs-6"></div>
+                                }
+                                <div class="col-xs-6 text-right">
+                                    @((orderItem.Variant.AmountInclTax + orderItem.Variant.DiscountAmount).ToCurrencySymbol(currencySetting))
+                                </div>
+                            </div>
+
+                            @foreach (var itemExtra in orderItem.Extras)
+                            {
+                                <div class="row">
+                                    <div class="col-xs-6">+ @itemExtra.Name</div>
+                                    <div class="col-xs-6 text-right">
+                                        @((itemExtra.AmountInclTax + itemExtra.DiscountAmount).ToCurrencySymbol(currencySetting))
+                                    </div>
+                                </div>
+                            }
+
+                            <div class="row" style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #f5f5f5;">
+                                <div class="col-xs-6">Subtotal</div>
+                                <div class="col-xs-6 text-right">
+                                    @{
+                                        var itemPriceSum = orderItem.Variant.TotalAmount + orderItem.Extras.Sum(e => e.TotalAmount);
+
+                                        var itemPriceDiscountSum = orderItem.Variant.TotalDiscount + orderItem.Extras.Sum(e => e.TotalDiscount);
+                                    }
+
+                                    @if (itemPriceDiscountSum > 0)
+                                    {
+                                        <span style="opacity: 0.6; text-decoration: line-through;" class="red">
+                                            @((itemPriceDiscountSum + itemPriceSum).ToDecimalPlace(currencySetting))
+                                        </span>
+                                    }
+                                    @itemPriceSum.ToCurrencySymbol(currencySetting)
+                                </div>
+                            </div>
+                        </div>
+                        @if (isAllowEdit)
+                        {
+                            <div class="item-options">
+                                <input type="number" class="form-control" name="item-1-qty" onchange="updateOrderItemQuantity(@orderItem.Id);" id="quantity@(orderItem.Id)" value="@((int)orderItem.Quantity)" min="1" oninput="validity.valid||(value='');">
+                                <button class="btn btn-default" onclick="removeItemFromB2COrder(@orderItem.Id)"><i class="fa fa-trash red"></i></button>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="item-options">
+                                <input type="number" class="form-control" disabled name="item-1-qty" id="quantity@(orderItem.Id)" value="@((int)orderItem.Quantity)" min="1">
+                                <button type="button" disabled class="btn btn-default"><i class="fa fa-trash red"></i></button>
+                            </div>
+                        }
+                    </li>
+                }
+                <li class="basket-footer" style="max-width: 100%; padding: 30px 0;">
+                    <div class="activity-overview task" style="padding: 20px 20px 15px 20px;">
+                        <div class="pull-left">Total:</div>
+                        <div class="pull-right baskettot">
+                            @if (_order.Discount > 0)
+                            {
+                                <span style="opacity: 0.6; text-decoration: line-through;" class="red">
+                                    @((_order.AmountInclTax + _order.Discount).ToDecimalPlace(currencySetting))
+                                </span>
+                            }
+                            @_order.AmountInclTax.ToCurrencySymbol(currencySetting)
+                        </div>
+                        <div class="clearfix"></div>
+                    </div>
+                </li>
+            </ul>
+        </div>
+    }
+</div>
+<div class="col-xs-12 col-lg-5">
+    <div class="well custom">
+
+        @{
+            if (!Model.IsAgreedByBusiness && !Model.IsAgreedByCustomer)
+            {
+                <form id="frmCustomerDelivery" method="post">
+                    <div class="form-group">
+                        <label>How will you receive these items?</label>
+                        @{
+                            var deliveryToMe = Model.IsDeliveriedToMe && Model.DeliveryMethod == DeliveryMethodEnum.Delivery ? "selected" : "";
+                            var deliveryOther = !(Model.IsDeliveriedToMe) && Model.DeliveryMethod == DeliveryMethodEnum.Delivery ? "selected" : "";
+                            var pickupOrder = Model.DeliveryMethod == DeliveryMethodEnum.CustomerPickup ? "selected" : "";
+                            var deliveryOtherName = (!(Model.IsDeliveriedToMe) && Model.DeliveryMethod == DeliveryMethodEnum.Delivery) ? (_order.Customer?.Name ?? "") : "";
+                            var selectedAddressId = (_order.Customer == null || _order.Customer.Address == null || _order.Customer.Address.AssociatedAddressId == 0)
+                                ? (currentUser.TraderAddresses?.FirstOrDefault(e => e.IsDefault)?.Id ?? 0) : _order.Customer.Address.AssociatedAddressId;
+                        }
+                        <select name="method" id="receive-method-selector" class="form-control select2" style="width: 100%;" onchange="managedelivery($(this));">
+                            <option value=""></option>
+                            <option @deliveryToMe value="0">Deliver them to me</option>
+                            <option @deliveryOther value="1">Deliver them to someone else</option>
+                            <option @pickupOrder value="2">I will pick them up</option>
+                        </select>
+                    </div>
+                    <div class="methods" style="display: none;">
+                        <div class="form-group address-them">
+                            <label>What's their name?</label>
+                            <input type="text" name="someoneName" onchange="validAgreeTerms();" value="@(deliveryOtherName)" class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <label>Delivery address</label>
+                            <select id="slDeliveryAddress" name="delivery" class="form-control select2" style="width: 100%;" onchange="if ($(this).val() == '0') { $('#user-address-add').modal('show'); }; validAgreeTerms();">
+                                <option value=""></option>
+                                @foreach (var item in currentUser.TraderAddresses)
+                                {
+                                    <option value="@item.Id" @(item.Id == selectedAddressId ? "selected" : "")>@item.ToAddress()</option>
+                                }
+                                <option class="add-new-address" value="0">Add a new address</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group note-box" style="display: none;">
+                        <label class="note-desc">Note:</label>
+                        <textarea name="note" class="form-control" rows="3" maxlength="250">@(_order?.Notes ?? "")</textarea>
+                    </div>
+                    <br />
+                    <button class="btn btn-info community-button w-auto" style="width: 100%; display: none" id="processing" disabled>@businessName reviewing</button>
+                    @*<button class="btn  btn-success community-button w-auto" id="btnAgreeTerms" disabled style="width: 100%;" onclick="customerAcceptOrder(this)">Confirm</button>*@
+
+                    <button type="button" id="btnAgreeTerms" disabled class="btn btn-success community-button w-auto" style="width: 100%;"
+                            onclick="customerAcceptOrder(this);">
+                        Confirm
+                    </button>
+
+                    @*<button class="btn btn-info community-button w-auto" style="width: 100%; display: none;" id="processing-order-button" disabled>Processing</button>*@
+                </form>
+            }
+            else
+            {
+                <div class="row">
+                    <div class="col-xs-12 col-sm-4">
+                        <p><strong>Delivery method</strong></p>
+                        <p>@deliveryMethod.GetDescription()</p>
+                    </div>
+                    <div class="col-xs-12 col-sm-8">
+                        @if (deliveryMethod == DeliveryMethodEnum.Delivery && _order.Customer != null)
+                        {
+                            <p><strong>Deliver to</strong></p>
+                            <p>@(_order.Customer.Address?.ToAddress())</p>
+                        }
+                    </div>
+                </div>
+                if (!string.IsNullOrEmpty(_order.Notes))
+                {
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-12">
+                            <p><strong>Note</strong></p>
+                            <p>@_order.Notes</p>
+                        </div>
+                    </div>
+                }
+                <br />
+                if (!Model.IsAgreedByBusiness && Model.IsAgreedByCustomer)
+                {
+
+                    <button class="btn btn-info community-button w-auto payment-tab-hiden" style="width: 100%; display: none;" disabled>@businessName reviewing</button>
+                }
+                else if (Model.IsAgreedByBusiness && Model.IsAgreedByCustomer)
+                {
+                    <button class="btn btn-info community-button w-auto payment-tab-hiden" style="width: 100%; display: none;" disabled>@businessName agreed</button>
+                }
+
+                <br />
+
+                <div class="activity-overview plain rounded text-center payment-now" style="margin: 0; display: none;">
+                    @if (String.Equals(@orderStatus,"Completed"))
+                    {
+                        <h5 style="margin: 0; padding: 0 0 5px 0;">Total paid</h5>
+                    }else{
+                    <h5 style="margin: 0; padding: 0 0 5px 0;">Total to pay</h5>
+                    }
+                    <h1 style="font-size: 32px; font-weight: 400; margin: 0 0 25px 0; padding: 0;" class="payment-total-text">@invoicetotalTxt</h1>
+                    <input hidden id="payment-remain-amount" value="@paymentRemain"/>
+                    @if (paymentRemain > 0 && !string.IsNullOrEmpty(subAccountCode))
+                    {
+                        <button class="btn btn-success community-button"
+                                onclick="ShowPaystackPaymentPopup('@(Model.Key)');">
+                            Pay <span id="pay-now-text">@paymentRemainTxt</span> now
+                        </button>
+                    }
+
+                </div>
+            }
+        }
+    </div>
+
+</div>
+<!-- END Cart -->
+
+<script>
+
+    $("#item-count").removeClass("bounce");
+    setTimeout(function () {
+        $("#item-count").addClass("bounce");
+        $("#item-count").text(@_order.Items.Count);
+    });
+
+
+    $(document).ready(function (e) {
+        $("#receive-method-selector, select[name=delivery]").select2({ placeholder: 'Please select' });
+        if (@((int)Model.DeliveryMethod) != 0) {
+            $("#receive-method-selector").trigger("change");
+        }
+        $("#voucher-count").html($("#total-voucher").val());
+
+        if ('@ViewBag.IsInvoiceApproved' == 'true') {
+            $(".payment-now").show();
+        }
+        else {
+            $(".payment-tab-hiden").show();
+        }
+
+        $("#b2c-order-status").text("@orderStatus");
+        $("#b2c-order-status").removeClass().addClass('label label-lg label-@orderStatusCss');
+    });
+</script>

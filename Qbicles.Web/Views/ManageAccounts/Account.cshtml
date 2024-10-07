@@ -1,0 +1,796 @@
+﻿@using Qbicles.Models;
+@using CleanBooksData;
+@using System.Globalization;
+@using Qbicles.BusinessRules;
+@model IEnumerable<accountgroup>
+@{
+    ViewBag.Title = "Manage Account Groups";
+    var dataManager = (IEnumerable<ApplicationUser>)ViewBag.DataManager;
+    var accounts = (IEnumerable<Account>)ViewBag.Accounts;
+    var frequencys = (IEnumerable<accountupdatefrequency>)ViewBag.accountupdatefrequency;
+    // TempData["Result_save_user"] = 1: Insert success,2- Update succes,3 - Delete succes, 4 -bug error and save log
+    var result_save = TempData["Result_save"] as string;
+    var uploadfieldsData = HelperClass.uploadFielsData();
+    var imgAcceptedFile = (string)ViewBag.ImageAcceptedExtensions;
+}
+<div id="modal-delete-account" class="modal fade" role="dialog">
+    <div class="modal-dialog">
+
+        <!-- Modal content-->
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4 class="modal-title">Delete Account</h4>
+            </div>
+            <div class="modal-body">
+
+                <div id="confirm-del-account" class="alert alert-danger">
+                    <p>You are about to delete Account: <strong><span id="task-name-confirm-account"></span></strong></p>
+                    <br />
+                    <button data-dismiss="modal" class="btn btn-warning">Cancel</button>
+                    <button onclick="deleteAccount()" class="btn btn-danger">Confirm Delete</button>
+                </div>
+
+                <div id="permission-del-account" class="alert alert-warning">
+                    <p>You may not delete Account: <strong><span id="task-name-permission-account"></span></strong></p>
+                    <label>Account cannot be deleted because there are associated uploads</label>
+                    <br />
+                    <button data-dismiss="modal" class="btn btn-success">OK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div id="modal-delete" class="modal fade" role="dialog">
+    <div class="modal-dialog">
+        <!-- Modal content-->
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4 class="modal-title">Delete Account Subgroup</h4>
+            </div>
+            <div class="modal-body">
+
+                <div id="confirm-del" class="alert alert-danger">
+                    <p>
+                        You are about to delete Account Subgroup :<strong><span id="subgroup-name-confirm"></span></strong>
+                    </p>
+                    <br />
+                    <button data-dismiss="modal" class="btn btn-warning">Cancel</button>
+                    <button onclick="deleteUpload()" class="btn btn-danger">Confirm Delete</button>
+                </div>
+
+                <div id="permission-del" class="alert alert-warning">
+                    <p>
+                        You may not delete Account Subgroup: <strong><span id="subgroup-name-permission"></span></strong>
+
+                    </p><br />
+                    <label><strong><span>The sub group cannot be deleted because there are associated accounts.</span></strong></label>
+                    <br />
+                    <button data-dismiss="modal" class="btn btn-success">OK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="content-wrapper qbicle-detail" style="background: #ececec;">
+    <section class="content" data-tooltip-animate-function="fadein" data-tooltip-delay="300" data-tooltip-stickTo="top" data-tooltip-stickDistance="30">
+        <div class="container-fluid">
+            <div class="side-body padding-top">
+                <div class="page-heading">
+                    <div class="page-title">
+                        <div class="title">Manage Account Groups</div>
+                        <div class="page-action">
+                            <button class="btn btn-success" name="button_add_group" id="button_add_group" >
+                                <i class="fa fa-plus"></i> Add a Group
+                            </button>
+                        </div>
+                        <div style="clear: both;"></div>
+                    </div>
+                </div>
+                <br />
+                @foreach (var accountgroup in Model)
+            {
+                    <div class="row">
+                        <div class="col-xs-12">
+                            <div class="panel panel-default">
+                                <div class="panel-heading">@accountgroup.Name</div>
+                                <div class="panel-body">
+                                    <div class="company_logo">
+                                        <img src="@(!string.IsNullOrWhiteSpace(@accountgroup.LogoPath)?@accountgroup.LogoPath:" http//www.placehold.it/300x250/EFEFEF/AAAAAA&text=no+image+selected")" class="img-responsive" alt="">
+                                    </div>
+                                    <div class="company_options">
+                                        <button class="btn btn-warning" name="button_edit_group" group-id="@accountgroup.Id">
+                                            <i class="fa fa-pencil"></i> Edit Group
+                                        </button>
+                                       
+                                    </div>
+                                    <div style="clear: both;"></div>
+                                    <hr />
+                                    <table class="table t1style">
+                                        <thead>
+                                            <tr>
+                                                <th style="width: 30%;">Name</th>
+                                                <th>Balance</th>
+                                                <th>Created By</th>
+                                                <th>Created On</th>
+                                                <th>Transaction Uploads</th>
+                                                <th>Admin</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var account in accounts.Where(asub => asub.GroupId == accountgroup.Id))
+                                            {
+                                                <tr>
+                                                    <td>@account.Name</td>
+                                                    <td>@(HelperClass.Converter.Obj2Decimal(account.LastBalance).ToString("#,###.##", CultureInfo.InvariantCulture.NumberFormat))</td>
+                                                    <td><a href="mailto:@account.user1.Email">@account.user1.Forename @account.user1.Surname</a></td>
+                                                    <td>@(account.CreatedDate.HasValue ? account.CreatedDate.Value.ToShortDateString() : null)</td>
+                                                    <td>@account.uploads.Count()</td>
+                                                    <td>
+                                                        <a href="javascript:void(0)" account-transaction-count="@account.uploads.Count()" account-id="@account.Id" subgroup-id="@accountgroup.Id" name="button_edit_account">Edit</a> |
+                                                        <a href="javascript:void(0)" name="button_remove_account"
+                                                           account-delete-id="@account.Id"
+                                                           account-delete-permission="@account.uploads.Count()"
+                                                           account-name-delete="@account.Name"
+                                                           account-number-delete="@account.Number"
+                                                           account-createDate-delete="@account.CreatedDate"
+                                                           account-createBy-delete="@account.CreatedById"
+                                                           account-dataManage-delete="@account.DataManagerId">Delete</a>
+                                                    </td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                    <button class="btn btn-success" type="button" name="button_add_account" onclick="btnAddAccountClick('@accountgroup.Id')">
+                                        <i class="fa fa-plus"></i> Add Account
+                                    </button>
+                                    <hr />
+
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                }
+            </div>
+        </div>
+    </section>
+
+</div>
+<div id="modal_group" class="modal fade" role="dialog">
+    <input type="hidden" name="modal_edit_group_title" value="Edit Group" />
+    <input type="hidden" name="modal_add_group_title" value="Add a Group" />
+
+    <div class="modal-dialog">
+        <!-- Modal content-->
+        <form id="form_group" method="post" action="/ManageAccounts/SaveCBAccountGroup" enctype="multipart/form-data" novalidate="novalidate">
+            <input id="input_group_id" type="hidden" name="Id" />
+            <input id="input_group_createddate" type="hidden" name="CreatedDate" />
+            <input id="input_group_createdbyid" type="hidden" name="CreatedById" />
+            <input id="input_group_logopath" type="hidden" name="LogoPath" />
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <h4 class="modal-title"></h4>5678 - kevin
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-12 col-lg-12">
+                            <div class="form-group">
+                                <label for="Name">Group Name <span>*</span></label>
+                                <input type="text" id="input_group_name" name="Name" class="form-control" />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-12 col-lg-12">
+                            <label>Group Logo (optional)</label><br />
+                            <div class="fileinput fileinput-new" data-provides="fileinput">
+                                <div class="fileinput-new thumbnail" style="width: 100%; height: auto;">
+                                    <img src="https://www.placehold.it/300x250/EFEFEF/AAAAAA&text=no+image+selected" />
+                                </div>
+                                <div class="fileinput-preview fileinput-exists thumbnail" style="max-width: 100%; max-height: 100%;">
+                                </div>
+                                <div>
+                                    <span class="btn btn-warning btn-file">
+                                        <span class="fileinput-new"><i class="fa fa-plus"></i> &nbsp; Add logo</span>
+                                        <span class="fileinput-exists"><i class="fa fa-pencil"></i> &nbsp; Change</span>
+                                        <input type="file" name="logoPath" accept="@imgAcceptedFile">
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-12 col-lg-12 text-right" style="margin-bottom: 0;">
+                            <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                            <button type="button" class="btn btn-success" onclick="SaveGroup()">Confirm</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+<div id="modal_subgroup" class="modal fade" role="dialog">
+    <div class="modal-dialog">
+        <input type="hidden" name="modal_edit_subgroup_title" value="Edit Subgroup" />
+        <input type="hidden" name="modal_add_subgroup_title" value="Add a Subgroup" />
+        <!-- Modal content-->
+        <form id="form_subgroup" method="post" action="/ManageAccounts/SaveSubGroup">
+            <input id="input_subgroup_groupid" type="hidden" name="GroupId" />
+            <input id="input_subgroup_id" type="hidden" name="Id" />
+            <input id="input_subgroup_createddate" type="hidden" name="CreatedDate" />
+            <input id="input_subgroup_createdbyid" type="hidden" name="CreatedById" />
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <h4 class="modal-title"></h4>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-12 col-lg-12">
+                            <div class="form-group">
+                                <label for="Name">Subgroup Group Name <span>*</span></label>
+                                <input type="text" id="input_subgroup_name" name="Name" class="form-control" />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-12 col-lg-12 text-right" style="margin-bottom: 0;">
+                            <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                            <button type="button" class="btn btn-success" onclick="SaveSubGroup()">Confirm</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+<form id="form_accout" method="post" action="/ManageAccounts/SaveAccount" novalidate="novalidate">
+    <div id="modal_account" class="modal fade" role="dialog">
+        <input type="hidden" name="modal_edit_account_title" value="Edit Account" />
+        <input type="hidden" name="moda_add_account_title" value="Add An Account" />
+
+        <div class="modal-dialog large">
+            <!-- Modal content-->
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <h4 class="modal-title"></h4>
+                </div>
+                <div class="modal-body">
+                    <div class="card-body no-padding">
+                        <div class="step tabs-left card-no-padding">
+                            <ul class="nav nav-tabs" role="tablist">
+                                <li class="active">
+                                    <a href="#editstepv1" role="tab" data-toggle="tab" aria-controls="home" aria-expanded="true">
+                                        <div class="icon fa fa-credit-card"></div>
+                                        <div class="step-title">
+                                            <div class="title">Details</div>
+                                            <div class="description">Provide account details</div>
+                                        </div>
+                                    </a>
+                                </li>
+                            </ul>
+                            <div class="tab-content">
+                                <div role="tabpanel" class="tab-pane fade in active" id="editstepv1" aria-labelledby="home-tab">
+                                    <input type="hidden" id="input_account_id" name="Id" value="0" />
+                                    <input type="hidden" id="input_account_isactive" name="IsActive" value="0" />
+                                    <input type="hidden" id="input_account_createddate" name="CreatedDate" />
+                                    <input type="hidden" id="input_account_createdbyid" name="CreatedById" />
+
+                                    <input type="hidden" id="isEditLastbalance" name="isEditLastbalance" value="true" />
+
+                                    <input type="hidden" id="input_group_pass_id" name="GroupId" />
+
+                                    <div class="row">
+                                        <div class="col-sm-6">
+                                            <div class="form-group">
+                                                <label for="account_name">Name of Account <span>*</span></label>
+                                                <input type="text" id="input_account_name" name="Name" class="form-control" />
+                                            </div>
+                                        </div>
+                                        <div class="col-sm-6">
+                                            <div class="form-group">
+                                                <label for="account_number">Account Number <span>*</span></label>
+                                                <input type="text" id="input_account_number" name="Number" class="form-control" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-sm-6">
+                                            <div class="form-group">
+                                                <label for="account_openingbalance">Opening Balance </label>
+                                                <input type="text" id="input_account_lastbalance" name="LastBalance" placeholder="Input Opening Balance" class="form-control"
+                                                       oninput="this.value = this.value.replace(/[^0-9.\,-]/g, '');
+                                                    this.value = this.value.replace(/(\..*)\./g, '$1');">
+                                            </div>
+
+                                        </div>
+                                        <div id="div_uploadfieldsData" class="col-sm-6">
+                                            <div class="form-group">
+                                                <label for="role">Required Fields <span>*</span></label>
+                                                <div>
+                                                    <select class="select_uploadfieldsData" id="select_user_role" name="uploadfields[]" multiple style="width: 100%;">
+                                                        @foreach (var ufd in uploadfieldsData)
+                                                        {
+                                                            if (ufd.Value == "Date" || ufd.Value == "Description")
+                                                            {
+                                                                <option value="@ufd.Value" selected="selected">@ufd.Value</option>
+                                                            }
+                                                            else
+                                                            {
+                                                                <option value="@ufd.Value">@ufd.Value</option>
+                                                            }
+
+                                                        }
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-sm-6">
+                                            <div class="form-group">
+                                                <label for="frequency">Expected Update Frequency <span>*</span></label>
+                                                <select id="select_Frequency_type" name="UpdateFrequencyId" style="width: 100%;">
+                                                    @foreach (var frequency in frequencys)
+                                                    {
+                                                        <option value="@frequency.Id">@frequency.frequency</option>
+                                                    }
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="col-sm-6">
+                                            <div class="form-group">
+                                                <label for="manager">Data Manager <span>*</span></label>
+                                                <select id="select_datamanager_type" name="DataManagerId" style="width: 100%;">
+                                                    @foreach (var datamanager in dataManager)
+                                                    {
+                                                        <option value="@datamanager.Id">@datamanager.UserName</option>
+                                                    }
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <button type="button" id="buttonSaveAccount" class="btn btn-success tab-next" onclick="SaveAccount()">Update</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+<script src="~/Scripts/toastr/cleanBookNotification.js"></script>
+<script src="~/Scripts/app.js"></script>
+<script>
+    var
+            $button_edit_account = $("a[name='button_edit_account']"),
+            $button_add_account = $("button[name='button_add_account']"),
+            $button_remove_account = $("a[name='button_remove_account']"),
+            $buttonSaveAccount = $("#buttonSaveAccount"),
+            $button_edit_group = $("button[name='button_edit_group']"),
+            $button_add_group = $("#button_add_group"),
+            $button_remove_group = $("button[name='button_remove_group']"),
+
+            $button_edit_subgroup = $("button[name='button_edit_subgroup']"),
+            $button_add_subgroup = $("button[name='button_add_subgroup']"),
+            $button_remove_subgroup = $("button[name='button_remove_subgroup']"),
+            $supGroupDelId = 0,
+            $form_accout = $("#form_accout"),
+            $form_group = $("#form_group"),
+            $form_subgroup = $("#form_subgroup"),
+            $modal_account = $("#modal_account"),
+            $modal_group = $("#modal_group"),
+            $modal_subgroup = $("#modal_subgroup"),
+
+            $modal_account_title = $("#modal_account [class='modal-title']"),
+            $modal_group_title = $("#modal_group [class='modal-title']"),
+            $modal_subgroup_title = $("#modal_subgroup [class='modal-title']"),
+
+            $input_account_id = $("#input_account_id"),
+            $input_account_name = $("#input_account_name"),
+            $input_account_number = $("#input_account_number"),
+            $input_account_isactive = $("#input_account_isactive"),
+            $input_account_createddate = $("#input_account_createddate"),
+            $input_account_createdbyid = $("#input_account_createdbyid"),
+            $input_account_lastbalance = $("#input_account_lastbalance"),
+            $select_UpdateFrequency_type = $("#select_Frequency_type"),
+            $select_datamanager_type = $("#select_datamanager_type"),
+            $input_subgroup_pass_id = $("#input_group_pass_id"),
+            $input_group_id = $("#input_group_id"),
+            $input_group_name = $("#input_group_name"),
+            $input_group_createddate = $("#input_group_createddate"),
+            $input_group_createdbyid = $("#input_group_createdbyid"),
+            $input_group_logopath = $("#input_group_logopath"),
+            $input_subgroup_createdbyid = $("#input_subgroup_createdbyid"),
+            $modal_account_remove = $("#modal-delete-account");
+    $accountIdDelete = 0,
+    $accountNameDelete = 0,
+    $accountNumberDelete = 0,
+    $accountCreateDate = null,
+    $accountDataManage = 0,
+    $accountCreateBy = 0,
+    $tdDelete = null,
+    $trDelete = null;
+    $editUploadFields = 0,
+     $modal_AccSubGroup_remove = $("#modal-delete"),
+     $input_subgroup_id = $("#input_subgroup_id"),
+     $input_subgroup_name = $("#input_subgroup_name"),
+     $input_subgroup_groupid = $("#input_subgroup_groupid"),
+     $input_subgroup_createddate = $("#input_subgroup_createddate"),
+     $input_subgroup_createdbyid = $("#input_subgroup_createdbyid");
+    $select_user_role = $("#select_user_role");
+    $(document).ready(function() {
+
+        $select_user_role.on("select2:unselecting",
+            function(e) {
+                if (e.params.args.data.id == 'Date' || e.params.args.data.id == 'Description')
+                    e.preventDefault();
+            });
+        // Display notification
+        cleanBookNotification.displayNotification('@result_save');
+
+        $('.table').DataTable({
+            "dom": '<"top"fl<"clear">>rt<"bottom"ip<"clear">>',
+            "bFilter": false,
+            "bPaginate": false,
+            "columnDefs": [
+                {
+                    "targets": 5,
+                    "orderable": false
+                }
+            ],
+            info: false
+        });
+
+        $button_edit_account.bind('click',
+            function() {
+                clear_error();
+
+                var $this = $(this),
+                    id = $this.attr("account-id");
+
+                $editUploadFields = $this.attr("account-transaction-count");
+                if (id && id > 0) {
+                    GetAccount(id).done(function(response) {
+                        if (response.Id) {
+                            $input_account_id.val(response.Id);
+                            $input_account_name.val(response.Name);
+                            $input_account_number.val(response.Number);
+
+                            $select_UpdateFrequency_type.val(response.UpdateFrequencyId);
+                            $select_UpdateFrequency_type.trigger("change");
+
+                            $select_datamanager_type.val(response.DataManagerId);
+                            $select_datamanager_type.trigger("change");
+
+                            $input_subgroup_pass_id.val(response.GroupId);
+                            $input_account_isactive.val(response.IsActive);
+                            $input_account_createddate.val(
+                                new Date(parseInt(response.CreatedDate.substr(6))).toJSON());
+                            $input_account_createdbyid.val(response.CreatedById);
+
+                            var balanceAmount = JSON.stringify(response.LastBalance);
+                            $input_account_lastbalance.val(balanceAmount == "null" ? "" : balanceAmount);
+
+                            GetUpFieldByAccountId($input_account_id.val()).done(function(roles) {
+
+                                if (roles) {
+                                    $("#select_user_role").select2().val(roles).change();
+                                }
+                            });
+                            if ($editUploadFields > 0) {
+                                $("#isEditLastbalance").val(false);
+                                $input_account_lastbalance.attr('readonly', 'readonly');
+                                $input_account_lastbalance.prop('readonly', true);
+                                $input_account_lastbalance.addClass("input-readonly");
+
+                                $(".select_uploadfieldsData").prop("disabled", true);
+                                $(".select_uploadfieldsData").prop("disabled", true);
+                            } else {
+                                $("#isEditLastbalance").val(true);
+                                $input_account_lastbalance.removeAttr('readonly', '');
+                                $input_account_lastbalance.removeProp('readonly');
+                                $input_account_lastbalance.removeClass('input-readonly');
+
+                                $(".select_uploadfieldsData").prop("disabled", false);
+                                $(".select_uploadfieldsData").prop("disabled", false);
+                            }
+
+                            $modal_account_title.text($("input[name='modal_edit_account_title']").val());
+                            $buttonSaveAccount.text("Update");
+                            $modal_account.modal('toggle');
+                        }
+                    })
+                }
+            });
+        $button_add_group.bind('click',
+            function() {
+                clear_error();
+                $input_group_id.val(0);
+                $input_group_name.val("");
+                $input_group_createddate.val("");
+                $input_group_createdbyid.val("");
+                $input_group_logopath.val("");
+                $("input[name='logoPath']").val("");
+
+                var img = $form_group.find("div[class='fileinput-new thumbnail'] > img");
+                if (img)
+                    img.attr("src", "https://www.placehold.it/300x250/EFEFEF/AAAAAA&text=no+image+selected");
+
+                $modal_group_title.text($("input[name='modal_add_group_title']").val());
+                 $modal_group.modal('toggle');
+            });
+        $button_edit_group.bind('click',
+            function() {
+                clear_error();
+                var $this = $(this),
+                    id = $this.attr("group-id");
+
+                if (id && id > 0) {
+                    GetAccountGroup(id).done(function(response) {
+                        if (response.Id) {
+                            $form_group.validate().resetForm();
+
+                            $input_group_id.val(response.Id);
+                            $input_group_name.val(response.Name);
+                            $input_group_createddate.val(response.CreatedDate
+                                ? new Date(parseInt(response.CreatedDate.substr(6))).toJSON()
+                                : null);
+                            $input_group_createdbyid.val(response.CreatedById);
+                            $input_group_logopath.val(response.LogoPath);
+
+                            var img = $form_group.find("div[class='fileinput-new thumbnail'] > img");
+                            if (img) {
+                                if (response.LogoPath && response.LogoPath != "") {
+                                    img.attr("src", response.LogoPath);
+                                } else {
+                                    img.attr("src",
+                                        "https://www.placehold.it/300x250/EFEFEF/AAAAAA&text=no+image+selected");
+                                }
+                            }
+                            $modal_group_title.text($("input[name='modal_edit_group_title']").val());
+                            $modal_group.modal('toggle');
+                        }
+                    });
+                }
+            });
+
+        $button_remove_account.bind('click',
+            function() {
+                $tdDelete = $(this).parent();
+                $trDelete = $tdDelete.parent();
+                $accountIdDelete = $(this).attr("account-delete-id");
+                $accountNameDelete = $(this).attr("account-name-delete");
+                $accountNumberDelete = $(this).attr("account-number-delete");
+                $accountCreateDate = $(this).attr("account-createDate-delete");
+                $accountCreateBy = $(this).attr("account-createBy-delete");
+                $accountDataManage = $(this).attr("account-dataManage-delete");
+                var $idDelete = $(this).attr("account-delete-permission");
+
+                if ($idDelete > 0) {
+                    $("#permission-del-account").show();
+                    $("#confirm-del-account").hide();
+                    $('#task-name-permission-account').text($accountNameDelete);
+                } else {
+                    $("#permission-del-account").hide();
+                    $("#confirm-del-account").show();
+                    $('#task-name-confirm-account').text($accountNameDelete);
+                }
+                $modal_account_remove.modal('toggle');
+            });
+    });
+
+    function GetUpFieldByAccountId(accountId) {
+        return $.ajax({
+            url: "/ManageAccounts/GetUpFieldByAccountId",
+            type: "GET",
+            dataType: "json",
+            data: { accountId: accountId }
+        });
+    }
+
+    function deleteUpload() {
+        $.ajax({
+            type: 'post',
+            url: '/ManageAccounts/DeleteSubGroupAcc',
+            dataType: 'json',
+            data: { supGroupDelId: $supGroupDelId },
+            success: function (res) {
+                if (res.status) {
+                    $('#subGroup-' + $supGroupDelId).empty();
+                    $modal_AccSubGroup_remove.modal('hide');
+                    $supGroupDelId = 0;
+                    cleanBookNotification.clearmessage();
+                    cleanBookNotification.removeSuccess();
+                }
+                else {
+                    cleanBookNotification.clearmessage();
+                    cleanBookNotification.removeFail();
+                }
+            }
+        })
+
+    }
+
+    function GetAccount(id) {
+        return $.ajax({
+            url: "/ManageAccounts/GetAccount",
+            type: "GET",
+            dataType: "json",
+            data: { id: id }
+        });
+    }
+
+    function GetAccountGroup(id) {
+        return $.ajax({
+            url: "/ManageAccounts/GetAccountGroup",
+            type: "GET",
+            dataType: "json",
+            data: { id: id }
+        });
+    }
+
+    function SaveAccount() {
+        if ($form_accout.valid()) {
+
+            if ($editUploadFields > 0) {
+                $(".select_uploadfieldsData").prop("disabled", false);
+                $(".select_uploadfieldsData").prop("disabled", false);
+            }
+
+            var upFieldsCheck = [];
+            var uploadfieldsData = [];
+            uploadfieldsData = $("#select_user_role").select2('data');
+            var data1 = $("#select_user_role").select2('data');
+            for (var i = 0; i < uploadfieldsData.length; i++) {
+                upFieldsCheck[i] = uploadfieldsData[i].text;
+            }
+            var checkField = false;
+            $.ajax({
+                type: 'post',
+                url: '/ManageAccounts/CheckUploadFields',
+                dataType: 'json',
+                data: { uploadfields: JSON.stringify(upFieldsCheck) },
+                success: function (ref) {
+                   
+                    if (!ref) {
+                        cleanBookNotification.clearmessage();
+                        cleanBookNotification.warning("Date and Description fields are mandatory fields. At least a Debit or Credit field must also be selected.", "CleanBooks");
+                        if ($editUploadFields > 0) {
+                            $(".select_uploadfieldsData").prop("disabled", true);
+                            $(".select_uploadfieldsData").prop("disabled", true);
+                        }
+                        return;
+                    }
+                    $.ajax({
+                        type: 'post',
+                        url: '/ManageAccounts/DupplicateAccount',
+                        dataType: 'json',
+                        data: { Id: $input_account_id.val(), Name: $input_account_name.val(), SubGroupId: $input_subgroup_pass_id.val() },
+                        success: function (ref) {
+                            if (!ref.dupplicate)
+                                $form_accout.submit();
+                            else {
+                                $form_accout.validate().showErrors({ Name: "Account name already exists." })
+                                if ($editUploadFields > 0) {
+                                    $(".select_uploadfieldsData").prop("disabled", true);
+                                    $(".select_uploadfieldsData").prop("disabled", true);
+                                }
+                            }
+                        }
+                    })
+                }
+            })
+        }
+    }
+
+    function SaveGroup() {
+        if ($form_group.valid()) {
+            $.ajax({
+                url: "/ManageAccounts/DuplicateAccountGroup",
+                data: { Id: $input_group_id.val(), Name: $input_group_name.val() },
+                type: "GET",
+                dataType: "json",
+            }).done(function (response) {
+                if (!response.dupplicate)
+                    $form_group.submit();
+                else
+                    $form_group.validate().showErrors({ Name: "Group name already exists." })
+            });
+        }
+    }
+
+
+    function btnAddAccountClick(groupId) {
+        clear_error();
+        $editUploadFields = 0;
+        $input_account_id.val(0);
+        $input_account_name.val('');
+        $input_account_number.val("");
+
+        $select_UpdateFrequency_type[0].selectedIndex = 0;
+        $select_datamanager_type[0].selectedIndex = 0;
+        $input_subgroup_pass_id.val(groupId);
+        $input_account_isactive.val('');
+        $input_account_createddate.val('');
+        $input_account_createdbyid.val('');
+        $input_account_lastbalance.val('');
+        $("#isEditLastbalance").val(true);
+        $input_account_lastbalance.removeAttr('readonly', '');
+        $input_account_lastbalance.removeProp('readonly');
+        $input_account_lastbalance.removeAttr('style', '');
+
+        $modal_account_title.text($("input[name='moda_add_account_title']").val());
+        $buttonSaveAccount.text("Add Now");
+        $modal_account.modal('toggle');
+
+        $("#select_user_role").select2().val(['Date', 'Description']).change();
+        $(".select_uploadfieldsData").prop("disabled", false);
+        $(".select_uploadfieldsData").prop("disabled", false);
+    }
+    function deleteAccount() {
+        if ($accountIdDelete <= 0)
+            return;
+
+        var model = {
+            Id: $accountIdDelete,
+            Name: $accountNameDelete,
+            Number: $accountNumberDelete,
+            CreatedDate: $accountCreateDate,
+            CreatedById: $accountCreateBy,
+            DataManagerId: $accountDataManage
+        };
+        $.ajax({
+            type: 'post',
+            url: '/ManageAccounts/DeleteAccount',
+            dataType: 'json',
+            data: model,
+            success: function (res) {
+                if (res.status) {
+                    $modal_account_remove.modal('hide');
+                    cleanBookNotification.removeSuccess();
+                    //change the background color to red before removing
+                    $trDelete.css("background-color", "#FF3700");
+                    $trDelete.fadeOut(1500, function () {
+                        $trDelete.remove();
+                    });
+                    $taskIdDelete = 0;
+                }
+                else
+                    cleanBookNotification.removeFail();
+            }
+        })
+    }
+</script>
+
+<link href="~/Content/DesignStyle/css/style.css" rel="stylesheet" />
+<style>
+    .select2-container--default.select2-container--disabled .select2-selection--multiple {
+        background-color: #fff;
+        cursor: not-allowed;
+    }
+
+    .input-readonly {
+        background: #cecaca;
+    }
+    .btn-file>input {
+        position: absolute;
+        top: 0;
+        right: 0;
+        margin: 0;
+        opacity: 0;
+        filter: alpha(opacity=0);
+        font-size: 23px;
+        height: 100%;
+        width: 100%;
+        direction: ltr;
+        cursor: pointer;
+    }
+</style>

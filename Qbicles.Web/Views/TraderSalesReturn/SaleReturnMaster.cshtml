@@ -1,0 +1,277 @@
+﻿@using System.Diagnostics
+@using Qbicles.BusinessRules
+@using Qbicles.Models.Trader.Returns
+@model TraderReturn
+@{
+    ViewBag.Title = "Trader & Manager Sales Return #" + Model.Reference?.FullRef;
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var timeZone = (string)ViewBag.CurrentTimeZone ?? "";
+
+
+    var today = (DateTime)ViewBag.Today;
+    var timeline = (List<ApprovalStatusTimeline>)ViewBag.Timeline;
+    var timelineDate = (List<DateTime>)ViewBag.TimelineDate;
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+}
+
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail">
+
+    <input type="hidden" value="@Model.Id" id="sale-return-id" />
+    <!-- Main content -->
+    <section class="content">
+
+        <br /><br />
+
+        <div class="mod_title">
+            <h5>Trader</h5>
+            <h4>Sales Return #@(Model.Reference?.FullRef??"")</h4>
+        </div>
+
+
+        <div class="app_filter">
+            <div class="row">
+                <div class="col-xs-12">
+                    <a href="/Trader/AppTrader" onclick="setTabTrader('apptrader')" class="btn btn-primary"><i class="fa fa-angle-left"></i> &nbsp; Sales Returns</a>
+                    <a href="/TraderSalesReturn/SaleReturnReview?id=@Model.Id" class="btn btn-info"><i class="fa fa-clipboard-check"></i> &nbsp; Sales Review</a>
+                    <a onclick="QbicleSelected('@Model.Workgroup.Qbicle.Key','Dashboard')" class="btn btn-info"><i class="fa fa-eye"></i> &nbsp; View in Qbicle</a>
+                </div>
+            </div>
+        </div>
+
+
+        <br />
+
+
+        <div class="row">
+            <div class="col-xs-12">
+
+                <br /><br />
+
+                <div class="row">
+                    <div class="col-xs-12 col-md-8 col-lg-9">
+
+                        <div class="app_upper_dash text-center">
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-6 col-lg-4">
+                                    <div class="stat_label">
+                                        <span>Original sale total</span>
+                                        <h3>@Model.Sale.SaleTotal.ToCurrencySymbol(currencySettings)</h3>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-6 col-lg-4">
+                                    <div class="stat_label">
+                                        <span>Contact</span>
+                                        <h3>@(Model.Sale.Purchaser?.Name)</h3>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+
+
+                        <div class="well custom" style="padding: 30px;">
+
+                            <div class="row">
+                                @{
+                                    var saleOrder = Model.Sale.SalesOrders.FirstOrDefault();
+                                    if (saleOrder != null)
+                                    {
+                                        <div class="col-xs-12 col-sm-6 col-lg-4">
+
+                                            <div class="flex-avatar">
+                                                <div class="col-thumb" style="flex: 0 0 80px;">
+                                                    <img src="/Content/DesignStyle/img/icon_bookkeeping.png" class="img-circle img-responsive">
+                                                </div>
+                                                <div class="col">
+                                                    <h5 style="font-family: 'Roboto'; margin-top: 0;">Sales Order</h5>
+                                                    <a href="/TraderSales/SaleOrder?id=@saleOrder.Id" target="_blank" class="btn btn-info"><i class="fa fa-eye"></i> &nbsp; View</a>
+                                                </div>
+                                            </div>
+
+                                        </div>
+                                    }
+                                }
+
+
+                            </div>
+
+                        </div>
+
+                        <br />
+
+                        <table class="datatable table-hover table-striped" id="sale-return-manager-table" data-order='[[ 1, "asc" ]]' style="width: 100%;">
+                            <thead>
+                                <tr>
+                                    <th data-priority="5" style="width: 80px;" data-orderable="false"></th>
+                                    <th data-priority="1">Item</th>
+                                    <th data-priority="1">Unit</th>
+                                    <th data-priority="2">Quantity</th>
+                                    <th data-priority="2">Unit price <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                    <th data-priority="3">Discount</th>
+                                    <th data-priority="2">Tax <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                    <th data-priority="3">Total <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                    <th data-priority="1" data-orderable="false">Return Qty</th>
+                                    <th data-priority="1" data-orderable="false">Return to Inventory</th>
+                                    <th data-priority="1" data-orderable="false" style="max-width: 180px;">Credit value <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                    @if (Model.Status != TraderReturnStatusEnum.Approved && Model.Status != TraderReturnStatusEnum.Denied && Model.Status != TraderReturnStatusEnum.Discarded)
+                                    {
+                                        <th data-priority="1" data-orderable="false" style="width: 50px;"></th>
+                                    }
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in Model.ReturnItems)
+                                {
+                                    var isReturned = "";
+                                    if (item.IsReturnedToInventory)
+                                    {
+                                        isReturned = "checked";
+                                    }
+                                    string taxrateName = "(Tax free)";
+                                    if (item.SaleItem.Taxes != null)
+                                    {
+                                        taxrateName = item.SaleItem.StringTaxRates(currencySettings);
+                                    }
+                                    <tr id="table-tr-return-item-@item.Id">
+                                        <td>
+                                            <div class="table-avatar" style="background-image: url('@api@item.SaleItem.TraderItem.ImageUri');">&nbsp;</div>
+                                        </td>
+                                        <td><span id="return-item-name-@item.Id">@item.SaleItem.TraderItem.Name</span></td>
+                                        <td>@(@item.SaleItem.Unit?.Name)</td>
+                                        <td>@item.SaleItem.Quantity.ToDecimalPlace(currencySettings)</td>
+                                        <td>@item.SaleItem.SalePricePerUnit.ToDecimalPlace(currencySettings)</td>
+                                        <td>@item.SaleItem.Discount.ToDecimalPlace(currencySettings)%</td>
+                                        <td>
+                                            @Html.Raw(taxrateName)
+                                        </td>
+                                        <td>@item.SaleItem.Price.ToDecimalPlace(currencySettings)</td>
+                                        <td>
+                                            @if (Model.Status == TraderReturnStatusEnum.Approved || Model.Status == TraderReturnStatusEnum.Denied || Model.Status == TraderReturnStatusEnum.Discarded)
+                                            {
+                                                @item.ReturnQuantity.ToDecimalPlace(currencySettings)
+                                            }
+                                            else
+                                            {
+                                                <input maxlength='15' onkeypress='decimalKeyPress(this, event)' onpaste='decimalOnPaste(this, event)' type='text' id="return-item-row-qty-@item.Id"onfocusout="OnFocusOutReturnQty(@item.Id,this.value,@item.SaleItem.Quantity)" onfocus="OnFocusReturnQty(this.value)" onkeyup="UpdateReturnQuantity(this,@item.Id,@item.ReturnQuantity)" min="0" max="@item.SaleItem.Quantity" class="form-control" style="width: 80px;" value="@item.ReturnQuantity.ToDecimalPlace(currencySettings)">
+                                            }
+
+                                        </td>
+                                        <td>
+                                            <div class="checkbox toggle">
+                                                <label>
+                                                    @if (Model.Status == TraderReturnStatusEnum.Approved || Model.Status == TraderReturnStatusEnum.Denied || Model.Status == TraderReturnStatusEnum.Discarded)
+                                                    {
+                                                        <input @isReturned data-toggle="toggle" data-on="Yes" data-off="No" data-onstyle="success" type="checkbox" disabled="">
+                                                    }
+                                                    else
+                                                    {
+                                                        <input @isReturned onchange="UpdateIsReturnToInventory(this.checked, @item.Id)" data-toggle="toggle" data-on="Yes" data-off="No" data-onstyle="success" type="checkbox">
+                                                    }
+                                                </label>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="input-group" style="width: 100%;">
+                                                <span class="input-group-addon">@currencySettings.CurrencySymbol</span>
+                                                @if (Model.Status == TraderReturnStatusEnum.Approved || Model.Status == TraderReturnStatusEnum.Denied || Model.Status == TraderReturnStatusEnum.Discarded)
+                                                {
+                                                   <input class="form-control" disabled="" value="@item.Credit.ToDecimalPlace(currencySettings)"/> 
+                                                }
+                                                else
+                                                {
+                                                    <input maxlength='15' onkeypress='decimalKeyPress(this, event)' onpaste='decimalOnPaste(this, event)' type='text' id="return-item-row-credit-@item.Id" onfocusout="OnFocusOutReturnCredit(@item.Id,this.value)" onfocus="OnFocusReturnCredit(this.value)" min="0" value="@item.Credit.ToDecimalPlace(currencySettings)" class="form-control">
+                                                }
+                                            </div>
+                                        </td>
+
+                                        @if (Model.Status != TraderReturnStatusEnum.Approved && Model.Status != TraderReturnStatusEnum.Denied && Model.Status != TraderReturnStatusEnum.Discarded)
+                                        {
+                                            <td>
+                                                <button onclick="ConfirmDeleteReturnItem(@item.Id)" class="btn btn-danger"><i class="fa fa-trash"></i></button>
+                                            </td>
+                                        }
+
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+
+                    </div>
+
+
+                    <div class="col-xs-12 col-md-4 col-lg-3">
+
+                        <ul class="timeline">
+
+                            @foreach (var date in timelineDate)
+                            {
+                                var dateStart = date.ConvertTimeFromUtc(timeZone).DatetimeToOrdinal();
+                                var dateStr = date.Date == today.Date ? "Today" : dateStart;
+
+                                <li class="time-label">
+                                    <span class="label label-lg label-info">
+                                        @dateStr
+                                    </span>
+                                </li>
+                                foreach (var tl in timeline.Where(d => d.LogDate.Date == date.Date))
+                                {
+                                    <li>
+                                        <div class="person" style="background-image: url('@api@tl.UserAvatar');"></div>
+                                        <div class="timeline-item">
+                                            <span class="time"><i class="fa fa-clock-o"></i> @tl.Time</span>
+                                            <h4 class="timeline-header">@tl.Status</h4>
+                                        </div>
+                                    </li>
+                                }
+                                <br />
+                            }
+                        </ul>
+
+
+                    </div>
+                </div>
+
+
+            </div>
+        </div>
+
+
+    </section>
+    <!-- ./content -->
+
+</div>
+<!-- /.content-wrapper -->
+
+<div class="modal fade" style="z-index: 9999" id="confirm-delete" role="dialog" aria-labelledby="confirm-delete">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-body">
+
+                <div class="activity-overview generic help-text" style="margin: 0;">
+                    <i class="fa fa-info-circle"></i>
+                    <p>You are about to delete this <strong><span id="name-delete"></span></strong> permanently. This action cannot be undone. If you are sure you wish to proceed, please confirm below...</p>
+
+
+                    <button class="btn btn-danger" onclick="CancelDelete()">Cancel</button>
+                    <button class="btn btn-success" onclick="DeleteReturnItem()">Confirm &amp; Delete</button>
+                </div>
+
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+
+
+@{
+    if (Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/trader.sales.return.manager.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/trader.sales.return.manager.min.js"></script>
+    }
+}

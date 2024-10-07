@@ -1,0 +1,875 @@
+﻿@using Qbicles.Models.Qbicles
+@using Qbicles.BusinessRules
+@using Qbicles.Models.Trader
+@using Qbicles.Models
+@using Qbicles.BusinessRules.Helper
+@model TraderContact
+@{
+    if (Model.ContactRef == null || string.IsNullOrEmpty(Model.ContactRef.Reference))
+    {
+        ViewBag.Title = "Contact > " + Model.Name;
+    }
+    else
+    {
+        ViewBag.Title = "Contact > " + Model.ContactRef.Reference;
+    }
+
+    var workGroups = (List<WorkGroup>)ViewBag.WorkGroups;
+    var contactGroups = (List<TraderContactGroup>)ViewBag.ContactGroups;
+    var countries = (List<Country>)ViewBag.Countries;
+    var timeZone = (string)ViewBag.CurrentTimeZone ?? "";
+    var isUpdate = (bool)ViewBag.IsUpdate;
+    var balanceContact = (decimal)ViewBag.BalanceContact;
+    var purchaseInvBalance = (decimal)ViewBag.PurchaseInvBalance;
+    var saleInvBalance = (decimal)ViewBag.SaleInvBalance;
+
+    var isChange = "";
+    var cursor = "default";
+    if (!isUpdate || Model.Status == TraderContactStatusEnum.ContactApproved)
+    {
+        cursor = "not-allowed";
+        isChange = "disabled";
+    }
+    if (isUpdate)
+    {
+        cursor = "default";
+        isChange = "";
+    }
+    var api = (string)ViewBag.DocRetrievalUrl;
+
+
+    var accId = 0;
+    var accName = "";
+    if (Model.CustomerAccount != null)
+    {
+        accId = Model.CustomerAccount.Id;
+        accName = Model.CustomerAccount.Name;
+    }
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+    var goBackPage = (string)ViewBag.GoBackPage;
+    var imgAcceptedFile = (string)ViewBag.ImageAcceptedExtensions;
+
+    var isWorkGroupMem = ViewBag.IsWorkGroupMem;
+    var hasBusinessUserRole = ViewBag.HasBusinessUserRole;
+    var hasCreditNoteProcess = ViewBag.hasCreditNoteProcess;
+    var apiKey = ConfigManager.GoogleMapApiKey;
+}
+<style>
+    #all_community-list_filter, .dataTables_filter {
+        display: none;
+    }
+</style>
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail" style="background: rgb(245, 245, 245); min-height: 641px;">
+
+
+    <input type="hidden" id="map-key" value="@apiKey" />
+    <input type="hidden" id="update-right" value="@isUpdate.ToString()" />
+    <input type="hidden" id="contact-domain-id" value="@(Model.ContactGroup?.Domain?.Id ?? 0)" />
+
+    <!-- Main content -->
+    <section class="content">
+
+        <br /><br />
+
+        <div class="mod_title">
+            <h5>Trader Contacts</h5>
+            <h4>Contact details</h4>
+        </div>
+        @if (!string.IsNullOrEmpty(goBackPage) && goBackPage == "BusinessProfile")
+        {
+            <a href="/Commerce/BusinessProfileTrading?tab=general-contacts" class="btn btn-primary"><i class="fa fa-angle-left"></i> &nbsp; Contacts</a>
+        }
+        else
+        {
+            <a href="/Trader/AppTrader" onclick="setTabTrader('contacts')" class="btn btn-primary"><i class="fa fa-angle-left"></i> &nbsp; Contacts</a>
+        }
+        <br /><br />
+
+        <div class="row">
+
+            <div class="col-xs-12 col-sm-4 col-lg-3">
+
+
+                <div class="flex-grid-fluid qbicles-dash-grid">
+                    <article class="col userprof">
+                        @if (Model.ContactGroup != null)
+                        {
+                            <span class="last-updated">@Model.ContactGroup.Name</span>
+                        }
+                        else
+                        {
+                            <span class="last-updated"></span>
+                        }
+                        <a href="/Qbicles/Dashboard">
+                            <div class="avatar" style="background-image: url('@(api+Model.AvatarUri)&size=T');">&nbsp;</div>
+                            <h1 style="margin-bottom: 5px; color: #333;">@Model.Name</h1>
+                        </a>
+
+
+                        <div class="well custom" style="margin: 15px 0 30px 0;">
+                            <div class="row">
+                                <div class="col-xs-12">
+                                    <label>Cash balance</label><br />
+                                    <h1 style="margin: 0; padding: 0;">@balanceContact.ToCurrencySymbol(currencySettings)</h1>
+                                </div>
+                            </div>
+                            <br />
+                            <div class="row">
+                                <div class="col-xs-12">
+                                    <label>Purchase invoice balance</label><br />
+                                    <h1 style="margin: 0; padding: 0;">@purchaseInvBalance.ToCurrencySymbol(currencySettings)</h1>
+                                </div>
+                            </div>
+                            <br />
+                            <div class="row">
+                                <div class="col-xs-12">
+                                    <label>Sale invoice balance</label><br />
+                                    <h1 style="margin: 0; padding: 0;">@saleInvBalance.ToCurrencySymbol(currencySettings)</h1>
+                                </div>
+                            </div>
+
+                            @if (Model.Status == TraderContactStatusEnum.ContactApproved && (isWorkGroupMem || hasBusinessUserRole))
+                            {
+                                <div class="btn-group options" style="width: 100%; margin: 30px 0 0 0">
+                                    <button class="btn btn-success community-button dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                        <i class="fa fa-plus"></i>
+                                        &nbsp; Create a new
+                                    </button>
+                                    <ul class="dropdown-menu" style="min-width: 100%; top: 47px;">
+                                        <li>
+                                            <a href="#" data-toggle="modal" onclick="getNewAllocation()" data-target="#create-contact-allocation">Allocation</a>
+                                            @if ((isWorkGroupMem && hasCreditNoteProcess) || hasBusinessUserRole)
+                                            {
+                                                <a href="#" data-toggle="modal" onclick="LoadFormAddCreditDebit(0,'@TraderReferenceType.CreditNote.ToString()')" data-target="#create-contact-credit">Credit note</a>
+                                                <a href="#" data-toggle="modal" onclick="LoadFormAddCreditDebit(0,'@TraderReferenceType.DebitNote.ToString()')" data-target="#create-contact-credit">Debit note</a>
+                                            }
+                                        </li>
+                                    </ul>
+                                </div>
+                            }
+                        </div>
+
+
+                        <ul class="contact-details text-left">
+                            <li>
+                                <label><i class="fa fa-id-card"></i> &nbsp; Contact reference</label>
+                                @if (Model.ContactRef != null)
+                                {
+                                    <p>@Model.ContactRef.Reference</p>
+                                }
+                            </li>
+                            <li>
+                                <label><i class="fa fa-envelope"></i> &nbsp; Email</label>
+                                <p><a href="mailto:@Model.Email">@Model.Email</a></p>
+                            </li>
+                            <li>
+                                <label><i class="fa fa-phone"></i> &nbsp; Tel</label>
+                                <p><a href="tel:@Model.PhoneNumber">@Model.PhoneNumber</a></p>
+                            </li>
+                            <li>
+                                <label><i class="fa fa-map-marker"></i> &nbsp; Address</label>
+                                <p>
+                                    @{
+                                        var addressShow = Model.Address?.ToAddress();
+
+                                        <span id="add-line2">@addressShow</span>
+                                    }
+                                </p>
+                            </li>
+
+                        </ul>
+                    </article>
+
+                </div>
+
+            </div>
+
+
+
+            <div class="col-xs-12 col-sm-8 col-lg-9">
+
+                <div class="row">
+                    <div class="col-xs-12">
+                        <ul class="app_subnav">
+                            <li class="active"><a href="#invoices" data-toggle="tab">Invoices</a></li>
+                            <li><a href="#bills" data-toggle="tab">Bills</a>
+                            <li><a href="#payments" data-toggle="tab">Payments</a></li>
+                            <li><a href="#allocations" data-toggle="tab">Allocations</a></li>
+                            <li><a href="#creditnotes" data-toggle="tab">Credit notes</a></li>
+                            <li><a href="#debitnotes" data-toggle="tab">Debit notes</a></li>
+                            <li><a href="#manage" data-toggle="tab">Manage Info</a></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <br />
+
+
+                <div class="activity-overview plain">
+                    <div class="tab-content">
+
+                        <!-- Invoices -->
+                        <div class="tab-pane fade in active" id="invoices">
+                            <div class="well custom" style="padding-bottom: 5px;">
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="search_dt">Search for something</label>
+                                            <input type="text" id="search_invoice" class="form-control" placeholder="Search for something">
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-6">
+                                        <label>Table options</label>
+                                        <br />
+                                        <div class="btn-group options">
+                                            <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                                <i class="fa fa-sliders"></i> &nbsp; Manage display
+                                            </button>
+                                            <ul class="dropdown-menu primary manage-columns manage-columns-invoice">
+                                                <li><label><input type="checkbox" data-column="1" checked> Date</label></li>
+                                                <li><label><input type="checkbox" data-column="2" checked> Amount</label></li>
+                                                <li><label><input type="checkbox" data-column="3" checked> Status</label></li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="visible-xs" style="width: 100%; height: 15px;">&nbsp;</div>
+
+                            </div>
+
+                            <br /><br />
+
+
+
+                            <table class="datatable table-hover table-striped" width="100%" cellspacing="0" id="invoice-list">
+                                <thead>
+                                    <tr>
+                                        <th data-priority="1">#</th>
+                                        <th data-priority="1">Date</th>
+                                        <th data-priority="2">Amount <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                        <th data-priority="1">Status</th>
+                                        <th data-priority="1" class="nosort">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                        <!-- END Invoices -->
+                        <!-- Bills -->
+                        <div class="tab-pane fade" id="bills">
+                            <div class="well custom" style="padding-bottom: 5px;">
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="search_dt">Search Bills</label>
+                                            <input type="text" name="search_bills" id="search_bill" class="form-control" placeholder="Search for something">
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-6">
+                                        <label>Table options</label>
+                                        <br />
+                                        <div class="btn-group options">
+                                            <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                                <i class="fa fa-sliders"></i> &nbsp; Manage display
+                                            </button>
+                                            <ul class="dropdown-menu primary manage-columns manage-columns-bill">
+                                                <li><label><input type="checkbox" data-column="1" checked> Date</label></li>
+                                                <li><label><input type="checkbox" data-column="2" checked> Amount</label></li>
+                                                <li><label><input type="checkbox" data-column="3" checked> Status</label></li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="visible-xs" style="width: 100%; height: 15px;">&nbsp;</div>
+
+                            </div>
+
+                            <br /><br />
+
+
+
+                            <table class="datatable table-hover table-striped" width="100%" cellspacing="0" id="bill-list">
+                                <thead>
+                                    <tr>
+                                        <th data-priority="1">#</th>
+                                        <th data-priority="1">Date</th>
+                                        <th data-priority="2">Amount <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                        <th data-priority="1">Status</th>
+                                        <th data-priority="1" class="nosort">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                        <!-- END Bills -->
+                        <!-- Payments -->
+                        <div class="tab-pane fade" id="payments">
+                            <div class="well custom" style="padding-bottom: 5px;">
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="search_dt">Search for something</label>
+                                            <input type="text" id="search_payment" class="form-control" placeholder="Search for something">
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-6">
+                                        <label>Table options</label>
+                                        <br />
+                                        <div class="btn-group options">
+                                            <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                                <i class="fa fa-sliders"></i> &nbsp; Manage display
+                                            </button>
+                                            <ul class="dropdown-menu primary manage-columns manage-columns-payment">
+                                                <li><label><input type="checkbox" data-column="1" checked> Date</label></li>
+                                                <li><label><input type="checkbox" data-column="2" checked> Type</label></li>
+                                                <li><label><input type="checkbox" data-column="3" checked> Amount</label></li>
+                                                <li><label><input type="checkbox" data-column="4" checked> Status</label></li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="visible-xs" style="width: 100%; height: 15px;">&nbsp;</div>
+                            </div>
+
+                            <br /><br />
+
+
+
+                            <table class="datatable table-hover table-striped" width="100%" cellspacing="0" id="payment-list">
+                                <thead>
+                                    <tr>
+                                        <th data-priority="1">#</th>
+                                        <th data-priority="1">Date</th>
+                                        <th data-priority="2">Type</th>
+                                        <th data-priority="1">Amount <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                        <th data-priority="1">Status</th>
+                                        <th data-priority="1" class="nosort">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                        <!-- END Payments -->
+                        <!-- Allocations -->
+                        <div class="tab-pane fade" id="allocations">
+                            <div class="well custom" style="padding-bottom: 5px;">
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="search_dt">Search Allocations</label>
+                                            <input type="text" name="search_dt" id="search_dt_table_allocation" class="form-control" placeholder="Search for something">
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-6">
+                                        <label>Table options</label>
+                                        <br />
+                                        <div class="btn-group options">
+                                            <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                                <i class="fa fa-sliders"></i> &nbsp; Manage display
+                                            </button>
+                                            <ul class="dropdown-menu primary manage-columns manage-columns-allocation">
+                                                <li><label><input type="checkbox" data-column="1" checked> Date</label></li>
+                                                <li><label><input type="checkbox" data-column="2" checked> Invoice ref</label></li>
+                                                <li><label><input type="checkbox" data-column="3" checked> Value</label></li>
+                                                <li><label><input type="checkbox" data-column="4" checked> Notes</label></li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="visible-xs" style="width: 100%; height: 15px;">&nbsp;</div>
+
+                            </div>
+
+                            <br />
+                            <br />
+                            <table class="datatable table-hover table-striped" width="100%" cellspacing="0" id="table_allocation">
+                                <thead>
+                                    <tr>
+                                        <th data-priority="1">#</th>
+                                        <th data-priority="1">Date</th>
+                                        <th data-priority="1">Invoice ref</th>
+                                        <th data-priority="1">Value <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                        <th data-priority="2">Notes</th>
+                                        <th data-priority="1" class="nosort">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                        <!-- END Allocations -->
+                        <!-- Credit Notes -->
+                        <div class="tab-pane fade" id="creditnotes">
+
+                            <div class="well custom" style="padding-bottom: 5px;">
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="search_dt">Search Credit Notes</label>
+                                            <input type="text" name="search_dt" id="search_dt_creditnote" class="form-control" placeholder="Search for something">
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-6">
+                                        <label>Table options</label>
+                                        <br />
+                                        <div class="btn-group options">
+                                            <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                                <i class="fa fa-sliders"></i> &nbsp; Manage display
+                                            </button>
+                                            <ul class="dropdown-menu primary manage-columns manage-columns-credit">
+                                                <li><label><input type="checkbox" data-column="1" checked> Reason</label></li>
+                                                <li><label><input type="checkbox" data-column="2" checked> Invoice reference</label></li>
+                                                <li><label><input type="checkbox" data-column="3" checked> Sale reference</label></li>
+                                                <li><label><input type="checkbox" data-column="4" checked> Value</label></li>
+                                                <li><label><input type="checkbox" data-column="5" checked> Finalised</label></li>
+                                                <li><label><input type="checkbox" data-column="6" checked> Notes</label></li>
+                                                <li><label><input type="checkbox" data-column="7" checked> Status</label></li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="visible-xs" style="width: 100%; height: 15px;">&nbsp;</div>
+                            </div>
+                            <br />
+                            <br />
+                            <table class="datatable table-hover table-striped" width="100%" cellspacing="0" id="credit-list">
+                                <thead>
+                                    <tr>
+                                        <th data-priority="1">#</th>
+                                        <th data-priority="1">Reason</th>
+                                        <th data-priority="1">Date</th>
+                                        <th data-priority="1">Invoice reference</th>
+                                        <th data-priority="1">Sale reference</th>
+                                        <th data-priority="1">Value <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                        <th data-priority="1">Finalised</th>
+                                        <th data-priority="2">Notes</th>
+                                        <th data-priority="1">Status</th>
+                                        <th data-priority="1" class="nosort">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                        <!-- END Credit Notes -->
+                        <!-- Debit Notes -->
+                        <div class="tab-pane fade" id="debitnotes">
+
+                            <div class="well custom" style="padding-bottom: 5px;">
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="search_dt">Search Debit Notes</label>
+                                            <input type="text" name="search_dt" id="search_dt_debitnote" class="form-control" placeholder="Search for something">
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-6">
+                                        <label>Table options</label>
+                                        <br />
+                                        <div class="btn-group options">
+                                            <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                                <i class="fa fa-sliders"></i> &nbsp; Manage display
+                                            </button>
+                                            <ul class="dropdown-menu primary manage-columns manage-columns-debit">
+                                                <li><label><input type="checkbox" data-column="1" checked> Reason</label></li>
+                                                <li><label><input type="checkbox" data-column="2" checked> Invoice reference</label></li>
+                                                <li><label><input type="checkbox" data-column="3" checked> Sale reference</label></li>
+                                                <li><label><input type="checkbox" data-column="4" checked> Value</label></li>
+                                                <li><label><input type="checkbox" data-column="5" checked> Finalised</label></li>
+                                                <li><label><input type="checkbox" data-column="6" checked> Notes</label></li>
+                                                <li><label><input type="checkbox" data-column="7" checked> Status</label></li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="visible-xs" style="width: 100%; height: 15px;">&nbsp;</div>
+
+                            </div>
+
+                            <br />
+                            <br />
+
+                            <table class="datatable table-hover table-striped" width="100%" cellspacing="0" id="debit-list">
+                                <thead>
+                                    <tr>
+                                        <th data-priority="1">#</th>
+                                        <th data-priority="1">Reason</th>
+                                        <th data-priority="1">Date</th>
+                                        <th data-priority="1">Invoice reference</th>
+                                        <th data-priority="1">Sale reference</th>
+                                        <th data-priority="1">Value <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                        <th data-priority="1">Finalised</th>
+                                        <th data-priority="2">Notes</th>
+                                        <th data-priority="1">Status</th>
+                                        <th data-priority="1" class="nosort">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                        <!-- END Debit Notes -->
+                        <!-- Manage -->
+                        <div class="tab-pane fade" id="manage" style="cursor: @cursor">
+
+                            <div class="flex-avatar">
+                                <div class="col-thumb" style="flex: 0 0 80px;">
+                                    <img src="@(api+Model.AvatarUri)&size=T" class="img-circle img-responsive contact-avatar">
+                                </div>
+                                <div class="col">
+                                    <div class="form-group" style="margin: 0; padding-top: 4px;">
+                                        <label for="avatar">Change avatar</label>
+                                        <input type="file" id="trader-contact-avatar-upload" accept="@imgAcceptedFile" onchange="changeContactManageImageLogo(this)" class="form-control" name="contactAvatar">
+                                    </div>
+                                </div>
+                            </div>
+                            <br />
+                            <form method="POST" id="form_contact_add" action="/TraderContact/SaveTraderContact" enctype="multipart/form-data" novalidate="novalidate" class="activity-overview task  @isChange" style="padding: 20px;">
+                                <input id="contact-id" name="Id" value="@Model.Id" hidden="" />
+                                <input id="contact-status" name="contactStatus" value="@Model.Status" hidden="" />
+                                <input type="hidden" id="trader-contact-object-key" name="mediaObjectKey" />
+                                <input type="hidden" id="trader-contact-object-name" name="mediaObjectName" />
+                                <input type="hidden" id="trader-contact-object-size" name="mediaObjectSize" />
+
+                                <div class="row">
+                                    <div class="col-xs-12">
+                                        <div class="form-group">
+                                            <label for="reference">Contact reference</label>
+                                            <div class="show-ref">
+                                                <p>
+                                                    @if (Model.ContactRef != null)
+                                                    {
+                                                        <input type="hidden" name="ContactReferenceId" id="contactReferenceId" value="@Model.ContactRef.Id" />
+                                                        <span id="numberRef">@Model.ContactRef.Reference</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <input type="hidden" name="ContactReferenceId" id="contactReferenceId" value="0" />
+                                                        <span id="numberRef"></span>
+                                                    }
+
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label id="contact-workgroup-label" for="workgroup">Assign to a Workgroup <span>*</span> </label>
+                                            <select id="group-workgroup-id" onchange="selectWorkGroupContact()" name="workgroupId" class="form-control select2" style="width: 100%;">
+                                                <option value="-1">Not Assigned</option>
+                                                @foreach (var group in workGroups)
+                                                {
+                                                    if (group.Id == Model.Workgroup?.Id)
+                                                    {
+                                                        <option selected="" value="@group.Id" domain="@group.Domain.Name.Replace(" ", "").Substring(0, 3).ToUpper()">@group.Name</option>
+                                                    }
+                                                    else
+                                                    {
+                                                        <option value="@group.Id" domain="@group.Domain.Name.Replace(" ", "").Substring(0, 3).ToUpper()">@group.Name</option>
+                                                    }
+                                                }
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label id="contact-group-label" for="group">Assign to a Contact group <span>*</span> </label>
+                                            <select id="group-contact-id" name="groupId" class="form-control select2" style="width: 100%;">
+                                                @foreach (var group in contactGroups)
+                                                {
+                                                    if (group.Id == Model.ContactGroup.Id)
+                                                    {
+                                                        <option selected value="@group.Id">@group.Name</option>
+                                                    }
+                                                    else
+                                                    {
+                                                        <option value="@group.Id">@group.Name</option>
+                                                    }
+                                                }
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="name">Name <span>*</span></label>
+                                            <input onfocusout="OnFocusOutControl(this.value)" onfocus="OnFocusControl(this.value)" id="contact-name" type="text" name="Name" required="" value="@Model.Name" class="form-control">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="company">Company</label>
+                                            <input onfocusout="OnFocusOutControl(this.value)" onfocus="OnFocusControl(this.value)" id="contact-company" type="text" name="CompanyName" value="@Model.CompanyName" class="form-control">
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="job">Job title </label>
+                                            <input onfocusout="OnFocusOutControl(this.value)" onfocus="OnFocusControl(this.value)" id="contact-job" type="text" name="JobTitle" value="@Model.JobTitle" class="form-control">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="phone">Phone</label>
+                                            <input onfocusout="OnFocusOutControl(this.value)" onfocus="OnFocusControl(this.value)" id="contact-phone" type="text" name="PhoneNumber" value="@Model.PhoneNumber" class="form-control">
+                                        </div>
+                                        <input id="contact-address-id" name="addressId" hidden="" value="@(Model.Address?.Id ?? 0)" />
+                                    </div>
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="email">Email <span>*</span></label>
+                                            <input onfocusout="OnFocusOutControl(this.value)" onfocus="OnFocusControl(this.value)" id="contact-email" type="email" name="Email" required="" value="@Model.Email" class="form-control">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="address1">Address line 1<span>*</span></label>
+                                            <input onfocusout="OnFocusOutControl(this.value)" onfocus="OnFocusControl(this.value)" type="text" id="AddressLine1" name="AddressLine1" value="@(Model.Address?.AddressLine1 ?? "")" class="form-control">
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="address2">Address line 2</label>
+                                            <input onfocusout="OnFocusOutControl(this.value)" onfocus="OnFocusControl(this.value)" type="text" id="AddressLine2" name="AddressLine2" value="@(Model.Address?.AddressLine2 ?? "")" class="form-control">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="city">City</label>
+                                            <input onfocusout="OnFocusOutControl(this.value)" onfocus="OnFocusControl(this.value)" type="text" id="City" name="City" value="@(Model.Address?.City ?? "")" class="form-control">
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="state">State</label>
+                                            <input onfocusout="OnFocusOutControl(this.value)" onfocus="OnFocusControl(this.value)" type="text" id="State" name="State" value="@(Model.Address?.State ?? "")" class="form-control">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="country">Country</label>
+                                            <select id="CountryName" name="CountryName" class="form-control select2" style="width: 100%;">
+                                                @foreach (var c in countries)
+                                                {
+                                                    if (c.CommonName == (Model.Address?.Country?.CommonName ?? ""))
+                                                    {
+                                                        <option value="@c.CommonName" selected="">@c.CommonName</option>
+                                                    }
+                                                    else if (c.CommonName == "Nigeria")
+                                                    {
+                                                        <option value="@c.CommonName" selected>@c.CommonName</option>
+                                                    }
+                                                    else
+                                                    {
+                                                        <option value="@c.CommonName">@c.CommonName</option>
+                                                    }
+                                                }
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="postcode">Postcode</label>
+                                            <input onfocusout="OnFocusOutControl(this.value)" onfocus="OnFocusControl(this.value)" type="text" id="PostCode" name="PostCode" value="@(Model.Address?.PostCode ?? "")" class="form-control">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="Longitude">Longitude</label>
+                                            <input id="contact-longitude" onfocusout="OnFocusOutControl(this.value)" onfocus="OnFocusControl(this.value)" type="number" value="@(Model.Address?.Longitude ?? 0)" name="Longitude" class="form-control">
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="Latitude">Latitude</label>
+                                            <input id="contact-Latitude" onfocusout="OnFocusOutControl(this.value)" onfocus="OnFocusControl(this.value)" type="number" name="Latitude" value="@(Model.Address?.Latitude ?? 0)" class="form-control">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-xs-12">
+                                        <div class="form-group" style="margin: 0;">
+                                            <label for="customer-account">Select customer account</label><br />
+                                            <br />
+
+                                            <input id="accountId" name="accountId" hidden="" value="@accId" />
+                                            <button class="btn btn-info addbtnaccount" onclick="javascript: LoadAccountTree(@accId);" data-toggle="modal" data-target="#app-bookkeeping-treeview"><i class="fa fa-plus"></i> &nbsp; Choose account</button>
+                                            <p class="accountInfo" style="display: inline-block; font-family: 'Roboto', Arial, sans-serif; font-size: 12px; padding: 0 10px 0 0;">@accName</p>
+                                            <button class="btn btn-small btn-warning editbtnaccount" style="display: none;" data-toggle="modal" onclick="javascript: LoadAccountTree(@accId);" data-target="#app-bookkeeping-treeview">
+                                                <i class="fa fa-pencil"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </form>
+                        </div>
+
+
+                    </div> <!-- ./tab-content -->
+                </div>
+
+            </div>
+        </div>
+
+
+
+    </section>
+    <!-- ./content -->
+
+</div>
+<!-- /.content-wrapper -->
+<div class="modal fade left" id="app-bookkeeping-treeview" role="dialog" aria-labelledby="app-bookkeeping-treeview">
+
+</div>
+<!-- Allocation modal-->
+<div class="modal fade left" id="create-contact-allocation" role="dialog" aria-labelledby="create-contact-allocation">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Create an Allocation</h5>
+                <input type="hidden" id="allocation_id" value="0" />
+            </div>
+            <div class="modal-body">
+
+
+                <div class="activity-overview generic" style="padding: 20px;">
+                    <label>Available balance</label>
+                    <p style="font-size: 28px; font-family: 'Lato', sans-serif; font-weight: 400; color: #333; margin: 0; padding: 0;">@(currencySettings.SymbolDisplay == CurrencySetting.SymbolDisplayEnum.Prefixed ? currencySettings.CurrencySymbol : "")<span id="modal_balance"></span>@(currencySettings.SymbolDisplay == CurrencySetting.SymbolDisplayEnum.Suffixed ? currencySettings.CurrencySymbol : "")</p>
+                </div>
+
+                <br />
+
+                <div class="well custom">
+
+                    <div class="form-group">
+                        <label for="reference">Reference</label>
+
+                        <div class="show-ref">
+                            <p>
+                                <span id="all_prefic">ALLOC</span>&nbsp;
+                                <span id="all_delimeter_first">-</span>&nbsp;
+                                <span id="all_numberic">1001</span>&nbsp;
+                                <span id="all_delimeter_last">-</span>&nbsp;
+                                <span id="all_suffic">0890</span>&nbsp; &nbsp;
+                            </p>
+                        </div>
+                        <input type="hidden" class="form-control" value="0" id="all_reference_id">
+                    </div>
+
+                    <label>Value</label><br />
+                    <div id="allocation-value" class="input-group" style="margin-bottom: 15px;">
+                        <span class="input-group-addon">@currencySettings.CurrencySymbol</span>
+                        <input type="number" class="form-control" id="all_value" name="allocationvaluename" value="0" min="0" maxlength="20" onchange="onchangeAllocationValue(this)" />
+                    </div>
+
+                    <label>Invoice &nbsp;<small style="display: none;color: red" id="balance-invoice-lable">Balance: <small id="balance-invoice-value"></small> </small></label><br>
+                    <div class="input-group" style="margin-bottom: 15px;">
+                        <input type="hidden" id="all_invoice_id" value="0" />
+                        <input type="hidden" id="all_invoicebalance" value="0" />
+                        <input type="text" name="name" id="all_find_invoice" class="form-control" value="" placeholder="Reference (if known)">
+                        <div class="input-group-btn"><button class="btn btn-info" data-toggle="modal" onclick="findInvoiceContact()" data-target="#contact-invoice-finder"><i class="fa fa-search"></i> &nbsp; Find</button></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="notes">Notes (optional)</label>
+                        <textarea name="notes" id="all_note" class="form-control" style="min-height: 80px;"></textarea>
+                    </div>
+
+                </div>
+
+                <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-success" onclick="saveAllocation()" id="all_confirmAdd" data-dismiss="modal">Confirm</button>
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+    <script>
+
+        function deduct(balance, deduction) {
+            var closing = balance - deduction;
+            closing = closing.toLocaleString();
+            $('#balance').html(closing);
+        }
+
+    </script>
+</div><!-- /.modal -->
+<!-- End Allocation modal-->
+<!-- Credit modal-->
+<div class="modal fade left" id="create-contact-credit" role="dialog" aria-labelledby="create-contact-credit">
+
+</div>
+<!-- /.modal Credit-->
+<!-- Find sale contact -->
+<div class="modal fade left" id="contact-sale-finder" role="dialog" aria-labelledby="contact-sale-finder">
+
+</div><!-- /.modal -->
+<!-- End find sale contact -->
+<!-- Find sale contact -->
+<div class="modal fade left" id="contact-purchase-finder" role="dialog" aria-labelledby="contact-purchase-finder">
+
+</div><!-- /.modal -->
+<!-- End find sale contact -->
+<!-- Find Invoice -->
+<div class="modal fade left" id="contact-invoice-finder" role="dialog" aria-labelledby="contact-invoice-finder">
+
+</div>
+<!-- /.modal -->
+<!-- End find invoices-->
+<!-- Workgroup preview -->
+<div class="modal fade left in" id="app-trader-workgroup-preview" role="dialog" aria-labelledby="app-trader-workgroup-preview">
+
+</div><!-- /.modal -->
+<!-- End Workgroup preview -->
+
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/trader.contact.manage.js"></script>
+        <script src="~/Scripts/dev/trader.domain.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/trader.contact.manage.js"></script>
+        <script src="~/Scripts/dev/trader.domain.min.js"></script>
+    }
+    <script>
+        $(document).ready(function () {
+            initContactMaster();
+        })
+    </script>
+
+}
+<style>
+    /* Chrome, Safari, Edge, Opera */
+    input::-webkit-outer-spin-button,
+    input::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+
+    /* Firefox */
+    input[type=number] {
+        -moz-appearance: textfield;
+    }
+</style>

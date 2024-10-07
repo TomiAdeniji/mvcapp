@@ -1,0 +1,170 @@
+﻿@using Qbicles.Models.Qbicles
+@using Qbicles.Models.Trader
+@using Qbicles.BusinessRules;
+@model Qbicles.Models.Trader.TraderPurchase
+
+@{
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var lstEnum = (List<string>)ViewBag.LstEnum ?? new List<string>();
+    var traderContacts = (List<TraderContact>)ViewBag.Contacts;
+    var countries = (List<Country>)ViewBag.Contries;
+    if (Model.Vendor.Address == null)
+    {
+        Model.Vendor.Address = new TraderAddress();
+    }
+    var hidden = "display: none;";
+    if (Model.DeliveryMethod.ToString() == "Delivery")
+    {
+        hidden = "display: block;";
+    }
+}
+<input type="hidden" value="@Model.Id" id="change_contact_purchase" />
+<div class="activity-overview task" style="padding: 20px 20px 5px 20px;">
+    <div class="row">
+        <div class="col-xs-12 col-sm-6">
+            <div class="form-group">
+                <label for="form_purchase_contact">Contact</label>
+                <select id="form_purchase_contact" name="contact" onchange="SelectContactChange(this)" class="form-control select2" style="width: 100%;">
+                    @if (Model.Vendor != null)
+                    {
+                        <option value="@Model.Vendor.Id" selected>@Model.Vendor.Name</option>
+                    }
+                    else
+                    {
+                        <option value=""></option>
+                    }
+                </select>
+            </div>
+        </div>
+        <div class="col-xs-12 col-sm-6">
+            <div class="form-group" style="margin: 0;">
+                <label for="purchases_delivery">Delivery method</label><br />
+                <select name="method" id="purchases_delivery" onchange="OnChangeDelivery()" class="form-control select2" style="width: 100%;">
+                    @foreach (var item in lstEnum)
+                    {
+                        if (item == "CustomerPickup")
+                        {
+                            if (Model.DeliveryMethod.ToString() == item)
+                            {
+                                <option value="@item" selected>Customer pickup</option>
+                            }
+                            else
+                            {
+                                <option value="@item">Customer pickup</option>
+                            }
+                        }
+                        else
+                        {
+                            if (Model.DeliveryMethod.ToString() == item)
+                            {
+                                <option value="@item" selected>@item</option>
+                            }
+                            else
+                            {
+                                <option value="@item">@item</option>
+                            }
+                        }
+
+                    }
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <div class="delivery-stored" style="padding: 20px 0; @hidden">
+        <div class="row">
+            <div class="col-xs-12 col-sm-12">
+                <label>Saved delivery address</label>
+                @if (Model.Vendor != null)
+                {
+                    <input type="hidden" value="@Model.Vendor.Id" id="contact_address_id" />
+                }
+                else
+                {
+                    <input type="hidden" value="0" id="contact_address_id" />
+                }
+
+                <p id="address_info">
+                    @Html.Raw(Model.Vendor?.Address?.ToAddress().Replace(",", "<br />"))
+                </p>
+
+                <br />
+                <button class="btn btn-warning hidden" id="delivery-new" onclick="changeDelivery()"><i class="fa fa-pencil"></i> &nbsp; Change delivery address</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="delivery-details" style="padding: 20px 0 0 0; display: none;">
+        <form id="form_purchase_contact_custom">
+            <div class="row">
+                <div class="col-xs-12 col-sm-6">
+                    <div class="form-group">
+                        <label for="form_contact_address_1">Address line 1</label>
+                        <input type="text" id="form_contact_address_1" name="address1" class="form-control">
+                    </div>
+                </div>
+                <div class="col-xs-12 col-sm-6">
+                    <div class="form-group">
+                        <label for="form_contact_address_2">Address line 2</label>
+                        <input type="text" id="form_contact_address_2" name="contact" class="form-control">
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-xs-12 col-sm-6">
+                    <div class="form-group">
+                        <label for="form_contact_address_city">City</label>
+                        <input type="text" id="form_contact_address_city" name="city" class="form-control">
+                    </div>
+                </div>
+                <div class="col-xs-12 col-sm-6">
+                    <div class="form-group">
+                        <label for="form_contact_address_state">State</label>
+                        <input type="text" id="form_contact_address_state" name="state" class="form-control">
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-xs-12 col-sm-6">
+                    <div class="form-group">
+                        <label for="form_contact_address_country">Country</label>
+                        <select name="country" id="form_contact_address_country" class="form-control select2" style="width: 100%;">
+                            @foreach (var item in countries)
+                            {
+                                if (Model.Vendor != null
+                                    && Model.Vendor.Address.Country != null
+                                    && Model.Vendor.Address.Country.CommonName == item.CommonName)
+                                {
+                                    <option value="@item.CommonName" selected>@item.CommonName</option>
+                                }
+                                else
+                                {
+                                    <option value="@item.CommonName">@item.CommonName</option>
+                                }
+                            }
+                        </select>
+                    </div>
+                </div>
+                <div class="col-xs-12 col-sm-6">
+                    <div class="form-group" style="margin: 0;">
+                        <label for="form_contact_address_postcode">Postcode</label>
+                        <input type="text" id="form_contact_address_postcode" name="postcode" class="form-control">
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+
+</div>
+
+<br />
+<a href="#" class="btn btn-success" onclick="UpdateContact()">Update &nbsp; <i class="fa fa-save"></i></a>
+
+<script>
+    $(document).ready(function () {
+        setTimeout(function () {
+            $('#purchases_delivery').select2();
+            initSelect2MethodAJAX('form_purchase_contact', '/Select2Data/GetTraderContact', {}, false);
+        }, 200);
+    })
+</script>

@@ -1,0 +1,28 @@
+﻿@using Qbicles.Models;
+@using Qbicles.BusinessRules;
+@model List<QbicleMedia>
+@{ 
+    var dateFormat = (string)ViewBag.CurrentDateFormat;
+}
+@foreach (var item in Model)
+{
+    <div class="col">
+        <div class="media-folder-item activity-overview task">
+            @{
+                var vs = item.VersionedFiles != null ? item.VersionedFiles.Where(e => !e.IsDeleted)
+                    .OrderByDescending(f => f.UploadedDate).FirstOrDefault() : null;
+                var isVideo = vs != null && vs.FileType.Type == "Video File" ? true : false;
+                var api = (string)ViewBag.DocRetrievalUrl;
+            }
+           @* <a href="javascript:ShowMediaPage('@item.Id',false);" title="@item.Name">*@
+            <a class="image-pop" data-fancybox="@(isVideo?"":"gallery")" data-type="@(isVideo?"video":"image")" href="@(api+(vs!=null?(vs.Uri):""))"  title="@item.Name">
+                <div class="preview" style="background-image: url('@(isVideo? "/Content/DesignStyle/img/media-item-video.jpg": Utility.CheckImgPath(item.FileType,vs, "M"))');">
+                </div>
+            </a>
+            <div class="meta_desc">
+                <h5>@item.Name</h5>
+                <small>@Utility.GetFileTypeDescription(item.FileType.Extension) &nbsp; | &nbsp; Updated @item.TimeLineDate.ToString(dateFormat.Replace("/",".")+" hh:mmtt").ToLower()</small>
+            </div>
+        </div>
+    </div>
+}

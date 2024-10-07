@@ -1,0 +1,415 @@
+﻿@using Qbicles.Models.Trader
+@using Qbicles.BusinessRules
+@model Invoice
+@{
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var workGroupTransfer = (List<WorkGroup>)ViewBag.WorkgroupTransfer ?? (new List<WorkGroup>());
+    if (Model.DueDate == null || Model.DueDate == DateTime.MinValue)
+    {
+        Model.DueDate = DateTime.UtcNow;
+    }
+    if (Model.AssociatedFiles == null)
+    {
+        Model.AssociatedFiles = new List<Qbicles.Models.QbicleMedia>();
+    }
+    var reffull = "";
+    if (Model.Purchase != null && Model.Purchase.Reference != null)
+    {
+        reffull = Model.Purchase.Reference.FullRef;
+    }
+    var dateFormat = (string)ViewBag.CurrentDateFormat;
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+}
+
+<div class="modal-dialog modal-xl" role="document">
+    <div class="modal-content">
+        <div class="modal-header">
+            <input id="bill_id" value="@Model.Id" type="hidden" />
+            <input id="bill_purchase" value="@Model.Purchase.Id" type="hidden" />
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            @if (Model.Id > 0)
+            {
+                <h5 class="modal-title">Edit bill to Purchase #@reffull</h5>
+            }
+            else
+            {
+                <h5 class="modal-title">Add a bill to Purchase #@reffull</h5>
+            }
+
+        </div>
+        <div class="modal-body">
+
+            <div class="row">
+                <div class="col-xs-12">
+                    <ul class="app_subnav" style="margin-top: -15px;">
+                        <li class="active"><a href="#setup" data-toggle="tab">Setup</a></li>
+                        <li><a href="#invitems" data-toggle="tab">Items &amp; Products</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <br /><br />
+
+            <div class="tab-content">
+
+                <!-- Overview -->
+                <div class="tab-pane fade in active" id="setup">
+
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-4">
+                            <form id="form_bill_addedit">
+                                <div class="activity-overview generic" style="padding: 20px; margin-bottom: 30px;">
+                                    <div class="form-group" style="margin: 0;">
+                                        <label for="workgroup">Assign a Workgroup to this Bill</label>
+                                        <select id="transfer-workgroup-select" name="workgroup" class="form-control select2" style="width: 100%;" onchange="WorkGroupSelectedChange()">
+                                            <option value=""></option>
+                                            @foreach (var wg in workGroupTransfer)
+                                            {
+                                                <option value="@wg.Id" @(Model != null && Model.Workgroup != null && Model.Workgroup.Id == wg.Id ? "selected" : "")>@wg.Name</option>
+                                            }
+                                        </select>
+                                    </div>
+
+                                    <div class="preview-workgroup" style="display: none;">
+                                        <br />
+                                        <table class="table app_specific" style="margin: 0;">
+                                            <tr>
+                                                <td><h5>Location</h5></td>
+                                                <td class="location_name">Location name</td>
+                                            </tr>
+                                            <tr>
+                                                <td><h5>Process</h5></td>
+                                                <td class="workgroup_process">Transfers</td>
+                                            </tr>
+                                            <tr>
+                                                <td><h5>Qbicle</h5></td>
+                                                <td class="workgroup_qbicle">Qblicle Name</td>
+                                            </tr>
+                                            <tr>
+                                                <td><h5>Members</h5></td>
+                                                <td class="workgroup_member"><button class="btn btn-info" onclick="ShowGroupMember()" data-toggle="modal" data-target="#app-trader-workgroup-preview"><i class="fa fa-user"></i> &nbsp; <span></span></button></td>
+                                            </tr>
+                                        </table>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="col-xs-12 col-sm-8">
+                            <div class="activity-overview task" style="padding: 20px;">
+                                <div class="row">
+                                    <div class="col-xs-12">
+
+                                        <div class="form-group">
+                                            <label for="reference">Reference</label>
+                                            <input type="hidden" value="@Model.Reference.Id" id="reference_id" />
+                                            <input type="hidden" value="@Model.Reference.Type.ToString()" id="reference_type" />
+                                            <input type="hidden" value="@Model.Reference.Prefix" id="reference_prefix" />
+                                            <input type="hidden" value="@Model.Reference.Suffix" id="reference_suffix" />
+                                            <input type="hidden" value="@Model.Reference.Delimeter" id="reference_delimeter" />
+                                            <input type="hidden" value="@Model.Reference.FullRef" id="reference_fullref" />
+                                            <div class="show-ref">
+                                                <p>
+                                                    @Model.Reference.Prefix@Model.Reference.Delimeter<span id="refedit">@Model.Reference.NumericPart</span>@Model.Reference.Delimeter@Model.Reference.Suffix &nbsp; &nbsp;
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="date">Due date</label>
+                                            <input type="text" id="bill_date" name="date" value="@Model.DueDate.ToString(dateFormat)" class="form-control singledate">
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="bill">Upload your bill</label>
+                                            <input type="file" id="bill_upload_file" value="" class="form-control" name="bill">
+                                            <input type="hidden" id="bill_invoicePDF" value="@Model.InvoicePDF" />
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="date">Notes</label>
+                                            <textarea name="notes" id="bill_notes" class="form-control" style="height: 100px;">@Model.PaymentDetails</textarea>
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="attachments">Supporting documents</label>
+                                            <br />
+                                            @{
+                                                var attachmentsCount = "";
+                                                var btnCss = "fa fa-plus";
+                                                if (Model.AssociatedFiles != null && Model.AssociatedFiles.Count > 0)
+                                                {
+                                                    attachmentsCount = $" Attachments {Model.AssociatedFiles?.Count.ToString()}";
+                                                    btnCss = "fa fa-paperclip";
+                                                }
+                                            }
+                                            <button class="btn btn-info" id="trader-bill-attachment-manage" data-toggle="modal" data-target="#attachments-view-bill">
+                                                <i id="trader-bill-attachment-icon" class="@btnCss"></i> @attachmentsCount
+                                            </button>
+
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+
+
+                    <br /><br />
+                    <a href="#invitems" data-toggle="tab" class="btn btn-success btnNext" aria-expanded="true">Next &nbsp; <i class="fa fa-angle-right"></i></a>
+
+                </div>
+                <!-- END Overview -->
+                <!-- Items & Products -->
+                <div class="tab-pane fade" id="invitems">
+
+                    <div class="activity-overview task" style="padding: 20px;">
+
+                        <table class="datatable table-hover purchase_item_table" style="width: 100%; background: #fff;" data-order='[[2, "asc"]]'>
+                            <thead>
+                                <tr>
+                                    <th data-orderable="false" style="width: 90px !important;">In this bill</th>
+                                    <th data-orderable="false" style="width: 90px !important;"></th>
+                                    <th>Name</th>
+                                    <th>Unit</th>
+                                    <th>Qty</th>
+                                    <th>Discount</th>
+                                    <th>Tax <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                    <th>Purchase value <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                    <th>Billed qty</th>
+                                    <th>Bill tax <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                    <th>Bill discount <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                    <th>Bill total <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @*Thomas: Update fix bug https://atomsinteractive.atlassian.net/browse/QBIC-3182*@
+                                @*@foreach (var item in Model.Purchase.PurchaseItems)
+                                {
+                                    var invoice = new InvoiceTransactionItems();
+                                    if (Model.InvoiceItems.Count > 0 && Model.InvoiceItems.Any(q => q.TransactionItem.Id == item.Id))
+                                    {
+                                        invoice = Model.InvoiceItems.FirstOrDefault(q => q.TransactionItem.Id == item.Id);
+                                        if (invoice.InvoiceTaxValue <= 0 && item.TraderItem.TaxRates != null)
+                                        {
+                                            invoice.InvoiceTaxValue = item.TraderItem.SumTaxRatesPercent(false);
+                                        }
+                                    }
+
+                                    string taxrateName = "(Tax free)";
+                                    decimal taxRate = 0;
+                                    decimal taxValue = 0;
+                                    if (item.Taxes != null)
+                                    {
+                                        taxRate = item.SumTaxRates();
+                                        taxrateName = item.StringTaxRates(currencySettings);
+
+
+                                        var priceIncludeTax = item.CostPerUnit * item.Quantity * (1 - (item.Discount / 100)) * (1 + taxRate);
+                                        var priceExcludeTax = priceIncludeTax / (1 + taxRate);
+                                        taxValue = priceIncludeTax - priceExcludeTax;
+                                    }
+
+                                    //Warning: if change index column will have an error in the SaveBill function
+                                    <tr class="invoice_tr_@item.Id">
+                                        <td>
+                                            <div class="checkbox toggle">
+                                                <label>
+                                                    <input class="rowmask invoice_checked" data-toggle="toggle" data-onstyle="success" data-on="True" data-off="False" type="checkbox" checked>
+                                                </label>
+                                            </div>
+                                        </td>
+                                        <td class="maskable">
+                                            <div class="table-avatar" style="background-image: url('@(api+item.TraderItem.ImageUri)&size=T');"></div>
+                                            <input type="hidden" value="@item.Id" class="transaction_id" />
+                                            <input type="hidden" value="@invoice.Id" class="invoiceitem_id" />
+                                        </td>
+                                        <td class="maskable">@item.TraderItem.Name</td>
+                                        <td>
+                                            @if (item.Unit != null)
+                                            {
+                                                <span>@item.Unit.Name</span>
+                                            }
+                                        </td>
+                                        <td class="maskable"><span class="quantity_value_@item.Id">@item.Quantity.ToDecimalPlace(currencySettings)</span></td>
+                                        <td class="maskable">
+                                            <span class="discount_value_@item.Id">@item.Discount.ToDecimalPlace(currencySettings)</span>%
+                                        </td>
+                                        <td class="maskable">
+                                            <span hidden="" class="taxrate_value_@item.Id">@taxRate</span>
+                                            @Html.Raw(taxrateName)
+                                        </td>
+                                        <td class="maskable">
+                                            <span class="sale_value_@item.Id">@item.Cost.ToDecimalPlace(currencySettings)</span>
+                                        </td>
+                                        <td class="maskable">
+                                            <input id="quantity-@item.Id" type="text" onkeypress="numberKeyPress(event)" onkeyup="ChangeBillValue(this,@item.Id,@item.CostPerUnit)" value="@invoice.InvoiceItemQuantity.ToDecimalPlace(currencySettings)" name="invqty" min="0" maxlength="15" class="form-control invoice_quantity isnumber" style="width: 110px;">
+                                        </td>
+                                        <td class="maskable">
+                                            <span style="display:@(Model.Id > 0?"none":"block")" class="invoice_taxvalue invoice_taxvalue_@item.Id">@(invoice.InvoiceTaxValue.HasValue ? invoice.InvoiceTaxValue.Value.ToDecimalPlace(currencySettings) : ((decimal)0).ToDecimalPlace(currencySettings))</span>
+                                            <div id="taxBill_@item.Id" style="@(Model.Id>0?"":"display:none;")">
+                                                @Html.Raw(taxrateName)
+                                            </div>
+                                        </td>
+                                        <td class="maskable">
+                                            <span class="invoice_discountValue invoice_discountValue_@item.Id">@invoice.InvoiceDiscountValue.ToDecimalPlace(currencySettings)</span>
+                                        </td>
+                                        <td class="maskable invoice_td_value_@item.Id">
+                                            <span class="invoice_value">@invoice.InvoiceValue.ToDecimalPlace(currencySettings)</span>
+                                        </td>
+                                    </tr>
+                                }*@
+                            </tbody>
+                        </table>
+
+                    </div>
+
+
+                    <br /><br />
+                    <a href="#setup" data-toggle="tab" class="btn btn-warning btnPrevious" aria-expanded="true"><i class="fa fa-angle-left"></i> &nbsp; Previous</a>
+                    <button class="btn btn-primary" onclick="SaveBill('Draft')">Save draft</button>
+                    <button class="btn btn-success" onclick="SaveBill('PendingReview')">Send to review</button>
+
+                </div>
+
+            </div> <!-- /.tab-content -->
+
+        </div>
+    </div><!-- /.modal-content -->
+</div><!-- /.modal-dialog -->
+
+
+
+<div class="modal fade" id="attachments-view-bill" role="dialog" aria-labelledby="attachments-view-bill">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" onclick="$('#attachments-view-bill').modal('hide')" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Manage Attachments</h5>
+            </div>
+            <div class="modal-body">
+
+                <div id="transaction-attachments" class="row">
+                    <div class="col-xs-12 col-md-6">
+
+                        <div class="activity-overview task" style="margin-bottom: 40px;">
+
+                            <div name="add_attachment" class="attachments_@Model.Id">
+
+                                <div class="repeater_wrap">
+                                    @{
+                                        var index = 0;
+                                        foreach (var item in Model.AssociatedFiles)
+                                        {
+                                            index++;
+                                            <div class="row attachment_row att-id-@item.Id">
+                                                <div class="col-xs-12">
+                                                    <div class="form-group">
+                                                        <label for="name">Name</label>
+                                                        <input id="file_id_@(index)" type="hidden" value="@item.Id" />
+                                                        <input id="inputiconpath_edit@(index)" type="hidden" value="@item.FileType.IconPath" />
+                                                        <input type="text" name="name" value="@Path.GetFileNameWithoutExtension(item.Name)" class="form-control inputfilename@(index)" />
+                                                    </div>
+                                                </div>
+                                                <div class="col-xs-12">
+                                                    <div class="form-group">
+                                                        <label for="file">File</label>
+                                                        <input type="file" disabled name="file" value="@item.MediaFolder.Name" onchange="PurchaseBillAttachmentChangeFile(this, @index, 0)" class="form-control inputfile">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        }
+                                    }
+
+
+                                </div>
+                                <button type="button" onclick="PurchaseBillAttachmentAddAnother(@Model.Id)" class="btn btn-info"><i class="fa fa-plus"></i> &nbsp; Add another</button>
+                                <button type="button" onclick="PurchaseBillAttachmentConfirmAddViewer(@Model.Id)" class="btn btn-success"><i class="fa fa-check"></i> &nbsp; Add selected files to list</button>
+                            </div>
+                        </div>
+
+                    </div>
+                    <div class="col-xs-12 col-md-6">
+
+                        <ul id="domain-change-list" class="domain-change-list unstyled" style="margin-top: 0;">
+                            @foreach (var item in Model.AssociatedFiles)
+                            {
+                                <li id="att-@item.Id">
+                                    <input type="hidden" class="file-id" value="@item.Id" />
+                                    <button class="btn btn-danger" onclick="PurchaseBillAttachmentRemove(@item.Id)">
+                                        <i class="fa fa-trash"></i>
+                                    </button>
+                                    <a href="javascript:void(0)">
+                                        <img src="@item.VersionedFiles[0].FileType.IconPath"
+                                             style="max-width: 80px; height: auto; padding-right: 10px;">@(item.Name + "." + item.VersionedFiles[0].FileType.Extension)
+                                    </a>
+                                </li>
+                            }
+                        </ul>
+
+                    </div>
+                </div>
+
+                <br />
+                <button class="btn btn-danger" onclick="$('#attachments-view-bill').modal('hide')">Cancel</button>
+                <button class="btn btn-success" onclick="$('#attachments-view-bill').modal('hide')"><i class="fa fa-save"></i> &nbsp; Finish &amp; save</button>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+<script src="~/Scripts/dev/qbicle.formatnumber.min.js"></script>
+<script>
+    //$('.invoice_checked').bootstrapToggle();
+    $('.singledate').daterangepicker({
+        singleDatePicker: true,
+        showDropdowns: true,
+        autoUpdateInput: true,
+        cancelClass: "btn-danger",
+        opens: "left",
+        locale: {
+            cancelLabel: 'Clear',
+            format: $dateFormatByUser.toUpperCase()
+        }
+    });
+    // Cycle app nav tabs with button triggers
+    $('.btnNext').click(function () {
+        var parent = $(this).closest('.modal');
+        $(parent).find('.app_subnav .active').next('li').find('a').trigger('click');
+    });
+
+    $('.btnPrevious').click(function () {
+        var parent = $(this).closest('.modal');
+        $(parent).find('.app_subnav .active').prev('li').find('a').trigger('click');
+    });
+    //$('.purchase_item_table').DataTable().draw();
+    $('#transfer-workgroup-select').not('.multi-select').select2({ placeholder: 'Please select' });
+
+</script>
+@if (Model.AssociatedFiles != null && Model.AssociatedFiles.Count == 0)
+{
+    <script>
+        PurchaseBillAttachmentAddAnother(0);
+    </script>
+}
+
+
+
+
+
+
+
+
+
+
+
+

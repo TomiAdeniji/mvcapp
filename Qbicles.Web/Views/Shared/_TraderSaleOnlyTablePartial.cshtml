@@ -1,0 +1,148 @@
+﻿@using Qbicles.Models.Trader;
+@using Qbicles.Models.Trader.Pricing
+@using Qbicles.BusinessRules;
+@model List<TraderSale>
+@{
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var dateFormat = (string)ViewBag.CurrentDateFormat;
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+}
+
+
+<table class="datatable table-striped table-hover" style="width: 100%;" data-order='[[0, "desc"]]' id="tb_trader_sales">
+    <thead>
+        <tr>
+            <th data-priority="1">#</th>
+            <th data-priority="2">Workgroup</th>
+            <th data-priority="2">Created</th>
+            <th data-priority="2">Channel</th>
+            <th data-priority="1">Contact</th>
+            <th data-priority="3">Reporting Filters</th>
+            <th data-priority="2">Total <strong>(@currencySettings.CurrencySymbol)</strong></th>
+            <th data-priority="1">Status</th>
+            <th data-priority="1" data-orderable="false">Options</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>
+                    @if (item.Reference != null)
+                    {
+                        @item.Reference.FullRef
+                    }
+                </td>
+                <td>
+                    @if (item.Workgroup != null)
+                    {
+                        @item.Workgroup.Name
+                    }
+                </td>
+                <td>
+                    @if (item.CreatedDate != null)
+                    {
+                        @item.CreatedDate.ToString(dateFormat)
+                    }
+                </td>
+                <td>
+                    @item.SalesChannel.ToString()
+                </td>
+                <td>
+                    @if (item.Purchaser != null)
+                    {
+                        <a href="/Trader/AppTrader" onclick="setTabTrader('contacts')">
+                            @item.Purchaser.Name
+                        </a>
+                    }
+                </td>
+                <td>
+                    @if (item.SaleItems.Count > 0 && item.SaleItems.Any(q => q.Dimensions != null && q.Dimensions.Count > 0))
+                    {
+                        var dimensions = new List<string>();
+                        foreach (var itemSales in item.SaleItems)
+                        {
+                            if (itemSales.Dimensions != null && itemSales.Dimensions.Count > 0)
+                            {
+                                foreach (var dimension in itemSales.Dimensions)
+                                {
+                                    if (!dimensions.Contains(dimension.Name))
+                                    {
+                                        dimensions.Add(dimension.Name);
+                                    }
+                                }
+                            }
+                        }
+                        @String.Join(", ", dimensions);
+                    }
+                </td>
+                <td>@item.SaleTotal.ToDecimalPlace(currencySettings)</td>
+
+                <td>
+                    @{
+                        switch (item.Status)
+                        {
+                            case TraderSaleStatusEnum.Draft:
+                                <span class="label label-lg label-primary">Draft</span>
+                                break;
+                            case TraderSaleStatusEnum.PendingReview:
+                                <span class="label label-lg label-warning">Awaiting Review</span>
+                                break;
+                            case TraderSaleStatusEnum.PendingApproval:
+                                <span class="label label-lg label-success">Awaiting Approval</span>
+                                break;
+                            case TraderSaleStatusEnum.SaleDenied:
+                                <span class="label label-lg label-danger">Sale Denied</span>
+                                break;
+                            case TraderSaleStatusEnum.SaleApproved:
+                                <span class="label label-lg label-primary">Sale Approved</span>
+                                break;
+                            case TraderSaleStatusEnum.SaleDiscarded:
+                                <span class="label label-lg label-danger">Sale Discarded</span>
+                                break;
+                            case TraderSaleStatusEnum.SalesOrderedIssued:
+                                <span class="label label-lg label-primary">Sale Approved</span>
+                                break;
+                            default:
+                                <span class="label label-lg label-primary">Draft</span>
+                                break;
+                        }
+                    }
+
+                </td>
+                <td>
+                    @if (item.Status == TraderSaleStatusEnum.Draft)
+                    {
+                        <button class="btn btn-info" onclick="editSale('@item.Key')"><i class="fa fa-pencil"></i> &nbsp; Continue</button>
+                    }
+                    else
+                    {
+                        <button class="btn btn-primary" onclick="window.location.href = '/TraderSales/SaleMaster?key=@item.Key';"><i class="fa fa-eye"></i> &nbsp; Manage</button>
+                    }
+
+                </td>
+            </tr>
+
+        }
+    </tbody>
+</table>
+
+
+
+
+
+<script>
+    $('#tb_trader_sales').DataTable({
+        responsive: true,
+        "lengthChange": true,
+        "pageLength": 10,
+        "columnDefs": [{
+            "targets": 3,
+            "orderable": false
+        }],
+        "order": []
+    });
+
+    $('#tb_trader_sales').show();
+</script>

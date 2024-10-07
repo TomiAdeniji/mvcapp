@@ -1,0 +1,372 @@
+﻿@using Qbicles.BusinessRules
+@using Qbicles.Models
+@{
+    ViewBag.Title = ViewBag.PageTitle;
+    var LogoUri = (string)ViewBag.LogoUri;
+    var alert = (QbicleAlert)ViewBag.Alert;
+    var alertPrioritys = (ICollection<HelperClass.EnumModel>)ViewBag.alertPriority;
+    var currentUserId = (string)ViewBag.CurrentUserId;
+    var alertCreatedName = HelperClass.GetFullNameOfUser(alert.StartedBy, currentUserId);
+    var currentDomainId = (int)ViewBag.CurrentDomainId;
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var pageSize = HelperClass.activitiesPageSize;
+    var isMember = ViewBag.IsMember;
+    var commEmail = ViewBag.CommEmail;
+    var dateFormat = (string)ViewBag.CurrentDateFormat;
+    var timeZone = (string)ViewBag.CurrentTimeZone;
+
+    var domainAdministrators = ((ApplicationUser)ViewBag.CurrentUser).DomainAdministrators;
+}
+
+<div class="content-wrapper qbicle-detail">
+    <div class="tabnav-spacer">&nbsp;</div>
+
+    <!-- Main content -->
+    <section class="content media-item">
+        <div class="row">
+            <div class="col-xs-12 item_detail">
+
+                <div class="item_type_icon">
+                    <img src="/Content/DesignStyle/img/icon_alert_2.png">
+                </div>
+                <div class="item_titling">
+                    <span class="item_type">Alert</span>
+                    <h3>@alert.Name</h3>
+                    <span class="label label-primary">@alert.Type</span>
+                    @if (alert.StartedBy.Id == currentUserId)
+                    {
+                        <span class="label label-danger">My alert</span>
+                    }
+                    else
+                    {
+                        <span class="label label-danger">@HelperClass.GetFullNameOfUser(alert.StartedBy)</span>
+                    }
+                </div>
+                <div class="clearfix"></div>
+
+
+                <br />
+
+                <div class="row">
+                    <div class="col-xs-12">
+                        <div class="app_filter">
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-4 col-lg-4">
+                                    @if (isMember == null)
+                                    {
+                                        <a onclick="QbicleSelected('@alert.Qbicle.Key','Dashboard')" class="btn btn-info"><i class="fa fa-angle-up"></i> &nbsp; View Qbicle</a>
+                                    }
+                                    else
+                                    {
+                                        <a href="javascript:history.back()" class="btn btn-info"><i class="fa fa-angle-up"></i> &nbsp; Community page</a>
+                                    }
+                                    @if (alert.StartedBy.Id == currentUserId || domainAdministrators.Any(x => x.Id == currentDomainId))
+                                    {
+                                        <a href="javascript:void(0);" data-toggle="modal" data-target="#alert-edit" class="btn btn-warning"><i class="fa fa-pencil"></i> &nbsp; Edit</a>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <br /><br />
+
+                <div class="row">
+                    <div class="col-xs-12 col-lg-8 new-item-desc">
+                        <p>
+                            @Html.Raw(alert.Content.Replace(Environment.NewLine, "<br/>"))
+                        </p>
+                    </div>
+
+                    <div class="col-xs-12 col-lg-4 item_specifics shunt-lg" style="margin-top: 0;">
+                        <div class="soft_tan">
+                            <ul>
+                                <li>
+                                    <strong>Posted</strong>
+                                    <p>@alert.TimeLineDate.DatetimeToOrdinal() by @alertCreatedName</p>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                @if (isMember != null)
+                {
+                    <h5>Comments/questions?</h5>
+                    <div class="activity-overview generic" style="display: inline-block; padding: 20px;">
+                        <p>If you have any comments or questions about this alert please get in touch.</p>
+                        <a href="mailto:@commEmail" class="btn btn-info"><i class="fa fa-envelope"></i> &nbsp; Contact</a>
+                    </div>
+                }
+                else
+                {
+                    <div class="app_topnav entity_adds" style="background: #fff; padding: 0;">
+                        <ul class="nav nav-pills app_main_nav">
+                            <li role="presentation" class="active">
+                                <a href="#tab1" data-toggle="tab">
+                                    <i class="fa fa-comments"></i>
+                                    Comments
+                                </a>
+                            </li>
+                            <li role="presentation">
+                                <a href="#tab2" data-toggle="tab">
+                                    <i class="fa fa-folder-open"></i>
+                                    Files
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <br />
+
+
+                    <div class="row">
+                        <div class="col-xs-12">
+                            <div class="tab-content">
+                                <div class="tab-pane fade in active" id="tab1">
+                                    <div class="row">
+                                        <div class="col-xs-12">
+                                            <div class="well" style="max-width: 800px;">
+                                                <div class="form-group">
+                                                    <label for="add-comment">Add a comment</label>
+                                                    <textarea id="txt-comment-alert" name="add-comment" onkeyup="validateAddComment()" class="form-control"></textarea>
+                                                    <label id="addcomment-error" class="error" for="addcomment" style="display: none;">Your post is longer than the 1,500 character limit. Please reduce the length, or split it across multiple posts</label>
+                                                </div>
+                                                <button onclick="addCommentForAlert(@alert.Id)" class="btn btn-success">Submit</button>
+                                            </div>
+                                            <br />
+                                        </div>
+                                    </div>
+
+                                    <div id="list-comments-alert">
+                                        @foreach (var post in alert.Posts.OrderByDescending(x => x.StartedDate).Take(HelperClass.activitiesPageSize))
+                                        {
+                                            <!-- General post -->
+
+                                            var fullName = post.CreatedBy.Id == currentUserId ? "Me" : HelperClass.GetFullNameOfUser(post.CreatedBy);
+                                            <article id="post-@post.Id" class="activity post">
+                                                <div class="activity-avatar" style="background-image: url('@api@(post.CreatedBy.ProfilePic)&size=T');"></div>
+                                                <div class="activity-detail">
+                                                    <div class="activity-meta">
+                                                        <h4>@fullName</h4>
+                                                        <small>@post.StartedDate.ConvertTimeFromUtc(timeZone).ToString(dateFormat+", hh:mmtt")</small>
+                                                    </div>
+
+                                                    <div class="activity-overview media-comment">
+                                                        <p>
+                                                            @Html.Raw(post.Message.Replace(Environment.NewLine, "<br/>"))
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <div class="clearfix"></div>
+                                            </article>
+                                            <!-- END General post -->
+                                        }
+                                    </div>
+                                    @if (alert.Posts.Count() > HelperClass.activitiesPageSize)
+                                    {
+                                        <button id="btnLoadPosts" onclick="LoadMorePosts('@alert.Key', @pageSize, 'list-comments-alert')" class="btn btn-info trigger_load">Load older posts</button>
+                                    }
+                                </div>
+
+
+                                <div class="tab-pane fade" id="tab2">
+                                    @if (alert.ClosedBy == null)
+                                    {
+                                        <br />
+                                        <a href="#" class="btn btn-success" data-toggle="modal" data-target="#create-media"><i class="fa fa-upload"></i> &nbsp; Upload a file</a>
+                                    }
+                                    <br /><br />
+
+                                    <div id="list-medias">
+                                        @if (alert.SubActivities.Count > 0)
+                                        {
+                                            foreach (var item in alert.SubActivities.OrderByDescending(x => x.Id).Take(HelperClass.activitiesPageSize))
+                                            {
+                                                var media = (QbicleMedia)item;
+                                                var createdByName = media.StartedBy.Id == currentUserId ? "Me" : HelperClass.GetFullNameOfUser(media.StartedBy);
+                                                var createdDate = media.StartedDate.Date == DateTime.UtcNow.Date ? "Today, " + media.StartedDate.ToString("hh:mmtt") : media.StartedDate.ToString(dateFormat+" hh:mmtt");
+                                                var mediaLastupdate = media.VersionedFiles.Where(e => !e.IsDeleted).OrderByDescending(x => x.UploadedDate).FirstOrDefault() ?? null;
+                                                var lastUpdateFile = "";
+                                                if (mediaLastupdate != null)
+                                                {
+                                                    lastUpdateFile = mediaLastupdate.UploadedDate.Date == DateTime.UtcNow.Date ? "Today, " + mediaLastupdate.UploadedDate.ToString("hh:mmtt") : mediaLastupdate.UploadedDate.ToString(dateFormat+" hh:mmtt");
+                                                } //Media post
+                                                <article class="activity media">
+                                                    <div class="activity-avatar" style="background-image: url('@api@(media.StartedBy.ProfilePic)&size=T');"></div>
+                                                    <div class="activity-detail">
+                                                        <div class="activity-meta">
+                                                            <h4>@createdByName</h4>
+                                                            <small>@createdDate</small>
+                                                            <br class="visible-xs">
+                                                        </div>
+
+                                                        <div class="activity-overview media">
+                                                            <div class="row">
+                                                                <div class="col-xs-12 col-sm-5 col-md-6 col-lg-5">
+                                                                    <a href="javascript:void(0)" onclick="ShowMediaPage('@media.Key')">
+                                                                        @if (media.FileType.Type == "Image File")
+                                                                        {
+                                                                            <img id="media-@item.Id" class="img-responsive" src='@api@(mediaLastupdate.Uri)&size=M' />
+                                                                        }
+                                                                        else
+                                                                        {
+                                                                            <img src="@media.FileType.IconPath" class="img-responsive">
+                                                                        }
+                                                                    </a>
+                                                                </div>
+                                                                <div class="col-xs-12 col-sm-7 col-md-6 col-lg-7 description">
+                                                                    <h5>@media.Name</h5>
+                                                                    <p>
+                                                                        @media.Description
+                                                                    </p>
+                                                                    <small>@media.FileType.Type | Update @lastUpdateFile</small>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="clearfix"></div>
+                                                </article>
+                                                <!-- END Media post -->
+                                            }
+                                        }
+                                    </div>
+                                    @if (alert.SubActivities.Count() > HelperClass.activitiesPageSize)
+                                    {
+                                        <button id="btnLoadMedias" onclick="LoadMoreMedias(@alert.Id, @pageSize, 'list-medias')" class="btn btn-info trigger_load">Load older medias</button>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </section>
+    <!-- ./content -->
+    <br /><br /><br />
+</div>
+@if (isMember == null)
+{
+    <div class="modal fade" id="alert-edit" role="dialog" aria-labelledby="alert-edit">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                    <h5 class="modal-title">Edit alert</h5>
+                </div>
+                <div class="modal-body">
+                    <form id="edit_alert_form">
+                        <input type="hidden" value="@alert.Id" id="alert_edit_id" />
+                        <div class="activity-overview task" style="padding: 20px;">
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label for="name">Alert name <span>*</span></label>
+                                        <input type="text" name="name" placeholder="Existing alert title here" id="alert_edit_name" class="form-control" value="@alert.Name">
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label for="name">Priority <span>*</span></label>
+                                        <select name="priority" id="alert_edit_priority" class="form-control">
+                                            @foreach (var item in alertPrioritys)
+                                            {
+                                                if ((int)alert.Priority == item.Key)
+                                                {
+                                                    <option value="@item.Key" selected>@item.Value</option>
+                                                }
+                                                else
+                                                {
+                                                    <option value="@item.Key">@item.Value</option>
+                                                }
+                                            }
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-xs-12">
+                                    <div class="form-group">
+                                        <label for="name">Alert content <span>*</span></label>
+                                        <textarea name="content" id="alert_edit_content" placeholder="Existing alert description here" class="form-control">@alert.Content</textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+
+                    <br />
+                    <button type="button" onclick="updateAlert()" class="btn btn-success">Confirm changes</button>
+                    <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+
+                </div>
+            </div><!-- /.modal-content -->
+        </div><!-- /.modal-dialog -->
+    </div>
+}
+
+<!-- /.modal - alert edit -->
+@{
+    Html.RenderAction("GenerateModalMedia", "Qbicles");
+}
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/qbicle.activity.loadmoreolder.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/qbicle.activity.loadmoreolder.min.js"></script>
+    }
+}
+
+<script>
+
+    jQuery(function($) {
+        // set name,logo for Qbicle selected
+        $('#qbicleNameSelected').text('@alert.Qbicle.Name');
+
+        $("#qbicleLogoSelect").attr("src", "@LogoUri");
+
+        setTimeout(function() {
+                $('html, body').animate({
+                        scrollTop: $(document).height()
+                    },
+                    0);
+            },
+            300);
+
+    });
+
+    function validateAddComment() {
+        var message = $('#txt-comment-alert').val();
+        if (message.length > 1500)
+            $('#addcomment-error').show();
+        else
+            $('#addcomment-error').hide();
+    }
+    function addCommentForAlert(alertId) {
+        var message = $('#txt-comment-alert');
+        if (message.val() && !$('#addcomment-error').is(':visible')) {
+            isPlaceholder(true, '#list-comments-alert');
+            $.ajax({
+                url: "/QbicleComments/AddCommentToAlert",
+                data: { message: message.val(), alertId: alertId },
+                type: "POST",
+                success: function (result) {
+                    if (result) {
+                        message.val("");
+                    }
+                },
+                error: function (error) {
+                    cleanBookNotification.error(_L("ERROR_MSG_EXCEPTION_SYSTEM"), "Qbicles");
+                    isPlaceholder(false, '');
+                }
+            });
+        }
+    }
+
+</script>

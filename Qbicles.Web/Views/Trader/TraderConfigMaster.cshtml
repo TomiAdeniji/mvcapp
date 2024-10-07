@@ -1,0 +1,131 @@
+﻿@using Qbicles.BusinessRules.Model
+@using Qbicles.Models.Trader;
+@using Qbicles.Models.Trader.SalesChannel;
+@model MasterSetupModel
+@{
+    var Locations = (List<TraderLocation>)ViewBag.Locations;
+    var SalesChannels = (List<SalesChannelEnum>)ViewBag.SalesChannels;
+}
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail">
+    <!-- Main content -->
+    <section class="content">
+        <br />
+        <a href="/Trader/AppTrader" onclick="setTabTrader('Config', 'mastersetup');" class="btn btn-primary"><i class="fa fa-angle-left"></i> &nbsp; App Config</a>
+        <br /><br /><br />
+
+        <div class="mod_title">
+            <h5>Trader &gt; App Config &gt; Master Setup</h5>
+            <h4>Items, Prices, Accounting &amp; Sales Channels</h4>
+        </div>
+
+        <br />
+        <div class="well custom" style="padding-bottom: 5px;">
+            <div class="row">
+                <div class="col-xs-12 col-sm-4 col-lg-3">
+                    <div class="form-group">
+                        <label for="location">Filter by Product Group</label>
+                        <select id="slProductGroups" name="slProductGroups" class="form-control checkmulti" multiple>
+                            @foreach (var item in Model.TraderGroups)
+                            {
+                                <option value="@item.Id" @(Model.MasterSetups.Any(s => s.TraderGroup != null && s.TraderGroup.Id == item.Id) ? "selected" : "")>@item.Name</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <br />
+        <div id="version-1" style="display:@(Model.MasterSetups!=null&&Model.MasterSetups.Any()?"block":"none")">
+            <ul id="tabs-pgroup" class="nav nav-pills group-selector">
+                @if (Model.MasterSetups != null)
+                {
+                    bool first = true;
+                    foreach (var item in Model.MasterSetups)
+                    {
+                        <li class="@(first?"active":"")"><a href="#group@(item.TraderGroup.Id)" onclick="loadReloadAccounting(@(item.TraderGroup.Id));" data-toggle="tab">@item.TraderGroup.Name</a></li>
+                        first = false;
+                    }
+                }
+            </ul>
+            <div id="tabs-content" class="tab-content">
+                @if (Model.MasterSetups != null)
+                {
+                    bool first = true;
+                    foreach (var item in Model.MasterSetups)
+                    {
+                        <div class="tab-pane fade @(first?"in active":"")" id="group@(item.TraderGroup.Id)">
+                            @Html.Partial("_AddGroupConfigTab", new TabGroupConfigModel { MasterSetup = item, PurchaseTaxRates = Model.PurchaseTaxRates, SaleTaxRates = Model.SaleTaxRates, TraderGroup = item.TraderGroup, Locations = Locations, SalesChannels = SalesChannels })
+                        </div>
+                        first = false;
+                    }
+                }
+            </div> <!-- ./tab-content -->
+        </div>
+    </section>
+    <!-- ./content -->
+</div>
+<!-- /.content-wrapper -->
+<div class="modal fade left" id="app-trader-master-accounting-item-edit" role="dialog" aria-labelledby="app-trader-master-accounting-item-edit" style="display: none; padding-right: 17px;">
+
+</div>
+<div class="modal fade left" id="app-bookkeeping-treeview" role="dialog" aria-labelledby="app-bookkeeping-treeview" aria-hidden="true" style="display: none;"></div>
+<div class="modal fade" id="confirm-apply" role="dialog" aria-labelledby="confirm-apply" style="display: none;">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-body">
+
+                <div class="activity-overview generic help-text" style="margin: 0;">
+                    <i class="fa fa-info-circle"></i>
+                    <p>
+                        <strong>WARNING</strong><br><br>
+                        This change will be applied to all relevant records and <strong>cannot be undone</strong>. Please ensure
+                        the information is accurate before confirming below.
+                    </p>
+                    <input type="hidden" value="0" id="cfgroupid" />
+                    <input type="hidden" value="0" id="cftype" />
+                    <br>
+                    <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-success" onclick="ApplyAll()">Confirm</button>
+                </div>
+
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+<div class="modal fade" id="confirm-price-apply" role="dialog" aria-labelledby="confirm-price-apply" style="display: none;">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-body">
+
+                <div class="activity-overview generic help-text" style="margin: 0;">
+                    <i class="fa fa-info-circle"></i>
+                    <p>
+                        <strong>WARNING</strong><br><br>
+                        This change will be applied to all relevant records and <strong>cannot be undone</strong>. Please ensure
+                        the information is accurate before confirming below.
+                    </p>
+                    <input type="hidden" value="0" id="cfpricegroupid" />
+                    <br>
+                    <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-success" onclick="$('#frmConfigsPrice' + $('#cfpricegroupid').val()).submit()">Confirm</button>
+                </div>
+
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+@{
+    <link href="~/Content/DesignStyle/css/bootstrap-multiselect.css" rel="stylesheet" />
+    <script src="~/Content/DesignStyle/js/bootstrap-multiselect.min.js"></script>
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/trader.config.mastersetup.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/trader.config.mastersetup.min.js"></script>
+    }
+}

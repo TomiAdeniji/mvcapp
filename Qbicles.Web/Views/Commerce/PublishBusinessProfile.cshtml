@@ -1,0 +1,356 @@
+﻿@using Qbicles.BusinessRules
+@using Qbicles.Models.B2B
+@using Qbicles.Models.ProfilePage
+@using Qbicles.Models
+@using Qbicles.BusinessRules.Model
+@model B2BProfile
+@{
+    ViewBag.Title = $"Qbicles | {Model.BusinessName} Profile";
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var timezone = (string)ViewBag.CurrentTimeZone;
+    var currentDomainId = (int)ViewBag.CurrentDomainId;
+    var currentDomain = (QbicleDomain)ViewBag.CurrentDomain;
+    var currentUserId = (string)ViewBag.CurrentUserId;
+    var facebookUrl = Model.SocialLinks.FirstOrDefault(s => s.Type == SocialTypeEnum.Facebook);
+    var instagramUrl = Model.SocialLinks.FirstOrDefault(s => s.Type == SocialTypeEnum.Instagram);
+    var linkedInUrl = Model.SocialLinks.FirstOrDefault(s => s.Type == SocialTypeEnum.LinkedIn);
+    var twitterUrl = Model.SocialLinks.FirstOrDefault(s => s.Type == SocialTypeEnum.Twitter);
+    var youtubeUrl = Model.SocialLinks.FirstOrDefault(s => s.Type == SocialTypeEnum.Youtube);
+    var businessPages = (List<BusinessPage>)ViewBag.BusinessPages;
+    var isShowCatalog = (bool)ViewBag.IsShowCatalog;
+
+    var hasB2CConnect = Utility.CheckHasAccessB2C(Model.Domain?.Id??0, currentUserId);
+}
+<div class="content-wrapper qbicle-detail" style="background: rgb(244, 246, 249); padding-top: 65px; min-height: 486px;">
+    <!-- Main content -->
+    <section class="content nopad profilev2">
+        <div class="container">
+            <div class="row">
+                <div class="col-xs-12">
+                    <div class="activity-overview plain rounded businesscard" style="padding: 20px 30px;">
+                        <div class="business-logo" style="background-image: url('@(api+Model.LogoUri)');">&nbsp;</div>
+                        <div class="business-info">
+                            <h1>@(string.IsNullOrEmpty(Model.BusinessName)? "The domain does not have a business profile configured":Model.BusinessName)</h1>
+                            @foreach (var category in Model.BusinessCategories.OrderBy(p => p.Name))
+                            {
+                                <label class="label label-lg label-primary">@category.Name</label>
+                            }
+                            <div class="profile-tags">
+                                @foreach (var tag in Model.Tags)
+                                {
+                                    <label class="label label-lg label-soft">#@tag.TagName</label>
+                                }
+                            </div>
+                        </div>
+                        <div class="business-options">
+                            @if (!hasB2CConnect && Model.DefaultB2CRelationshipManagers.Any())
+                            {
+                                <button class="btn btn-info community-button" style="margin-bottom: 3px;" onclick="connectB2C(@Model.Id, this, '@Model.BusinessName.FixQuoteCode()')">Connect</button>
+                            }
+                            @if (isShowCatalog)
+                            {
+                                <button class="btn btn-success community-button" onclick="location.href='/C2C?tab=shopping&shopid=@(Model.Domain.Key)';">Shop</button>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-xs-12">
+                    <ul class="profilenav" role="navigation" data-tooltip-stickto="bottom" data-tooltip-max-width="150" data-tooltip-color="teal" style="width: 450px; max-width: 100%;">
+                        <li class="active">
+                            <a href="#profile-info" data-toggle="tab" data-tooltip="Info" aria-expanded="true">
+                                <i class="fa fa-info-circle"></i>
+                            </a>
+                        </li>
+                        @if (businessPages != null && businessPages.Any())
+                        {
+                            <li>
+                                <a href="#profile-pages" data-toggle="tab" data-tooltip="Pages" aria-expanded="true">
+                                    <i class="fa fa-pencil-ruler"></i>
+                                </a>
+                            </li>
+                        }
+                        <li class="">
+                            <a href="#profile-locations" data-toggle="tab" data-tooltip="Locations" aria-expanded="false">
+                                <i class="fa fa-map-marker"></i>
+                            </a>
+                        </li>
+                        @if (isShowCatalog)
+                        {
+                            <li class="">
+                                <a href="#profile-shop" data-toggle="tab" data-tooltip="Shop" aria-expanded="false">
+                                    <i class="fa fa-shopping-cart"></i>
+                                </a>
+                            </li>
+                        }
+                        @*<li class="hidden">
+                                <a href="#profile-promotions" data-toggle="tab" data-tooltip="Promotions">
+                                    <i class="fa fa-bullhorn"></i>
+                                </a>
+                            </li>
+                            <li class="hidden">
+                                <a href="#profile-testimonials" data-toggle="tab" data-tooltip="Testimonials">
+                                    <i class="fa fa-star"></i>
+                                </a>
+                            </li>*@
+                    </ul>
+
+                    <a id="topjump"></a>
+                    <div class="tab-content">
+
+
+                        <!-- Info -->
+                        <div class="tab-pane fade active in" id="profile-info">
+
+
+                            <div class="activity-overview plain rounded" style="padding-bottom: 20px;">
+                                <div class="titlezone">
+                                    <h5>About us</h5>
+                                </div>
+                                <p class="summ">@Html.Raw((string.IsNullOrEmpty(Model.BusinessSummary) ? "No information available" : Model.BusinessSummary.Replace(Environment.NewLine, "<br/>")))</p>
+                                <br><br>
+                                <div class="row">
+                                    <div class="col-xs-12">
+
+                                        <ul class="social-icons" data-tooltip-color="teal" data-tooltip-stickto="top">
+                                            @if (facebookUrl != null)
+                                            {
+                                                <li><a href="@facebookUrl.Url" target="_blank" data-tooltip="Find us on Facebook"><i class="fa fa-facebook"></i></a></li>
+                                            }
+                                            @if (instagramUrl != null)
+                                            {
+                                                <li><a href="@instagramUrl.Url" target="_blank" data-tooltip="Find us on Instagram"><i class="fa fa-instagram"></i></a></li>
+                                            }
+                                            @if (linkedInUrl != null)
+                                            {
+                                                <li><a href="@linkedInUrl.Url" target="_blank" data-tooltip="Find us on LinkedIn"><i class="fa fa-linkedin"></i></a></li>
+                                            }
+                                            @if (twitterUrl != null)
+                                            {
+                                                <li><a href="@twitterUrl.Url" target="_blank" data-tooltip="Find us on Twitter"><i class="fa fa-twitter"></i></a></li>
+                                            }
+                                            @if (youtubeUrl != null)
+                                            {
+                                                <li><a href="@youtubeUrl.Url" target="_blank" data-tooltip="Find us on Youtube"><i class="fa fa-youtube"></i></a></li>
+                                            }
+
+
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                            @if (Model.Posts.Any())
+                            {
+                                <br>
+                                <h5 style="padding-bottom: 15px;">Recent posts</h5>
+                                <div class="from-community c1 profile-posts flex-grid-half-lg gridfix" style="width: 100%; margin-bottom: 60px;">
+                                    @foreach (var item in Model.Posts.Where(s => s.IsFeatured).OrderByDescending(s => s.CreatedDate).ToList())
+                                    {
+
+                                        <div class="col">
+                                            <div class="article-feature">
+                                                <div class="article-feature-img" style="background: url('@(api+item.FeaturedImageUri)&size=M');"></div>
+                                                <div class="info" style="padding-bottom: 0;">
+                                                    <h1>@item.Title</h1>
+                                                    <p style="max-height:250px !important;">@Html.Raw(item.Content.Replace(Environment.NewLine, "<br />"))</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </div>
+                        <!-- END Info -->
+                        <div class="tab-pane fade" id="profile-pages">
+
+
+                            <ul class="profilesubnav" style="@(businessPages!=null&&businessPages.Count==1?"display:none":"")">
+                                @if (businessPages != null)
+                                {
+                                    bool firstActive = true;
+                                    foreach (var item in businessPages)
+                                    {
+                                        <li class="@(firstActive?"active":"")">
+                                            <a href="#page-@item.Id" data-toggle="tab" aria-expanded="true">@item.PageTitle</a>
+                                        </li>
+                                        firstActive = false;
+                                    }
+                                }
+                            </ul>
+                            <div class="tab-content">
+                                @if (businessPages != null)
+                                {
+                                    bool firstActive = true;
+                                    foreach (var item in businessPages)
+                                    {
+                                        <div class="tab-pane fade @(firstActive?"active in":"")" id="page-@item.Id">
+                                            @Html.Partial("~/Views/ProfilePage/_BlockTemplate.cshtml", item)
+                                        </div>
+                                        firstActive = false;
+                                    }
+                                }
+                            </div>
+                        </div>
+                        <!-- Blocks -->
+                        <div class="tab-pane fade" id="profile-blocks">
+
+                            <br>
+
+                            <div class="profile-block">
+                                <div class="pb-info">
+                                    <div class="logo"><img src="dist/img/logos/roadchef.png"></div>
+                                    <h1>Block title displayed here</h1>
+                                    <p class="summ">Ut vitae maximus lorem, vitae commodo dui. Etiam id elementum ipsum, ut scelerisque dui. Praesent pretium, augue eget suscipit malesuada, metus lacus ultricies purus, ut venenatis diam ligula ut felis. Nunc imperdiet rhoncus tincidunt. Nulla maximus purus at ultricies fermentum.</p>
+                                </div>
+                                <div class="pb-feature" style="background-image: url('dist/img/citynight.jpg');"></div>
+                            </div>
+
+
+
+                            <div class="profile-block alt">
+                                <div class="pb-feature" style="background-image: url('dist/img/cinema.jpg');"></div>
+                                <div class="pb-info">
+                                    <div class="logo"><img src="dist/img/logos/roadchef.png"></div>
+                                    <h1>Block title displayed here</h1>
+                                    <p class="summ">Ut vitae maximus lorem, vitae commodo dui. Etiam id elementum ipsum, ut scelerisque dui. Praesent pretium, augue eget suscipit malesuada, metus lacus ultricies purus, ut venenatis diam ligula ut felis. Nunc imperdiet rhoncus tincidunt. Nulla maximus purus at ultricies fermentum.</p>
+                                </div>
+                            </div>
+
+
+                            <div class="profile-block alt2">
+                                <div class="pb-info">
+                                    <h1>Block title displayed here</h1>
+                                    <p class="summ">Ut vitae maximus lorem, vitae commodo dui. Etiam id elementum ipsum, ut scelerisque dui. Praesent pretium, augue eget suscipit malesuada, metus lacus ultricies purus, ut venenatis diam ligula ut felis. Nunc imperdiet rhoncus tincidunt. Nulla maximus purus at ultricies fermentum.</p>
+                                </div>
+                            </div>
+
+
+                        </div>
+                        <!-- END Blocks -->
+                        <!-- Locations -->
+                        <div class="tab-pane fade" id="profile-locations">
+                            <div class="activity-overview plain rounded" style="padding-bottom: 15px;">
+                                <div class="titlezone">
+                                    <h5>Our locations</h5>
+                                </div>
+                                <div class="from-community c1 profile-posts flex-grid-thirds-lg gridfix profilelocs" style="width: 100%; margin-bottom: 0;">
+                                    @foreach (var location in Model.BusinessLocations)
+                                    {
+                                        <div class="col">
+                                            <div class="article-feature">
+                                                <div class="info" style="padding-bottom: 0;">
+                                                    <h1><i class="fa fa-map-marker red"></i> &nbsp; @location.Name</h1>
+                                                    <p>@Html.Raw(location.TraderLocationToAddress())</p>
+                                                    @if (location.Address != null && location.Address.Latitude != 0 && location.Address.Longitude != 0)
+                                                    {
+                                                        <a style="padding: 17px 45px;" class="btn btn-primary community-button w-auto" href="https://www.google.com/maps/@("@"+location.Address.Latitude),@(location.Address.Longitude),15z" target="_blank">View map</a>
+                                                    }
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                        <!-- END Locations -->
+                        <!-- Shop -->
+                        @if (isShowCatalog)
+                        {
+                            <div class="tab-pane fade" id="profile-shop">
+                                <div class="activity-overview plain rounded" style="padding-bottom: 15px;">
+                                    <div class="titlezone">
+                                        <h5>@Model.BusinessName catalogues</h5>
+                                    </div>
+                                    <div class="flex-grid-half-lg gridfix qbicles-dash-grid marketing restyle" data-tooltip-color="slate" data-tooltip-stickto="right">
+                                        @foreach (var item in Model.BusinessCatalogues)
+                                        {
+                                            <article class="col">
+                                                <a href="#">
+                                                    <h1 style="color: #333; margin-top: 15px;">@item.Name</h1>
+                                                    <p class="qbicle-detail" style="text-align: center;">@item.Description</p>
+                                                </a>
+
+                                                <br>
+                                                <a href="javascript:void();" onclick="location.href = '/C2C?tab=shopping&shopid=' + '@(Model.Domain.Key)' + '&catalogkey=' + '@item.Key';"
+                                                   class="btn btn-info community-button w-auto"><i class="fa fa-shopping-cart"></i> &nbsp; Browse</a>
+                                            </article>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        }
+
+                        <!-- END Shop -->
+                    </div> <!-- ./tab-content -->
+                </div>
+            </div>
+        </div>
+        <div class="btn-group dropup info backtotop animated fadeInUp" style="position: fixed; bottom: 25px; right: 20px; z-index: 2000; display: block;">
+            <button class="btn btn-info fab totop" onclick="totop();">
+                <i class="fa fa-chevron-up"></i>
+            </button>
+        </div>
+    </section>
+    <!-- ./content -->
+</div>
+@{
+    <style>
+        html {
+            display: block !important;
+            scroll-behavior: smooth;
+        }
+    </style>
+    <script>
+        $(document).ready(function () {
+            $('#profile-pages .nvgalleryowl').owlCarousel({
+                loop: true,
+                nav: false,
+                dots: true,
+                autoplay: true,
+                autoplayTimeout: 3000,
+                autoplayHoverPause: true,
+                margin: 30,
+                responsive: {
+                    0: {
+                        items: 1
+                    },
+                    768: {
+                        items: 2
+                    },
+                    1400: {
+                        items: 3
+                    }
+                }
+            });
+            $('#profile-pages .nvtestimonialsowl').owlCarousel({
+                loop: true,
+                nav: false,
+                dots: true,
+                autoplay: true,
+                autoplayTimeout: 3000,
+                autoplayHoverPause: true,
+                margin: 30,
+                responsive: {
+                    0: {
+                        items: 1
+                    },
+                    600: {
+                        items: 2
+                    },
+                    1024: {
+                        items: 3
+                    }
+                }
+            });
+        });
+    </script>
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/commerce.b2bprofile.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/commerce.b2bprofile.min.js"></script>
+    }
+}

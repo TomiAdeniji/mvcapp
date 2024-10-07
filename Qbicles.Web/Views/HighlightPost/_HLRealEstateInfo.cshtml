@@ -1,0 +1,167 @@
+﻿@using Qbicles.Models.Highlight
+@model RealEstateListingHighlight
+@{
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var userId = (string)ViewBag.UserId;
+    var lstImageUris = new List<string>();
+    Model.RealEstateListImgs = Model.RealEstateListImgs.OrderBy(p => p.Order).ToList();
+    if (Model.RealEstateListImgs == null || Model.RealEstateListImgs.Count <= 0)
+    {
+        lstImageUris.Add(@"/Content/DesignStyle/img/banner-listing.jpg");
+    }
+    else
+    {
+        lstImageUris = Model.RealEstateListImgs.OrderBy(p => p.Order).Select(p => (api + p.FileUri)).ToList();
+    }
+}
+
+<div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+        <div class="modal-body" style="padding: 0;">
+
+            @if (lstImageUris.Count < 2)
+            {
+                <img style="width: 100%" src="@lstImageUris.FirstOrDefault()">
+            }
+            else
+            {
+                <div class="owl-carousel realestate owl-theme">
+                    @foreach (var uriItem in lstImageUris)
+                    {
+                        <div class="item">
+                            <img src="@uriItem">
+                        </div>
+                    }
+                </div>
+            }
+
+            <div class="product-sell tab-content" style="padding-top: 60px;">
+
+                <!-- Info -->
+                <div class="tab-pane fade in active" id="listinginfo-job">
+
+                    <h6>@(Model.Domain?.Name ?? "")</h6>
+                    <h1>@(Model.Title ?? "")</h1>
+                    <br />
+
+                    <p>@(Model.Content ?? "")</p>
+
+
+                    <table class="table table-borderless" style="font-size: 13px; font-family: 'Roboto', sans-serif; margin: 20px 0 30px -5px;">
+                        <tbody>
+                            <tr>
+                                <td><strong>Location</strong></td>
+                                <td>@(Model?.Country?.CommonName ?? "Available everywhere")</td>
+                            </tr>
+                            @if (!string.IsNullOrEmpty(Model.PricingInfo.Trim()))
+                            {
+                                <tr>
+                                    <td><strong>Price</strong></td>
+                                    <td>@(Model?.PricingInfo ?? "")</td>
+                                </tr>
+                            }
+                            @if (Model.PropType != null)
+                            {
+                                <tr>
+                                    <td><strong>Property type</strong></td>
+                                    <td>@(Model?.PropType?.Name ?? "")</td>
+                                </tr>
+                            }
+                            <tr>
+                                <td><strong>Bedrooms</strong></td>
+                                <td>@(Model.BedRoomNum)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Bathrooms</strong></td>
+                                <td>@(Model.BathRoomNum)</td>
+                            </tr>
+                            @if (Model.IncludedProperties != null && Model.IncludedProperties.Count > 0)
+                            {
+                                <tr>
+                                    <td><strong>Extras</strong></td>
+                                    <td>
+                                        <ul style="padding-left: 15px;">
+                                            @foreach (var propertyItem in Model.IncludedProperties)
+                                            {
+                                                <li>@(propertyItem.Name ?? "")</li>
+                                            }
+                                        </ul>
+                                    </td>
+                                </tr>
+                            }
+
+                        </tbody>
+                    </table>
+
+                    <br />
+                    <button class="btn btn-danger community-button w-auto" data-dismiss="modal">Cancel</button>
+                    @if (Model.FlaggedBy.Any(p => p.Id == userId))
+                    {
+                        <button class="btn btn-danger community-button w-auto flag" onclick="updateHLFlagStatus(@Model.Id, 2, this)">I'm not interested</button>
+                    }
+                    else
+                    {
+                        <button class="btn btn-primary community-button w-auto flag" onclick="updateHLFlagStatus(@Model.Id, 1, this)">I'm interested</button>
+                    }
+
+                </div>
+                <!-- END Info -->
+                <!-- Send message -->
+                <div class="tab-pane fade" id="send-message-job">
+
+                    <h6>Connect with</h6>
+                    <h1>Photobox</h1>
+                    <br />
+
+                    <div class="well custom" style="padding-bottom: 5px;">
+
+                        <div class="form-group">
+                            <label>Include an introductory message</label>
+                            <textarea name="note" class="form-control" style="max-width: 100%; height: 120px;">Hi, I'm connecting with you to discuss your job listing, "2x process operatives needed".</textarea>
+                        </div>
+
+                    </div>
+
+                    <button class="btn btn-warning community-button w-auto" data-toggle="tab" data-target="#listinginfo-job"><i class="fa fa-angle-left"></i> &nbsp; Previous</button>
+                    <button class="btn btn-success community-button w-auto" data-dismiss="modal" onclick="$('#talk').trigger('click');">Send now</button>
+                </div>
+
+
+            </div>
+
+
+        </div>
+    </div><!-- /.modal-content -->
+</div><!-- /.modal-dialog -->
+<script src="/Content/DesignStyle/js/owl.carousel.min.js"></script>
+@if (System.Diagnostics.Debugger.IsAttached)
+{
+    <script src="~/Scripts/dev/social.highlight.js"></script>
+}
+else
+{
+    <script src="~/Scripts/dev/social.highlight.js"></script>
+}
+<script>
+    if (@lstImageUris.Count > 1) {
+        $('.realestate').owlCarousel({
+            items: 1,
+            loop: true,
+            dots: true,
+            nav: false,
+            autoplay: true,
+            autoplayHoverPause: true,
+            autoplayTimeout: 3000
+        });
+    } else {
+        $('.realestate').owlCarousel({
+            items: 1,
+            loop: false,
+            dots: true,
+            nav: false,
+            autoplay: true,
+            autoplayHoverPause: true,
+            autoplayTimeout: 3000
+        });
+    }
+</script>

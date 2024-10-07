@@ -1,0 +1,168 @@
+﻿@using Qbicles.Models.Trader
+@using Qbicles.Models.Trader.DDS
+@using Qbicles.BusinessRules;
+@model List<Driver>
+@{
+    var ddsLocationsQueue = (List<TraderLocation>)ViewBag.DdsLocationsQueue;
+    var currentLocationId = (int)ViewBag.CurrentLocationManage;
+    var currentLocationDomainId = (int)ViewBag.CurrentLocationDomainId;
+}
+
+@foreach (var driver in Model)
+{
+    var employmentLocation = true;
+    if (currentLocationDomainId != driver.EmploymentLocation.Domain.Id)
+    {
+        employmentLocation = false;
+    }
+    <article id="dds-driver-item-@driver.Id" class="col">
+        <label class="label label-success label-lg" style="font-size: 11px !important; position: absolute; top: 10px; left: 8px;">@driver.Status.GetDescription()</label>
+        @if (employmentLocation)
+        {
+            <div class="qbicle-opts">
+                <a href="javascript:" onclick="ConfirmDeleteDriver(@driver.Id)">
+                    <i class="fa fa-trash"></i>
+                </a>
+            </div>
+        }
+        <a href="javascript:" style="cursor: initial !important;">
+            <div class="avatar" style="border-radius: 0; background-image: url('/Content/DesignStyle/img/food-delivery.png');">&nbsp;</div>
+            <h1 style="color: #333;"><span id="driver-name-main-@driver.Id">@driver.User.User.DisplayUserName</span></h1>
+        </a>
+        <br />
+        <div class="row" style="text-align: left !important;">
+            <div class="col-xs-4 col-lg-3">
+                <label>At work</label>
+                <div class="checkbox toggle">
+                    <label>
+                        @{
+                            var onShift = ""; // not use
+                            if (driver.AtWork)
+                            {
+                                onShift = "checked";//use
+                            }
+                        }
+                        @if (employmentLocation)
+                        {
+                            <input data-on="Yes" data-off="No" onchange="UpdateDriverShift(this.checked, @driver.Id)" class="apps-account" @onShift data-toggle="toggle" data-size="small" data-onstyle="success" type="checkbox">
+
+                        }
+                        else
+                        {
+                            <input data-on="Yes" data-off="No" class="apps-account" @onShift data-toggle="toggle" data-size="small" data-onstyle="success" type="checkbox">
+
+                        }
+                    </label>
+                </div>
+            </div>
+            <div class="col-xs-8 col-lg-9">
+                <div class="form-group" style="margin: 0;">
+                    <label for="location">Employment Location</label>
+                    @if (employmentLocation)
+                    {
+                        <select id="driver-location-@driver.Id" class="form-control select2All" style="width: 100%;" onchange="UpdateDriverLocation(@driver.Id)">
+                            <option value="0"> </option>
+                            @foreach (var l in ddsLocationsQueue)
+                            {
+                                if (l.Id == driver.EmploymentLocation?.Id)
+                                {
+                                    <option value="@l.Id" selected="">@l.Name</option>
+                                }
+                                else
+                                {
+                                    <option value="@l.Id">@l.Name</option>
+                                }
+                            }
+                        </select>
+                    }
+                    else
+                    {
+                        <select disabled class="form-control select2All" style="width: 100%;">
+                            <option value="0"></option>
+                            @foreach (var l in ddsLocationsQueue)
+                            {
+                                if (l.Id == driver.EmploymentLocation?.Id)
+                                {
+                                    <option value="@l.Id" selected="">@l.Name</option>
+                                }
+                                else
+                                {
+                                    <option value="@l.Id">@l.Name</option>
+                                }
+                            }
+                        </select>
+                    }
+                </div>
+            </div>
+        </div>
+        <div class="row" style="text-align: left !important;">
+            <div class="col-xs-4 col-lg-3"></div>
+            <div class="col-xs-8 col-lg-9">
+                <div class="form-group" style="margin: 0;">
+                    <label for="location">Work Locations</label>
+                    @if (employmentLocation)
+                    {
+                        <select multiple id="driver-work-location-@driver.Id" class="form-control select2checkmulti"
+                                style="width: 100%;display:none;">
+                            @foreach (var l in ddsLocationsQueue)
+                            {
+                                var disabled = l.Id == currentLocationId ? "" : "disabled";
+                                if (driver.WorkLocations.Any(e => e.Id == l.Id))
+                                {
+                                    <option @disabled id="@driver.Id" value="@l.Id" selected="">@l.Name</option>
+                                }
+                                else
+                                {
+                                    <option @disabled id="@driver.Id" value="@l.Id">@l.Name</option>
+                                }
+                            }
+                        </select>
+                    }
+                    else
+                    {
+                        <select disabled multiple id="driver-work-location-@driver.Id" class="form-control select2checkmulti"
+                                style="width: 100%;display:none;">
+                            @foreach (var l in ddsLocationsQueue)
+                            {
+                                var disabled = l.Id == currentLocationId ? "" : "disabled";
+                                if (driver.WorkLocations.Any(e => e.Id == l.Id))
+                                {
+                                    <option @disabled selected="">@l.Name</option>
+                                }
+                                else
+                                {
+                                    <option @disabled>@l.Name</option>
+                                }
+                            }
+                        </select>
+                    }
+
+                </div>
+            </div>
+        </div>
+    </article>
+}
+
+<script>
+    $('select.select2All').select2({ placeholder: 'Please select' });
+    $('.checkbox.toggle input').bootstrapToggle();
+    $(".select2checkmulti").multiselect({
+        includeSelectAllOption: false,
+        selectAllJustVisible: false,
+        includeResetOption: false,
+        buttonWidth: '100%',
+        maxHeight: 400,
+        enableClickableOptGroups: true,
+        enableFiltering: true,
+        enableCaseInsensitiveFiltering: true,
+        onChange: function (option, checked) {
+            
+            if (checked) {
+                //$('#soft_skill_list').val([]).multiselect('refresh');
+                //$(option).prop("selected","selected");
+                //$('#soft_skill_list').multiselect('refresh');
+                $('#soft_skill_list').val(option[0].value).multiselect('refresh');
+            }
+        }
+    });
+</script>

@@ -1,0 +1,451 @@
+﻿@using Qbicles.BusinessRules
+@using Qbicles.Models
+@using Qbicles.Models.Trader.Inventory
+@model StockAudit
+@{
+    var stockAudit = (StockAuditModel)ViewBag.StockAudit;
+
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var pageSize = HelperClass.activitiesPageSize;
+    var userAvatar = ViewBag.CurrentUserAvatar;
+    var today = (DateTime)ViewBag.Today;
+    var timeZone = (string)ViewBag.CurrentTimeZone ?? "";
+    var timeline = (List<ApprovalStatusTimeline>)ViewBag.Timeline;
+    var timelineDate = (List<DateTime>)ViewBag.TimelineDate;
+    var userId = ViewBag.CurrentUserId;
+    var traderAppRight = (IsReviewerAndApproverModel)ViewBag.TraderApprovalRight;
+
+    string option = "";
+    bool disableBoxStatus = false;
+    string col1, col2, col3, col4, col5, col6, col7, col8;
+    col1 = col2 = col3 = col4 = col5 = col6 = col7 = col8 = "hidden";
+
+
+    if (!(traderAppRight.IsInitiators || traderAppRight.IsReviewer || traderAppRight.IsApprover))
+    {
+        option = "option1";
+    }
+    else if (traderAppRight.IsInitiators && !(traderAppRight.IsReviewer || traderAppRight.IsApprover))
+    {
+        option = "option2";
+        disableBoxStatus = true;
+    }
+    else if (traderAppRight.IsReviewer && Model.Status == ShiftAuditStatus.Pending)
+    {
+        option = "option3";
+    }
+    else if (traderAppRight.IsApprover && Model.StockAuditApproval.RequestStatus == ApprovalReq.RequestStatusEnum.Reviewed)
+    {
+        option = "option4";
+    }
+    else if (Model.StockAuditApproval.RequestStatus == ApprovalReq.RequestStatusEnum.Approved || Model.StockAuditApproval.RequestStatus == ApprovalReq.RequestStatusEnum.Denied)
+    {
+        disableBoxStatus = true;
+        if (Model.StockAuditApproval.RequestStatus == ApprovalReq.RequestStatusEnum.Approved)
+        {
+            option = "option51";
+        }
+        else if (Model.StockAuditApproval.RequestStatus == ApprovalReq.RequestStatusEnum.Denied)
+        {
+            option = "option52";
+        }
+    }
+    else
+    {
+        disableBoxStatus = true;
+    }
+    switch (option)
+    {
+        case "option1":
+        case "option2":
+        case "option52":
+            col1 = col2 = col3 = "";
+            break;
+        case "option3":
+            col1 = col2 = col3 = col7 = "";
+            break;
+        case "option4":
+        case "option51":
+            col1 = col2 = col3 = col4 = col5 = col6 = col7 = col8 = "";
+            break;
+        default:
+            break;
+    }
+    var dateFormatUser = (string)ViewBag.CurrentDateFormat;
+}
+
+
+<div class="row">
+        <div class="col-xs-12 item_detail" style="padding-left: 15px;">
+
+            <div class="item_type_icon">
+                <img src="~/Content/DesignStyle/img/icon_bookkeeping.png" />
+            </div>
+            <div class="item_titling">
+                <span class="item_type">Trader - Shift Audit</span>
+                <h3>@stockAudit.Name</h3>
+                @if (Model.StockAuditApproval != null)
+                {
+                    var label = "";
+                    switch (Model.StockAuditApproval.RequestStatus)
+                    {
+                        case ApprovalReq.RequestStatusEnum.Approved:
+                            label = StatusLabelStyle.Approved;
+                            break;
+                        case ApprovalReq.RequestStatusEnum.Denied:
+                            label = StatusLabelStyle.Denied;
+                            break;
+                        case ApprovalReq.RequestStatusEnum.Discarded:
+                            label = StatusLabelStyle.Discarded;
+                            break;
+                        case ApprovalReq.RequestStatusEnum.Pending:
+                            label = StatusLabelStyle.Pending;
+                            break;
+                        case ApprovalReq.RequestStatusEnum.Reviewed:
+                            label = StatusLabelStyle.Reviewed;
+                            break;
+                    }
+                    <span class="label label-lg @label">@(Model.StockAuditApproval.RequestStatus.GetDescription())</span>
+                }
+            </div>
+            <div class="clearfix"></div>
+
+            <br />
+
+            <div class="row">
+                <div class="col-xs-12">
+                    <div class="app_filter">
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <a href="/Qbicles/Dashboard" class="btn btn-primary"><i class="fa fa-angle-up"></i> &nbsp; View Qbicle</a>
+                                <a href="/Trader/Apptrader" onclick="setTabTrader('itemsproducts', 'inventoryaudit-tab')" class="btn btn-info"><i class="fa fa-cube"></i> &nbsp; Trader Shift Audit</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+        <div class="col-xs-12">
+
+            <br /><br />
+
+            <div class="row">
+                <div class="col-xs-12 col-md-8">
+
+                    <div class="app_upper_dash text-center">
+                        <div class="row">
+                            <div class="col-xs-12 col-md-6 col-lg-4">
+                                <div class="stat_label">
+                                    <span>STARTED</span>
+                                    <h3>@stockAudit.StartedDate</h3>
+                                </div>
+                            </div>
+                            @if (stockAudit.IsFinished)
+                            {
+                                <div class="col-xs-12 col-md-6 col-lg-4">
+                                    <div class="stat_label">
+                                        <span>FINISHED</span>
+                                        <h3>@stockAudit.FinishedDate</h3>
+                                    </div>
+                                </div>
+                            }
+
+                            <div class="col-xs-12 col-md-6 col-lg-4">
+                                <div class="stat_label">
+                                    <span>Workgroup</span>
+                                    @if (stockAudit.WorkGroup != null)
+                                    {
+                                        <p><button class="btn btn-info" onclick="ShowGroupMember(@stockAudit.WorkGroup.Id, 'Shift Audit')" data-target="#app-trader-workgroup-preview"><i class="fa fa-eye"></i> &nbsp; @stockAudit.WorkGroup.Name</button></p>    
+                                    }
+                                    
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <br />
+
+                    <table id="tb_product" class="datatable table-striped table-hover" style="width: 100%;">
+                        <thead>
+
+                            <tr>
+                                <th class="@col1" rowspan="2">Name</th>
+                                <th class="@col2" rowspan="2">SKU</th>
+                                <th class="@col3" rowspan="2">Unit</th>
+                                <th class="@col4" rowspan="2">Observed opening</th>
+                                <th class="@col5" colspan="2" style="text-align: center; padding-left: 0;">Movement in period</th>
+                                <th class="@col6" rowspan="2">Expected closing</th>
+                                <th class="@col7" rowspan="2">Observed closing</th>
+                                <th class="@col8" rowspan="2">Variance</th>
+                            </tr>
+                            <tr>
+                                <th class="@col5" style="text-align: center;">In</th>
+                                <th class="@col5" style="text-align: center;">Out</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (stockAudit.ProductList != null && stockAudit.ProductList.Count > 0)
+                            {
+                                foreach (var item in stockAudit.ProductList)
+                                {
+                                    <tr class="tr_@item.ProductId">
+                                        <td class="td_name @col1">
+                                            <input type="hidden" value="@item.Id" />
+                                            @item.Name
+                                        </td>
+                                        <td class="td_sku @col2">@item.SKU</td>
+                                        <td class="td_unit @col3">
+                                            <input type="hidden" value="@item.Unit.Id" />
+                                            <span>@item.Unit.Name</span>
+                                        </td>
+                                        <td class="td_open_count @col4">@item.OpeningCount</td>
+                                        <td class="td_billmovement @col5" style="text-align: center;">@item.PeriodIn</td>
+                                        <td class="@col5" style="text-align: center;">@item.PeriodOut</td>
+                                        <td class="td_expected @col6">@item.ExpectedClosing</td>
+                                        <td class="td_closing_count @col7">
+                                            @if (stockAudit.IsFinished || (option != "option3" && option != "option4"))
+                                            {
+                                                <span>@item.ClosingCount</span>
+                                            }
+                                            else
+                                            {
+                                                <input type="number" onblur="updateVariance('@item.ProductId', '@item.Id')" onfocus="focusChange('@item.ProductId', this)" name="closing-1" class="form-control" value="@item.ClosingCount">
+                                            }
+                                        </td>
+
+                                        <td class="td_variance @col8">
+                                            @if (stockAudit.IsFinished)
+                                            {
+                                                <span class="label label-lg label-danger variance-1">@item.Variance</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="label label-lg label-danger variance-1">@item.Variance</span>
+                                            }
+                                        </td>
+                                    </tr>
+
+                                }
+                            }
+
+                        </tbody>
+                    </table>
+                </div>
+                <div class="col-xs-12 col-md-4">
+
+                    <br class="visible-xs">
+                    <br class="visible-xs">
+
+                    <div class="alert activity-overview generic reviewer" style="margin-bottom: 5px;">
+                        <img src="@api@userAvatar">
+                        <strong style="display: block; padding-bottom: 5px;">You</strong>
+
+                        <form name="action" class="form-inline" method="post" action="">
+                            <input type="hidden" id="action_approval_default" value="@Model.StockAuditApproval.RequestStatus" />
+                            @if (option != "option1")
+                            {
+                                <select name="action_element" id="action_approval" disabled="@disableBoxStatus" class="form-control select2" style="width: 100%;" data-placeholder="Please choose...">
+                                    @if (option == "option3")
+                                    {
+                                        <option value="@ApprovalReq.RequestStatusEnum.Reviewed.ToString()" selected>Send to approval</option>
+                                        <option value="@ApprovalReq.RequestStatusEnum.Discarded.ToString()">Discard</option>
+                                    }
+                                    else if (option == "option4")
+                                    {
+                                        <option value="@ApprovalReq.RequestStatusEnum.Approved.ToString()" selected="">Approve</option>
+                                        <option value="@ApprovalReq.RequestStatusEnum.Pending.ToString()">Send back to review</option>
+                                        <option value="@ApprovalReq.RequestStatusEnum.Discarded.ToString()_true">Discard</option>
+                                    }
+                                    else if (option == "option51" || option == "option52" || option == "")
+                                    {
+                                        <option value="@Model.StockAuditApproval.RequestStatus.ToString()" selected>@Model.StockAuditApproval.RequestStatus.ToString()</option>
+                                    }
+                                </select>
+                            }
+                            @if (option == "option3" || option == "option4")
+                            {
+                                var approvalId = Model.StockAuditApproval.Id.Encrypt();
+                                <button type="button" onclick="javascript:UpdateStatusApproval('@approvalId');" style="margin: 8px 0 3px 0;" class="btn btn-success">Confirm</button>
+                            }
+                        </form>
+                    </div>
+
+
+
+
+
+                    <br />
+                    <ul class="timeline">
+                        @if (timelineDate != null)
+                        {
+                            foreach (var date in timelineDate)
+                            {
+                                var dateStart = @HelperClass.DatetimeToOrdinal(date.ConvertTimeFromUtc(timeZone));
+                                var dateStr = date.Date == today.Date ? "Today" : dateStart;
+
+                                <li class="time-label">
+                                    <span class="label label-lg label-primary">
+                                        @dateStr
+                                    </span>
+                                </li>
+                                foreach (var tl in timeline.Where(d => d.LogDate.Date == date.Date))
+                                {
+                                    <li>
+                                        <i class="@tl.Icon"></i>
+                                        <div class="timeline-item">
+                                            <span class="time"><i class="fa fa-clock-o"></i> @tl.Time</span>
+                                            <h4 class="timeline-header">@tl.Status</h4>
+                                        </div>
+                                    </li>
+                                }
+                                <br />
+                            }
+                        }
+                    </ul>
+
+                </div>
+            </div>
+
+
+
+            @*<?php include("inc/mini-comments.php"); ?>*@
+            <br /><br />
+            @* comment and media*@
+            <div class="app_topnav entity_adds" style="background: #fff; padding: 0;">
+                <ul class="nav nav-pills app_main_nav">
+                    <li role="presentation" class="active">
+                        <a href="#tab1" data-toggle="tab">
+                            <i class="fa fa-comments"></i>
+                            Comments
+                        </a>
+                    </li>
+                    <li role="presentation">
+                        <a href="#tab2" data-toggle="tab">
+                            <i class="fa fa-folder-open"></i>
+                            Files
+                        </a>
+                    </li>
+                </ul>
+            </div>
+            <br />
+            <div class="row">
+                <div class="col-xs-12">
+                    <div class="tab-content">
+                        <div class="tab-pane fade in active" id="tab1">
+                            <div class="row">
+                                <div class="col-xs-12">
+                                    <div class="well" style="max-width: 800px;">
+                                        <div class="form-group">
+                                            <label for="add-comment">Add a comment</label>
+                                            <textarea id="txt-comment-approval" name="add-comment" class="form-control"></textarea>
+                                            <label id="addcomment-error" class="error" for="addcomment" style="display: none;">Your post is longer than the 1,500 character limit. Please reduce the length, or split it across multiple posts</label>
+                                        </div>
+                                        <button onclick="addCommentForApproval('@(Model.StockAuditApproval?.Key ?? "")')" class="btn btn-success">Submit</button>
+                                    </div>
+                                    <br />
+                                </div>
+                            </div>
+                            <div id="list-comments-approval">
+                                @foreach (var post in Model.StockAuditApproval.Posts.OrderByDescending(x => x.StartedDate).Take(pageSize))
+                                {
+                                    <!-- General post -->
+                                    var fullName = HelperClass.GetFullNameOfUser(post.CreatedBy, userId);
+                                    <article id="post-@post.Id" class="activity post">
+                                        <img style="background-image: url('@api@post.CreatedBy.ProfilePic')" class="activity-avatar" />
+                                        <div class="activity-detail">
+                                            <div class="activity-meta">
+                                                <h4>@fullName</h4>
+                                                <small>@post.StartedDate.ConvertTimeFromUtc(timeZone).ToString(dateFormatUser+ ", hh:mmtt")</small>
+                                            </div>
+                                            <div class="activity-overview media-comment">
+                                                <p>
+                                                    @Html.Raw(post.Message.Replace(Environment.NewLine, "<br />"))
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div class="clearfix"></div>
+                                    </article>
+                                    <!-- END General post -->
+                                }
+                            </div>
+                            @if (Model.StockAuditApproval.Posts.Count() > pageSize)
+                            {
+                                <button id="btnLoadPosts" onclick="LoadMorePosts('@Model.StockAuditApproval.Key', @pageSize,'list-comments-approval')" class="btn btn-info trigger_load">Load older posts</button>
+                            }
+                        </div>
+
+                        <div class="tab-pane fade" id="tab2">
+                            <br />
+                            <a href="javascript:void(0)" class="btn btn-success" id="btnAddFile" data-toggle="modal" data-target="#create-media"><i class="fa fa-upload"></i> &nbsp; Upload a file</a>
+
+                            <br /><br />
+                            <div id="list-medias">
+                                @if (Model.StockAuditApproval.SubActivities.Count > 0)
+                                {
+                                    foreach (var item in Model.StockAuditApproval.SubActivities.OrderByDescending(x => x.Id).Take(pageSize))
+                                    {
+                                        var media = (QbicleMedia)item;
+                                        var createdByName = HelperClass.GetFullNameOfUser(media.StartedBy, userId);
+                                        var createdDate = media.StartedDate.Date == DateTime.UtcNow.Date ? "Today, " + media.StartedDate.ConvertTimeFromUtc(timeZone).ToString("hh:mmtt").ToLower() : media.StartedDate.ConvertTimeFromUtc(timeZone).ToString(dateFormatUser + " hh:mmtt").ToLower();
+                                        var mediaLastupdate = media.VersionedFiles.Where(e => !e.IsDeleted).OrderByDescending(x => x.UploadedDate).First() ?? null;
+                                        var lastUpdateFile = mediaLastupdate != null ? (mediaLastupdate.UploadedDate.Date == DateTime.UtcNow.Date ? "Today, " + mediaLastupdate.UploadedDate.ConvertTimeFromUtc(timeZone).ToString("hh:mmtt").ToLower() : mediaLastupdate.UploadedDate.ConvertTimeFromUtc(timeZone).ToString(dateFormatUser + " hh:mmtt").ToLower()) : createdDate;
+                                        //Media post
+                                        <article class="activity media">
+                                            <img style="background-image: url('@api@media.StartedBy.ProfilePic')" class="activity-avatar" />
+                                            <div class="activity-detail">
+                                                <div class="activity-meta">
+                                                    <h4>@createdByName</h4>
+                                                    <small>@createdDate</small>
+                                                    <br class="visible-xs">
+                                                </div>
+                                                <div class="activity-overview media">
+                                                    <div class="row">
+                                                        <div class="col-xs-12 col-sm-5 col-md-6 col-lg-5">
+                                                            <a href="javascript:void(0)" onclick="ShowMediaPage('@media.Key')">
+                                                                @if (media.FileType.Type == "Image File")
+                                                                {
+                                                                    <img id="media-@item.Id" class="img-responsive" src='@api@mediaLastupdate.Uri' />
+                                                                }
+                                                                else
+                                                                {
+                                                                    <img src="@media.FileType.IconPath" class="img-responsive">
+                                                                }
+                                                            </a>
+                                                        </div>
+                                                        <div class="col-xs-12 col-sm-7 col-md-6 col-lg-7 description">
+                                                            <h5>@media.Name</h5>
+                                                            <p>
+                                                                @media.Description
+                                                            </p>
+                                                            <small>@media.FileType.Type | Update @lastUpdateFile</small>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="clearfix"></div>
+                                        </article>
+                                        <!-- END Media post -->
+                                    }
+                                }
+                            </div>
+                            @if (Model.StockAuditApproval.SubActivities.Count() > pageSize)
+                            {
+                                <button id="btnLoadMedias" onclick="LoadMoreMedias(@Model.StockAuditApproval.Id,@pageSize,'list-medias')" class="btn btn-info trigger_load">Load older medias</button>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+
+<script>
+    $('#action_approval').select2({
+        placeholder: 'Please choose...'
+    });
+    //$('#tb_product').dataTable().fnDestroy();
+    //$('#tb_product').DataTable().draw();
+</script>

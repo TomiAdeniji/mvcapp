@@ -1,0 +1,477 @@
+﻿@using Qbicles.BusinessRules;
+@using Qbicles.Models;
+@using System.Linq;
+@using System.Linq.Dynamic;
+@using Qbicles.Models.Spannered;
+@model QbicleTask
+@{
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var assetId = ViewBag.assetId;
+    var asset= (Asset)ViewBag.asset;
+    var taskId = ViewBag.taskId != null ? (int)ViewBag.taskId : 0;
+    if (Model != null)
+    {
+        taskId = Model.Id;
+    }
+
+    var dbContext = new Qbicles.BusinessRules.Model.ApplicationDbContext();
+    var CurrentUserId = (string)ViewBag.CurrentUserId;
+    var currentQbicleId = Model?.Workgroup?.SourceQbicle?.Id ?? 0;
+    var currentQbicle = new Qbicle();
+    if (currentQbicleId != 0)
+    {
+        currentQbicle = new QbicleRules(dbContext).GetQbicleById(currentQbicleId);
+    }
+
+    var qbicleTopics = new TopicRules(dbContext).GetTopicByQbicle(currentQbicleId);
+    var taskPrioritys = HelperClass.EnumModel.GetEnumValuesAndDescriptions<QbicleTask.TaskPriorityEnum>();
+    var taskDurationUnit = HelperClass.EnumModel.GetEnumValuesAndDescriptions<QbicleTask.TaskDurationUnitEnum>();
+    var listFileType = new FileTypeRules(dbContext).GetExtension();
+    string fileAccept = listFileType.Count() > 0 ? ("." + string.Join(",.", listFileType)) : "";
+    var Relates = Model != null && Model.AssociatedSet != null ? Model.AssociatedSet.Relateds : null;
+    var workgroups=(List<SpanneredWorkgroupsInfo>)ViewBag.workgroups;
+    var assigneeId = Model != null ? Model.AssociatedSet.Peoples.Where(p => p.Type == QbiclePeople.PeopleTypeEnum.Assignee).Select(p => p.User).FirstOrDefault().Id : "";
+    var watcherId = Model != null ? String.Join(",", Model.AssociatedSet?.Peoples.Where(p => p.Type == QbiclePeople.PeopleTypeEnum.Watcher).Select(p => p.User.Id).ToList()) : "";
+    var count = 0;
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+    var locationId = asset.Location?.Id??0;
+    var currentWG = Model?.Workgroup ?? null;
+}
+<input type="hidden" id="assigneeId" value="@assigneeId">
+<input type="hidden" id="watcherId" value="@watcherId">
+<!--Create task modal-->
+<div class="modal-dialog modal-xl" role="document">
+    <div class="modal-content">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <h5 class="modal-title">@(taskId > 0 ? "Edit Task" : "Add a Task")</h5>
+        </div>
+        <div class="modal-body">
+
+            <div class="row">
+                <div class="col-xs-12 col-sm-4 col-lg-3">
+                    <div class="activity-overview generic" style="padding: 20px; margin-bottom: 30px;">
+                        <div class="form-group" style="margin: 0;">
+                            <label for="workgroup">Assign to a Workgroup <span class="red">*</span></label>
+                            <select name="WorkgroupId" class="form-control select2" required style="width: 100%;" onchange="workgroupSelect(this); LoadTopicsByQbicleId(@(Model?.Topic?.Id ?? 0)); $('.preview-workgroup').show();" tabindex="-1" aria-hidden="true">
+                                <option value="" selected=""></option>
+                                <!-- detail-info=Qbicle;Members;Process -->
+                                @foreach (var item in workgroups)
+                                {
+                                    <option data-qbicleid="@item.QbicleId" data-topicid="@item.TopicId" detail-info="@(item.Qbicle + ";" + item.Members + ";" + item.Process)" value="@item.Id" @(Model?.Workgroup?.Id == item.Id? "selected": "")>@item.Name</option>
+                                }
+                            </select>
+                            <label id="WorkgroupId-error" class="error" for="WorkgroupId" style="display: none;">This field is required.</label>
+                        </div>
+
+                        <div class="preview-workgroup" style="display: @(Model!=null? "block": "none")">
+                            <br>
+                            <table class="table app_specific" style="margin: 0;">
+                                <tbody>
+                                    <tr>
+                                        <td><h5>Process</h5></td>
+                                        <td class="prv-process">@(currentWG!=null&&currentWG.Processes != null ? string.Join(", ", currentWG.Processes.Select(q => q.Name)) : "")</td>
+                                    </tr>
+                                    <tr>
+                                        <td><h5>Qbicle</h5></td>
+                                        <td class="prv-qbicle">@(currentWG?.SourceQbicle?.Name)</td>
+                                    </tr>
+                                    <tr>
+                                        <td><h5>Members</h5></td>
+                                        <td><button class="btn btn-info" data-toggle="modal" data-target="#app-trader-workgroup-preview"><i class="fa fa-user"></i> &nbsp; <span class="prv-members">@(currentWG?.Members.Count())</span></button></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                </div>
+                <div class="col-xs-12 col-sm-8 col-lg-9">
+                    <div class="row">
+                        <div class="col-xs-12">
+                            <ul id="taskTabs" class="app_subnav admintabs" style="padding-top: 0;">
+                                <li class="active"><a href="#create-task-overview" data-toggle="tab">Overview</a></li>
+                                <li><a href="#create-task-people" data-toggle="tab">People</a></li>
+                                <li><a href="#task-2" data-toggle="tab">Consumables, Parts &amp; Services</a></li>
+                                <li><a href="#create-task-checklist" data-toggle="tab">Steps</a></li>
+                                <li><a href="#create-task-related" data-toggle="tab">Related</a></li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <br />
+
+                    <div class="tab-content">
+                        <!-- Task Overview -->
+                        <div class="tab-pane fade in active" id="create-task-overview">
+                            <div class="well custom">
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label>Task name</label>
+                                            <input type="text" id="taskName" name="Name" value="@(Model!=null?Model.Name:"")" required class="form-control">
+                                            <input id="taskId" type="hidden" name="Id" value="@taskId" />
+                                            <input type="hidden" name="assetId" value="@assetId" />
+                                            <input type="hidden" id="qbicleId" name="qbicleId" value="@(Model?.Qbicle?.Id ?? 0)" />
+                                            <input type="hidden" id="asset-task-object-key" name="mediaObjectKey" />
+                                            <input type="hidden" id="asset-task-object-name" name="mediaObjectName" />
+                                            <input type="hidden" id="asset-task-object-size" name="mediaObjectSize" />
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="topic">Choose a topic</label>
+                                            <select name="TopicId" id="taskTopicId" class="form-control select2" style="width: 100%;">
+                                                @foreach (var item in qbicleTopics)
+                                                {
+                                                    <option value="@item.Id" @(Model != null && item.Id == Model.Topic.Id ? "selected" : "")>@item.Name</option>
+                                                }
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="priority">Priority</label>
+                                            <select class="form-control" name="priority" id="selectTaskPriority">
+                                                @foreach (var pri in taskPrioritys)
+                                                {
+                                                    <option value="@pri.Key" @(Model != null && pri.Key == (int)Model.Priority ? "selected" : "")>@pri.Value</option>
+                                                }
+                                            </select>
+                                            <div style="clear: both;"></div>
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="event-date">Start date &amp; time</label>
+                                            <input type="text" required name="ProgrammedStart" id="taskProgrammedStart" class="form-control single-date" value="@(Model!=null?Model.ProgrammedStart.Value.ToString("dd/MM/yyyy hh:mm"):"")" onchange="update_recurrence()" placeholder="Select a date and time">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <label for="task-duration">Duration</label><br />
+                                        <div class="form-flex" style="margin-bottom: 25px; width: 200px;">
+                                            <div class="col-input">
+                                                <input type="number" required class="form-control inline" name="Duration" id="taskDuration" value="@(Model!=null?Model.Duration:0)" min="1" onchange="update_recurrence();">
+                                                <label id="taskDuration-error" class="error hidden" for="taskDuration"></label>
+                                            </div>
+                                            <div class="col-fluid" style="margin-left: 10px;">
+                                                <select name="DurationUnit" class="form-control select2" id="taskDurationUnit" style="width: 100%;" onchange="update_recurrence();">
+                                                    @foreach (var item in taskDurationUnit)
+                                                    {
+                                                        <option value="@item.Key" @(Model != null && (int)Model.DurationUnit == item.Key ? "selected" : "")>@item.Value</option>
+                                                    }
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-xs-12">
+                                        <div class="form-group">
+                                            <label for="task-description">Task description</label>
+                                            <textarea id="taskDescription" name="Description" class="form-control" style="min-height: 80px;">@(Model!=null?Model.Description:"")</textarea>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group" style="margin: 0;">
+                                            <label for="MeterThreshold">Meter threshold</label>
+                                            <input type="number" name="MeterThreshold" value="@(Model == null? "" : Model.MeterThreshold.ToString())" class="form-control" placeholder="e.g. 10,000">
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group" style="margin: 0;">
+                                            <label for="task-attachments">Attach a file</label>
+                                            <input type="file" id="asset-task-file-upload" accept="@fileAccept" class="form-control">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <br />
+                            <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                            <a class="btn btn-success" onclick="NextTab_Overview()">Next &nbsp; <i class="fa fa-angle-right"></i></a>
+                        </div>
+                        <!-- END Task Overview -->
+                        <!-- People -->
+                        <div class="tab-pane fade" id="create-task-people">
+                            <div class="well custom avatarpicker">
+                                <div class="form-group" style="margin: 0;">
+                                    <label for="assignee">Assignee</label>
+                                    <select name="Assignee" class="form-control select2avatartask" style="width: 100%;">
+                                        @if (currentQbicle.Members != null)
+                                        {
+                                            foreach (var item in currentQbicle.Members)
+                                            {
+                                                <option avatarUrl="@(api+item.ProfilePic)" @(assigneeId == item.Id ? "selected" : "") value="@item.Id">@HelperClass.GetFullNameOfUser(item, CurrentUserId)</option>
+                                            }
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+
+                            <br />
+
+                            <div class="well custom avatarpickermulti">
+                                <div class="form-group" style="margin: 0;">
+                                    <label for="Watchers">Watchers</label>
+                                    <select name="Watchers" class="form-control select2avatartask" data-placeholder="Optional" multiple style="width: 100%;">
+                                        @if (currentQbicle.Members != null)
+                                        {
+                                            foreach (var item in currentQbicle.Members)
+                                            {
+                                                <option avatarUrl="@(api+item.ProfilePic)" @(watcherId == item.Id ? "selected" : "") value="@item.Id">@HelperClass.GetFullNameOfUser(item)</option>
+                                            }
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+
+                            <br />
+                            <a onclick="PrevTab_Task()" class="btn btn-warning btnPrevious"><i class="fa fa-angle-left"></i> &nbsp; Previous</a>
+                            <a onclick="NextTab_Task();" class="btn btn-success btnNext">Next &nbsp; <i class="fa fa-angle-right"></i></a>
+                        </div>
+                        <!-- END People -->
+                        <div class="tab-pane fade" id="task-2">
+                            <div class="row">
+                                <div class="col-xs-12">
+                                    <div class="well custom" style="padding-bottom: 0;">
+                                        <div class="row">
+                                            <div class="col-xs-12 col-md-4">
+                                                <div class="form-group">
+                                                    <label for="search">Search for items</label>
+                                                    <input id="txtFilterTaskCSPKeywork" style="border: 1px solid #e1e1e1;" type="text" name="search" class="form-control">
+                                                </div>
+                                            </div>
+                                            <div class="col-xs-12 col-md-3">
+                                                <div class="form-group">
+                                                    <label for="purpose">Filter by purpose</label>
+                                                    <select id="slFilterTaskCSPPurpose" name="purpose" class="form-control select2" style="width: 100%;">
+                                                        <option value=" " selected="">Show all</option>
+                                                        <option value="Consumable">Consumables</option>
+                                                        <option value="Service">Services</option>
+                                                        <option value="Spare Part">Spare Parts</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="col-xs-12 col-md-4">
+                                                <div class="form-group">
+                                                    <label>Include out of stock</label><br>
+                                                    <div class="checkbox toggle">
+                                                        <label>
+                                                            <input id="chkIncludeOutOfStock" data-toggle="toggle" data-onstyle="success" checked type="checkbox">
+                                                        </label>
+                                                    </div>
+                                            </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <br>
+                                    <table class="datatable table-striped table-hover" id="tblTaskInventoryCPS" style="width: 100%;">
+                                        <thead>
+                                            <tr>
+                                                <th data-priority="1">Id</th>
+                                                <th data-priority="1">AssetIventoryId</th>
+                                                <th data-priority="1">Item</th>
+                                                <th data-priority="1">Purpose</th>
+                                                <th data-priority="1">Unit</th>
+                                                <th data-priority="3">In stock</th>
+                                                <th data-priority="3" style="max-width:150px">Amount required</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @if (Model==null||Model.Id == 0||(Model!=null&& !Model.ConsumableItems.Any()))
+                                            {
+                                                foreach (var item in asset.AssetInventories)
+                                                {
+                                                    var ivitem = item.Item.GetInStockByItem(locationId, item.Unit);
+                                                    <tr>
+                                                        <td>0</td>
+                                                        <td>@item.Id</td>
+                                                        <td><a href="#">@item.Item.Name</a></td>
+                                                        <td><span class="label label-lg label-info">@(item.Purpose.GetDescription())</span></td>
+                                                        <td>@(item.Unit?.Name)</td>
+                                                        <td>
+                                                            @ivitem.ToDecimalPlace(currencySettings)
+                                                        </td>
+                                                        <td><input type="number" name="trackInput@(item.Id)" class="form-control trackInput" style="border:1px solid #e1e1e1" value="0"></td>
+                                                    </tr>
+                                                }
+                                            }
+                                            else
+                                            {
+                                                foreach (var item in Model.ConsumableItems)
+                                                {
+                                                    var product = item.AssetInventory.Item;
+                                                    var ivitem = product.GetInStockByItem(locationId, item.AssetInventory.Unit);
+                                                    <tr>
+                                                        <td>@item.Id</td>
+                                                        <td>@item.AssetInventory.Id</td>
+                                                        <td><a href="#">@product.Name</a></td>
+                                                        <td><span class="label label-lg label-info">@(item.AssetInventory.Purpose.GetDescription())</span></td>
+                                                        <td>@(item.AssetInventory.Unit?.Name)</td>
+                                                        <td>
+                                                            @ivitem.ToDecimalPlace(currencySettings)
+                                                        </td>
+                                                        <td><input type="number" name="trackInput@(item.Id)" class="form-control trackInput" style="border:1px solid #e1e1e1" value="@item.Allocated"></td>
+                                                    </tr>
+                                                }
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <br><br>
+                            <a onclick="PrevTab_Task()" class="btn btn-warning btnPrevious"><i class="fa fa-angle-left"></i> &nbsp; Previous</a>
+                            <a onclick="NextTab_Task();" class="btn btn-success btnNext">Next &nbsp; <i class="fa fa-angle-right"></i></a>
+
+                        </div>
+                        <!-- Checklist steps -->
+                        <div class="tab-pane fade" id="create-task-checklist">
+                            <div class="well custom">
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-12 col-md-6 col-lg-6">
+                                        <label>Include a checklist of steps involved</label><br />
+                                        <div class="checkbox toggle">
+                                            <label>
+                                                <input data-toggle="toggle" name="isSteps" @(Model != null && Model.isSteps ? "checked" : "") data-onstyle="success" value="true" type="checkbox" onchange="$('.checklist').toggle();">
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="checklist" style="margin-top: 30px;display: @(Model!=null&&Model.isSteps?"block":"none");">
+                                    <div class="form-row sortable" id="sortable">
+                                        @if (Model == null || Model.QSteps.Count == 0)
+                                        {
+                                            <!-- Step -->
+                                            <div class="first-step">
+                                                <div class="row preview-area" onclick="$(this).next('.row-options').slideToggle();">
+                                                    <div class="col-xs-9">
+                                                        <h5><i id="q1title" class="stepTitle" style="font-size: 13px;">Click to configure this step</i></h5>
+                                                    </div>
+                                                    <div class="col-xs-3"><a href="#" class="remove" onclick="RemoveStep(this)"><i class="fa fa-remove"></i></a></div>
+                                                </div>
+                                                <div class="row-options">
+                                                    <input type="hidden" name="Steplst[0].Order" class="fieldOrder" value="0" />
+                                                    <input type="hidden" name="Steplst[0].Id" class="fieldId" value="0" />
+                                                    <div class="form-group">
+                                                        <label>Title</label>
+                                                        <input type="text" name="Steplst[0].Name" required class="form-control fieldName" onkeyup="$('#q1title').html($(this).val());">
+                                                        <label id="Steplst[0].Name-error" class="error lblErrorName" style="display:none" for="Steplst[0].Name"></label>
+                                                    </div>
+
+                                                    <div class="form-group">
+                                                        <label>Description</label>
+                                                        <textarea name="Steplst[0].Description" required class="form-control fieldDescription" style="height: 70px;"></textarea>
+                                                        <label id="Steplst[0].Description-error" class="error lblErrorDescription" style="display:none" for="Steplst[0].Description"></label>
+                                                    </div>
+
+                                                    <label for="weight">Step weight</label><br />
+                                                    <div class="input-group" style="max-width: 150px;">
+                                                        <input type="number" name="Steplst[0].Weight" required class="form-control fieldWeight" value="100" min="0" max="100">
+                                                        <label id="Steplst[0].Weight-error" class="error hidden lblErrorWeight" for="Steplst[0].Weight"></label>
+                                                        <span class="input-group-addon">%</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <!-- END Step -->
+                                        }
+                                        else
+                                        {
+                                            foreach (var item in Model.QSteps.OrderBy(s => s.Order))
+                                            {
+                                                count++;
+                                                <!-- Step -->
+                                                <div class="@(count==1?"first-step":"")">
+                                                    <div class="row preview-area" onclick="$(this).next('.row-options').slideToggle();">
+                                                        <div class="col-xs-9">
+                                                            <h5><i id="q@(count)title" class="stepTitle" style="font-size: 13px;">@item.Name</i></h5>
+                                                        </div>
+                                                        <div class="col-xs-3"><a href="#" class="remove" onclick="RemoveStep(this)"><i class="fa fa-remove"></i></a></div>
+                                                    </div>
+                                                    <div class="row-options">
+                                                        <input type="hidden" name="Order" class="fieldOrder" value="@item.Order" />
+                                                        <input type="hidden" name="Id" class="fieldId" value="@item.Id" />
+                                                        <div class="form-group">
+                                                            <label>Title</label>
+                                                            <input type="text" name="Name" required value="@item.Name" class="form-control fieldName" onkeyup="$('#q@(count)title').html($(this).val());">
+                                                            <label id="Steplst[@count].Name-error" class="error lblErrorName" style="display:none" for="Steplst[@count].Name"></label>
+                                                        </div>
+
+                                                        <div class="form-group">
+                                                            <label>Description</label>
+                                                            <textarea name="Description" required class="form-control fieldDescription" style="height: 70px;">@item.Description</textarea>
+                                                            <label id="Steplst[@count].Description-error" class="error lblErrorDescription" style="display:none" for="Steplst[@count].Description"></label>
+                                                        </div>
+
+                                                        <label for="weight">Step weight</label><br />
+                                                        <div class="input-group" style="max-width: 150px;">
+                                                            <input type="number" value="@item.Weight" required name="Weight" class="form-control fieldWeight" min="0" max="100">
+                                                            <label id="Steplst[@count].Weight-error" class="error hidden lblErrorWeight" for="Steplst[@count].Weight"></label>
+                                                            <span class="input-group-addon">%</span>
+                                                        </div>
+
+                                                    </div>
+                                                </div>
+                                                <!-- END Step -->
+                                            }
+
+                                        }
+                                        <button type="button" id="btnAddStep" onclick="AddStep()" class="btn btn-success" style="margin-top:10px"><i class="fa fa-plus"></i> &nbsp; Add a step</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <br />
+                            <a onclick="PrevTab_Task()" class="btn btn-warning btnPrevious"><i class="fa fa-angle-left"></i> &nbsp; Previous</a>
+                            <a onclick="NextTab_Task();" class="btn btn-success">Next &nbsp; <i class="fa fa-angle-right"></i></a>
+                        </div>
+                        <!-- END Checklist steps -->
+                        <!-- Related -->
+                        <div class="tab-pane fade" id="create-task-related">
+                            <div class="well custom">
+                                <div class="form-group" style="margin: 0;">
+                                    <label for="Related">Associate the following activities</label>
+                                    <select name="ActivitiesRelate" class="form-control select2" multiple style="width: 100%;">
+                                        @if (Relates != null)
+                                        {
+                                            foreach (var item in Relates)
+                                            {
+                                                var activity = item.Activity;
+                                                <option value="@activity.Id" selected>@activity.Name</option>
+                                            }
+                                        }
+                                    </select>
+                                </div>
+                                <br />
+                                <table id="rlActivities" class="datatable table-striped table-hover" style="width: 100%;">
+                                    <thead>
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Type</th>
+                                            <th>Related</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                                <br /><br />
+                            </div>
+                            <br />
+                            <a onclick="PrevTab_Task()" class="btn btn-warning btnPrevious"><i class="fa fa-angle-left"></i> &nbsp; Previous</a>
+                            <button class="btn btn-success" type="button" onclick="SaveAssetTask()">Confirm &amp; save</button>
+
+                        </div>
+                        <!-- END Related -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div><!-- /.modal-content -->
+</div><!-- /.modal-dialog -->
+<!--End modal create task-->

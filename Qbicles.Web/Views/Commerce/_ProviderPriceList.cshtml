@@ -1,0 +1,106 @@
+﻿@using Qbicles.Models.B2B
+@using Qbicles.BusinessRules
+@using Qbicles.Models
+@model LogisticsPartnership
+@{
+
+    var currentDomain = (QbicleDomain)ViewBag.CurrentDomain;
+    var providerBusinessProfile = Model.ProviderDomain.Id.BusinesProfile();
+    var providerBusinessName = providerBusinessProfile?.BusinessName ?? Model.ProviderDomain.Name;
+    var currentLogisticsAgreement = Model.LogisticsAgreements.FirstOrDefault(s => s.Status == AgreementStatus.IsDraft);
+}
+@if (currentDomain.Id == Model.ConsumerDomain.Id)
+{
+    if (currentLogisticsAgreement != null && currentLogisticsAgreement.PriceList == null)
+    {
+        <div class="activity-overview plain rounded" style="margin: 0px;">
+            <div class="row">
+                <div class="col-xs-12">
+                    <div class="row">
+                        <div class="col-xs-12">
+                            <label>Prices</label><br><br>
+                            <label class="label label-warning label-lg" style="position: relative; top: -8px;">Waiting for @providerBusinessName</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+    else if (currentLogisticsAgreement != null && currentLogisticsAgreement.PriceList != null)
+    {
+        <div class="activity-overview plain rounded" style="margin: 0px;">
+            <div class="row">
+                <div class="col-xs-12">
+                    <table class="table table-condensed table-borderless app_specific" style="margin: 6.5px 0 6.5px -4px;">
+                        <tbody>
+                            <tr>
+                                <td><strong>@currentLogisticsAgreement.PriceList.PriceList.Name</strong></td>
+                                <td><i class="fa fa-map-marker red"></i> &nbsp; @currentLogisticsAgreement.PriceList.PriceList.Location.Name</td>
+                                <td style="text-align: right;"><button class="btn btn-info" data-toggle="modal" data-target="#b2b-delivery-charge-list"><i class="fa fa-eye"></i> &nbsp; Show prices</button></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+}
+else if (currentDomain.Id == Model.ProviderDomain.Id)
+{
+    <div class="activity-overview plain rounded" style="margin: 0;">
+        <div class="row">
+            <div class="col-xs-12">
+                @if (currentLogisticsAgreement != null && currentLogisticsAgreement.PriceList == null)
+                {
+                    <div id="setrate" style="text-align: center; margin: 6.5px 0px 0px;">
+                        <label>Choose a price list for their location</label><br><br>
+                        @if (currentLogisticsAgreement.ConsumerLocations.Any())
+                        {
+                            <button class="btn btn-info" data-toggle="modal" data-target="#b2b-choose-prices">
+                                <i class="fa fa-plus"></i> &nbsp; Price lists
+                            </button>
+                        }
+                        else
+                        {
+                            <button class="btn btn-info" disabled>
+                                <i class="fa fa-plus"></i> &nbsp; Price lists
+                            </button>
+                        }
+                    </div>
+                }
+                else if (currentLogisticsAgreement != null && currentLogisticsAgreement.PriceList != null)
+                {
+                    <div id="changerate">
+
+                        <label>Price list</label>
+                        <br><br>
+                        <table class="table table-condensed table-borderless app_specific" style="margin: 0 0 0 -4px;">
+                            <tbody>
+                                <tr>
+                                    <td><strong>@currentLogisticsAgreement.PriceList.PriceList.Name</strong></td>
+                                    <td><i class="fa fa-map-marker red"></i> &nbsp; @currentLogisticsAgreement.PriceList.PriceList.Location.Name</td>
+                                    <td style="text-align: right;">
+                                        <button class="btn btn-warning" data-toggle="modal" data-target="#b2b-delivery-charge-mgmt"><i class="fa fa-pencil"></i> &nbsp; Prices</button>
+                                        <button class="btn btn-danger" onclick="deletePriceListLogisticsAgreement(@Model.Id)"><i class="fa fa-trash"></i></button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                    </div>
+                }
+                else if (currentLogisticsAgreement == null)
+                {
+                    <div id="setrate" style="text-align: center; margin: 6.5px 0px 0px;">
+                        <label>Choose a price list for their location</label><br><br>
+                        <button class="btn btn-info" disabled>
+                            <i class="fa fa-plus"></i> &nbsp; Price lists
+                        </button>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+

@@ -1,0 +1,70 @@
+﻿@using Qbicles.BusinessRules;
+@model List<TreeBalanceReportEntry>
+@{ 
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+}
+@helper ChildNodes(List<TreeBalanceReportEntry> lstNodes)
+{
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+    foreach (var item in lstNodes)
+    {
+        <li>
+            @item.text
+            @if (!item.isExpanded)
+            {
+                <div class="pull-right">@item.amount.ToCurrencySymbol(currencySettings)</div>
+            }
+            @if (item.isExpanded && item.children != null && item.children.Any())
+            {
+                <ul>
+                    @ChildNodes(item.children)
+                </ul>
+            }
+        </li>
+    }
+}
+@foreach (var item in Model)
+{
+    <div class="col-xs-12">
+        <div class="coa-report-grouping">
+            <h4>@item.text</h4>
+            <hr /><br />
+            @if (item.children != null)
+            {
+                foreach (var subgroup in item.children)
+                {
+                    <div class="panel-group accordion-statement" style="margin-top: 0;">
+                        <div class="panel panel-default">
+                            <div class="panel-heading">
+                                <h4 class="panel-title">
+                                    <a class="account">
+                                        @subgroup.text
+                                    </a>
+                                </h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="account-statement-breakdown" style="padding: 0 20px 20px 20px;">
+                        <ul>
+                            @if (subgroup.isExpanded && subgroup.children != null && subgroup.children.Any())
+                            {
+                                @Html.Raw(ChildNodes(subgroup.children));
+                            }
+                        </ul>
+                    </div>
+                    <div class="subtotal-new text-right">
+                        <h4 style="margin: 0; padding: 0 0 3px 0;">Total @subgroup.text</h4>
+                        <h1 style="margin: 0; padding: 0 0 20px 0;">@subgroup.amount.ToCurrencySymbol(currencySettings)</h1>
+                    </div>
+                }
+            }
+            <div class="total-new">
+                <h4 style="margin: 0; padding: 0 0 3px 0;">Total @item.text</h4>
+                <h1 style="margin: 0; padding: 0 0 20px 0;">@item.amount.ToCurrencySymbol(currencySettings)</h1>
+            </div>
+        </div>
+    </div>
+    <br />
+}

@@ -1,0 +1,191 @@
+﻿@using Qbicles.Models.Trader.Pricing;
+@model PriceBook
+@{
+    var title = "New";
+    if (Model.Id == 0)
+    {
+        title = "New";
+    }
+    else
+    {
+        title = "Update";
+    }
+    var api = (string)ViewBag.DocRetrievalUrl;
+    ViewBag.Title = Model.Id == 0 ? $"Trader - Items & Products > Pricebooks > New Pricebook" : "Trader - Items & Products > Pricebooks > Update Pricebook";
+
+    var locationName = ViewBag.locationName;
+    var channel = Model.SalesChannel.ToString();
+    var cTrader = channel == "Trader" ? "selected" : "";
+    var cCommunity = channel == "Community" ? "selected" : "";
+    var cPOS = channel == "POS" ? "selected" : "";
+}
+
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail">
+
+    <input type="hidden" id="pricebook-id" value="@Model.Id" />
+    <!-- Main content -->
+    <section class="content">
+
+        <br /><br />
+
+        <div class="mod_title">
+            <h5>Trader &gt; Items &amp; Products &gt; Pricebooks</h5>
+            <h4><span id="title-pricebook">@title</span> Pricebook</h4>
+        </div>
+
+
+
+        <div class="row">
+            <div class="col-xs-12">
+                <div class="app_filter">
+                    <div class="row">
+                        <div class="col-xs-12">
+                            <a href="/Trader/AppTrader" onclick="setTabTrader('itemsproducts', 'pricebook-tab')" class="btn btn-info"><i class="fa fa-angle-left"></i> &nbsp; Price Books</a>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+
+        <br /><br />
+
+
+
+
+        <div class="row" style="margin-top: -15px;">
+            <div class="col-xs-12">
+                <ul class="app_subnav">
+                    <li class="active">
+                        <a href="#pb-1" data-toggle="tab" id="overview-tab">Overview</a>
+                    </li>
+                    <li>
+                        <a href="#pb-ver" data-toggle="tab" id="versions-tab" style="display: none;" onclick="GoToVersionTab('tab')">Versions</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <br /><br />
+
+
+
+        <div class="tab-content">
+
+
+            <!-- Overview -->
+            <div class="tab-pane fade in active" id="pb-1">
+
+                <div class="row">
+
+                    <div class="col-xs-12 col-sm-4 col-md-3">
+
+                        <div class="activity-overview generic help-text animated bounce">
+                            <i class="fa fa-info-circle"></i>
+                            <p>
+                                Enter your basic Pricebook information here. Once you're happy, you can save a draft to return to later, or proceed to Versions to create your first
+                                price list associated with this book.
+                            </p>
+                        </div>
+
+                    </div>
+                    <div class="col-xs-12 col-sm-8 col-md-9">
+
+                        <form id="form-pricebook" class="activity-overview task" style="padding: 20px 20px 10px 20px;">
+
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label for="name">Book name <span>*</span></label>
+                                        <input type="text" id="price-book-name" name="pricebookname" class="form-control" value="@Model.Name" required="">
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label for="channel">Sales channel</label>
+                                        <select id="price-book-sale-channel" onchange="SaleChannelChange()" class="form-control select2" style="width: 100%;">
+                                            <option @cTrader value="Trader">Trader</option>
+                                            <option @cCommunity value="Community">Community</option>
+                                            <option @cPOS value="POS">Point of Sale</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-6">
+                                    <div id="product-group-channel" class="form-group">
+                                        <label for="name">Product group(s) included <span>*</span></label>
+                                        <select class="form-control select2" style="width: 100%;" multiple></select>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label for="location">Location</label>
+                                        @{
+                                            var name = Model.Location?.Name ?? locationName;
+                                            <input type="text" id="location-name" class="form-control" value="@name" disabled>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label for="description">Description <span>*</span></label>
+                                        <textarea id="price-book-description" class="form-control" style="height: 80px;" required="">@Model.Description</textarea>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </form>
+
+                        <br />
+                        <button class="btn btn-danger" onclick="window.location.href='/Trader/AppTrader#ItemsProducts#pricebook-tab';">Cancel</button>
+                        <button class="btn btn-success" onclick="SavePriceBook()">Save</button>
+                        <button class="btn btn-info" id="versioning" onclick="GoToVersionTab('button')" style="display: none;">Versions &nbsp; <i class="fa fa-angle-right"></i></button>
+
+                    </div>
+
+                </div>
+
+            </div>
+            <!-- END Overview -->
+            <!-- Versions -->
+            <div class="tab-pane fade" id="pb-ver">
+
+
+
+            </div>
+            <!-- END Versions -->
+
+
+
+        </div> <!-- ./tab-content -->
+
+    </section>
+    <!-- ./content -->
+
+</div>
+<!-- /.content-wrapper -->
+
+
+
+
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/trader.pricebooks.js"></script>
+        <script src="~/Scripts/dev/trader.domain.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/trader.pricebooks.js"></script>
+        <script src="~/Scripts/dev/trader.domain.min.js"></script>
+    }
+
+    <script>
+        SaleChannelChange();
+    </script>
+}

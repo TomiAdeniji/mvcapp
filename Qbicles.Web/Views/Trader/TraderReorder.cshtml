@@ -1,0 +1,406 @@
+﻿@using Qbicles.Models.Trader.Reorder
+@using Qbicles.Models.Trader
+@using Qbicles.BusinessRules
+@using Qbicles.Models.Bookkeeping
+@model Reorder
+@{
+    var WorkGroups = (List<WorkGroup>)ViewBag.WorkGroups;
+    var Deliveries = (List<string>)ViewBag.Deliveries;
+    var ProductGroups = (List<TraderGroup>)ViewBag.ProductGroups;
+    var Contacts = (List<TraderContact>)ViewBag.Contacts;
+    var dimensions = (List<TransactionDimension>)ViewBag.Dimensions;
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+    var unallocatedGroup = Model.ReorderItemGroups.FirstOrDefault(s => s.PrimaryContact == null);
+    var profiGroups = Model.ReorderItemGroups.Where(s => s.PrimaryContact != null).ToList();
+    #region Dropdown Contact
+    var contactSelectListItems = new List<SelectListItem>();
+    contactSelectListItems.Add(new SelectListItem { Text = "", Value = "" });
+    foreach (var item in Contacts)
+    {
+        contactSelectListItems.Add(new SelectListItem { Text = item.Name, Value = item.Id.ToString() });
+    }
+    #endregion
+    var countitemsinreorder = Model.ReorderItemGroups.Sum(s => s.ReorderItems.Count());
+    var countitemsreorder = profiGroups.Sum(s => s.ReorderItems.Where(i => i.IsForReorder).Count());
+}
+<div class="content-wrapper qbicle-detail">
+    <!-- Main content -->
+    <section class="content">
+
+        <br /><br />
+
+        <div class="mod_title">
+            <h5>Trader &gt; Inventory</h5>
+            <h4>Reorder management</h4>
+        </div>
+
+
+        <div class="app_filter">
+            <div class="row">
+                <form id="frmReorder" action="~/TraderInventory/ReorderFinish" method="post">
+                    <div class="col-xs-12 col-sm-4 col-lg-2">
+                        <input type="hidden" name="Id" id="reorderId" value="@Model.Id" />
+                        <select name="WorkgroupId" onchange="$(this).valid()" required class="form-control select2" style="width: 100%" data-placeholder="Select a Workgroup">
+                            <option value=""></option>
+                            @foreach (var item in WorkGroups)
+                            {
+                                <option value="@item.Id" @(Model.Workgroup != null && Model.Workgroup.Id == item.Id ? "selected" : "")>@item.Name</option>
+                            }
+                        </select>
+                        <label id="WorkgroupId-error" class="error" for="WorkgroupId" style="display:none">This field is required.</label>
+                    </div>
+                    <div class="col-xs-12 col-sm-4 col-lg-2">
+                        <select name="ExcludeGroupId" allowClear="true" class="form-control select2" style="width: 100%;" data-placeholder="Exclude a specific Product Group..." onchange="excludeProductGroup();">
+                            <option value=""></option>
+                            @foreach (var item in ProductGroups)
+                            {
+                                var countItems = item.Items.Count();
+                                <option value="@item.Id" @(Model.ExcludeProductGroup != null && Model.ExcludeProductGroup.Id == item.Id ? "selected" : "")>@item.Name (@countItems @(countItems > 1 ? "items" : "item"))</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-xs-12 col-sm-4 col-lg-2">
+                        <select name="Delivery" onchange="$(this).valid();changeDelivery()" required class="form-control select2" style="width: 100%;" data-placeholder="Default delivery method">
+                            <option value=""></option>
+                            @foreach (var item in Deliveries)
+                            {
+                                if (item == "CustomerPickup")
+                                {
+                                    <option value="1" @((int)Model.DeliveryMethod == 1 ? "selected" : "")>Customer pickup</option>
+                                }
+                                else if (item == "Delivery")
+                                {
+                                    <option value="2" @((int)Model.DeliveryMethod == 2 ? "selected" : "")>@item</option>
+                                }
+                                else
+                                {
+                                    <option value="3" @((int)Model.DeliveryMethod == 3 ? "selected" : "")>@item</option>
+                                }
+
+                            }
+                        </select>
+                        <label id="Delivery-error" class="error" for="Delivery" style="display:none;">This field is required.</label>
+                    </div>
+                    <div class="col-xs-12 col-sm-12 col-lg-6">
+                        <input type="hidden" value="" id="typesubmit" />
+                        <button class="btn btn-danger" type="button" onclick="setTabTrader('ItemsProducts', 'inventory-tab');setLocalStorage('sub-inventory-tab', 'inv-reorders');;window.location.href='/Trader/AppTrader';">Cancel</button>
+                        <button class="btn btn-primary" type="button" onclick="setTypeSubmit('save')">Save for later</button>
+                        <button class="btn btn-success" type="button" onclick="setTypeSubmit('finish')">Finish</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <br />
+
+        <div class="row">
+
+            <div class="col-xs-12">
+
+                <div class="app_upper_dash text-center">
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-6 col-md-3">
+                            <div class="stat_label">
+                                <span>Items in reorder</span>
+                                <h3><span class="countreorderitems">@countitemsreorder</span>/@countitemsinreorder</h3>
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-sm-6 col-md-3">
+                            <div class="stat_label">
+                                <span>Total</span>
+                                <h3><span class="totalreorder">@Model.Total.ToCurrencySymbol(currencySettings)</span></h3>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <br />
+                <div class="panel-group community-competencies accordion-plain" id="accordion-competencies" role="tablist" aria-multiselectable="true" style="margin-bottom: 15px;">
+                    <div id="lstPrimaryContact">
+                        @foreach (var item in profiGroups)
+                        {
+                            <div id="profile-group@(item.Id)" class="panel panel-default">
+                                @Html.Partial("~/Views/TraderInventory/_ReorderProfiGroup.cshtml", item)
+                            </div>
+                        }
+                    </div>
+                    <!-- Proficiency 3 -->
+                    @if (unallocatedGroup != null)
+                    {
+                        <div class="panel panel-default">
+                            <div class="panel-heading" role="tab" id="heading-unallocated">
+                                <h4 class="panel-title">
+                                    <a onclick="setBgHeading(this);" role="button" data-toggle="collapse" data-parent="#accordion-competencies" style="border-bottom: 0;" href="#collapse-unallocated" aria-expanded="false" aria-controls="collapse-unallocated" class="collapsed">
+                                        <i class="more-less fa fa-plus"></i>
+                                        <div class="accordion-flex">
+                                            <div class="accordion-brand">
+                                                <div class="branding" style="background-image: url('@Url.Content("~/Content/DesignStyle/img/unknown-contact.png")');">&nbsp;</div>
+                                            </div>
+                                            <div class="accordion-info">
+                                                Unallocated<br />
+                                                <span>@unallocatedGroup.ReorderItems.Count() items</span>
+                                            </div>
+                                        </div>
+                                    </a>
+                                </h4>
+                            </div>
+                            <div id="collapse-unallocated" class="panel-collapse collapse" role="tabpanel" aria-labelledby="heading-unallocated">
+                                <div class="panel-body" style="padding: 20px;">
+                                    <div class="well custom" style="padding-bottom: 5px;">
+                                        <div class="row">
+                                            <div class="col-xs-12 col-sm-6 col-lg-3">
+                                                <label for="primary">Primary contact <span class="red">*</span></label>
+                                                <div class="input-group">
+                                                    @Html.DropDownList("slpricontact-applyall", contactSelectListItems, new { @class = "form-control select2", style = "width: 100%;", onchange = "enablingButton(this)" })
+                                                    <span class="input-group-btn"><button class="btn btn-primary" onclick="applyAllUnallocated()" id="tblcontact-applyall" disabled>Apply to all</button></span>
+                                                </div>
+                                            </div>
+                                            <div class="col-xs-12 col-sm-6 col-lg-2">
+                                                <div class="form-group">
+                                                    <label for="delivery">Delivery method</label>
+                                                    <select name="delivery" class="form-control select2" style="width: 100%;" data-placeholder="Default delivery method">
+                                                        <option value=""></option>
+                                                        @foreach (var item in Deliveries)
+                                                        {
+                                                            if (item == "CustomerPickup")
+                                                            {
+                                                                <option value="1">Customer pickup</option>
+                                                            }
+                                                            else if (item == "Delivery")
+                                                            {
+                                                                <option value="2">@item</option>
+                                                            }
+                                                            else
+                                                            {
+                                                                <option value="3">@item</option>
+                                                            }
+
+                                                        }
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="col-xs-12 col-sm-6 col-lg-2">
+                                                <label>Days to last basis</label>
+                                                <div class="form-group">
+                                                    <select name="daytolastbasis" onchange="if ($(this).val() == '3') { $('#custome-date-range').show() } else { $('#custome-date-range').hide()}" class="form-control select2" style="width: 100%;">
+                                                        <option value="1">Last one week sales</option>
+                                                        <option value="2">Last one month sales</option>
+                                                        <option value="3">Custom range</option>
+                                                    </select>
+                                                </div>
+                                                <div id="custome-date-range" class="form-group" style="display:none">
+                                                    <div class="input-group" style="margin-bottom: 15px;">
+                                                        <span class="input-group-addon" style="padding:0 10px;"><i class="fa fa-calendar"></i></span>
+                                                        <input type="text" id="filter_daterange" style="border:1px solid #e1e1e1;padding:6px 5px;" name="day2last" class="form-control datetimerange" placeholder="Choose a range">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-xs-12 col-sm-6 col-lg-2">
+                                                <label>Days to last</label>
+                                                <input name="daytolast" type="number" class="form-control" value="@unallocatedGroup.DaysToLast">
+                                            </div>
+                                            <div class="col-xs-12 col-sm-6 col-lg-3">
+                                                <div class="form-group">
+
+                                                    <label for="opts1">Options</label><br />
+
+                                                    <div class="btn-group options withselected3" style="display: none;">
+                                                        <button class="btn btn-success dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                                            With selected... &nbsp; <i class="fa fa-angle-down"></i>
+                                                        </button>
+                                                        <ul class="dropdown-menu" style="min-width: 100%;">
+                                                            <li>
+                                                                <a href="#" data-toggle="modal" onclick="$('#primarycontactforgroup').val($('#slpricontact-applyall').val()).change();" data-target="#primary-contact-modal">Assign to Contact</a>
+                                                            </li>
+                                                        </ul>
+                                                    </div>
+
+                                                    <div class="btn-group options">
+                                                        <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                                            <i class="fa fa-sliders"></i> &nbsp; Manage display
+                                                        </button>
+                                                        <ul class="dropdown-menu primary manage-columns">
+                                                            <li><label><input type="checkbox" data-column="1" checked> Name</label></li>
+                                                            <li><label><input type="checkbox" data-column="2" checked> Group</label></li>
+                                                            <li><label><input type="checkbox" data-column="3" checked> Primary contact</label></li>
+                                                            <li><label><input type="checkbox" data-column="4" checked> Unit</label></li>
+                                                            <li><label><input type="checkbox" data-column="5" checked> In inventory</label></li>
+                                                            <li><label><input type="checkbox" data-column="6" checked> On order</label></li>
+                                                            <li><label><input type="checkbox" data-column="7" checked> Cost per unit</label></li>
+                                                            <li><label><input type="checkbox" data-column="8" checked> Quantity</label></li>
+                                                            <li><label><input type="checkbox" data-column="9" checked> Discount</label></li>
+                                                            <li><label><input type="checkbox" data-column="10" checked> Tax rate</label></li>
+                                                            <li><label><input type="checkbox" data-column="11" checked> Total</label></li>
+                                                        </ul>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <br />
+                                    <table id="tbl-unallocated" class="datatable table-striped table-hover" data-order='[[1, "asc"]]' style="width: 100%;">
+                                        <thead>
+                                            <tr>
+                                                <th data-priority="1" data-orderable="false"><input type="checkbox" onchange="chkAll(this)"></th>
+                                                <th data-priority="1">Name</th>
+                                                <th data-priority="3">Group</th>
+                                                <th data-priority="1">Reporting Filters</th>
+                                                <th data-priority="1">Primary contact</th>
+                                                <th data-priority="3">Unit</th>
+                                                <th data-priority="3">In inventory</th>
+                                                <th data-priority="3">On order</th>
+                                                <th data-priority="1">Cost per unit (@currencySettings.CurrencySymbol)</th>
+                                                <th data-priority="3">Quantity</th>
+                                                <th data-priority="3">Discount %</th>
+                                                <th data-priority="3">Tax rate</th>
+                                                <th data-priority="3" data-orderable="false">Total (@currencySettings.CurrencySymbol)</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var item in unallocatedGroup.ReorderItems)
+                                            {
+                                                <tr class="moved3">
+                                                    <td>
+                                                        <input type="checkbox" value="@item.Id" onchange="checkShowWithselected()">
+                                                        <input type="hidden" value="@item.Item.SumTaxRates(false)" id="taxrate@(item.Id)" />
+                                                        <input type="hidden" value="@item.Item.StringItemTaxRates(false)" id="taxname@(item.Id)" />
+                                                    </td>
+                                                    <td><a href="#">@item.Item.Name</a></td>
+                                                    <td>@(item.Item.Group?.Name??"")</td>
+                                                    <td>
+                                                        <select id="dimensions@(item.Id)" name="dimensions" class="form-control select2 trackInputUnl" style="width: 100%;" multiple>
+                                                            <option value=""></option>
+                                                            @foreach (var itemdimensions in dimensions)
+                                                            {
+                                                            <option value="@itemdimensions.Id">@itemdimensions.Name</option>
+                                                            }
+                                                        </select>
+                                                    </td>
+                                                    <td>
+                                                        @Html.DropDownList($"primary{item.Id}", contactSelectListItems, new { @class = "form-control slprimarycontact select2", style = "width: 100%;" })
+                                                    </td>
+                                                    <td>
+                                                        <select id="unit@(item.Id)" name="unit" class="form-control select2 trackInputUnl" style="width: 100%;" onchange="$('.changes3').fadeIn();">
+                                                            @foreach (var unit in item.Item.Units)
+                                                            {
+                                                                <option value="@unit.Id">@unit.Name</option>
+                                                            }
+                                                        </select>
+                                                    </td>
+                                                    <td>
+                                                        @item.InInventory.ToDecimalPlace(currencySettings)
+                                                    </td>
+                                                    <td>@item.OnOrder.ToDecimalPlace(currencySettings)</td>
+                                                    <td><input id="costPerUnit@(item.Id)" name="costPerUnit" type="number" class="form-control trackInputUnl" value="0" style="width: 100%;"></td>
+                                                    <td><input id="quantity@(item.Id)" name="quantity" type="number" class="form-control trackInputUnl" value="0" style="width: 100%;" disabled title="Please calculate based on days to last"></td>
+                                                    <td><input id="discount@(item.Id)" name="discount" type="number" class="form-control trackInputUnl" value="0" style="width: 100%;"></td>
+                                                    <td class="cell-taxrates">
+                                                        @{
+                                                            var taxs = item.Item.TaxRates.Where(s => s.IsPurchaseTax);
+
+                                                        }
+                                                        @if (taxs.Any())
+                                                        {
+                                                            <ul class="unstyled">
+                                                                @foreach (var tax in taxs)
+                                                                {
+                                                                    <li>@tax.Name</li>
+                                                                }
+                                                            </ul>
+                                                        }
+                                                        else
+                                                        {
+                                                            <ul class="unstyled"><li>Tax free</li></ul>
+                                                        }
+                                                    </td>
+                                                    <td class="cell-totalcost">@(((decimal)0).ToCurrencySymbol(currencySettings))</td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+
+
+                                    <div class="changes3" style="display: none;">
+                                        <br />
+                                        <button class="btn btn-danger">Cancel</button>
+                                        <button class="btn btn-success" onclick="$('.moved2').hide(); $('.changes3').hide();">Confirm</button>
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+                    }
+                    <!-- END Proficiency 3 -->
+
+                </div>
+
+                <br />
+                <div class="app_upper_dash text-center">
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-6 col-md-3">
+                            <div class="stat_label">
+                                <span>Items in reorder</span>
+                                <h3><span class="countreorderitems">@countitemsreorder</span>/@countitemsinreorder</h3>
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-sm-6 col-md-3">
+                            <div class="stat_label">
+                                <span>Total</span>
+                                <h3><span class="totalreorder">@Model.Total.ToCurrencySymbol(currencySettings)</span></h3>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+
+                <br />
+                <button class="btn btn-danger" type="button" onclick="setTabTrader('ItemsProducts', 'inventory-tab');setLocalStorage('sub-inventory-tab', 'inv-reorders');;window.location.href='/Trader/AppTrader';">Cancel</button>
+                <button class="btn btn-primary" onclick="setTypeSubmit('save')">Save for later</button>
+                <button class="btn btn-success" onclick="setTypeSubmit('finish')">Finish</button>
+
+
+            </div>
+        </div>
+
+
+
+    </section>
+    <!-- ./content -->
+
+</div>
+<!-- /.content-wrapper -->
+<div class="modal fade left" id="primary-contact-modal" role="dialog" aria-labelledby="primary-contact-modal" style="display: none; padding-right: 17px;">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+                <h5 class="modal-title">Assign selected to a Primary Conact</h5>
+            </div>
+            <div class="modal-body">
+                <form id="frmCreateGroupReorder" action="/TraderInventory/CreateGroupReorder" method="post">
+                    <div class="well custom">
+                        <div class="form-group" style="margin: 0;">
+                            <label for="primary">Primary contact <span class="red">*</span></label>
+                            @Html.DropDownList("primarycontactforgroup", contactSelectListItems, new { @class = "form-control select2", style = "width: 100%;" })
+                        </div>
+                    </div>
+
+                    <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">Confirm</button>
+                </form>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+@{
+    <link href="~/Content/DesignStyle/css/bootstrap-multiselect.css" rel="stylesheet" />
+    <script src="~/Content/DesignStyle/js/bootstrap-multiselect.min.js"></script>
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/trader.reorder.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/trader.reorder.min.js"></script>
+    }
+}

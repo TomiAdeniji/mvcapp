@@ -1,0 +1,211 @@
+﻿@using Qbicles.Models.Manufacturing;
+@using Qbicles.Models.Trader
+@model ManuJob
+@{
+
+    var workGroups = (List<WorkGroup>)ViewBag.WorkGroups;
+    var wg = (WorkGroup)ViewBag.WorkgroupSelected;
+    if (Model.AssemblyUnit == null) { Model.AssemblyUnit = new ProductUnit(); }
+    var selectedItem = (TraderItem)ViewBag.Item;
+}
+<style>
+    #trader_workgroup_select-error {
+        position: absolute;
+        top: 60px;
+        right: 0px;
+    }
+
+    #unit_select, #tradergroupitem {
+        position: relative;
+    }
+
+    #unit_selected-error, #tradergroupitem-error {
+        position: absolute;
+        z-index: 1;
+        right: 15px;
+        top: 60px;
+    }
+
+        #unit_selected-error + span, #tradergroupitem-error + span {
+            border: 1px solid #b84c4c;
+        }
+</style>
+<div class="modal-dialog modal-xl" role="document">
+    <div class="modal-content">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <h5 class="modal-title">Compound Item Assembly</h5>
+        </div>
+        <div class="modal-body">
+
+            <section class="setup-ui" style="background: #f5f5f5; padding: 30px 15px;">
+
+                <div class="row">
+
+                    <div class="col-xs-12 col-sm-5 col-lg-4">
+
+                        <div class="activity-overview generic help-text animated bounce" style="margin-bottom: 15px;">
+                            <i class="fa fa-info-circle"></i>
+                            <h5 style="margin: 0; padding: 0 0 10px 0;">Assembling your items</h5>
+                            <p>
+                                Assemble your compound items here, and track them in your inventory like any other regular item. To get started, simply choose the Workgroup
+                                that will be managing this assembly then the compound item you want to assemble. Once you select your item you'll see some more detailed info such as
+                                its recipe and manufacturing history.
+                            </p>
+                        </div>
+
+                        <div class="activity-overview generic" style="padding: 20px; margin-bottom: 30px;">
+                            <form id="form_workgroup">
+                                <div class="form-group" style="margin: 0; position:relative">
+                                    <label for="workgroup">Assign a Workgroup to manage this assembly</label>
+                                    <select name="workgroup" id="trader_workgroup_select" class="form-control select2" onchange="WorkGroupSelectedChange()" style="width: 100%;">
+                                        <option value=""></option>
+                                        @foreach (var item in workGroups)
+                                        {
+                                            if (Model.WorkGroup != null && Model.WorkGroup.Id == item.Id)
+                                            {
+                                                <option value="@item.Id" selected>@item.Name</option>
+                                            }
+                                            else
+                                            {
+                                                <option value="@item.Id">@item.Name</option>
+                                            }
+                                        }
+                                    </select>
+                                </div>
+                            </form>
+                            <div class="preview-workgroup" style="display: none;">
+                                <br />
+                                <table class="table app_specific" style="margin: 0;">
+                                    <tr>
+                                        <td><h5>Location</h5></td>
+                                        <td class="location_name">Location name</td>
+                                    </tr>
+                                    <tr>
+                                        <td><h5>Process</h5></td>
+                                        <td class="workgroup_process">Transfers</td>
+                                    </tr>
+                                    <tr>
+                                        <td><h5>Qbicle</h5></td>
+                                        <td class="workgroup_qbicle">Qblicle Name</td>
+                                    </tr>
+                                    <tr>
+                                        <td><h5>Members</h5></td>
+                                        <td class="workgroup_member"><button class="btn btn-info" onclick="ShowGroupMember()" data-toggle="modal" data-target="#app-trader-workgroup-preview"><i class="fa fa-user"></i> &nbsp; <span></span></button></td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <div class="col-xs-12 col-sm-7 col-lg-8">
+
+
+                        <div class="activity-overview plain">
+                            <form id="form_item">
+                                <div class="row">
+                                    <div class="col-xs-12">
+
+                                        <div class="form-group">
+                                            <label for="reference">Reference</label>
+                                            <input type="hidden" value="@Model.Reference.Id" id="reference_id" />
+                                            <input type="hidden" value="@Model.Reference.Type.ToString()" id="reference_type" />
+                                            <input type="hidden" value="@Model.Reference.Prefix" id="reference_prefix" />
+                                            <input type="hidden" value="@Model.Reference.Suffix" id="reference_suffix" />
+                                            <input type="hidden" value="@Model.Reference.Delimeter" id="reference_delimeter" />
+                                            <input type="hidden" value="@Model.Reference.FullRef" id="reference_fullref" />
+                                            <div class="show-ref">
+                                                <p>
+                                                    @Model.Reference.Prefix@Model.Reference.Delimeter<span id="refedit">@Model.Reference.NumericPart</span>@Model.Reference.Delimeter@Model.Reference.Suffix &nbsp; &nbsp;
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="item">Item to be assembled</label>
+                                            <input type="hidden" value="@Model.Product.Id" id="product_id" />
+                                            <select name="item_select" id="tradergroupitem" class="form-control select2" style="width: 100%;" onchange="traderGroupOnChange()">
+                                                @if (selectedItem != null)
+                                                {
+                                                    <option value="@selectedItem.Id" selected>@selectedItem.Name</option>
+                                                }
+                                                else
+                                                {
+                                                    <option value=""></option>
+                                                }
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-3">
+                                        <div class="form-group">
+                                            <label for="item">Assembly unit</label>
+                                            <input id="manu_unit" type="hidden" value="@Model.AssemblyUnit.Id" />
+                                            <select name="unit_select" id="unit_selected" onchange="unitOnchange()" class="form-control select2" style="width: 100%;">
+                                                <option value=""></option>
+
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-3">
+                                        <div class="form-group">
+                                            <label>Quantity to assemble</label>
+                                            <input onchange="validateForm()" type="number" id="manu_quantity" maxlength="15" name="manu" style="font-family: 'Roboto', Arial, sans-serif;" class="form-control" placeholder="Enter a quantity">
+                                        </div>
+                                    </div>
+                                </div>
+                            </form>
+                            <button class="btn btn-success" onclick="saveManuJob()">Confirm &amp; send to review</button>
+                        </div>
+
+                        <br />
+
+                        <div id="manu_item_product" class="item-info activity-overview plain" style="display: none; padding-top: 10px;">
+
+
+                        </div> <!-- ./item-info -->
+
+
+                    </div>
+                </div>
+
+            </section>
+
+
+            <br />
+            <button class="btn btn-danger" data-dismiss="modal">Close</button>
+
+        </div>
+    </div><!-- /.modal-content -->
+</div><!-- /.modal-dialog -->
+<script>
+    $('#trader_workgroup_select').not('multi-select').select2({
+        placeholder: 'Please select'
+    });
+    $('#form_item select').not('multi-select').select2({
+        placeholder: 'Please select'
+    });
+</script>
+@if (wg != null)
+{
+    <script>
+    var wgselectedId = @Html.Raw(wg.Id);
+    itemIdSelectedAddEdit = @Html.Raw(ViewBag.ItemId);
+    $('#product_id').val(itemIdSelectedAddEdit);
+    $('#trader_workgroup_select').val(wgselectedId);
+    $("#trader_workgroup_select").not('.multi-select').select2({
+        placeholder: 'Please select'
+    });
+    if (wgselectedId.toString() != "0") {
+        WorkGroupSelectedChange();
+    }
+
+    $(document).ready(function () {
+        traderGroupOnChange();
+    })
+    </script>
+}

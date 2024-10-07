@@ -1,0 +1,163 @@
+﻿@using Qbicles.BusinessRules;
+@using Qbicles.Models;
+@using Qbicles.BusinessRules.Model
+@model QbicleDiscussion
+@{
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var CurrentQbicle = (Qbicle)ViewBag.CurrentQbicle;
+    var QbicleTopics = (List<Topic>)ViewBag.QbicleTopics;
+    var CurrentTimeZone = (string)ViewBag.CurrentTimeZone;
+    var lstDefaultImg = (List<DefaultMedia>)ViewBag.DefaultMedia;
+    var idMediaImage = (string)ViewBag.FeaturedImageId;
+    var isSelectFromDefault = Model != null && lstDefaultImg.Any(i => idMediaImage.Equals(i.Id));
+    var datetimeFormat = (string)ViewBag.CurrentDateTimeFormat;
+}
+<div class="modal fade left" id="create-discussion-qb" role="dialog" aria-labelledby="create-discussion-qb">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">@(Model != null && Model.Id > 0 ? "Edit discussion" : "Add a discussion")</h5>
+            </div>
+            <div id="add-discussion-body" class="modal-body">
+
+                <div class="well custom">
+                    <form id="frm-discussion-qb">
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="Title">Discussion title <span class="red">*</span></label>
+                                    <input type="text" id="discussion-title" value="@(Model?.Name)" name="Title" required class="form-control">
+                                    <input id="discussion-key" type="hidden" name="Key" value="@Model.Key" />
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="Topic">Choose a Topic <span class="red">*</span></label>
+                                    <select id="discussion-topic" name="Topic" required class="form-control select2" onchange="if ($(this).val() != '') { $('#frm-discussion-qb select[name=Topic]').valid(); }" style="width: 100%;">
+                                        @foreach (var item in QbicleTopics)
+                                        {
+                                            <option value="@item.Id" @(Model.Topic != null && (int)Model.Topic.Id == item.Id ? "selected" : "")>@item.Name</option>
+                                        }
+                                    </select>
+                                    <label id="Topic-error" class="error" for="Topic" style="display: none;">This field is required.</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label for="media">Featured image</label>
+                                    <select id="discussion-featured-option" name="FeaturedOption" class="form-control select2" style="width: 100%;" onchange="if ($(this).val() == '1') { $('.discussion-resource-picker').show(); $('.discussionuploadnew').hide(); $('.ds_other').show()} else { $('.discussion-resource-picker').hide(); $('.discussionuploadnew').show(); }" tabindex="-1" aria-hidden="true">
+                                        <option value="1" @(isSelectFromDefault ? "selected" : "")>Select from a list of defaults</option>
+                                        <option value="2" @(isSelectFromDefault ? "" : "selected")>Upload my own image</option>
+                                    </select>
+                                </div>
+                                <div class="discussionuploadnew" style="display: @(!isSelectFromDefault? "block" : "none"); margin-top: 15px;">
+
+                                    <div class="form-group">
+                                        <label for="featuredimg">Choose an image to upload</label>
+                                        <input type="file" id="discussion-image-upload" class="form-control preview-discussion-img" name="FeaturedImage" accept=".jpg,.jpeg,.png,.webp" data-target="preview-discussion">
+                                        <input type="hidden" id="mediaDiscussionUse" value="@idMediaImage" />
+                                    </div>
+
+                                    <img id="preview-discussion" src="@(!string.IsNullOrEmpty(Model.FeaturedImageUri)? api + Model.FeaturedImageUri : "")" class="preview-discussion" style="width: 100%; height: auto;@(!string.IsNullOrEmpty(Model.FeaturedImageUri)?"display:block;":"display:none;")">
+                                </div>
+                                <div class="discussion-resource-picker" style="display: @(isSelectFromDefault? "block" : "none"); padding: 15px 0 0 0;">
+                                    <div class="flex-grid-half-lg from-community c1" style="width: 100%;">
+                                        @foreach (var item in lstDefaultImg)
+                                        {
+                                            <div id="other_@item.Id" class="col ds_other" style="display: @((Model==null || idMediaImage == "" || item.Id == idMediaImage) ? "block" : "none")">
+                                                <a href="#" class="article-feature">
+                                                    <div class="article-feature-img" style="background: url('@item.FileUrl');">
+                                                    </div>
+                                                    <div class="info" style="padding: 15px 0;">
+                                                        <div style="padding: 0 20px;">
+                                                            <button id="btnuse_@item.Id" type="button" class="btn btn-info community-button usetheme" style="display:@(Model!=null && item.Id == idMediaImage ? "none" : "block")" onclick="$(this).hide(); $('#btnchange_@item.Id').show(); $('.ds_other').hide(); $('#mediaDiscussionUse').val('@item.Id');$('#other_@item.Id').show();">
+                                                                <i class="fa fa-check"></i> &nbsp; Use this
+                                                            </button>
+
+                                                            <button id="btnchange_@item.Id" type="button" class="btn btn-warning community-button change" style="display:@(Model!=null && item.Id == idMediaImage ? "block" : "none")" onclick="$(this).hide(); $('#btnuse_@item.Id').show(); $('#mediaDiscussionUse').val('0'); $('.ds_other').show();">
+                                                                <i class="fa fa-pencil"></i> &nbsp; Change
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </a>
+                                            </div>
+                                        }
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label>Add an opening comment (also used as its description)</label>
+                                    <textarea id="discussion-summary" class="form-control" style="min-height: 80px;">@(Model?.Summary)</textarea>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <div class="avatarpickermulti">
+                                    <div class="form-group">
+                                        <label for="assignee">Add Contacts to your discussion</label>
+                                        <select id="discussion-assignee" name="Assignee" class="form-control select2avatar-discussion" data-placeholder="Click to add" multiple style="width: 100%;">
+                                            <option value=""></option>
+                                            @if (CurrentQbicle != null)
+                                            {
+                                                foreach (var item in CurrentQbicle?.Members)
+                                                {
+                                                    <option avatarUrl="@(api+item.ProfilePic)&size=T" @(Model.ActivityMembers.Any(s => s.Id == item.Id) ? "selected" : "") value="@item.Id">@HelperClass.GetFullNameOfUser(item)</option>
+                                                }
+                                            }
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        @if (Model.ExpiryDate == null || (Model.ExpiryDate != null && Model.ExpiryDate.Value >= DateTime.UtcNow))
+                        {
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-6">
+                                    <label>Set an expiry date (optional)</label><br />
+                                    <div class="checkbox toggle" onclick="$('.setexpiry').toggle();" style="float:left">
+                                        <label>
+                                            <input data-toggle="toggle" name="IsExpiry" id="discussion-is-expiry" value="true" data-onstyle="success" @(Model.ExpiryDate.HasValue ? "checked" : "") type="checkbox">
+                                        </label>
+                                    </div>
+
+                                    <div class="setexpiry" style="@(Model.ExpiryDate.HasValue?"display: block;":"display: none;") ">
+                                        <div class="form-group">
+                                            <label>Choose when this discussion should expire</label>
+                                            <input type="text" name="ExpiryDate" id="discussion-expiryDate" value="@(Model.ExpiryDate.HasValue?Model.ExpiryDate.Value.ConvertTimeFromUtc(CurrentTimeZone).ToString(datetimeFormat):"")" class="form-control singledateandtime-dis">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-6">
+                                </div>
+                            </div>
+                        }
+                    </form>
+                </div>
+
+                <button type="button" form="frm-discussion-qb" class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                <button type="button" onclick="CreateQbiclesDiscussion()" form="frm-discussion-qb" class="btn btn-success">Confirm</button>
+
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+@{
+
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/qbicle.modal-discussion.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/qbicle.modal-discussion.js"></script>
+    }
+}

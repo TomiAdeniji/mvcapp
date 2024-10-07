@@ -1,0 +1,623 @@
+﻿@using Qbicles.Models;
+@using Qbicles.BusinessRules;
+@using Qbicles.Models.Bookkeeping;
+@using System.Globalization;
+@{
+    ViewBag.Title = "Approval - Bookkeeping";
+    var approval = (ApprovalReq)ViewBag.Approval;
+    var journalEntry = (JournalEntry)ViewBag.JournalEntry;
+    var dateFormat = (string)ViewBag.CurrentDateFormat;
+    var logoUser = approval.StartedBy.ProfilePic;
+    //var CurrentUser = (ApplicationUser)ViewBag.CurrentUser;
+    var currentUserId = (string)ViewBag.CurrentUserId;
+
+    var today = (DateTime)ViewBag.Today;
+    var timeline = (List<ApprovalStatusTimeline>)ViewBag.Timeline;
+    var timelineDate = (List<DateTime>)ViewBag.TimelineDate;
+
+    var IsReviewerApprover = (IsReviewerAndApproverModel)ViewBag.CurrentReviewerAndApprover;
+    var approvedOrDeniedAppByName = HelperClass.GetFullNameOfUser(approval.ApprovedOrDeniedAppBy, currentUserId);
+    var approvalCreated = HelperClass.GetFullNameOfUser(approval.StartedBy, currentUserId);
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var pageSize = @HelperClass.activitiesPageSize;
+    var timeZone = (string)ViewBag.CurrentTimeZone;
+}
+
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail mdv2-wrapper" style="position: relative;">
+    <!-- Main content -->
+    <section class="mdv2 dash" data-tooltip-color="teal" data-tooltip-delay="300" data-tooltip-animate-function="spin" style="border-top: 1px solid #f1f1f1;">
+        <!-- App bar -->
+        <div class="mdv2-col-app" style="margin-bottom: 0;">
+
+            <div data-spy="affix" class="contained-sidebar">
+
+                <div class="activity-overview plain company-overview welcome-info" style="text-align: left !important; flex: none; margin: 0 0 30px 0; padding-top: 30px; padding-bottom: 0;">
+
+                    <div class="pull-left" style="margin-bottom: 15px;">
+                        <a href="/Qbicles/Dashboard" class="btn btn-primary"><i class="fa fa-angle-up"></i> &nbsp; Qbicle</a>
+                        <a href="/Bookkeeping/JournalEntry?id=@journalEntry.Id" class="btn btn-info"><i class="fa fa-eye"></i> &nbsp; View in Bookkeeping</a>
+                    </div>
+                    <div class="clearfix"></div>
+
+                    <br />
+
+                    <h6 class="subhead">Bookkeeping Journal Entry Approval</h6>
+                    <h1 style="line-height: 1.2;">Journal #@journalEntry.Number</h1>
+                    <span class="label label-lg label-primary">@approval.Topic.Name</span>
+
+                    @{
+                        var cssLabel = "";
+                        switch (approval.RequestStatus)
+                        {
+                            case ApprovalReq.RequestStatusEnum.Pending:
+                                cssLabel = StatusLabelStyle.Pending;
+                                break;
+                            case ApprovalReq.RequestStatusEnum.Reviewed:
+                                cssLabel = StatusLabelStyle.Reviewed;
+                                break;
+                            case ApprovalReq.RequestStatusEnum.Approved:
+                                cssLabel = StatusLabelStyle.Approved;
+                                break;
+                            case ApprovalReq.RequestStatusEnum.Denied:
+                                cssLabel = StatusLabelStyle.Denied;
+                                break;
+                        }
+                        <span id="pending-title" class="label label-lg @cssLabel">@approval.RequestStatus.GetDescription()</span>
+                    }
+                    <div class="clearfix"></div>
+
+
+                    <br /><br /><br />
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-6">
+                            <label>Created</label><br />
+                            <p>@approval.StartedDate.ToString(dateFormat + " h:mm tt").ToLower()</p>
+                        </div>
+                        <div class="col-xs-12 col-sm-6">
+                            <label>Creator</label><br />
+                            <p><a href="/Community/UserProfilePage?uId=@(approval.StartedBy.Id)">@approvalCreated</a></p>
+                        </div>
+                    </div>
+                    <br />
+
+                    @if (approval.ClosedDate != null)
+                    {
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-12">
+                                <label>Dates &amp; Times</label><br />
+                                @if (approval.ClosedDate != null && (approval.StartedDate.Date == approval.ClosedDate.Value.Date))
+                                {
+                                    <p>@HelperClass.DatetimeToOrdinal(approval.StartedDate.Date) - @approval.StartedDate.ToString("hh:mmtt") - @approval.ClosedDate.Value.ToString("hh:mmtt")</p>
+                                }
+                                else
+                                {
+                                    if (approval.ClosedDate != null)
+                                    {
+                                        <p>@HelperClass.DatetimeToOrdinal(approval.StartedDate.Date) - @approval.StartedDate.ToString("hh:mmtt") - @HelperClass.DatetimeToOrdinal(approval.ClosedDate.Value.Date) @approval.ClosedDate.Value.ToString("hh:mmtt")</p>
+                                    }
+                                    else
+                                    {
+                                        <p>
+                                            @HelperClass.DatetimeToOrdinal(approval.StartedDate.Date) - @approval.StartedDate.ToString("hh:mmtt")
+                                        </p>
+                                    }
+                                }
+                            </div>
+                        </div>
+                    }
+
+                    <br /><br />
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-6">
+                            <button class="btn btn-primary community-button" style="margin-bottom: 3px;" data-toggle="modal" data-target="#team-view">
+                                <i class="fa fa-users"></i> &nbsp; Team
+                            </button>
+                        </div>
+                        <div class="col-xs-12 col-sm-6">
+                            <button class="btn btn-info community-button" data-toggle="modal" data-target="#history-view"><i class="fa fa-history"></i> &nbsp; History</button>
+                        </div>
+                    </div>
+
+
+                    <br /><br />
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-12">
+                            <label>Description</label><br />
+                            <p>@journalEntry.Description</p>
+                        </div>
+                    </div>
+                    <h5 class="hidden">Attachments</h5>
+                    <ul class="avatar-listing team unstyled hidden" style="margin-bottom: 30px !important;">
+                        <li>
+                            <a href="#">
+                                <div class="owner-avatar">
+                                    <div class="avatar-sm" style="background: url('dist/img/icon_file_pdf.png');"></div>
+                                </div>
+                                <h5>PDF Document 1<br><small>PDF</small></h5>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#">
+                                <div class="owner-avatar">
+                                    <div class="avatar-sm" style="background: url('dist/img/icon_file_doc.png');"></div>
+                                </div>
+                                <h5>Word Doc 1<br><small>Word doc</small></h5>
+                            </a>
+                        </li>
+                    </ul>
+
+
+                </div>
+
+
+            </div>
+        </div>
+        <!-- END App bar -->
+        <!-- Main area -->
+        <div class="mdv2-col-dash">
+
+            <div class="spacing">
+
+                @{
+                    var isDisable = "";                    
+
+                    switch (approval.RequestStatus)
+                    {
+                        case ApprovalReq.RequestStatusEnum.Pending:
+                            if (!IsReviewerApprover.IsReviewer)
+                            {
+                                isDisable = "disabled";
+                            }
+                            break;
+                        case ApprovalReq.RequestStatusEnum.Reviewed:
+                            if (!IsReviewerApprover.IsApprover)
+                            {
+                                isDisable = "disabled";
+                            }
+                            break;
+                        case ApprovalReq.RequestStatusEnum.Approved:
+                        case ApprovalReq.RequestStatusEnum.Denied:
+                            isDisable = "disabled";
+                            break;
+                    }
+                    if (!IsReviewerApprover.IsReviewer && !IsReviewerApprover.IsApprover)
+                    {
+                        isDisable = "disabled";
+                    }
+                    if (isDisable != "disabled")
+                    {
+                        <div style="width: 500px; max-width: 100%; margin-bottom: 40px;">
+                            <div class="alert activity-overview generic reviewer" style="padding: 20px 20px !important; margin: 0;">
+                                <label for="status">Approval options available to you</label>
+                                <div class="input-group @isDisable">
+                                    <select id="action_status" name="action_element" class="form-control select2" style="width: 100%;" data-placeholder="Please choose...">
+                                        @if (approval.RequestStatus == ApprovalReq.RequestStatusEnum.Pending)
+                                        {
+                                            <option value="@ApprovalReq.RequestStatusEnum.Reviewed" selected>Send to Approval</option>
+                                            <option value="@ApprovalReq.RequestStatusEnum.Denied">Decline (halt process)</option>
+                                        }
+                                        else if (approval.RequestStatus == ApprovalReq.RequestStatusEnum.Reviewed)
+                                        {
+                                            <option value="@ApprovalReq.RequestStatusEnum.Approved" selected>Approve</option>
+                                            <option value="@ApprovalReq.RequestStatusEnum.Pending">Send back to review</option>
+                                            <option value="@ApprovalReq.RequestStatusEnum.Denied">Decline (halt process)</option>
+                                        }
+                                        else
+                                        {
+                                            <option value="@approval.RequestStatus" selected>@approval.RequestStatus</option>
+                                        }
+
+                                    </select>
+                                    <span class="input-group-btn">
+                                        <button class="btn btn-success" onclick="setRequestStatus('@approval.Id.Encrypt()', '', '@currentUserId')">Confirm</button>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <br />
+                    }
+
+                }
+
+
+                <section class="associated_forms">
+
+
+                    <ul class="nav nav-pills alt" style="margin: 0 0 30px 0;">
+                        <li class="active"><a href="#" data-toggle="tab" data-target="#approval-0">Transactions</a></li>
+                        <li><a href="#" data-toggle="tab" data-target="#approval-1">Comments &amp; Files</a></li>
+                    </ul>
+
+
+                    <div class="tab-content">
+
+
+                        <!-- Transactions -->
+                        <div class="tab-pane fade in active" id="approval-0">
+                            <table class="datatable app_specific table-hover table-striped" style="width: 100%; background: #fff;">
+                                <thead>
+                                    <tr>
+                                        <th data-priority="2">Date</th>
+                                        <th data-priority="2">Account</th>
+                                        <th data-priority="2">Reference</th>
+                                        <th data-priority="1">Debit</th>
+                                        <th data-priority="1">Credit</th>
+                                        <th data-orderable='false' data-priority="1">Options</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var tran in journalEntry.BKTransactions)
+                                    {
+                                        <tr>
+                                            <td>@tran.PostedDate.FormatDateTimeByUser(dateFormat)</td>
+                                            <td>@tran.Account.Name - @tran.Account.Number</td>
+                                            <td>@tran.Reference</td>
+                                            <td>@(HelperClass.Converter.Obj2Decimal(tran.Debit).ToString("#,###.##", CultureInfo.InvariantCulture.NumberFormat))</td>
+                                            <td>@(HelperClass.Converter.Obj2Decimal(tran.Credit).ToString("#,###.##", CultureInfo.InvariantCulture.NumberFormat))</td>
+                                            <td>
+                                                <button class="btn btn-info" onclick="ShowBkTransactionDetail(@tran.Id)"><i class="fa fa-info"></i> &nbsp; More</button>
+                                            </td>
+                                        </tr>
+                                    }
+
+                                </tbody>
+                            </table>
+                        </div>
+                        <!-- END Transactions -->
+                        <!-- Comments & Files -->
+                        <div class="tab-pane fade" id="approval-1">
+
+                            @* comment and media*@
+                            <div class="app_topnav entity_adds" style="background: #fff; padding: 0;">
+                                <ul class="nav nav-pills app_main_nav">
+                                    <li role="presentation" class="active">
+                                        <a href="#tab1" data-toggle="tab">
+                                            <i class="fa fa-comments"></i>
+                                            Comments
+                                        </a>
+                                    </li>
+                                    <li role="presentation">
+                                        <a href="#tab2" data-toggle="tab">
+                                            <i class="fa fa-folder-open"></i>
+                                            Files
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
+                            <br />
+                            <div class="row">
+                                <div class="col-xs-12">
+                                    <div class="tab-content">
+                                        <div class="tab-pane fade in active" id="tab1">
+                                            <div class="row">
+                                                <div class="col-xs-12">
+                                                    <div class="well" style="max-width: 800px;">
+                                                        <div class="form-group">
+                                                            <label for="add-comment">Add a comment</label>
+                                                            <textarea id="txt-comment-approval" name="add-comment" class="form-control"></textarea>
+                                                        </div>
+                                                        <button onclick="addCommentForApproval('@approval.Key')" class="btn btn-success">Submit</button>
+                                                    </div>
+                                                    <br />
+                                                </div>
+                                            </div>
+                                            <div id="list-comments-approval">
+                                                @foreach (var post in approval.Posts.OrderByDescending(x => x.StartedDate).Take(pageSize))
+                                                {
+
+                                                    <!-- General post -->
+
+                                                    var fullName = HelperClass.GetFullNameOfUser(post.CreatedBy, currentUserId);
+                                                    <article id="post-@post.Id" class="activity post">
+                                                        <img style="background-image: url('@api@post.CreatedBy.ProfilePic')" class="activity-avatar" />
+                                                        <div class="activity-detail">
+                                                            <div class="activity-meta">
+                                                                <h4>@fullName</h4>
+                                                                <small>@post.StartedDate.ConvertTimeFromUtc(timeZone).ToString(dateFormat + ", hh:mmtt")</small>
+                                                            </div>
+                                                            <div class="activity-overview media-comment">
+                                                                <p>@post.Message</p>
+                                                            </div>
+                                                        </div>
+                                                        <div class="clearfix"></div>
+                                                    </article>
+                                                    <!-- END General post -->
+                                                }
+                                            </div>
+                                            @if (approval.Posts.Count > pageSize)
+                                            {
+                                                <button id="btnLoadPosts" onclick="LoadMorePosts('@approval.Key', @pageSize, 'list-comments-approval')" class="btn btn-info trigger_load">Load older posts</button>
+                                            }
+                                        </div>
+
+                                        <div class="tab-pane fade" id="tab2">
+                                            @if (approval.ClosedBy == null)
+                                            {
+                                                <br />
+                                                <a href="javascript:void(0)" class="btn btn-success" id="btnAddFile" data-toggle="modal" data-target="#create-media"><i class="fa fa-upload"></i> &nbsp; Upload a file</a>
+                                            }
+                                            <br /><br />
+                                            <div id="list-medias">
+                                                @if (approval.SubActivities.Count > 0)
+                                                {
+                                                    foreach (var item in approval.SubActivities.OrderByDescending(x => x.Id).Take(pageSize))
+                                                    {
+                                                        var media = (QbicleMedia)item;
+                                                        var createdByName = HelperClass.GetFullNameOfUser(media.StartedBy, currentUserId);
+                                                        var createdDate = media.StartedDate.Date == DateTime.UtcNow.Date ? "Today, " + media.StartedDate.ToString("hh:mmtt").ToLower() : media.StartedDate.ToString(dateFormat + " hh:mmtt").ToLower();
+                                                        var mediaLastupdate = media.VersionedFiles.Where(e => !e.IsDeleted).OrderByDescending(x => x.UploadedDate).First();
+                                                        var lastUpdateFile = mediaLastupdate != null ? (mediaLastupdate.UploadedDate.Date == DateTime.UtcNow.Date ? "Today, " + mediaLastupdate.UploadedDate.ToString("hh:mmtt").ToLower() : mediaLastupdate.UploadedDate.ToString(dateFormat + " hh:mmtt").ToLower()) : createdDate;
+                                                        //Media post
+                                                        <article class="activity media">
+                                                            <img style="background-image: url('@api@media.StartedBy.ProfilePic')" class="activity-avatar" />
+                                                            <div class="activity-detail">
+                                                                <div class="activity-meta">
+                                                                    <h4>@createdByName</h4>
+                                                                    <small>@createdDate</small>
+                                                                    <br class="visible-xs">
+                                                                </div>
+                                                                <div class="activity-overview media">
+                                                                    <div class="row">
+                                                                        <div class="col-xs-12 col-sm-5 col-md-6 col-lg-5">
+                                                                            <a href="javascript:void(0)" onclick="ShowMediaPage('@media.Key')">
+                                                                                @if (media.FileType.Type == "Image File")
+                                                                                {
+                                                                                    <img id="media-@item.Id" class="img-responsive" src='@api@mediaLastupdate.Uri' />
+                                                                                }
+                                                                                else
+                                                                                {
+                                                                                    <img src="@media.FileType.IconPath" class="img-responsive">
+                                                                                }
+                                                                            </a>
+                                                                        </div>
+                                                                        <div class="col-xs-12 col-sm-7 col-md-6 col-lg-7 description">
+                                                                            <h5>@media.Name</h5>
+                                                                            <p>
+                                                                                @media.Description
+                                                                            </p>
+                                                                            <small>@media.FileType.Type | Update @lastUpdateFile</small>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <div class="clearfix"></div>
+                                                        </article>
+                                                        <!-- END Media post -->
+
+
+                                                    }
+                                                }
+                                            </div>
+                                            @if (approval.SubActivities.Count() > pageSize)
+                                            {
+                                                <button id="btnLoadMedias" onclick="LoadMoreMedias(@approval.Id, @pageSize, 'list-medias')" class="btn btn-info trigger_load">Load older medias</button>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                        <!-- END Comments & Files -->
+
+
+                    </div>
+
+                </section>
+
+                <br /><br /><br />
+
+            </div>
+
+        </div>
+
+    </section>
+</div>
+
+@{
+    Html.RenderAction("GenerateModalMedia", "Qbicles");
+}
+
+
+<div class="modal fade left" id="team-view" role="dialog" aria-labelledby="team-view">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Team Members</h5>
+            </div>
+            <div class="modal-body">
+
+                <div class="row">
+                    <div class="col-xs-12">
+                        <ul class="app_subnav">
+                            <li class="active"><a href="#initiators" data-toggle="tab">Initiators</a></li>
+                            <li><a href="#reviewers" data-toggle="tab">Reviewers</a></li>
+                            <li><a href="#approvers" data-toggle="tab">Approvers</a></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <br />
+
+                <div class="tab-content">
+                    @if (journalEntry.WorkGroup!=null&&journalEntry.WorkGroup.Members.Any())
+                    {
+                        var approvalProcesss = approval.ApprovalRequestDefinition;
+
+                        var approvers = journalEntry.WorkGroup.Approvers;
+                        approvers.AddRange(journalEntry.WorkGroup.Members.Where(q => approvalProcesss.Approvers.Any(a => a.Id == q.Id)).ToList());
+                        approvers = approvers.Distinct().ToList();
+
+                        var reviewers = journalEntry.WorkGroup.Reviewers;
+                        reviewers.AddRange(journalEntry.WorkGroup.Members.Where(q => approvalProcesss.Reviewers.Any(a => a.Id == q.Id)).ToList());
+                        reviewers = reviewers.Distinct().ToList();
+
+                        var initiators = journalEntry.WorkGroup.Members.Where(q => !(approvers.Any(a => a.Id == q.Id) || reviewers.Any(r => r.Id == q.Id))).ToList();
+                        initiators.AddRange(journalEntry.WorkGroup.Members.Where(q => approvalProcesss.Initiators.Any(a => a.Id == q.Id)).ToList());
+                        initiators = initiators.Distinct().ToList();
+
+
+                        <div class="tab-pane fade in active" id="initiators">
+                            <ul class="avatar-listing team unstyled" style="margin-bottom: 0 !important;">
+                                @if (initiators.Any())
+                                {
+                                    foreach (var applicationUser in initiators)
+                                    {
+                                        var roleInit = "Initiator";
+                                        roleInit += approvalProcesss.Reviewers.Any(q => q.Id == applicationUser.Id) ? ", Reviewer" : "";
+                                        roleInit += approvalProcesss.Approvers.Any(q => q.Id == applicationUser.Id) ? ", Approver" : "";
+
+                                        <li>
+                                            <a>
+                                                <div class="owner-avatar">
+                                                    <div class="avatar-sm" style="background: url('@api@applicationUser.ProfilePic');"></div>
+                                                </div>
+                                                <h5>@HelperClass.GetFullNameOfUser(applicationUser)<br><small>@roleInit</small></h5>
+                                            </a>
+                                        </li>
+                                    }
+                                }
+                            </ul>
+                        </div>
+                        <div class="tab-pane fade" id="reviewers">
+                            <ul class="avatar-listing team unstyled" style="margin-bottom: 0 !important;">
+                                @if (reviewers.Any())
+                                {
+                                    foreach (var applicationUser in reviewers)
+                                    {
+                                        var roleReview = "Reviewer";
+                                        roleReview = approvalProcesss.Initiators.Any(q => q.Id == applicationUser.Id) ? "Initiator, " + roleReview : roleReview;
+                                        roleReview += approvalProcesss.Approvers.Any(q => q.Id == applicationUser.Id) ? ", Approver" : "";
+
+                                        <li>
+                                            <a>
+                                                <div class="owner-avatar">
+                                                    <div class="avatar-sm" style="background: url('@api@applicationUser.ProfilePic');"></div>
+                                                </div>
+                                                <h5>@HelperClass.GetFullNameOfUser(applicationUser)<br><small>@roleReview</small></h5>
+                                            </a>
+                                        </li>
+
+                                    }
+                                }
+                            </ul>
+                        </div>
+                        <div class="tab-pane fade" id="approvers">
+                            <ul class="avatar-listing team unstyled" style="margin-bottom: 0 !important;">
+                                @if (approvers.Any())
+                                {
+                                    foreach (var applicationUser in approvers)
+                                    {
+                                        var roleApprover = "";
+                                        roleApprover += approvalProcesss.Initiators.Any(q => q.Id == applicationUser.Id) ? "Initiator" : roleApprover;
+                                        roleApprover += approvalProcesss.Reviewers.Any(q => q.Id == applicationUser.Id) ? string.IsNullOrEmpty(roleApprover) ? "Reviewer" : ", Reviewer" : roleApprover;
+                                        roleApprover += (string.IsNullOrEmpty(roleApprover) ? "Approver" : ", Approver");
+                                        <li>
+                                            <a>
+                                                <div class="owner-avatar">
+                                                    <div class="avatar-sm" style="background: url('@api@applicationUser.ProfilePic');"></div>
+                                                </div>
+                                                <h5>@HelperClass.GetFullNameOfUser(applicationUser)<br><small>@roleApprover</small></h5>
+                                            </a>
+                                        </li>
+                                    }
+                                }
+                            </ul>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="tab-pane fade in active" id="initiators">
+
+                            <ul class="avatar-listing team unstyled" style="margin-bottom: 0 !important;">
+                            </ul>
+
+                        </div>
+                        <div class="tab-pane fade" id="reviewers">
+
+                            <ul class="avatar-listing team unstyled" style="margin-bottom: 0 !important;">
+                            </ul>
+
+                        </div>
+                        <div class="tab-pane fade" id="approvers">
+                            <ul class="avatar-listing team unstyled" style="margin-bottom: 0 !important;">
+                            </ul>
+                        </div>
+                    }
+
+                </div>
+
+                <br /><br />
+                <button class="btn btn-primary" data-dismiss="modal">Close</button>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+
+<div class="modal fade left" id="history-view" role="dialog" aria-labelledby="history-view">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Approval history</h5>
+            </div>
+            <div class="modal-body">
+
+                <ul class="timeline">
+                    @foreach (var date in timelineDate)
+                    {
+                        var dateStart = date.ConvertTimeFromUtc(timeZone).FormatDateTimeByUser(dateFormat);
+                        var dateStr = date.Date == today.Date ? "Today" : dateStart;
+
+                        <li class="time-label">
+                            <span class="label label-lg label-info">
+                                @dateStr
+                            </span>
+                        </li>
+                        foreach (var tl in timeline.Where(d => d.LogDate.Date == date.Date))
+                        {
+                            <li>
+                                <div class="person" style="background-image: url('@api@tl.UserAvatar');"></div>
+                                <div class="timeline-item">
+                                    <span class="time"><i class="fa fa-clock-o"></i> @tl.Time</span>
+                                    <h4 class="timeline-header">@tl.Status</h4>
+                                </div>
+                            </li>
+                        }
+                        <br />
+                    }
+                </ul>
+                <br />
+                <button class="btn btn-primary" data-dismiss="modal">Close</button>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+
+<div class="modal fade" id="je-more" role="dialog" aria-labelledby="je-more">
+    <!-- /.modal -->
+</div>
+<!-- /.content-wrapper -->
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/bookkeeping-approvabookkeeping.js"></script>
+        <script src="~/Scripts/dev/qbicle.activity.loadmoreolder.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/bookkeeping-approvabookkeeping.min.js"></script>
+        <script src="~/Scripts/dev/qbicle.activity.loadmoreolder.min.js">
+        </script>
+    }
+}
+<script>
+    function ShowBkTransactionDetail(id) {
+        var ajaxUri = '/Bookkeeping/ShowBkTransactionDetail?id=' + id;
+        AjaxElementShowModal(ajaxUri, 'je-more');
+    };
+
+
+</script>

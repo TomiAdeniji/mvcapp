@@ -1,0 +1,353 @@
+﻿@using Qbicles.Models;
+@using Qbicles.Models.Operator;
+@{
+    var qbicles = (List<Qbicle>)ViewBag.qbicles;
+    var setting = (OperatorSetting)ViewBag.Setting;
+    var topics = (List<Topic>)ViewBag.topics;
+}
+
+<div class="row">
+    <div class="col-xs-12">
+        <ul class="app_subnav admintabs" style="padding-top: 0; margin-top: -20px;">
+            <li class="active"><a href="#config-settings" data-toggle="tab">Settings</a></li>
+            <li><a href="#config-0" data-toggle="tab">Locations</a></li>
+            <li><a href="#config-2" data-toggle="tab" id="workgroups">Workgroups</a></li>
+            <li><a href="#config-roles" data-toggle="tab">Roles</a></li>
+            <li><a href="#config-1" data-toggle="tab">Tags</a></li>
+        </ul>
+    </div>
+</div>
+
+<br /><br />
+
+
+
+<div class="tab-content">
+
+    <!-- Settings -->
+    <div class="tab-pane fade in active" id="config-settings">
+
+        <div class="well custom" style="padding-bottom: 5px;">
+            <div class="row">
+                <div class="col-xs-12 col-sm-6">
+                    <div class="form-group">
+                        <label for="source">Source Qbicle</label>
+                        <select name="source" id="qbicleSetting" onchange="ReloadTopics();" class="form-control select2" style="width: 100%;">
+                            <option value=""></option>
+                            @foreach (var item in qbicles)
+                            {
+                                <option value="@item.Id" @(setting != null && setting.SourceQbicle != null && setting.SourceQbicle.Id == item.Id ? "selected" : "")>@item.Name</option>
+                            }
+                        </select>
+                        <input id="settingId" type="hidden" value="@(setting!=null?setting.Id:0)" name="Id" />
+                        <p class="formhelp below">The source Qbicle is the Qbicle that supports this app. It'll store things like Team Resources and be the place where people collaborate. It can be managed just like any other Qbicle with all functionality available.</p>
+                    </div>
+                </div>
+                <div class="col-xs-12 col-sm-6">
+                    <div class="form-group">
+                        <label for="source">Default Topic</label>
+                        <select name="source" id="topicSetting" class="form-control select2" onchange="updateSetting();" style="width: 100%;">
+                            @if (topics != null && topics.Count > 0)
+                            {
+                                foreach (var item in topics)
+                                {
+                                    <option value="@item.Id" @(setting.DefaultTopic != null && setting.DefaultTopic.Id == item.Id ? "selected" : "")>@item.Name</option>
+                                }
+                            }
+                        </select>
+                        <p class="formhelp below">When performing Qbicle based activities such as clocking in/out and assigning Compliance Tasks they're assigned Topics for ease-of-access in the source Qbicle. Please set a default here (it can be overridden in the Qbicle itself).</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+    <!-- END Settings -->
+    <!-- Locations -->
+    <div class="tab-pane fade" id="config-0">
+
+        <div class="well custom" style="padding-bottom: 5px;">
+            <div class="row">
+                <div class="col-xs-12 col-sm-4">
+                    <div class="form-group">
+                        <label for="search">Search</label>
+                        <input type="text" name="search" id="locationSearch" class="form-control">
+                    </div>
+                </div>
+                <div class="col-xs-12 col-sm-3">
+                    <div class="form-group">
+                        <label>Options</label><br />
+                        <a href="javascript:void(0)" class="btn btn-success" data-toggle="modal" data-target="#app-operator-location-addedit" onclick="loadModalLocation(0)"><i class="fa fa-plus"></i> &nbsp; Add new</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <br />
+        <table class="table-hover datatable table-striped" id="tblOperatorLocations" style="width: 100%;">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Address</th>
+                    <th>Created</th>
+                    <th>Creator</th>
+                    <th data-orderable="false">Options</th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+
+
+    </div>
+    <!-- END Settings -->
+    <!-- Workgroups -->
+    <div class="tab-pane fade" id="config-2">
+
+        <div class="activity-overview generic help-text animated bounce">
+            <i class="fa fa-info-circle"></i>
+            <p>
+                Workgroups are a feature that allow you to determine who's responsible for managing Operator processes.
+                Create a group for your HR team, for example, to designate who manages onboarding and questionnaires.
+            </p>
+            <a href="#" onclick="$(this).parent().hide();">Dismiss</a>
+        </div>
+
+        <div class="well custom" style="padding-bottom: 5px;">
+            <div class="row">
+                <div class="col-xs-12 col-sm-4">
+                    <div class="form-group">
+                        <label for="search">Search</label>
+                        <input type="text" name="search" id="workgroupNameSearch" class="form-control">
+                    </div>
+                </div>
+                <div class="col-xs-12 col-sm-4 col-lg-3">
+                    <div class="form-group">
+                        <label for="search">Filter by type</label>
+                        <select name="group" id="workgroupTypeSearch" class="form-control select2" style="width: 100%;">
+                            <option value="-1">Show all</option>
+                            <option value="0">Tasks</option>
+                            <option value="1">Team</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-xs-12 col-sm-4 col-lg-5">
+                    <div class="form-group">
+                        <label>Options</label><br />
+                        <a href="#app-operator-workgroup-addedit" data-toggle="modal" onclick="LoadModalWorkgroup(0)" class="btn btn-success"><i class="fa fa-plus"></i> &nbsp; New Workgroup</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <br />
+        <table id="tblOperatorWorkgroups" class="table-hover datatable table-striped" style="width: 100%;">
+            <thead>
+                <tr>
+                    <th data-priority="1">Name</th>
+                    <th data-priority="3">Creator</th>
+                    <th data-priority="3">Created</th>
+                    <th data-priority="2">Type</th>
+                    <th data-priority="2">Qbicle</th>
+                    <th data-priority="2">Members</th>
+                    <th data-priority="1">Options</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>HR &amp; Operations</td>
+                    <td>Graham Deuchar</td>
+                    <td>26/05/2020</td>
+                    <td><span class="label label-lg label-primary">Team</span></td>
+                    <td><a href="dashboard.php">Daily Opening Checklist</a></td>
+                    <td>8</td>
+                    <td>
+                        <button class="btn btn-warning" data-toggle="modal" data-target="#app-trader-group-edit"><i class="fa fa-pencil"></i></button>
+                        <button class="btn btn-danger"><i class="fa fa-trash"></i></button>
+                    </td>
+                </tr>
+                <tr>
+                    <td>Compliance &amp; Regulatory</td>
+                    <td>Graham Deuchar</td>
+                    <td>26/05/2020</td>
+                    <td><span class="label label-lg label-info">Tasks</span></td>
+                    <td><a href="dashboard.php">RoadChef</a></td>
+                    <td>22</td>
+                    <td>
+                        <button class="btn btn-warning" data-toggle="modal" data-target="#app-trader-group-edit"><i class="fa fa-pencil"></i></button>
+                        <button class="btn btn-danger"><i class="fa fa-trash"></i></button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+    </div>
+    <!-- END Workgroups -->
+    <!-- Roles -->
+    <div class="tab-pane fade" id="config-roles">
+
+        <div class="well custom" style="padding-bottom: 5px;">
+            <div class="row">
+                <div class="col-xs-12 col-sm-6 col-lg-4">
+                    <div class="form-group">
+                        <label for="search">Search</label>
+                        <input type="text" id="roleNameSearch" class="form-control">
+                    </div>
+                </div>
+                <div class="col-xs-12 col-sm-6 col-lg-5">
+                    <div class="form-group">
+                        <label>Options</label><br />
+                        <a href="#" class="btn btn-success" onclick="loadModalRole(0)" data-toggle="modal" data-target="#app-operator-role-addedit"><i class="fa fa-plus"></i> &nbsp; Add a Role</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <br />
+
+        <table id="tblOperatorRoles" class="datatable table-hover table-striped" style="width: 100%;">
+            <thead>
+                <tr>
+                    <th data-priority="1">Role</th>
+                    <th data-priority="1">Description</th>
+                    <th data-priority="1">Status</th>
+                    <th data-priority="1" data-orderable="false">Options</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+
+    </div>
+    <!-- END Roles -->
+    <!-- Pipelines -->
+    <div class="tab-pane fade" id="config-pipelines">
+
+        <div class="well custom" style="padding-bottom: 5px;">
+            <div class="row">
+                <div class="col-xs-12 col-sm-4">
+                    <div class="form-group">
+                        <label for="search">Search</label>
+                        <input type="text" name="search" class="form-control">
+                    </div>
+                </div>
+                <div class="col-xs-12 col-sm-4 col-lg-3">
+                    <div class="form-group">
+                        <label for="search">Filter by status</label>
+                        <select name="group" class="form-control select2" style="width: 100%;">
+                            <option value="0">Show all</option>
+                            <option value="1">Draft</option>
+                            <option value="2">Active</option>
+                            <option value="3">Disabled</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-xs-12 col-sm-4 col-lg-5">
+                    <div class="form-group">
+                        <label>Options</label><br />
+                        <a href="#app-operator-pipeline-add" data-toggle="modal" class="btn btn-success"><i class="fa fa-plus"></i> &nbsp; New Pipeline</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <br />
+        <table class="table-hover datatable table-striped" style="width: 100%;">
+            <thead>
+                <tr>
+                    <th data-priority="1">Name</th>
+                    <th data-priority="3">Created</th>
+                    <th data-priority="2">Templates used</th>
+                    <th data-priority="2">Status</th>
+                    <th data-priority="1">Options</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Supervisor onboarding</td>
+                    <td>21/05/2020 11:20</td>
+                    <td>
+                        <ul>
+                            <li>Screening template</li>
+                        </ul>
+                    </td>
+                    <td><span class="label label-lg label-primary">Draft</span></td>
+                    <td>
+                        <button class="btn btn-warning" data-toggle="modal" data-target="#app-trader-group-edit"><i class="fa fa-pencil"></i></button>
+                        <button class="btn btn-danger"><i class="fa fa-trash"></i></button>
+                    </td>
+                </tr>
+                <tr>
+                    <td>Team member onboarding</td>
+                    <td>21/05/2020 09:20</td>
+                    <td>
+                        <ul>
+                            <li>Candidate questionnaire</li>
+                            <li>PVG screening</li>
+                        </ul>
+                    </td>
+                    <td><span class="label label-lg label-success">Active</span></td>
+                    <td>
+                        <button class="btn btn-warning" data-toggle="modal" data-target="#app-trader-group-edit"><i class="fa fa-pencil"></i></button>
+                        <button class="btn btn-danger"><i class="fa fa-trash"></i></button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+    </div>
+    <!-- END Pipelines -->
+    <!-- Tags -->
+    <div class="tab-pane fade" id="config-1">
+
+        <div class="well custom" style="padding-bottom: 5px;">
+            <div class="row">
+                <div class="col-xs-12 col-sm-4">
+                    <div class="form-group">
+                        <label for="search">Search</label>
+                        <input type="text" name="search" id="tagNameSearch" class="form-control">
+                    </div>
+                </div>
+                <div class="col-xs-12 col-sm-4 col-lg-5">
+                    <div class="form-group">
+                        <label>Options</label><br />
+                        <a href="#app-operator-tag-addedit" onclick="loadModalTag(0)" data-toggle="modal" class="btn btn-success"><i class="fa fa-plus"></i> &nbsp; New Tag</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <br />
+
+        <table id="tblOperatorTags" class="table-hover datatable table-striped" style="width: 100%;">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Summary</th>
+                    <th>Created</th>
+                    <th>Creator</th>
+                    <th>Instances</th>
+                    <th>Options</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+
+    </div>
+    <!-- END Tags -->
+
+
+</div>
+
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/operator.config.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/operator.config.min.js"></script>
+    }
+}

@@ -1,0 +1,170 @@
+﻿@using Qbicles.BusinessRules
+@{
+    var transactionFilter = (TillDetailFilterParameter)ViewBag.Filter;
+    var fromDateTime = ViewBag.FromDateTime;
+    var toDateTime = ViewBag.ToDateTime;
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+    var approvalTypes = HelperClass.EnumModel.GetEnumValuesAndDescriptions<Qbicles.Models.Trader.CashMgt.TillPayment.TraderTillPaymentStatusEnum>();
+}
+
+<input type="hidden" id="fromDateTime" value="@fromDateTime">
+<input type="hidden" id="toDateTime" value="@toDateTime">
+<br />
+<input type="hidden" value="@ViewBag.TillId" id="till-id" />
+<div class="subspacing" style="padding: 30px;">
+
+    <div class="well custom" style="padding-bottom: 5px;">
+        <div class="row">
+            <div class="col-xs-12 col-sm-3">
+                <div class="form-group">
+                    <label for="search">Search</label>
+                    <input type="text" value="@(transactionFilter.Key ?? "")" name="search" id="search_dt" onchange="onKeySearchChanged(this)" class="form-control">
+                </div>
+            </div>
+
+            <div id="till-filter-date-div" class="col-xs-12 col-lg-3">
+                <label for="search">Filter by date</label>
+                <div class="input-group" style="margin-bottom: 15px;">
+                    <input value="@(transactionFilter.DateRange ?? "")" type="text" id="till-transaction-input-datetimerange" name="daterange" class="form-control daterange">
+                    <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                </div>
+            </div>
+
+            <div id="till-filter-status-div" class="col-xs-12 col-lg-3">
+                <label for="search">Filter by status</label>
+                <select onchange="callBackDataTableReload('till-transaction-list-table')" id="till-filter-status" class="form-control checkmulti" multiple style="width: 100%; display:none;">
+                    @foreach (var item in approvalTypes)
+                    {
+                        <option selected value="@item.Value">@item.Value</option>
+                    }
+                </select>
+            </div>
+            <div class="col-xs-12 col-lg-3">
+                <label>&nbsp;</label>
+                <div class="form-group">
+
+                    <!-- Export -->
+                    <div class="btn-group options">
+                        <button type="button" class="btn btn-warning dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            <i class="fa fa-download"></i> &nbsp; Export
+                        </button>
+                        <div class="dropdown-menu" id="kt_datatable_example_export_menu" aria-labelledby="dropdownMenuButton" style="background-color: #a37a41;">
+                            <li>
+                                <a class="dropdown-item data-qb-excel" href="javascript:void(0)" onclick="GetDataTableContentExport()">Excel</a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item data-qb-csv" href="javascript:void(0)" onclick="GetDataTableContentExport(2)">CSV</a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item data-qb-pdf" href="javascript:void(0)" onclick="GetDataTableContentExport(3)">PDF</a>
+                            </li>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!--begin::Hide default export buttons-->
+    <div id="kt_datatable_example_buttons" style="display: none;"></div>
+    <!--end::Hide default export buttons-->
+
+    <table class="table-striped table-hover" id="till-transaction-list-table" data-order='[[0, "desc"]]' style="width: 100%;">
+        <thead>
+            <tr>
+                <th>Date &amp; time</th>
+                <th>Device</th>
+                <th>Till</th>
+                <th>Safe</th>
+                <th>Till in/out</th>
+                <th>Amount (@(currencySettings.CurrencySymbol ?? ""))</th>
+                <th>Balance (@(currencySettings.CurrencySymbol ?? ""))</th>
+                <th>Difference (@(currencySettings.CurrencySymbol ?? ""))</th>
+                <th>Status</th>
+                <th data-orderable="false">Options</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    @{
+        if (System.Diagnostics.Debugger.IsAttached)
+        {
+            <script src="~/Scripts/dev/cashmanagement.device.js"></script>
+            @*<script src="~/Content/DesignStyle/js/app.js"></script>*@
+            <script src="~/Scripts/dev/tilldetail.cashmanagement.js"></script>
+        }
+        else
+        {
+            <script src="~/Scripts/dev/cashmanagement.device.js"></script>
+            @*<script src="~/Content/DesignStyle/js/app.min.js"></script>*@
+            <script src="~/Scripts/dev/tilldetail.cashmanagement.js"></script>
+        }
+    }
+</div>
+
+<script>
+
+    if ('@transactionFilter.Key' === ""||'@transactionFilter.DateRange' === "") {
+         var filter = {
+            Key: "@transactionFilter.Key",
+            DateRange: "@transactionFilter.DateRange"
+        };
+    }
+
+    // ----------------------------------------
+    //         EXPORT FUNCTIONALITY
+    // ----------------------------------------
+    function GetDataTableContentExport(exportType = 1) {
+        $.LoadingOverlay("show");
+
+        var params = $('#till-transaction-list-table').DataTable().ajax.params();
+        console.log(params, "params");
+
+        //init params
+        var _parameter = {
+            ...params,
+            "export": exportType
+        };
+
+        $.ajax({
+            type: 'POST',
+            url: '/Report/GetVirtualTillTableContentExport',
+            dataType: 'json',
+            data: _parameter,
+            success: function (response) {
+                //if (response.result == true) {
+                //    console.log(response, 'response');
+                //    window.location.href = response.Object;
+                //    cleanBookNotification.success("Export downloaded successfully!", "Qbicles");
+                //}
+                if (response.result == true) {
+                    console.log(response, 'response');
+
+                    // Create a temporary anchor element
+                    const link = document.createElement('a');
+                    link.href = response.Object;
+                    //link.download = 'export.pdf'; // Set a filename if desired (optional)
+
+                    // Trigger the download
+                    link.click();
+
+                    // Optionally, clean up by removing the element
+                    cleanBookNotification.success("Export downloaded successfully!", "Qbicles");
+                }
+                else {
+                    cleanBookNotification.error("Error processing export!", "Qbicles");
+                }
+
+                $.LoadingOverlay("hide");
+            },
+            error: function (err) {
+                console.log(err, 'error');
+                $.LoadingOverlay("hide");
+                cleanBookNotification.error("Error processing export!", "Qbicles");
+            }
+        });
+    }
+
+</script>

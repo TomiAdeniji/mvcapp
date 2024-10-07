@@ -1,0 +1,186 @@
+﻿@using Qbicles.Models.Bookkeeping;
+@using Qbicles.BusinessRules;
+@using Qbicles.Models;
+@using System.Linq;
+
+@{
+    var breadcrumb = ViewBag.Breadcrumb;
+    var dateFormat = (string)ViewBag.CurrentDateFormat;
+    var breadcrumbName = ViewBag.BreadcrumbName;
+    var accountAmount = (AccountAmount)ViewBag.AccountAmount;
+    var currentUserId = (string)ViewBag.CurrentUserId;
+    var accountNode = (BKAccount)ViewBag.AccountNode;
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var rightAccountManager = ViewBag.rightManagerAccountTab;
+    var rightDelete = ViewBag.RightDelete;
+    var currencySettings = (CurrencySetting)ViewBag.CurrencySettings;
+}
+<br />
+<div class="mod_title">
+    <h5>@breadcrumb</h5>
+    <h4 id="account-name-title">@breadcrumbName</h4>
+</div>
+
+<div class="app_upper_dash text-center">
+    <div class="row">
+        <div class="col-xs-12 col-sm-4">
+            <div class="stat_label">
+                <span>Balance</span>
+                <h3>@accountAmount.Balance.ToCurrencySymbol(currencySettings)</h3>
+            </div>
+        </div>
+        <div class="col-xs-12 col-sm-4">
+            <div class="stat_label">
+                <span>Debits</span>
+                <h3>@accountAmount.Debit.ToCurrencySymbol(currencySettings)</h3>
+            </div>
+        </div>
+        <div class="col-xs-12 col-sm-4">
+            <div class="stat_label">
+                <span>Credits</span>
+                <h3>@accountAmount.Credit.ToCurrencySymbol(currencySettings)</h3>
+            </div>
+        </div>
+    </div>
+</div>
+@if (rightAccountManager)
+{
+    <button type="button" class="btn btn-warning dropdown-toggle" data-toggle="modal" onclick="EditBkAccount(@accountNode.Id)" data-target="#app-coa-account-edit">
+        <i class="fa fa-pencil"></i> &nbsp; Edit
+    </button>
+    <button class="btn btn-info" onclick="MergeAccount(@accountNode.Id)">
+        <i class="fa fa-file-import"></i> &nbsp; Merge
+    </button>
+    if (rightDelete)
+    {
+        <button class="btn btn-danger" onclick="DeleteAccount(@accountNode.Id)">
+            <i class="fa fa-trash"></i> &nbsp; Delete
+        </button>
+    }
+}
+<br />
+
+
+<h5>Transactions</h5>
+
+<table class="datatable app_specific table-hover bk-transactions-table" style="width: 100%;">
+    <thead>
+        <tr>
+            <th data-priority="2">Date</th>
+            <th data-priority="2">Reference</th>
+            <th data-priority="1">Debit <strong>(@currencySettings.CurrencySymbol)</strong></th>
+            <th data-priority="1">Credit <strong>(@currencySettings.CurrencySymbol)</strong></th>
+            <th data-priority="1">Options</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var t in accountNode.Transactions.Where(j => j.JournalEntry.IsApproved = true))
+        {
+            <tr>
+                <td>@t.PostedDate.FormatDateTimeByUser(dateFormat)</td>
+                <td>@t.Reference</td>
+                <td>@t.Debit.ToDecimalPlace(currencySettings)</td>
+                <td>@t.Credit.ToDecimalPlace(currencySettings)</td>
+                <td>
+                    <button class="btn btn-info" onclick="ShowBkTransactionDetail(@t.Id)"><i class="fa fa-info"></i> &nbsp; More</button>
+                </td>
+            </tr>
+        }
+
+
+    </tbody>
+</table>
+
+@if (rightAccountManager)
+{
+    <div id="account_addedit">
+
+    </div>
+}
+
+@if (accountNode.AssociatedFiles.Count > 0)
+{
+    <br />
+    <h5>Attachments</h5>
+
+    <div id="tab2">
+        <br />
+
+        <div id="list-medias">
+            @foreach (var item in accountNode.AssociatedFiles)
+            {
+                var media = (QbicleMedia)item;
+                var createdByName = media.StartedBy.Id == currentUserId ? "Me" : HelperClass.GetFullNameOfUser(media.StartedBy);
+                var createdDate = media.StartedDate.Date == DateTime.UtcNow.Date ? "Today, " + media.StartedDate.ToString("hh:mmtt").ToLower() : media.StartedDate.ToString("dd/MM/yyyy hh:mmtt").ToLower();
+                var mediaLastupdate = media.VersionedFiles.Where(e => !e.IsDeleted).OrderByDescending(x => x.UploadedDate).FirstOrDefault();
+                var lastUpdateFile = "";
+                if (mediaLastupdate != null)
+                {
+                    lastUpdateFile = mediaLastupdate.UploadedDate.Date == DateTime.UtcNow.Date ? "Today, " + mediaLastupdate.UploadedDate.ToString("hh:mmtt").ToLower() : mediaLastupdate.UploadedDate.ToString("dd/MM/yyyy hh:mmtt").ToLower();
+                }   //Media
+                <article class="activity media">
+
+                    <img style="background-image: url('@api@media.StartedBy.ProfilePic')" class="activity-avatar" />
+                    <div class="activity-detail">
+                        <div class="activity-meta">
+                            <h4>@createdByName</h4>
+                            <small>@createdDate</small>
+                            <br class="visible-xs">
+                        </div>
+
+                        <div class="activity-overview media">
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-5 col-md-6 col-lg-5">
+                                    <a href="javascript:void(0)" onclick="ShowMediaPage('@media.Key')">
+                                        @if (media.FileType.Type == "Image File")
+                                        {
+                                            <img id="media-@item.Id" class="img-responsive" src='@api@mediaLastupdate.Uri' />
+                                        }
+                                        else
+                                        {
+                                            <img src="@media.FileType.IconPath" class="img-responsive">
+                                        }
+                                    </a>
+                                </div>
+                                <div class="col-xs-12 col-sm-7 col-md-6 col-lg-7 description">
+                                    <h5>@media.Name</h5>
+                                    <p>
+                                        @media.Description
+                                    </p>
+                                    <small>@media.FileType.Type | Update @lastUpdateFile</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="clearfix"></div>
+                </article>
+                <!-- END Media -->
+            }
+
+        </div>
+    </div>
+}
+<div class="modal fade" id="je-more" role="dialog" aria-labelledby="je-more">
+    <!-- /.modal -->
+</div>
+<script>
+    $(document).ready(function () {
+        //var dataTableBudgetGroup = $("#budget-table").DataTable();
+
+        let $bkaccountTbl = $('table.bk-transactions-table');
+        if (!$.fn.DataTable.isDataTable($bkaccountTbl)) {
+                $bkaccountTbl.DataTable({
+                        destroy: true,
+                        responsive: true,
+                        order: [[0, 'asc']],
+                        "language": {
+                                "lengthMenu": "_MENU_ &nbsp; per page"
+                            }
+                });
+        }
+    });
+    function ShowBkTransactionDetail(id) {
+        var ajaxUri = '/Bookkeeping/ShowBkTransactionDetail?id=' + id;
+        AjaxElementShowModal(ajaxUri, 'je-more');
+    }
+</script>

@@ -1,0 +1,535 @@
+﻿@using Qbicles.BusinessRules;
+@using Qbicles.Models;
+@model IEnumerable<DateTime>
+@{
+    <!--Acivities data-->
+
+    var activities = (List<object>)ViewBag.cubeActivities;
+
+    var pinnedTopicPosts = (List<QbiclePost>)ViewBag.pinnedTopicPosts;
+    var pinnedAlerts = (List<QbicleActivity>)ViewBag.myPinnedAlerts;
+    var pinnedEvents = (List<QbicleActivity>)ViewBag.myPinnedEvents;
+    var pinnedMedias = (List<QbicleActivity>)ViewBag.myPinnedMedias;
+    var pinnedTasks = (List<QbicleActivity>)ViewBag.myPinnedTasks;
+    var pinnedApprovals = (List<QbicleActivity>)ViewBag.myPinnedApprovals;
+
+    string dateStr = "";
+    string dateStart = "";
+    var currentUserId = (string)ViewBag.CurrentUserId;
+    string classMyPostOrReply = "";
+    var today = (DateTime)ViewBag.Today;
+    string currentTimeZone = ViewBag.currentTimeZone;
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var dateFormat = (string)ViewBag.CurrentDateFormat;
+}
+<a class="bottom-marker"></a>
+
+
+@foreach (var date in Model.OrderBy(d => d.Date))
+{
+    dateStart = @HelperClass.DatetimeToOrdinal(date);
+    dateStr = date.Date == today.Date ? "Today" : dateStart;
+    <div class="clearfix"></div>
+    <div class="day-block" id=@(dateStr == "Today"? "dashboard-date-today" : dateStr) style="margin-bottom: 0;">
+        <div class="day-date">
+            <span class="date">@dateStr</span>
+        </div>
+        <div class="clearfix"></div>
+        @foreach (var item in activities)
+        {
+            if (item is QbiclePost)
+            {
+                var activity = (QbiclePost)item;
+                classMyPostOrReply = activity.CreatedBy.Id == currentUserId ? "me" : "";
+                if (activity.StartedDate.Date == date)
+                {
+                    var createByName = activity.CreatedBy.Id == currentUserId ? "Me" : activity.CreatedBy.Forename + " " + activity.CreatedBy.Surname;
+                    var pinnedClass = pinnedTopicPosts != null && pinnedTopicPosts.Any(e => e.Id == activity.Id) ? "pinned" : "";
+                    <article id="post-@activity.Id" class="activity post @classMyPostOrReply">
+                        <div class="activity-avatar" style="background-image: url('@api@activity.CreatedBy.ProfilePic');"></div>
+                        <div class="activity-detail">
+                            <div class="activity-meta">
+                                <h4>@createByName</h4>
+                                <small>@(date.Date == today.Date ? "Today, " + activity.StartedDate.ToString("hh:mmtt") : activity.StartedDate.ToString("dd MMM yyyy, hh:mmtt"))</small>
+                                <br class="visible-xs">
+                                @if (activity.Topic != null)
+                                {
+                                    <a href='javascript:void(0);' onclick='ShowTopic(event,@activity.Topic.Id);' class="topic-label"><span class="label label-info">@activity.Topic.Name</span></a>
+                                }
+                                <span onclick="PinnedActivity('@activity.Id',true,event)" id="pinIconPost-@activity.Id" class="label label-default pin-this @pinnedClass"><i class="fa fa-thumb-tack"></i></span>
+                            </div>
+
+                            <div class="activity-overview">
+                                <p>
+                                    @Html.Raw(activity.Message.Replace(Environment.NewLine, "<br/>"))
+                                </p>
+                            </div>
+                        </div>
+                        <div class="clearfix"></div>
+                    </article>
+                    <div class="clearfix"></div>
+                }
+            }
+
+            if (item is QbicleActivity)
+            {
+                var activity = (QbicleActivity)item;
+                classMyPostOrReply = activity.StartedBy.Id == currentUserId ? "me" : "";
+                if (activity.TimeLineDate.Date == date)
+                {
+                    <div class="clearfix"></div>
+                    switch (activity.ActivityType)
+                    {
+
+                        case QbicleActivity.ActivityTypeEnum.TaskActivity:
+                            var tk = (QbicleTask)activity;
+                            classMyPostOrReply = tk.StartedBy.Id == currentUserId ? "me" : "";
+                            var createByName = tk.StartedBy.Id == currentUserId ? "Me" : tk.StartedBy.Forename + " " + tk.StartedBy.Surname;
+                            var pinnedClass = pinnedTasks != null && pinnedTasks.Any(e => e.Id == tk.Id) ? "pinned" : "";
+                            <article class="activity task_snippet @classMyPostOrReply">
+                                <div class="activity-avatar" style="background-image: url('@api@tk.StartedBy.ProfilePic');"></div>
+                                <div class="activity-detail">
+                                    <div class="activity-meta">
+                                        <h4>@createByName</h4>
+                                        <small>@(date.Date == today.Date ? "Today, " + tk.TimeLineDate.ToString("hh:mmtt") : tk.TimeLineDate.ToString("dd MMM yyyy, hh:mmtt"))</small>
+                                        <br class="visible-xs">
+                                        @if (tk.Topic != null)
+                                        {
+                                            <a href="javascript:void(0);" onclick="ShowTopic(event,'@tk.Topic.Id');" class="topic-label"><span class="label label-info">@tk.Topic.Name</span></a>
+                                        }
+
+                                        @{
+                                            if (tk.StartedBy.Id != currentUserId)
+                                            {
+                                                var assignTask2 = tk.ActivityMembers.Any(u => u.Id == currentUserId);
+                                                if (assignTask2)
+                                                {
+                                                    <span class="label label-danger">My Task</span>
+                                                }
+                                            }
+                                        }
+                                        <span class="label label-default pin-this @pinnedClass" id="pinIcon-@tk.Id" onclick="PinnedActivity('@tk.Id',false,event)"><i class="fa fa-thumb-tack"></i></span>
+                                    </div>
+
+                                    <a href="javascript:void(0);" onclick="ShowTaskPage('@tk.Key', false);">
+                                        <div class="activity-overview task">
+                                            <h5><span>Task /</span> @tk.Name</h5>
+
+                                            <p>@Html.Raw(tk.Description.Replace(Environment.NewLine, "<br/>"))</p>
+
+                                        </div>
+                                        <div class="activity-specifics">
+                                            <ul>
+                                                <li><i class="fa fa-warning"></i> @tk.Priority</li>
+                                                @if (tk.ClosedBy == null)
+                                                {
+                                                    if (tk.DueDate != null)
+                                                    {
+                                                        var diff = tk.DueDate.Value - DateTime.UtcNow;
+                                                        <li><i class="fa fa-clock-o"></i> @(diff.Days + "d " + diff.Hours + "m " + diff.Minutes + "m")</li>
+                                                    }
+                                                }
+                                                @if (tk.Repeat != QbicleTask.TaskRepeatEnum.No)
+                                                {
+                                                    <li><i class="fa fa-recycle"></i> @tk.Repeat</li>
+                                                }
+                                            </ul>
+                                        </div>
+                                    </a>
+                                </div>
+                                <div class="clearfix"></div>
+                            </article>
+
+                            <div class="clearfix"></div>
+                            break;
+                        case QbicleActivity.ActivityTypeEnum.AlertActivity:
+                            var al = (QbicleAlert)activity;
+                            classMyPostOrReply = al.StartedBy.Id == currentUserId ? "me" : "";
+                            createByName = al.StartedBy.Id == currentUserId ? "Me" : al.StartedBy.Forename + " " + al.StartedBy.Surname;
+                            pinnedClass = pinnedAlerts != null && pinnedAlerts.Any(e => e.Id == al.Id) ? "pinned" : "";
+                            <article class="activity alert_snippet @classMyPostOrReply">
+                                <div class="activity-avatar" style="background-image: url('@api@al.StartedBy.ProfilePic');"></div>
+                                <div class="activity-detail">
+                                    <div class="activity-meta">
+                                        <h4>@createByName</h4>
+                                        <small>@(date.Date == today.Date ? "Today, " + al.TimeLineDate.ToString("hh:mmtt") : al.TimeLineDate.ToString("dd MMM yyyy, hh:mmtt"))</small>
+                                        <br class="visible-xs">
+                                        @if (al.Topic != null)
+                                        {
+                                            <a href="javascript:void(0);" onclick="ShowTopic(event,'@al.Topic.Id');" class="topic-label"><span class="label label-info">@al.Topic.Name</span></a>
+                                        }
+                                        <span id="pinIcon-@al.Id" class="label label-default pin-this @pinnedClass" onclick="PinnedActivity('@al.Id',false,event)"><i class="fa fa-thumb-tack"></i></span>
+                                    </div>
+
+                                    <a href="javascript:void(0);" onclick="ShowAlertPage('@al.Key', false);">
+                                        <div class="activity-overview alert-detail">
+                                            <h5><span>Alert /</span> @al.Name</h5>
+                                            <p>
+                                                @Html.Raw(al.Content.Replace(Environment.NewLine, "<br/>"))
+                                            </p>
+                                        </div>
+                                    </a>
+                                </div>
+                                <div class="clearfix"></div>
+                            </article>
+
+                            <div class="clearfix"></div>
+
+                            break;
+                        case QbicleActivity.ActivityTypeEnum.EventActivity:
+                            var ev = (QbicleEvent)activity;
+                            classMyPostOrReply = ev.StartedBy.Id == currentUserId ? "me" : "";
+                            createByName = ev.StartedBy.Id == currentUserId ? "Me" : ev.StartedBy.Forename + " " + ev.StartedBy.Surname;
+                            pinnedClass = pinnedEvents != null && pinnedEvents.Any(e => e.Id == ev.Id) ? "pinned" : "";
+
+                            <article class="activity event_snippet @classMyPostOrReply">
+                                <div class="activity-avatar" style="background-image: url('@api@ev.StartedBy.ProfilePic');"></div>
+                                <div class="activity-detail">
+                                    <div class="activity-meta">
+                                        <h4>@createByName</h4>
+                                        <small>@(date.Date == today.Date ? "Today, " + ev.TimeLineDate.ToString("hh:mmtt") : ev.TimeLineDate.ToString("dd MMM yyyy, hh:mmtt"))</small>
+                                        <br class="visible-xs">
+                                        @if (ev.Topic != null)
+                                        {
+                                            <a href="javascript:void(0);" onclick="ShowTopic(event,'@ev.Topic.Id');" class="topic-label"><span class="label label-info">@ev.Topic.Name</span></a>
+                                        }
+                                        <span class="label label-default pin-this @pinnedClass" id="pinIcon-@ev.Id" onclick="PinnedActivity('@ev.Id',false,event)"><i class="fa fa-thumb-tack"></i></span>
+                                        @if (ev.StartedBy.Id != currentUserId)
+                                        {
+                                            if (ev.ActivityMembers.Any(u => u.Id == currentUserId) == true)
+                                            {
+                                                <span class="label label-trans"><i class="fa fa-check green"></i> &nbsp; I'm attending</span>
+                                            }
+                                        }
+                                    </div>
+
+                                    <a href="javascript:void(0);" onclick="ShowEventPage('@ev.Key',false);">
+                                        <div class="activity-overview event-detail">
+                                            <h5><span>Event /</span> @ev.Name</h5>
+                                            <p>@Html.Raw(ev.Description.Replace(Environment.NewLine, "<br/>"))</p>
+
+                                        </div>
+                                        <div class="activity-specifics">
+                                            <ul>
+                                                @if (@ev.Start.Date == @ev.End.Date)
+                                                {
+                                                    <li><i class="fa fa-calendar"></i> @ev.Start.ToString(dateFormat)</li>
+                                                    <li><i class="fa fa-clock-o"></i> @(ev.Start.ToString("hh:mmtt") + " - " + ev.End.ToString("hh:mmtt"))</li>
+                                                }
+                                                else
+                                                {
+                                                    <li><i class="fa fa-clock-o"></i> @(ev.Start.ToString(dateFormat+" hh:mmtt") + " - " + ev.End.ToString(dateFormat + " hh:mmtt"))</li>
+                                                }
+                                                @if (!string.IsNullOrEmpty(ev.Location))
+                                                {
+                                                    <li><i class="fa fa-map-marker"></i> @ev.Location</li>
+                                                }
+                                            </ul>
+                                        </div>
+                                    </a>
+                                </div>
+                                <div class="clearfix"></div>
+                            </article>
+                            <div class="clearfix"></div>
+                            break;
+                        case QbicleActivity.ActivityTypeEnum.MediaActivity:
+                            var me = (QbicleMedia)activity;
+                            classMyPostOrReply = me.StartedBy.Id == currentUserId ? "me" : "";
+                            createByName = me.StartedBy.Id == currentUserId ? "Me" : me.StartedBy.Forename + " " + me.StartedBy.Surname;
+                            pinnedClass = pinnedMedias != null && pinnedMedias.Any(e => e.Id == me.Id) ? "pinned" : "";
+                            <article class="activity media @classMyPostOrReply">
+                                <div class="activity-avatar" style="background-image: url('@api@me.StartedBy.ProfilePic');"></div>
+                                <div class="activity-detail">
+                                    <div class="activity-meta">
+                                        <h4>@createByName</h4>
+                                        <small>@(date.Date == today.Date ? "Today, " + me.TimeLineDate.ToString("hh:mmtt") : me.TimeLineDate.ToString("dd MMM yyyy, hh:mmtt"))</small>
+                                        <br class="visible-xs">
+                                        @if (me.Topic != null)
+                                        {
+                                            <a href="javascript:void(0);" onclick="ShowTopic(event,'@me.Topic.Id');" class="topic-label"><span class="label label-info">@me.Topic.Name</span></a>
+                                        }
+                                        <span class="label label-default pin-this @pinnedClass" id="pinIcon-@me.Id" onclick="PinnedActivity('@me.Id',false,event)"><i class="fa fa-thumb-tack"></i></span>
+                                    </div>
+
+                                    <div class="activity-overview media">
+                                        <div class="row">
+                                            <div class="col-xs-12 col-sm-5 col-md-6 col-lg-5">
+                                                <a href="javascript:void(0);" onclick="ShowMediaPage('@me.Key',false);">
+                                                    @if (me.FileType.Type == "Image File")
+                                                    {
+                                                        var mediaLastupdate = me.VersionedFiles.Where(e => !e.IsDeleted).OrderByDescending(x => x.UploadedDate).FirstOrDefault();
+
+                                                        <img id="media-@mediaLastupdate.Id" class="img-responsive" src='@api@mediaLastupdate.Uri' />
+                                                    }
+                                                    else
+                                                    {
+                                                        <img src="@me.FileType.IconPath" class="img-responsive">
+                                                    }
+                                                </a>
+                                            </div>
+                                            <div class="col-xs-12 col-sm-7 col-md-6 col-lg-7 description">
+                                                <h5>@me.Name</h5>
+                                                <p>@Html.Raw(me.Description.Replace(Environment.NewLine, "<br/>"))</p>
+
+                                                <small>@me.FileType.Extension | @me.VersionedFiles.Where(e => !e.IsDeleted).OrderByDescending(x => x.UploadedDate).First().BusinessMapping(currentTimeZone).UploadedDate.ToString("d MMM yyyy, H:mmtt")</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="clearfix"></div>
+                            </article>
+                            <div class="clearfix"></div>
+                            break;
+                        case QbicleActivity.ActivityTypeEnum.ApprovalRequestApp:
+                            var app = (ApprovalReq)activity;
+                            var jounralApproval = app.JournalEntries.Count > 0;
+
+                            classMyPostOrReply = app.StartedBy.Id == currentUserId ? "me" : "";
+                            createByName = app.StartedBy.Id == currentUserId ? "Me" : app.StartedBy.Forename + " " + app.StartedBy.Surname;
+                            pinnedClass = pinnedApprovals != null && pinnedApprovals.Any(e => e.Id == app.Id) ? "pinned" : "";
+
+
+                            var css = ""; var status = "";
+                            if (app.ReviewedBy.Count > 0)
+                            {
+                                css = "label-primary";
+                                status = ApprovalReq.RequestStatusEnum.Reviewed.ToString();
+                                if (jounralApproval)
+                                {
+                                    status = "Awaiting Approval";
+                                }
+                            }
+                            switch (app.RequestStatus)
+                            {
+                                case ApprovalReq.RequestStatusEnum.Pending:
+                                    if (app.ReviewedBy.Count == 0)
+                                    {
+                                        css = "label-warning";
+                                        status = ApprovalReq.RequestStatusEnum.Pending.ToString();
+                                        if (jounralApproval)
+                                        {
+                                            status = "Awaiting Review";
+                                        }
+                                    }
+                                    break;
+                                case ApprovalReq.RequestStatusEnum.Reviewed:
+                                    css = "label-primary";
+                                    if (jounralApproval)
+                                    {
+                                        status = "Awaiting Approval";
+                                    }
+                                    break;
+                                case ApprovalReq.RequestStatusEnum.Approved:
+                                    css = "label-success";
+                                    status = ApprovalReq.RequestStatusEnum.Approved.ToString();
+                                    break;
+                                case ApprovalReq.RequestStatusEnum.Denied:
+                                    css = "label-danger";
+                                    status = ApprovalReq.RequestStatusEnum.Denied.ToString();
+                                    break;
+                            }
+
+
+                            <!-- Approval -->
+                            <article class="activity approval_snippet @classMyPostOrReply">
+                                <div class="activity-avatar" style="background-image: url('@api@app.StartedBy.ProfilePic');"></div>
+                                <div class="activity-detail">
+                                    <div class="activity-meta">
+                                        <h4>@createByName</h4>
+                                        <small> @(date.Date == today.Date ? "Today, " + app.TimeLineDate.ToString("hh:mmtt") : app.TimeLineDate.ToString("dd MMM yyyy, hh:mmtt"))</small>
+                                        <br class="visible-xs">
+                                        @if (app.Topic != null)
+                                        {
+                                            <a href="javascript:void(0)" onclick="ShowTopic(event,'@app.Topic.Id',this);" class="topic-label"><span class="label label-info">@app.Topic.Name</span></a>
+                                        }
+                                        <span class="label @css">@status</span>
+                                        <span id="pinIcon-@app.Id" class="label label-default pin-this @pinnedClass" onclick="PinnedActivity('@app.Id',false,event)"><i class="fa fa-thumb-tack"></i></span>
+                                    </div>
+                                    @{
+                                        var approvalType = jounralApproval ? "journal" : "approval";
+                                    }
+                                    <a href="javascript:void(0)" onclick="ShowApprovalPage('@app.Key',false,'@approvalType');">
+                                        <div class="activity-overview approval-detail">
+                                            <h5>
+                                                <span>Approval Request /</span>
+                                                @(jounralApproval == true ? "Bookkeeping" : app.Name)
+                                            </h5>
+                                            @{
+                                                if (jounralApproval)
+                                                {
+                                                    <p>
+                                                        Journal Entry #@app.JournalEntries.FirstOrDefault().Number
+                                                    </p>
+                                                }
+                                                else
+                                                {
+
+                                                    <p>
+                                                        @Html.Raw(app.Notes.Replace(Environment.NewLine, "<br/>"))
+                                                    </p>
+                                                }
+                                            }
+                                        </div>
+                                    </a>
+                                </div>
+                                <div class="clearfix"></div>
+                            </article>
+                            <div class="clearfix"></div>
+                            <!-- END Approval -->
+                            break;
+                        case QbicleActivity.ActivityTypeEnum.ApprovalRequest:
+                            var appTrader = (ApprovalReq)activity;
+
+                            classMyPostOrReply = appTrader.StartedBy.Id == currentUserId ? "me" : "";
+                            pinnedClass = pinnedApprovals != null && pinnedApprovals.Any(e => e.Id == appTrader.Id) ? "pinned" : "";
+
+
+                            var cssTrader = ""; var statusTrader = "";
+                            if (appTrader.ReviewedBy.Count > 0)
+                            {
+                                cssTrader = "label-primary";
+                                statusTrader = "Awaiting Approval";
+                            }
+                            switch (appTrader.RequestStatus)
+                            {
+                                case ApprovalReq.RequestStatusEnum.Pending:
+                                    if (appTrader.ReviewedBy.Count == 0)
+                                    {
+                                        cssTrader = "label-warning";
+                                        statusTrader = "Awaiting Review";
+                                        if (appTrader.Transfer.Count > 0)
+                                        {
+                                            statusTrader = "Pending Pickup";
+                                        }
+                                    }
+                                    break;
+                                case ApprovalReq.RequestStatusEnum.Reviewed:
+                                    cssTrader = "label-primary";
+                                    statusTrader = "Awaiting Approval";
+                                    if (appTrader.Transfer.Count > 0)
+                                    {
+                                        statusTrader = "Picked Up";
+                                    }
+                                    break;
+                                case ApprovalReq.RequestStatusEnum.Approved:
+                                    cssTrader = "label-success";
+                                    statusTrader = ApprovalReq.RequestStatusEnum.Approved.ToString();
+                                    if (appTrader.Transfer.Count > 0)
+                                    {
+                                        statusTrader = "Delivered";
+                                    }
+                                    break;
+                                case ApprovalReq.RequestStatusEnum.Denied:
+                                    cssTrader = "label-danger";
+                                    statusTrader = ApprovalReq.RequestStatusEnum.Denied.ToString();
+                                    break;
+                                case ApprovalReq.RequestStatusEnum.Discarded:
+                                    cssTrader = "label-danger";
+                                    statusTrader = ApprovalReq.RequestStatusEnum.Discarded.ToString();
+                                    break;
+                            }
+
+                            var appTitle = "Approval Request / Trader";
+                            var appTitleMsg = appTrader.Name;
+                            var appIcon = "";
+                            var traderName = "";
+                            var traderUri = "";
+                            //approval Transfer point to point
+                            if (appTrader.Transfer != null && appTrader.Transfer.Count > 0)
+                            {
+                                appIcon = "/Content/DesignStyle/img/icon_delivery.png";
+                                traderName = "Trader Transfer";
+                                traderUri = "/TraderTransfers/TransferReview?key=" + appTrader.Transfer.FirstOrDefault().Key;
+
+                                if (appTrader.Purchase.Count == 0 && appTrader.Sale.Count == 0)
+                                {
+                                    appTitle = $"{appTrader.Transfer.FirstOrDefault().OriginatingLocation?.Name} to {appTrader.Transfer.FirstOrDefault().DestinationLocation?.Name} / Trader";
+                                }
+                                else if (appTrader.Purchase.Count == 0 && appTrader.Sale.Count > 0)
+                                {
+                                    appTitle = $"{appTrader.Transfer.FirstOrDefault().OriginatingLocation?.Name} to {appTrader.Sale.FirstOrDefault().Purchaser.Name} / Trader";
+                                }
+                                else if (appTrader.Purchase.Count > 0 && appTrader.Sale.Count == 0)
+                                {
+                                    appTitle = $"{appTrader.Purchase.FirstOrDefault().Vendor.Name} to {appTrader.Transfer.FirstOrDefault().DestinationLocation?.Name} / Trader";
+                                }
+                            }
+                            //Sale or Purchase approval only
+                            else if (appTrader.Transfer == null || appTrader.Transfer.Count == 0)
+                            {
+                                if (appTrader.Sale != null && appTrader.Sale.Count > 0)
+                                {
+                                    appIcon = "/Content/DesignStyle/img/icon_bookkeeping.png";
+                                    traderName = "Sale Approval Request";
+                                    traderUri = "/TraderSales/SaleReview?key=" + appTrader.Sale.FirstOrDefault().Key;
+                                }
+                                else if (appTrader.Purchase != null && appTrader.Purchase.Count > 0)
+                                {
+                                    appIcon = "/Content/DesignStyle/img/icon_bookkeeping.png";
+                                    traderName = "Purchase Approval Request";
+                                    traderUri = "/TraderPurchases/PurchaseReview?id=" + appTrader.Purchase.FirstOrDefault().Id;
+                                }
+
+                            }
+                            //approval contact
+                            if (appTrader.TraderContact != null && appTrader.TraderContact.Count > 0)
+                            {
+                                var contact = appTrader.TraderContact.FirstOrDefault();
+                                appTitle = contact.Name + " / Trader";
+                                appTitleMsg = contact.ContactGroup.Name + " Group";
+                                appIcon = "/Content/DesignStyle/img/icon_contact.png";
+                                traderName = "Contact Approval Request";
+                                traderUri = "/TraderContact/ContactReview?id=" + contact.Id;
+                            }
+                            // approval invoice
+                            if (appTrader.Invoice != null && appTrader.Invoice.Count > 0)
+                            {
+                                appTitle = "Invoice #" + appTrader.Invoice.FirstOrDefault().Id;
+                                appIcon = "/Content/DesignStyle/img/icon_invoice.png";
+                                traderName = "Invoice Approval Request";
+                                traderUri = "/TraderInvoices/InvoiceReview?key=" + appTrader.Invoice.FirstOrDefault().Key;
+                                if (appTrader.Sale != null && appTrader.Sale.Count > 0)
+                                {
+                                    appTitleMsg = "For Sale #" + appTrader.Sale.FirstOrDefault().Id;
+                                }
+                            }
+
+                            <!-- Approval -->
+                            <article class="activity approval_snippet @classMyPostOrReply">
+                                <div class="activity-avatar" style="background-image: url('@appIcon');"></div>
+                                <div class="activity-detail">
+                                    <div class="activity-meta">
+                                        <h4>@traderName</h4>
+                                        <small> @(date.Date == today.Date ? "Today, " + appTrader.TimeLineDate.ToString("hh:mmtt") : appTrader.TimeLineDate.ToString("dd MMM yyyy, hh:mm tt"))</small>
+                                        <br class="visible-xs">
+                                        @if (appTrader.Topic != null)
+                                        {
+                                            <a href="javascript:void(0)" onclick="ShowTopic(event, '@appTrader.Topic.Id', this);" class="topic-label"><span class="label label-info">@appTrader.Topic.Name</span></a>
+                                        }
+                                        <span class="label @cssTrader">@statusTrader</span>
+                                        <span id="pinIcon-@appTrader.Id" class="label label-default pin-this @pinnedClass" onclick="PinnedActivity('@appTrader.Id', false, event)"><i class="fa fa-thumb-tack"></i></span>
+                                    </div>
+                                    <a href="@traderUri">
+                                        <div class="activity-overview approval-detail">
+                                            <h5>
+                                                <span>@appTitle</span>
+                                            </h5>
+                                            <p>
+                                                @appTitleMsg
+                                            </p>
+                                        </div>
+                                    </a>
+                                </div>
+                                <div class="clearfix"></div>
+                            </article>
+                            <div class="clearfix"></div>
+                            <!-- END Approval -->
+                            break;
+                    }
+                }
+
+            }
+        }
+    </div>
+
+}

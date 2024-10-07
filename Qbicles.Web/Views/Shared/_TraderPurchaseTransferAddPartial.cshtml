@@ -1,0 +1,194 @@
+﻿@using Qbicles.Models.Trader;
+@using Qbicles.Models.Trader.Movement;
+@using Qbicles.BusinessRules;
+@model TraderPurchase
+@{
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var workGroupTransfer = (List<WorkGroup>)ViewBag.WorkgroupTransfer;
+    var transfer = (TraderTransfer)ViewBag.Transfer;
+}
+
+<div class="modal-dialog modal-xl" role="document">
+    <div class="modal-content">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <h5 class="modal-title">Initiate a transfer for Purchase #@(Model.Reference?.FullRef ?? Model.Id.ToString())</h5>
+
+        </div>
+        <div class="modal-body">
+
+            <div class="row">
+                <div class="col-xs-12 col-md-4">
+
+                    <div class="activity-overview generic" style="padding: 20px;">
+                        <div class="form-group" style="margin: 0;">
+                            <label for="workgroup">Assign a Workgroup to this Transfer <span>*</span></label>
+                            <select id="transfer-workgroup-select" name="workgroup" class="form-control select2" style="width: 100%;" onchange="WorkGroupSelectedChange()">
+                                @foreach (var wg in workGroupTransfer)
+                                {
+                                    <option value="@wg.Id">@wg.Name</option>
+                                }
+                            </select>
+                        </div>
+
+                        <div class="preview-workgroup" style="display: none;">
+                            <br />
+                            <table class="table app_specific" style="margin: 0;">
+                                <tr>
+                                    <td><h5>Location</h5></td>
+                                    <td class="location_name">Location name</td>
+                                </tr>
+                                <tr>
+                                    <td><h5>Process</h5></td>
+                                    <td class="workgroup_process">Transfers</td>
+                                </tr>
+                                <tr>
+                                    <td><h5>Qbicle</h5></td>
+                                    <td class="workgroup_qbicle">Qblicle Name</td>
+                                </tr>
+                                <tr>
+                                    <td><h5>Members</h5></td>
+                                    <td class="workgroup_member"><button class="btn btn-info" onclick="ShowGroupMember()" data-toggle="modal" data-target="#app-trader-workgroup-preview"><i class="fa fa-user"></i> &nbsp; <span></span></button></td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+
+                    <br />
+
+                    <div class="activity-overview task" style="padding: 20px; margin-bottom: 30px;">
+                        <h5>Delivery address</h5>
+                        <p>
+                            @(Model.Vendor.Name)<br />
+                            @Html.Raw(Model.Vendor?.Address?.ToAddress().Replace(",", "<br />"))
+                        </p>
+                    </div>
+
+                </div> <!-- ./div -->
+                <div class="col-xs-12 col-md-8">
+                    <div class="row">
+                        <div class="col-xs-12">
+                            <div class="form-group">
+                                <label for="reference">Reference</label>
+                                <input type="hidden" value="@transfer.Reference.Id" id="purchase-reference_id" />
+                                <input type="hidden" value="@transfer.Reference.Type.ToString()" id="purchase-reference_type" />
+                                <input type="hidden" value="@transfer.Reference.Prefix" id="purchase-reference_prefix" />
+                                <input type="hidden" value="@transfer.Reference.Suffix" id="purchase-reference_suffix" />
+                                <input type="hidden" value="@transfer.Reference.Delimeter" id="purchase-reference_delimeter" />
+                                <input type="hidden" value="@transfer.Reference.FullRef" id="purchase-reference_fullref" />
+                                <div class="show-ref">
+                                    <p>
+                                        @transfer.Reference.Prefix@transfer.Reference.Delimeter<span id="purchase-refedit">@transfer.Reference.NumericPart</span>@transfer.Reference.Delimeter@transfer.Reference.Suffix &nbsp; &nbsp;
+                                    </p>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-xs-12">
+                            <div class="activity-overview generic help-text animated bounce">
+                                <i class="fa fa-info-circle"></i>
+                                <p>
+                                    Choose which items you'll be delivering below, and in what quantity. Orders can be split over multiple Transfers until the
+                                    <em>remaining</em> count has been fulfilled.
+                                </p>
+                            </div>
+
+
+                            <div class="activity-overview task" style="padding: 20px;">
+
+                                <table class="datatable table-hover" id="transfer_purchase_table" style="width: 100%; background: #fff;" data-order='[[1, "asc"]]'>
+                                    <thead>
+                                        <tr>
+                                            <th data-orderable="false"></th>
+                                            <th>Name</th>
+                                            <th>Unit</th>
+                                            <th>Qty</th>
+                                            <th>Transfer unit</th>
+                                            <th>Transfer qty</th>
+                                            <th>Remaining</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var item in Model.PurchaseItems)
+                                        {
+                                            <tr class="transfer_tr_@item.Id">
+                                                <td>
+                                                    <div class="table-avatar" style="background-image: url('@(api+item.TraderItem.ImageUri)&size=T');">
+                                                        <input type="hidden" value="@item.Id" class="purchaseitem_td_id" />
+                                                        <input type="hidden" value="@item.TraderItem.Id" class="purchaseitem_td_traderitem_id" />
+                                                        <input type="hidden" value="0" class="transfer_td_id" />
+                                                    </div>
+                                                </td>
+                                                <td class="transfer_td_sale_name">
+                                                    @item.TraderItem.Name
+
+                                                    <input class="transfer_conversionunit_quan" type="hidden" value="0" />
+                                                    @{
+
+                                                        decimal totalTransfer_old = 0;
+
+                                                        // caculate transfer old (basse_unit)
+                                                        if (item.TransferItems.Count > 0)
+                                                        {
+                                                            foreach (var traderTransferItem in item.TransferItems)
+                                                            {
+                                                                if (traderTransferItem.AssociatedTransfer == null
+                                                                    || (traderTransferItem.AssociatedTransfer != null &&
+                                                                        traderTransferItem.AssociatedTransfer.Status != TransferStatus.Denied
+                                                                        && traderTransferItem.AssociatedTransfer.Status != TransferStatus.Discarded))
+                                                                {
+                                                                    totalTransfer_old += traderTransferItem.QuantityAtPickup * traderTransferItem.Unit?.QuantityOfBaseunit ?? 1;
+                                                                }
+                                                            }
+                                                        }
+                                                        var totalSale = (item.Quantity * item.Unit?.QuantityOfBaseunit ?? 1) - totalTransfer_old;
+                                                        <input class="total_purchase_@item.Id" hidden value="@totalSale" />
+                                                        <input class="conversion_trans_@item.Id" hidden value="0" />
+                                                        <input type="hidden" value="@item.Unit.Name" class="unit_name_@item.Id" />
+                                                    }
+                                                </td>
+
+                                                <td class="transfer_td_purchase_unit_name">@item.Unit.Name</td>
+                                                <td class="transfer_td_sale_quan">@((totalSale / item.Unit?.QuantityOfBaseunit).ToDecimalPlace(currencySettings))</td>
+                                                <td>
+                                                    @{Html.RenderAction("ShowTransactionItemUnit", "TraderTransfers", new { id = item.Id, locationId = Model.Location.Id, unitName = item.Unit.Name });}
+                                                </td>
+                                                <td class="transfer_td_tran_quan">
+                                                    <input type='number' name="item-1-qty" class="form-control" style="width: 80px;" maxlength='15' 
+                                                           onchange="SetTransferCost(@item.Id)"
+                                                           onkeypress='decimalKeyPress(this, event)' 
+                                                           onpaste='decimalOnPaste(this, event)'
+                                                           value="@Math.Round(totalSale/item.Unit?.QuantityOfBaseunit??1,2)">
+                                                </td>
+                                                <td class="transfer_td_tran_cost_@item.Id">
+                                                    <span class="remainder">0</span>
+                                                </td>
+                                            </tr>
+                                        }
+
+                                    </tbody>
+                                </table>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <br />
+            <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+            <button class="btn btn-primary" onclick="SendToPickup('Draft')">Save draft</button>
+            <button class="btn btn-success" onclick="SendToPickup('PendingPickup')">Send for pickup</button>
+
+        </div>
+    </div><!-- /.modal-content -->
+</div><!-- /.modal-dialog -->
+
+<script>
+    $('#transfer-workgroup-select').not('.multi-select').select2();
+    WorkGroupSelectedChange();
+    resetPurchaseForm();
+</script>

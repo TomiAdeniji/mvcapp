@@ -1,0 +1,855 @@
+﻿@using Qbicles.Models.Trader.DDS;
+@using Qbicles.Models.MicroQbicleStream;
+@using Qbicles.BusinessRules;
+@using Qbicles.Models.Trader.SalesChannel;
+@using Qbicles.Models.Trader;
+@using System.Diagnostics
+@{
+    ViewBag.Title = ViewBag.DomainName + " | Delivery Management";
+
+    var status = (ICollection<HelperClass.EnumModel>)ViewBag.Status;
+    var locations = (List<BaseModel>)ViewBag.Locations;
+    var drivers = (List<BaseModel>)ViewBag.Drivers;
+
+    var speedDistances = HelperClass.EnumModel.GetEnumValuesAndDescriptions<SpeedDistance>();
+    var ddsLocations = (List<TraderLocation>)ViewBag.DdsLocations;
+    var ddsDrivers = (List<Driver>)ViewBag.DDsDrivers;
+    var ddsSetting = (Qbicles.Models.Trader.SalesChannel.PosSettings)ViewBag.DdsSetting;
+    var ddsLocationsQueue = (List<TraderLocation>)ViewBag.DdsLocationsQueue;
+
+
+    var currentLocationId = (int)ViewBag.CurrentLocationManage;
+    var currentLocationDomainId = ddsLocations.FirstOrDefault(l => l.Id == currentLocationId)?.Domain.Id ?? 0;
+
+    var filterInit = (DeliveryParameter)ViewBag.FilterInit;
+
+    var autoUpdateInput = ViewBag.DateStart == "" ? false : true;
+}
+
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail">
+
+
+    <!-- Main content -->
+    <section class="content">
+
+        <div class="alert_matches projects">
+            <p><span id="checked">0</span> deliveries selected</p>
+            <div class="btn-group options">
+                <button type="button" class="btn btn-info dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style="margin-bottom: 0;">
+                    <i class="fa fa-cog"></i> &nbsp; With selected... &nbsp; <i class="fa fa-angle-down"></i>
+                </button>
+                <ul class="dropdown-menu info">
+                    <li><a href="#" onclick="openUdpateStatusModal(null)">Change status</a></li>
+                    <li><a href="#" onclick="uncheck();">Clear selections</a></li>
+                </ul>
+            </div>
+        </div>
+
+        <br /><br />
+
+        <div class="mod_title">
+            <h5 style="padding-bottom: 8px;">@ViewBag.DomainName</h5>
+            <h4>Delivery management</h4>
+        </div>
+        <br />
+
+        <ul class="nav nav-pills traderv2" style="padding-top: 0; margin-bottom: 40px;">
+            <li class="active"><a href="#" data-toggle="tab" data-target="#dm-manage" aria-expanded="false">Manage</a></li>
+            <li><a href="#" data-toggle="tab" data-target="#dm-config">Configure</a></li>
+        </ul>
+
+        <div class="tab-content">
+            <!-- Manage -->
+            <div class="tab-pane fade in active" id="dm-manage">
+                <div class="dt-status">
+                    <div class="label label-lg label-info animated fadeInUp" id="refreshing" style="display: none;">
+                        Refreshing table &nbsp;
+                        <i class="fa fa-circle-o-notch fa-spin"></i>
+                    </div>
+                    <div class="label label-lg label-success animated flipInY" id="refreshed" style="display: none;">
+                        Data updated &nbsp;
+                        <i class="fa fa-check green" style="position: relative; top: 1.5px;"></i>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-xs-12">
+
+                        <div class="well custom" style="padding-bottom: 5px;">
+                            <div class="row">
+                                <div class="col-xs-12 col-md-3">
+                                    <div class="form-group">
+                                        <label for="search">Search</label>
+                                        <input id="search-keyword" type="text" class="form-control" value="@filterInit.Keyword">
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-md-3">
+                                    <div class="form-group">
+                                        <label for="location">Locations</label>
+                                        <select id="search-location" class="form-control checkmulti-manager hidden" multiple style="width: 100%;">
+                                            @foreach (var item in locations)
+                                            {
+                                                if (filterInit.Locations != null && filterInit.Locations.Contains(item.Id))
+                                                {
+                                                    <option value="@item.Id" selected>@item.Name</option>
+                                                }
+                                                else
+                                                {
+                                                    <option value="@item.Id">@item.Name</option>
+                                                }
+                                            }
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-md-3">
+                                    <div class="form-group">
+                                        <label for="location">Drivers</label>
+                                        <select id="search-driver" class="form-control checkmulti-manager hidden" multiple style="width: 100%;">
+                                            @foreach (var item in drivers)
+                                            {
+                                                if (filterInit.Drivers != null && filterInit.Drivers.Contains(item.Id))
+                                                {
+                                                    <option value="@item.Id" selected>@item.Name</option>
+                                                }
+                                                else
+                                                {
+                                                    <option value="@item.Id">@item.Name</option>
+                                                }
+                                            }
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-md-3">
+                                    <div class="form-group">
+                                        <label for="location">Statuses</label>
+                                        <select id="search-status" class="form-control checkmulti-manager hidden" multiple style="width: 100%;">
+                                            @foreach (var item in status)
+                                            {
+                                                if (filterInit.Status != null && filterInit.Status.Contains((DeliveryStatus)item.Key))
+                                                {
+                                                    <option value="@item.Key" selected>@item.Value</option>
+                                                }
+                                                else
+                                                {
+                                                    <option value="@item.Key">@item.Value</option>
+                                                }
+                                            }
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-xs-12 col-md-3">
+                                    <label for="dr">Date range</label><br />
+                                    <div class="input-group" style="margin-bottom: 15px;">
+                                        <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                                        <input id="search-daterange" type="text" class="form-control daterange">
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-md-3">
+                                    <div class="form-group">
+                                        <label for="search">Columns shown</label>
+                                        <select id="show-column" class="form-control checkmulti-manager hidden" multiple>
+                                            <option value="2" @(filterInit.Columns.Contains("2") ? "selected" : "")>Date</option>
+                                            <option value="3" @(filterInit.Columns.Contains("3") ? "selected" : "")>Location</option>
+                                            <option value="4" @(filterInit.Columns.Contains("4") ? "selected" : "")>Driver</option>
+                                            <option value="5" @(filterInit.Columns.Contains("5") ? "selected" : "")>Status</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-md-2">
+                                    <label>Refresh every</label><br />
+                                    <div class="input-group" style="margin-bottom: 15px;">
+                                        <input id="search-refresh" type="number" class="form-control" value="@filterInit.RefreshEvery" min="10">
+                                        <span class="input-group-addon">seconds</span>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-md-2 col-lg-3">
+                                    <label>Options</label><br />
+                                    <div class="btn-group options">
+                                        <div class="checkbox toggle" style="margin-bottom: 15px;">
+                                            <label>
+                                                <input id="search-completed" @(filterInit.ShowCompleted ? "checked" : "") data-toggle="toggle" data-onstyle="success" type="checkbox">
+                                                Show completed deliveries
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="activity-overview generic help-text animated bounce warning" style="display: none; margin-top: 30px; margin-bottom: 15px;">
+                            <i class="fa fa-info-circle"></i>
+                            <p>
+                                <strong>Important</strong><br /><br />Only <em>visible</em> deliveries will be included when you check all. Please change the deliveries
+                                per page count below to its maximum total if you want to select <em>all</em> deliveries.<br /><br /><a href="#" onclick="$(this).parent().parent().hide();">Dismiss</a>
+                            </p>
+                        </div>
+
+                        <br />
+
+
+                        <button class="btn btn-success community-button sm w-auto" data-toggle="modal" data-target="#deliveryman-add-delivery"
+                                style="margin-bottom: 40px;">
+                            <i class="fa fa-plus"></i> &nbsp; Add a delivery
+                        </button>
+
+
+
+                        <table class="datatable multiples table-striped table-hover orders" id="delivery-mngt-table" style="width: 100%;" data-order='[[2, "desc"]]'>
+                            <thead>
+                                <tr>
+                                    @*<th data-priority="1" data-orderable="false" style="width: 60px !important;"><input type="checkbox" onclick="$('#bulk').removeAttr('disabled'); $('.alert_matches.projects').addClass('active'); $('#checked').html('2');"></th>*@
+                                    <th data-priority="0" data-orderable="false" style="width: 60px !important;">
+                                        <input type="checkbox" name="bulk-check" onchange="bulkChecking()">
+                                    </th>
+                                    <th data-priority="1">Delivery #</th>
+                                    <th data-priority="2">Date</th>
+                                    <th data-priority="3">Location</th>
+                                    <th data-priority="4">Driver</th>
+                                    <th data-priority="5">Status</th>
+                                    <th data-priority="6" data-orderable="false">Options</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <!-- END Manage -->
+            <!-- Config -->
+            <div class="tab-pane fade" id="dm-config">
+
+                <div class="row">
+                    <div class="col-xs-12 col-sm-4 col-md-3">
+
+                        <div class="flex-grid qbicles-dash-grid theme-labels">
+
+
+                            <article class="col">
+                                <div class="qbicle-opts">
+                                </div>
+                                <a href="#">
+                                    <div class="avatar" style="background-image: url('../../Content/DesignStyle/img/icon_ipad.png');">&nbsp;</div>
+                                    <h1 style="color: #333;">Delivery Display System</h1>
+                                </a>
+
+                                <div class="well custom" style="margin: 0; padding: 10px;">
+                                    <label><i class="fa fa-check green"></i> &nbsp; Delivery Queue is active</label>
+                                </div>
+                                <br />
+                                <ul class="nav nav-stacked nav-pills nav-marketing" style="margin-bottom: 0;">
+                                    <li class="active"><a href="#" data-toggle="tab" data-target="#tab-dds-general">General</a></li>
+                                    <li><a href="#" data-toggle="tab" data-target="#tab-dds-drivers">Drivers</a></li>
+                                </ul>
+
+                            </article>
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="col-xs-12 col-sm-8 col-lg-9">
+
+                        <div class="tab-content mdv2-col-dash">
+
+                            <div class="well custom" style="margin: 0; padding: 10px;">
+                                <div class="form-group">
+                                    <label for="location">Location</label>
+                                    <select id="dds-location-manage" name="location" class="form-control select2All" style="width: 100%;"
+                                            onchange="ChangeLocationManage()">
+                                        @foreach (var l in ddsLocations)
+                                        {
+                                            if (currentLocationId == l.Id)
+                                            {
+                                                <option value="@l.Id" selected>@l.Name</option>
+                                            }
+                                            else
+                                            {
+                                                <option value="@l.Id">@l.Name</option>
+                                            }
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+                            <br />
+                            <!-- DDS -->
+                            <div class="tab-pane fade in active" id="tab-dds">
+
+                                <div class="tab-content">
+
+
+                                    <!-- General -->
+                                    <div class="tab-pane fade in active" id="tab-dds-general">
+
+                                        <div class="well custom" style="padding-bottom: 5px;">
+                                            <input type="hidden" value="@ddsSetting.Id" id="setting_id" name="settingid">
+                                            <div class="row">
+                                                <div class="col-xs-12 col-sm-4">
+                                                    <div class="form-group">
+                                                        <label for="refresh">
+                                                            Refresh timer (seconds)
+                                                            <i class="fa fa-info-circle blue" data-tooltip="Specify a timeframe in which refreshing of data is expected to occur."></i>
+                                                        </label>
+                                                        <input type="number" onchange="updateDeliveryDisplayRefresh(this)" min="0" value="@ddsSetting.DeliveryDisplayRefreshInterval" class="form-control" name="refresh">
+                                                    </div>
+                                                </div>
+                                                <div class="col-xs-12 col-sm-4">
+                                                    <div class="form-group">
+                                                        <label for="linger">
+                                                            Linger time (minutes)
+                                                            <i class="fa fa-info-circle blue" data-tooltip="Allow extra time for extraneous factors during deliveries (time taken to walk from vehicle to door and back, for example.)"></i>
+                                                        </label>
+                                                        <input type="number" onchange="SaveDeliveryLingerTime(this)" min="0" value="@ddsSetting.LingerTime" class="form-control">
+                                                    </div>
+                                                </div>
+                                                <div class="col-xs-12 col-sm-4">
+                                                    <div class="form-group">
+                                                        <label for="speed">
+                                                            Show speed/distance in
+                                                            <i class="fa fa-info-circle blue" data-tooltip="Istances in metric or imperial measurements on the Delivery app."></i>
+                                                        </label>
+                                                        <select id="spedd-distance" name="location" class="form-control select2All" style="width: 100%;" onchange="SaveSpeedDistance()">
+                                                            <option value=""></option>
+                                                            @foreach (var item in speedDistances)
+                                                            {
+                                                                if ((SpeedDistance)item.Key == ddsSetting.SpeedDistance)
+                                                                {
+                                                                    <option selected value="@item.Key">@item.Value</option>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <option value="@item.Key">@item.Value</option>
+                                                                }
+                                                            }
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="row">
+                                                <div class="col-xs-12 col-sm-4">
+                                                    <div class="form-group">
+                                                        <label for="linger">
+                                                            Time to delivery calculation interval (minutes)
+                                                            <i class="fa fa-info-circle blue" data-tooltip="The Time and Distance from the Driver location to the Order Location must be calculated"></i>
+                                                        </label>
+                                                        <input type="number" onchange="SaveThresholdTimeInterval(this)" min="0" value="@ddsSetting.APICallThresholdTimeInterval" class="form-control">
+                                                    </div>
+                                                </div>
+                                                <div class="col-xs-12 col-sm-4">
+                                                    <div class="form-group">
+                                                        <label for="longitude">Latitude</label>
+                                                        <input type="text" class="form-control" value="@(ddsSetting.Location.Address?.Latitude)" disabled="">
+                                                    </div>
+                                                </div>
+                                                <div class="col-xs-12 col-sm-4">
+                                                    <div class="form-group">
+                                                        <label for="latitude">Longitude</label>
+                                                        <input type="text" class="form-control" value="@(ddsSetting.Location.Address?.Longitude)" disabled="">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                    </div>
+                                    <!-- END General -->
+                                    <!-- Drivers -->
+                                    <div class="tab-pane fade" id="tab-dds-drivers">
+                                        <input hidden="" id="current-location-id" value="@currentLocationId" />
+                                        <div class="well custom" style="padding-bottom: 5px;">
+                                            <div class="row">
+                                                <div class="col-xs-12 col-sm-4">
+                                                    <div class="form-group">
+                                                        <label for="search">Search Drivers</label>
+                                                        <input type="text" id="driver-search" class="form-control" onkeyup="SearchDriver()">
+                                                    </div>
+                                                </div>
+                                                <div class="col-xs-12 col-sm-3">
+                                                    <div class="form-group">
+                                                        <label for="location">Filter by status</label>
+                                                        <select id="driver-status" name="location" class="form-control select2All" style="width: 100%;" onchange="SearchDriver()">
+                                                            <option value="0" selected>Show all</option>
+                                                            <option value="1">Waiting</option>
+                                                            <option value="2">Out</option>
+                                                            <option value="3">Returning</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <div class="col-xs-12 col-sm-3">
+                                                    <div class="form-group">
+                                                        <label for="location">Filter by location</label>
+                                                        <select id="driver-location" name="location" class="form-control select2All" style="width: 100%;" onchange="SearchDriver()">
+                                                            <option value="0" selected>Show all</option>
+                                                            @foreach (var l in ddsLocations)
+                                                            {
+                                                                <option value="@l.Id">@l.Name</option>
+                                                            }
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <div class="col-xs-12 col-sm-2">
+                                                    <label for="">Options</label><br>
+                                                    <button type="button" class="btn btn-success" data-toggle="modal" data-target="#dds-delivery-driver-add"><i class="fa fa-plus"></i> &nbsp; Add a driver</button>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <br />
+                                        <div id="driver-list" class="flex-grid-thirds-lg qbicles-dash-grid" style="margin-bottom: 300px !important;">
+                                            @foreach (var driver in ddsDrivers)
+                                            {
+                                                var employmentLocation = true;
+                                                if (currentLocationDomainId != driver.EmploymentLocation.Domain.Id)
+                                                {
+                                                    employmentLocation = false;
+                                                }
+                                                <article id="dds-driver-item-@driver.Id" class="col">
+                                                    <label class="label label-success label-lg" style="font-size: 11px !important; position: absolute; top: 10px; left: 8px;">@driver.Status.GetDescription()</label>
+
+                                                    @if (employmentLocation)
+                                                    {
+                                                        <div class="qbicle-opts">
+                                                            <a href="javascript:" onclick="ConfirmDeleteDriver(@driver.Id)">
+                                                                <i class="fa fa-trash"></i>
+                                                            </a>
+                                                        </div>
+                                                    }
+
+                                                    <a href="javascript:" style="cursor: initial !important;">
+                                                        <div class="avatar" style="border-radius: 0; background-image: url('/Content/DesignStyle/img/food-delivery.png');">&nbsp;</div>
+                                                        <h1 style="color: #333;"><span id="driver-name-main-@driver.Id">@(string.IsNullOrEmpty(driver.User.User.DisplayUserName)? driver.User.User.Forename: driver.User.User.DisplayUserName)</span></h1>
+                                                    </a>
+                                                    <br />
+                                                    <div class="row" style="text-align: left !important;">
+                                                        <div class="col-xs-4 col-lg-3">
+                                                            <label>At work</label>
+                                                            <div class="checkbox toggle">
+                                                                <label>
+                                                                    @{
+                                                                        var onShift = ""; // not use
+                                                                        if (driver.AtWork)
+                                                                        {
+                                                                            onShift = "checked";//use
+                                                                        }
+                                                                    }
+                                                                    @if (employmentLocation)
+                                                                    {
+                                                                        <input data-on="Yes" data-off="No" onchange="UpdateDriverShift(this.checked, @driver.Id)" class="apps-account" @onShift data-toggle="toggle" data-size="small" data-onstyle="success" type="checkbox">
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <input disabled data-on="Yes" data-off="No" class="apps-account" @onShift data-toggle="toggle" data-size="small" data-onstyle="success" type="checkbox">
+                                                                    }
+
+                                                                </label>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-xs-8 col-lg-9">
+                                                            <div class="form-group" style="margin: 0;">
+                                                                <label for="location">Employment Location</label>
+                                                                @if (employmentLocation)
+                                                                {
+                                                                    <select id="driver-location-@driver.Id" class="form-control select2All" style="width: 100%;" onchange="UpdateDriverLocation(@driver.Id)">
+                                                                        <option value="0"> </option>
+                                                                        @foreach (var l in ddsLocationsQueue)
+                                                                        {
+                                                                            if (l.Id == driver.EmploymentLocation?.Id)
+                                                                            {
+                                                                                <option value="@l.Id" selected="">@l.Name</option>
+                                                                            }
+                                                                            else
+                                                                            {
+                                                                                <option value="@l.Id">@l.Name</option>
+                                                                            }
+                                                                        }
+                                                                    </select>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <select disabled class="form-control select2All" style="width: 100%;">
+                                                                        <option value="0"></option>
+                                                                        @foreach (var l in ddsLocationsQueue)
+                                                                        {
+                                                                            if (l.Id == driver.EmploymentLocation?.Id)
+                                                                            {
+                                                                                <option value="@l.Id" selected="">@l.Name</option>
+                                                                            }
+                                                                            else
+                                                                            {
+                                                                                <option value="@l.Id">@l.Name</option>
+                                                                            }
+                                                                        }
+                                                                    </select>
+                                                                }
+
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="row" style="text-align: left !important;">
+                                                        <div class="col-xs-4 col-lg-3"></div>
+                                                        <div class="col-xs-8 col-lg-9">
+                                                            <div class="form-group" style="margin: 0;">
+                                                                <label for="location">Work Locations</label>
+                                                                @if (employmentLocation)
+                                                                {
+                                                                    <select multiple id="driver-work-location-@driver.Id" class="form-control select2checkmulti"
+                                                                            style="width: 100%;display:none;">
+                                                                        @foreach (var l in ddsLocationsQueue)
+                                                                        {
+                                                                            var disabled = l.Id == currentLocationId ? "" : "disabled";
+                                                                            if (driver.WorkLocations.Any(e => e.Id == l.Id))
+                                                                            {
+                                                                                <option @disabled id="@driver.Id" value="@l.Id" selected="">@l.Name</option>
+                                                                            }
+                                                                            else
+                                                                            {
+                                                                                <option @disabled id="@driver.Id" value="@l.Id">@l.Name</option>
+                                                                            }
+                                                                        }
+                                                                    </select>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <select disabled multiple id="driver-work-location-@driver.Id" class="form-control select2checkmulti"
+                                                                            style="width: 100%;display:none;">
+                                                                        @foreach (var l in ddsLocationsQueue)
+                                                                        {
+                                                                            var disabled = l.Id == currentLocationId ? "" : "disabled";
+                                                                            if (driver.WorkLocations.Any(e => e.Id == l.Id))
+                                                                            {
+                                                                                <option @disabled selected="">@l.Name</option>
+                                                                            }
+                                                                            else
+                                                                            {
+                                                                                <option @disabled>@l.Name</option>
+                                                                            }
+                                                                        }
+                                                                    </select>
+                                                                }
+
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </article>
+                                            }
+
+                                        </div>
+
+                                    </div>
+                                    <!-- END Drivers -->
+
+                                </div> <!-- ./tab-content -->
+
+                            </div>
+                            <!-- END DDS -->
+
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+            <!-- END Config -->
+        </div>
+
+
+
+
+    </section>
+    <!-- ./content -->
+
+</div>
+<!-- /.content-wrapper -->
+
+<div class="modal fade left" id="deliveryman-add-delivery" role="dialog" aria-labelledby="deliveryman-add-delivery">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Add a Delivery</h5>
+            </div>
+            <div class="modal-body">
+
+                <div class="well custom">
+                    <div class="form-group" style="margin: 0;">
+                        <label for="name">Select a location</label>
+                        <select id="add-new-location" class="form-control select2" style="width: 100%;">
+                            @foreach (var item in locations)
+                            {
+                                <option value="@item.Id">@item.Name</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+
+                <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                <button type="button" onclick="CreateDelivery()" data-dismiss="modal" class="btn btn-success">Confirm</button>
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+
+<div class="modal fade" id="delivery-status-change-batch" role="dialog" aria-labelledby="delivery-status-change-batch">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Change the status of all selected deliveries</h5>
+            </div>
+            <div class="modal-body">
+
+                <div class="activity-overview generic help-text animated bounce" style="margin-bottom: 15px;">
+                    <i class="fa fa-info-circle"></i>
+                    <p>You're about to perform a batch operation that will affect <strong>2</strong> total deliveries. Only <em>visible</em>, checked deliveries are included.</p>
+                </div>
+
+                <div class="well custom">
+                    <div class="form-group" style="margin: 0;">
+                        <label for="title">Delivery status of selected</label>
+                        <select id="delivery-status-change" class="form-control select2" style="width: 100%;" onchange="toggleShowingProblemDescription()">
+                            <option value="@DeliveryStatus.New.GetId()" selected>@DeliveryStatus.New.GetDescription()</option>
+                            <option value="@DeliveryStatus.Accepted.GetId()">@DeliveryStatus.Accepted.GetDescription()</option>
+                            <option value="@DeliveryStatus.Completed.GetId()">@DeliveryStatus.Completed.GetDescription()</option>
+                            <option value="@DeliveryStatus.CompletedWithProblems.GetId()">@DeliveryStatus.CompletedWithProblems.GetDescription()</option>
+                            <option value="@DeliveryStatus.Deleted.GetId()">@DeliveryStatus.Deleted.GetDescription()</option>
+                        </select>
+                    </div><br />
+                    <div class="form-group" id="problem-description-container" style="margin: 0; display:none">
+                        <label for="title">Briefly describe the problem(s)</label>
+                        <textarea class="form-control" id="problem-description" style="height: 90px;" placeholder="Problem(s) description"></textarea>
+                    </div>
+                </div>
+
+                <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                <button class="btn btn-success" id="change-delivery-status-confirm">Confirm</button>
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+
+
+<div class="modal fade left" id="dds-delivery-driver-add" role="dialog" aria-labelledby="dds-delivery-driver-add" style="display: none; padding-right: 17px;">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+                <h5 class="modal-title">Add a Driver</h5>
+            </div>
+            <div class="modal-body">
+
+                <div class="activity-overview generic help-text animated bounce" style="margin-bottom: 0;">
+                    <i class="fa fa-info-circle"></i>
+                    <p>
+                        Your drivers must be existing Domain users in order to be added to your Logistics configuration. Please ensure any drivers you wish to add are already
+                        present in your Domain.
+                    </p>
+                </div>
+
+                <br>
+                <div class="well custom">
+                    <div class="form-group" style="margin: 0;">
+                        <label for="existing">Search Domain members</label>
+                        <input id="txtddsmembersearch" type="text" class="form-control" autocomplete="off" name="member-search" placeholder="Search by name...">
+                    </div>
+                </div>
+
+                <div class="existing-member" style="margin-top: 15px 0; display: none;">
+                    <div class="contact-list-found" style="margin-bottom: 30px;"></div>
+                    <div class="contact-add" style="display: none;"></div>
+                </div>
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+<div class="modal fade left" id="app-bookkeeping-treeview" role="dialog" aria-labelledby="app-bookkeeping-treeview" aria-hidden="true" style="display: none;"></div>
+
+<div class="modal fade right" id="dds-orders-view" role="dialog" aria-labelledby="dds-orders-view"></div>
+<div class="modal fade left" id="create-discussion-delivery" role="dialog" aria-labelledby="create-discussion-delivery"></div>
+<script src="~/Content/DesignStyle/js/html5tooltips.js"></script>
+<script src="~/Content/DesignStyle/js/bootstrap-multiselect.min.js"></script>
+<link rel="stylesheet" href="~/Content/DesignStyle/css/daterangepicker.css">
+<script src="~/Content/DesignStyle/js/daterangepicker.js"></script>
+<script src="~/Content/DesignStyle/js/jquery.timer.js"></script>
+<script src="~/Content/DesignStyle/js/html2canvas.js"></script>
+<script src="~/Scripts/dev/delivery-management.js"></script>
+<script src="~/Scripts/dev/delivery-dds-management.js"></script>
+<script>
+    var $tableCols = ['2', '3', '4', '5'];
+    var $deliveryFilter = @Html.Raw(Json.Encode(filterInit));
+    $(document).ready(function () {
+
+        $("#txtddsmembersearch").keyup(searchThrottle(function () {
+            searchDdsDeliveryDrivers();
+        }));
+
+        $('select.select2All').select2({ placeholder: 'Please select' });
+        $('.checkbox.toggle input').bootstrapToggle();
+        $(".select2checkmulti").multiselect({
+            includeSelectAllOption: false,
+            selectAllJustVisible: false,
+            includeResetOption: false,
+            buttonWidth: '100%',
+            maxHeight: 400,
+            enableClickableOptGroups: true,
+            enableFiltering: true,
+            enableCaseInsensitiveFiltering: true,
+            onChange: function (option, checked) {
+                UpdateDriverWorkLocation(option[0].id, option[0].value, checked);
+            }
+        });
+
+
+        loadDeliveryManagement();
+
+        var refreshIntervalId = 0;
+        var timeToRefreshPage = Number($("#search-refresh").val()) * 1000;
+        refreshIntervalId = window.setInterval(function () {
+            isDataUpdating = true;
+            $("#delivery-mngt-table").DataTable().ajax.reload();
+        }, timeToRefreshPage);
+
+        $("#search-refresh").on('change', function (e) {
+            clearInterval(refreshIntervalId);
+            var timeToRefreshPage = Number($("#search-refresh").val()) * 1000;
+            refreshIntervalId = window.setInterval(function () {
+                isDataUpdating = true;
+                $("#delivery-mngt-table").DataTable().ajax.reload();
+            }, timeToRefreshPage);
+            $deliveryFilter.RefreshEvery = $("#search-refresh").val();
+            rememberedFilter(false);
+            cleanBookNotification.success("Update refresh time successfully!", "Qbicles");
+        });
+
+        $("#deliveryman-add-delivery").on('shown.bs.modal', function () {
+            $("#add-new-location").val(null).trigger('change');
+        })
+
+        $("#delivery-status-change-batch").on('shown.bs.modal', function () {
+            clearInterval(refreshIntervalId);
+        })
+
+        $("#delivery-status-change-batch").on('hidden.bs.modal', function () {
+            clearInterval(refreshIntervalId);
+            var timeToRefreshPage = Number($("#search-refresh").val()) * 1000;
+            refreshIntervalId = window.setInterval(function () {
+                isDataUpdating = true;
+                $("#delivery-mngt-table").DataTable().ajax.reload();
+            }, timeToRefreshPage);
+        });
+
+        $(".checkmulti-manager").multiselect({
+            includeSelectAllOption: true,
+            selectAllJustVisible: true,
+            includeResetOption: false,
+            enableFiltering: false,
+            buttonWidth: '100%',
+            maxHeight: 400,
+            enableClickableOptGroups: true,
+            enableFiltering: true,
+            enableCaseInsensitiveFiltering: true
+        });
+
+        $("#search-location").on('change', function () {
+            $deliveryFilter.Locations = $("#search-location").val();
+            rememberedFilter();
+        });
+
+        $("#search-driver").on('change', function () {
+            $deliveryFilter.Drivers = $("#search-driver").val();
+            rememberedFilter();
+        });
+
+        $("#search-status").on('change', function () {
+            $deliveryFilter.Status = $("#search-status").val();
+            rememberedFilter();
+        });
+
+        $('#search-keyword').keyup(searchThrottle(function () {
+            $deliveryFilter.Keyword = $("#search-keyword").val();
+            rememberedFilter();
+        }));
+
+        $('#search-completed').change(searchThrottle(function () {
+            $deliveryFilter.ShowCompleted = $("#search-completed").is(":checked");
+            rememberedFilter();
+        }));
+
+        if ('@ViewBag.DateStart' == '') {
+            $('#search-daterange').daterangepicker({
+                timePicker: true,
+                showDropdowns: true,
+                autoUpdateInput: false,
+                cancelClass: "btn-danger",
+                maxDate: moment(),
+                opens: "right",
+                locale: {
+                    cancelLabel: 'cancel',
+                    format: $dateTimeFormatByUser
+                }
+            });
+        } else {
+            $('#search-daterange').daterangepicker({
+                timePicker: true,
+                showDropdowns: true,
+                autoUpdateInput: true,
+                cancelClass: "btn-danger",
+                startDate: new Date('@ViewBag.DateStart'),
+                endDate: new Date('@ViewBag.DateEnd'),
+                maxDate: moment(),
+                opens: "right",
+                locale: {
+                    cancelLabel: 'cancel',
+                    format: $dateTimeFormatByUser
+                }
+            });
+        }
+
+
+
+        $("#search-daterange").on('cancel.daterangepicker', function (ev, picker) {
+            $(this).val(null);
+            $deliveryFilter.DateStart = "";
+            $deliveryFilter.DateEnd = "";
+            rememberedFilter();
+        });
+
+        $("#search-daterange").on('apply.daterangepicker', function (e, picker) {
+            $(this).val(picker.startDate.format($dateTimeFormatByUser) + ' - ' + picker.endDate.format($dateTimeFormatByUser));
+
+            $deliveryFilter.DateStart = picker.startDate.format($dateTimeFormatByUser);
+            $deliveryFilter.DateEnd = picker.endDate.format($dateTimeFormatByUser);
+            rememberedFilter();
+        })
+
+        // Show/Unshow dataTable columns
+        $("#show-column").on('change', function (e) {
+            var showCols = $("#show-column").val();
+            ShowHideColumn(showCols);
+
+            $deliveryFilter.Columns = showCols;
+            rememberedFilter(false);
+        })
+    });
+
+    function ShowHideColumn(colShow) {
+
+        var dataTable = $("#delivery-mngt-table");
+
+        _.forEach($tableCols, colId => {
+            var col = dataTable.DataTable().column(colId);
+            if (_.includes(colShow, colId)) {
+                col.visible(true);
+            }
+            else {
+                col.visible(false);
+            }
+        });
+    }
+
+</script>

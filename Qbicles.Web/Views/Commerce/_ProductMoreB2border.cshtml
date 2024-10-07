@@ -1,0 +1,344 @@
+﻿@using Qbicles.Models;
+@using System.Linq;
+@using Qbicles.Models.Catalogs;
+@using Qbicles.Models.Trader;
+@using Qbicles.Models.B2B
+@using Qbicles.BusinessRules
+@model CategoryItem
+@{
+    var api = (string)ViewBag.DocRetrievalUrl;
+
+    var currencySetting = (CurrencySetting)ViewBag.CurrencySetting;
+
+    var imageUri = Model.ImageUri;
+    if (string.IsNullOrEmpty(imageUri))
+    {
+        imageUri = Model.PosVariants.FirstOrDefault(v => v.IsDefault)?.ImageUri;
+    }
+    if (string.IsNullOrEmpty(imageUri))
+    {
+        imageUri = "https://www.placehold.it/300x250/EFEFEF/AAAAAA&text=no+image+selected";
+    }
+    else
+    {
+        imageUri = api + imageUri;
+    }
+
+
+    var minPrices = Model.PosVariants.Count == 0 ? 0 : Model.PosVariants.Min(p => p.Price?.GrossPrice ?? 0);
+
+    var prices = Qbicles.BusinessRules.CurrencyUserConfiguration.ToDecimalPlace(minPrices, (int)currencySetting.DecimalPlace);
+
+    var firstPricesUnformatted = Model.PosVariants.FirstOrDefault(v => v.IsDefault)?.Price?.GrossPrice ?? 0;
+
+    var firstPrices = Qbicles.BusinessRules.CurrencyUserConfiguration.ToDecimalPlace(firstPricesUnformatted, (int)currencySetting.DecimalPlace);
+
+    var isAllowAdd = (bool)ViewBag.isAllowAdd;
+    var defaultAssociatedTraderItem = (TraderItem)ViewBag.DefaultAssociatedTraderItem;
+    var exchangeRate = (ExchangeRate)ViewBag.ExchangeRate;
+
+    var variantDefault = Model.PosVariants.FirstOrDefault(v => v.IsDefault) ?? new Variant();
+    var galleryItems = variantDefault.TraderItem.GalleryItems;
+
+}
+
+<link href="~/Content/DesignStyle/css/easyzoom.css" rel="stylesheet" />
+
+<input type="hidden" id="currencyDecimalPlace" value="@((int)currencySetting.DecimalPlace)" />
+<input type="hidden" id="currencySymbol" value="@currencySetting.CurrencySymbol" />
+
+<div class="modal-dialog modal-xl cx" role="document">
+    <div class="modal-content">
+        <div class="modal-body" style="padding: 0;">
+            <form id="frmAddItemB2bOrder">
+                <div class="product-modaltop" style="background-image: url('@imageUri');"></div>
+
+                <div class="product-sell">
+
+                    <div class="text-center" style="margin-bottom: 50px;">
+                        <h6>@Model.Category.Name</h6>
+                        <h1>@Model.Name</h1>
+                        <h2>
+                            <span style="font-size: 12px; color: rgba(0, 0, 0, 0.4); font-weight: 500;">Price from</span>
+                            @currencySetting.CurrencySymbol@prices @Html.Raw(exchangeRate != null ? $"<span class=\"converted\" style=\"display: none;\">/{(minPrices * exchangeRate.ExchangeRateValue).ToDecimalPlace(currencySetting)}{exchangeRate.BuyingDomainCurrencySymbol}</span>" : "")
+                        </h2>
+                    </div>
+                    <br />
+
+                    <div class="row">
+                        @{
+                            var col = "col-sm-6";
+                            if (!galleryItems.Any())
+                            {
+
+                                col = "col-sm-12";
+                            }
+                        }
+                        @if (galleryItems.Any())
+                        {
+                            <div class="col-xs-12 @col">
+
+                                <div class="prodgallery" style="max-width: none;">
+                                    @{
+                                        var galleryItemFirst = galleryItems.FirstOrDefault(e => e.Order == 0);
+                                        var index = 0;
+                                    }
+                                    <div class="easyzoom easyzoom--adjacent easyzoom--with-thumbnails">
+                                        <a href="@galleryItemFirst.FileUri.ToUri()">
+                                            <img src="@galleryItemFirst.FileUri.ToUri(Enums.FileTypeEnum.Image,"M")" alt="" style="width: 100%; height: auto;" />
+                                        </a>
+                                    </div>
+
+
+                                    <br /><br />
+
+                                    <ul class="flex-grid-quarters thumbnails">
+                                        @foreach (var gallery in galleryItems)
+                                        {
+                                            var activethumb = "activethumb";
+                                            if (index > 0) { activethumb = ""; }
+                                            <li class="col @activethumb">
+                                                <a href="@gallery.FileUri.ToUri()" data-standard="@gallery.FileUri.ToUri(Enums.FileTypeEnum.Image,"M")">
+                                                    <div class="standardcontain" style="background-image: url('@gallery.FileUri.ToUri(Enums.FileTypeEnum.Image,"T")');"></div>
+                                                </a>
+                                            </li>
+                                            index++;
+                                        }
+                                        <li class="col"></li>
+                                    </ul>
+
+                                </div>
+
+
+                            </div>
+                        }
+
+
+                        <div class="col-xs-12 @col">
+
+                            <div class="spacing" style="padding-top: 0;">
+
+
+                                <h5>More information</h5>
+                                <br />
+
+                                @*<div class="quillcontent" style="overflow-y: auto; max-height: 400px;">*@
+                                <div class="quillcontent">
+                                    @Html.Raw(Model.Description)
+
+                                    @*Model.Description*@
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+
+                    <div class="well custom rounded" style="padding-bottom: 5px;">
+                        <div class="row">
+                            @{
+                                var colSize = 6;
+                                if (Model.PosVariants.Any() == false && Model.PosExtras.Any() == false)
+                                {
+                                    colSize = 12;
+                                }
+
+                            }
+                            @if (colSize == 6)
+                            {
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="activity-overview plain rounded" style="margin: 0 0 15px 0;">
+                                        <div class="row">
+                                            <div class="col-xs-12">
+                                                <div class="form-group">
+                                                    <label for="variant">Item</label>
+                                                    @{ 
+                                                        var itemText = "";
+                                                        
+                                                        }
+                                                <div hidden>
+                                                    <select disabled id="item-variant" class="form-control select2modal" style="width: 100%;">
+                                                        @foreach (var variant in Model.PosVariants)
+                                                        {
+                                                            var formattedVarianPrice = Qbicles.BusinessRules.CurrencyUserConfiguration.ToDecimalPlace((variant.Price?.GrossPrice ?? 0), (int)currencySetting.DecimalPlace);
+                                                            itemText = $"{variant.Name} - {currencySetting.CurrencySymbol}{formattedVarianPrice}";
+                                                            if (variant.IsDefault)
+                                                            {
+                                                                <option variant-id="@variant.Id" data-sku="@(variant.TraderItem?.SKU??"")" variantprice="@formattedVarianPrice" value="@(variant.Price?.GrossPrice??0)" selected>@itemText</option>
+                                                            }
+                                                            else
+                                                            {
+                                                                <option variant-id="@variant.Id" data-sku="@(variant.TraderItem?.SKU??"")" variantprice="@formattedVarianPrice" value="@(variant.Price?.GrossPrice??0)">@itemText</option>
+                                                            }
+                                                        }
+                                                    </select>
+                                                </div>
+                                                    <br />
+                                                    <label>@itemText</label>
+                                                </div>
+                                            </div>
+
+                                        </div>
+                                        <br />
+                                        <div class="row">
+                                            <div class="col-xs-12">
+                                                <div id="item-extras" class="form-group">
+                                                    @foreach (var extra in Model.PosExtras)
+                                                    {
+                                                        var formattedExtraPrice = Qbicles.BusinessRules.CurrencyUserConfiguration.ToDecimalPlace((extra.Price?.GrossPrice ?? 0), (int)currencySetting.DecimalPlace);
+                                                        <div class="checkbox toggle">
+                                                            <label>
+                                                                <input id="extra-@extra.Id" extra-id="@extra.Id" value="@(extra.Price?.GrossPrice??0)" onchange="updateTotalOrder()" extraprice="@formattedExtraPrice" data-toggle="toggle" class="toggle-switch" data-onstyle="success" type="checkbox"  oninput="validity.valid || (value = '0')" min="0">
+                                                                @extra.Name (+@currencySetting.CurrencySymbol @formattedExtraPrice)
+                                                            </label>
+                                                        </div>
+                                                    }
+
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-xs-12">
+                                                <label>Your associated Trader item &amp; unit</label><br />
+                                                <div class="input-group" style="margin-bottom: 15px;">
+                                                    <select required id="item-associated" name="item-associated" onchange="$(this).valid()" class="form-control select2" style="width: 100%;">
+                                                        <option value=""></option>
+                                                        @if (defaultAssociatedTraderItem != null)
+                                                        {
+                                                            <option value="@defaultAssociatedTraderItem.Id" selected>@($"{defaultAssociatedTraderItem.SKU} - {defaultAssociatedTraderItem.Name}")</option>
+                                                        }
+                                                    </select>
+                                                    <span class="input-group-btn" style="min-width: 80px;">
+                                                        <select required id="unit-associated" @(defaultAssociatedTraderItem != null ? "" : "disabled") name="unit-associated" class="form-control select2" style="width: 100%;">
+                                                            <option value=""></option>
+                                                            @if (defaultAssociatedTraderItem != null)
+                                                            {
+                                                                foreach (var unit in defaultAssociatedTraderItem.Units)
+                                                                {
+                                                                    <option value="@unit.Id" @(unit.IsBase ? "selected" : "")>@unit.Name</option>
+                                                                }
+                                                            }
+                                                        </select>
+                                                    </span>
+                                                </div>
+
+                                                <div class="alert alert-warning animated bounceIn" id="taxwarning" style="display: none;">
+                                                    <span id="taxwaring-text1"></span><br />
+                                                    <span id="taxwaring-text2"></span>
+                                                </div>
+
+                                                <label id="item-associated-error" class="error" for="item-associated" style="display:none;margin-top:-15px;float:left">This field is required.</label>
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-xs-12">
+                                                <div class="form-group">
+                                                    <label>Set @((string)ViewBag.SellingBusinessName) as your primary vendor for this item?</label>
+                                                    <div class="checkbox toggle">
+                                                        <label>
+                                                            <input id="primary-vendor" class="toggle-switch" checked data-toggle="toggle" data-onstyle="success" data-on="<i class='fa fa-check'></i>" data-off="No" type="checkbox">
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                            <div class="col-xs-12 col-sm-@colSize">
+                                <div class="activity-overview plain rounded" style="margin: 0 0 15px 0;">
+                                    <label>Quantity</label><br />
+                                    <div class="input-group" style="max-width: 100%; margin-bottom: 15px;">
+                                        <input onchange="updateTotalOrder()" id="item-quantity" type="number" class="form-control" value="1" oninput="validity.valid || (value = '1')" min="1">
+                                    </div>
+
+                                    <br />
+
+                                    <label>Total</label>
+
+                                    <br />
+                                    <h1 style="margin: 0; padding: 0;">@currencySetting.CurrencySymbol<span id="order-total-prices" value="@firstPricesUnformatted">@firstPrices</span>@Html.Raw(exchangeRate != null ? $"<span class=\"converted total-price-buyer-currency\" style=\"display: none;\">/{(firstPricesUnformatted * exchangeRate.ExchangeRateValue).ToDecimalPlace(currencySetting)}{exchangeRate.BuyingDomainCurrencySymbol}</span>" : "")</h1>
+
+                                    <smaller class="disclaimer">including tax</smaller>
+                                    <br />
+                                    @if (isAllowAdd)
+                                    {
+                                        <button style="max-width: 150px;" id="btn-add-to-cart" class="btn btn-success community-button" type="button" onclick="addItemToB2BOrder(@Model.Id)"><i class="fa fa-cart-plus"></i> &nbsp; Add to cart</button>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </form>
+        </div>
+    </div><!-- /.modal-content -->
+</div><!-- /.modal-dialog -->
+
+<script src="~/Content/DesignStyle/js/easyzoom.js"></script>
+<script>
+    $(".select2modal").select2();
+    $('.toggle-switch').bootstrapToggle();
+
+    $(document).ready(function () {
+        var $easyzoom = $('.easyzoom').easyZoom();
+        // Setup thumbnails example
+        var api1 = $easyzoom.filter('.easyzoom--with-thumbnails').data('easyZoom');
+
+        $('.thumbnails').on('click', 'a', function (e) {
+            var $this = $(this);
+
+            $('.thumbnails li').removeClass('activethumb');
+            $this.parent().addClass('activethumb');
+
+            e.preventDefault();
+
+            // Use EasyZoom's `swap` method
+            api1.swap($this.data('standard'), $this.attr('href'));
+        });
+        b2bMatchTaxes();
+    });
+
+    function b2bMatchTaxes() {
+
+        var $traderItemId = _.toNumber($("#item-associated").val());
+        var $variantId = _.toNumber($("#item-variant option:selected").attr("variant-id"));
+
+        $.ajax({
+            type: 'POST',
+            //contentType: 'application/JSON; charset=utf-8',
+            url: '/Commerce/B2BMatchSellerAndPurchaserTaxes',
+            data: {
+                traderItemId: $traderItemId,
+                variantId: $variantId
+            },
+            datatype: 'JSON',
+            success: function (response) {
+                if (!response.result) {
+                    $('#taxwarning').show();
+                    $("#btn-add-to-cart").attr('disabled', true);
+
+                    if (response.actionVal == 4) {
+                        $("#taxwaring-text1").text("Please select an item.");
+                        $("#taxwaring-text2").text("");
+                    }
+                    else if (response.actionVal == 1) {
+                        $("#taxwaring-text1").text("The taxes for the item you have selected do not correspond to the seller's taxes.");
+                        $("#taxwaring-text2").text("Please update your taxes for this item in your trading items before trying again.");
+                    }
+                }
+                else {
+                    $('#taxwarning').hide();
+                    $("#btn-add-to-cart").attr('disabled', false);
+                    //$("#btn-add-to-cart").removeAttr('disabled');
+                    //$("#btn-add-to-cart").removeClass('disabled');
+                }
+
+            },
+            error: function (err) {
+                cleanBookNotification.error(err.msg, "Qbicles");
+            }
+        });
+    }
+</script>

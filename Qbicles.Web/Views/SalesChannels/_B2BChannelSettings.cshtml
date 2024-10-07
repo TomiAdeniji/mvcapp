@@ -1,0 +1,234 @@
+﻿@using Qbicles.Models
+@using Qbicles.Models.Trader.SalesChannel;
+@using Qbicles.Models.Trader.ODS;
+
+@model B2BSettings
+
+@{
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var currentDomain = (QbicleDomain)ViewBag.CurrentDomain;
+    var b2bStatus = Qbicles.BusinessRules.HelperClass.EnumModel.GetEnumValuesAndDescriptions<PrepQueueStatus>();
+}
+
+<div class="col-xs-12 col-sm-4 col-md-3">
+    <div class="flex-grid qbicles-dash-grid theme-labels">
+
+        <article class="col">
+            <div class="qbicle-opts">
+            </div>
+            <a href="#">
+                <div class="avatar" style="background-image: url('@Url.Content("~/Content/DesignStyle/img/icon_app_commerce.png")');">&nbsp;</div>
+                <h1 style="color: #333;">B2B</h1>
+            </a>
+
+            <br>
+            <ul id="tabB2bConfig" class="nav nav-stacked nav-pills nav-marketing" style="margin-bottom: 0;">
+                <li class="active"><a href="#tab-b2b-general" data-toggle="tab">General</a></li>
+                <li style="@(Model.IsLogistics?"":"display:none")" class="b2b-logistics"><a href="#tab-b2b-logistics" data-toggle="tab" onclick="$('a[href=#logistics-taxes]').click()">Logistics</a></li>
+                <li style="@(Model.IsMaintenance?"":"display:none")" class="b2b-maintenance"><a href="#tab-b2b-maintenance" data-toggle="tab">Maintenance</a></li>
+            </ul>
+
+        </article>
+
+    </div>
+</div>
+<div class="col-xs-12 col-sm-8 col-lg-9">
+
+    <div class="tab-content mdv2-col-dash">
+
+
+        <!-- General -->
+        <div class="tab-pane fade in active" id="tab-b2b-general">
+
+            <div class="well custom" style="padding-bottom: 5px;">
+                <div class="row">
+                    <div class="col-xs-12 col-sm-6">
+                        <div class="form-group our-services">
+                            <label for="source">B2B Services we offer</label>
+                            <br>
+                            <span class="multiselect-native-select">
+                                <select id="slB2BServices" name="services" onchange="saveB2BConfig()" class="form-control checkmulti" multiple="">
+                                    <option value="Design" @(Model.IsDesign ? "selected" : "") disabled="">Design</option>
+                                    <option value="Logistics" @(Model.IsLogistics ? "selected" : "")>Logistics</option>
+                                    <option value="Maintenance" @(Model.IsMaintenance ? "selected" : "") disabled="">Maintenance</option>
+                                </select>
+                            </span>
+                            <p class="formhelp below">Check all services you wish you provide as part of B2B Partnerships. Enabling any service will provide more options specific to that service to get you started.</p>
+                        </div>
+                    </div>
+                </div>
+                <br>
+
+                <div class="row">
+                    <div class="col-xs-12 col-sm-6">
+                        <div class="form-group">
+                            <label for="qbicles">Default initial status of B2B order</label>
+                            <select id="b2b-order" onchange="saveB2BConfig();" class="form-control select2b2b" style="width: 100%;" tabindex="-1" aria-hidden="true">
+                                @foreach (var item in b2bStatus.ToList())
+                                {
+                                    <option @((int)Model.OrderStatusWhenAddedToQueue == item.Key ? "selected" : "") value="@item.Key">@item.Value</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+        <!-- END General -->
+        <!-- Logistics -->
+        <div class="tab-pane fade" id="tab-b2b-logistics">
+
+
+            <div class="row">
+                <div class="col-xs-12">
+                    <ul class="nav nav-pills traderv2" style="padding-top: 0;">
+                        <li class="active"><a href="#logistics-taxes" data-toggle="tab">Associated product</a></li>
+                        <li><a href="#logistics-charges" data-toggle="tab" onclick="loadContentPriceList()">Charges</a></li>
+                        <li><a href="#logistics-vehicles" data-toggle="tab" onclick="reloadTableVehicles()">Vehicles</a></li>
+                        <li><a href="#logistics-drivers" data-toggle="tab" onclick="reloadTableDrivers()">Drivers</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <br>
+
+
+
+            <div class="tab-content">
+                <div class="tab-pane fade in active" id="logistics-taxes" style="min-height:200px">
+                    <div class="activity-overview generic help-text animated bounce">
+                        <i class="fa fa-info-circle"></i>
+                        <p>
+                            Choose a Trader product that represents your logistics provision. We'll use its associated data (including tax rates) to determine
+                            what's chargeable over and above the price list rates you specify.
+                        </p>
+                    </div>
+
+                    <div class="well custom" style="padding-bottom: 5px;">
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-8 col-md-6">
+                                <div class="form-group">
+                                    <label for="item">Trader item to associate with logistics</label>
+                                    <select id="select-traderitems" name="item" class="form-control select2" style="width: 100%;" tabindex="-1" aria-hidden="true"></select>
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-8 col-md-6">
+                                <label>&nbsp;</label><br>
+                                <button type="button" class="btn btn-info" onclick="$('#item-info').fadeIn();loadContentItemInfo();">Show item details</button>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <br>
+                    <div id="item-info" style="display: none;min-height:200px">
+                    </div>
+                </div>
+                <!-- Charges -->
+                <div class="tab-pane fade" id="logistics-charges">
+                    <div class="pricelists" style="display: block;min-height:200px">
+                        <div class="well custom" style="padding-bottom: 5px;">
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-3">
+                                    <div class="form-group">
+                                        <label for="search">Search</label>
+                                        <input type="text" id="txtplkeyword" name="search" class="form-control">
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-2">
+                                    <label for="">Options</label><br>
+                                    <button type="button" class="btn btn-success" onclick="loadModalPriceList(0)"><i class="fa fa-plus"></i> &nbsp; Add a price list</button>
+                                </div>
+                            </div>
+                        </div>
+                        <br>
+                        <div id="b2b-charges-content" class="service-types flex-grid-quarters-lg gridfix from-community c1 qbicles-dash-grid pricelists" style="width: 100%; display: flex;">
+                        </div>
+                    </div>
+                    <div class="framework" id="framework-1" style="display:none">
+                    </div>
+                </div>
+                <!-- END Charges -->
+                <!-- Vehicles -->
+                <div class="tab-pane fade" id="logistics-vehicles">
+
+                    <div class="well custom" style="padding-bottom: 5px;">
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-3">
+                                <div class="form-group">
+                                    <label for="search">Search</label>
+                                    <input id="txtvehiclekeyword" type="text" name="search" class="form-control">
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-2">
+                                <label for="">Options</label><br>
+                                <button type="button" class="btn btn-success" onclick="loadModalDeliveryVehicle(0)"><i class="fa fa-plus"></i> &nbsp; Add a vehicle</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <br>
+                    <table class="datatable table-hover table-striped" id="tblvehicles" style="width: 100%;">
+                        <thead>
+                            <tr>
+                                <th data-priority="1">Vehicle type</th>
+                                <th data-priority="1">Name</th>
+                                <th data-priority="2">Reference or registration</th>
+                                <th data-priority="1" data-orderable="false">Options</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+
+                </div>
+                <!-- END Vehicles -->
+                <!-- Drivers -->
+                <div class="tab-pane fade" id="logistics-drivers">
+                    <div class="well custom" style="padding-bottom: 5px;">
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-3">
+                                <div class="form-group">
+                                    <label for="search">Search</label>
+                                    <input id="txtSearchDriver" type="text" name="search" class="form-control">
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-2">
+                                <label for="">Options</label><br>
+                                <button type="button" class="btn btn-success" data-toggle="modal" data-target="#delivery-driver-add"><i class="fa fa-plus"></i> &nbsp; Add a driver</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <br>
+                    <table class="datatable table-hover table-striped" id="tbldrivers" style="width: 100%;">
+                        <thead>
+                            <tr>
+                                <th data-priority="1">Driver</th>
+                                <th data-priority="2">Email</th>
+                                <th data-priority="2">Vehicle</th>
+                                <th data-priority="1">Status</th>
+                                <th data-priority="1" data-orderable="false">Options</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div> <!-- ./tab-content -->
+        </div>
+        <!-- END Logistics -->
+    </div>
+
+</div>
+
+<script>
+    reloadDefaultTopic($('#wg-topic').data('topic'));
+    $('.select2b2b').select2();
+    $(".checkmulti").multiselect({
+        includeSelectAllOption: false,
+        enableFiltering: false,
+        buttonWidth: '100%',
+        maxHeight: 400,
+        enableClickableOptGroups: true
+    });
+</script>

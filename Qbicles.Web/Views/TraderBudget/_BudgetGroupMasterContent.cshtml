@@ -1,0 +1,194 @@
+﻿@using Qbicles.Models.Trader.Budgets
+@using Qbicles.Models.Trader;
+@model BudgetGroup
+@{
+    var workGroups = (List<WorkGroup>)ViewBag.WorkGroups ?? (new List<WorkGroup>());
+    var traderGroups = (List<TraderGroup>)ViewBag.TraderGroups ?? (new List<TraderGroup>());
+    var traderItems = new List<TraderItem>();
+    var api = (string)ViewBag.DocRetrievalUrl;
+
+
+
+    if (Model.Type == BudgetGroupType.Expenditure)
+    {
+        traderItems = Model.ExpenditureGroups.Select(q=>q.Items.Where(x => x.IsBought)).SelectMany(q=>q).ToList();
+    }
+    else
+    {
+        traderItems = Model.RevenueGroups.Select(q=>q.Items.Where(x => x.IsSold)).SelectMany(q=>q).ToList();
+    }
+
+}
+
+<!-- App bar -->
+<div class="mdv2-col-app" style="margin-bottom: 0;">
+
+    <div data-spy="affix" class="contained-sidebar">
+
+        <div class="activity-overview plain company-overview welcome-info" style="text-align: left !important; flex: none; margin: 0; padding-top: 30px; padding-bottom: 0;">
+
+            <div class="pull-left" style="margin-bottom: 15px;">
+                <a href="/Trader/AppTrader" onclick="setTabTrader('budget')" class="btn btn-info"><i class="fa fa-angle-left"></i> &nbsp; Budget Groups</a>
+                @if (workGroups.Count > 0)
+                {
+                    <a href="#app-trader-budget-group-add" onclick="addEditBudgetGroup(@Model.Id)" data-toggle="modal" class="btn btn-warning"><i class="fa fa-pencil"></i> &nbsp; Edit</a>
+                }
+            </div>
+            <div class="clearfix"></div>
+
+            <br /><br />
+
+            <h1 style="line-height: 1.2;">@Model.Title</h1>
+
+            <br />
+            <p style="color: rgba(0, 0, 0, 0.5);">@Model.Description</p>
+
+            <br /><br />
+
+            <div class="row">
+                <div class="col-xs-6">
+                    <label>Payment Terms</label>
+                    <p>@Model.PaymentTerms.Name</p>
+                </div>
+                <div class="col-xs-6">
+                    <label>Product Groups</label>
+                    <p>@(Model.ExpenditureGroups.Count + Model.RevenueGroups.Count)</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- END App bar -->
+<!-- Main area -->
+<div class="mdv2-col-dash">
+
+    <div class="spacing">
+
+        <div class="row" style="margin-top: -15px;">
+            <div class="col-xs-12">
+                <ul class="app_subnav admintabs" style="padding-top: 0;">
+                    <li class="active"><a href="#group-0" data-toggle="tab">Details</a></li>
+                    <li><a href="#group-1" onclick="masterSearchTableTraderItem()" data-toggle="tab">Items &amp; Products</a></li>
+                </ul>
+            </div>
+        </div>
+
+        <br /><br />
+
+
+
+        <div class="tab-content" style="padding-bottom: 30px;">
+
+            <!-- Details -->
+            <div class="tab-pane fade in active" id="group-0">
+
+                <div class="well custom" style="padding-bottom: 0;">
+                    <form name="qbicle-creation">
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="media-title">Title</label>
+                                    <p>@Model.Title</p>
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="terms">Payment terms</label>
+                                    <p>@Model.PaymentTerms.Name</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="type">Budget type</label>
+                                    <p>@Model.Type.ToString()</p>
+                                </div>
+                            </div>
+
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="media-description">Included Product Group(s)</label>
+                                    @if (Model.Type == BudgetGroupType.Expenditure)
+                                    {
+                                        <p>@string.Join(", ", Model.ExpenditureGroups.Select(q => q.Name).ToList())</p>
+                                    }
+                                    else
+                                    {
+                                        <p>@string.Join(", ", Model.RevenueGroups.Select(q => q.Name).ToList())</p>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+
+                    </form>
+                </div>
+
+            </div>
+            <!-- END Details -->
+            <!-- Items & Products -->
+            <div class="tab-pane fade" id="group-1">
+
+                <div class="well custom">
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-4">
+                            <div class="form-group" style="margin: 0;">
+                                <label for="search">Search</label>
+                                <input type="text" name="search" id="search_traderitem_master" onkeyup="masterSearchTableTraderItem()" class="form-control" placeholder="Search by name or SKU">
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-sm-3">
+                            <div class="form-group" style="margin: 0;">
+                                <label for="catfilter">Filter by Product Group</label>
+                                <select name="catfilter" id="search_traderItem_byGroup_master" onchange="masterSearchTableTraderItem()" class="form-control select2" style="width: 100%;">
+                                    <option value="">Show all</option>
+                                    @foreach (var gr in traderGroups)
+                                    {
+                                        <option value="@gr.Name">@gr.Name</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <br />
+
+                <table class="datatable table-striped table-hover" id="master-list-traderitem" style="width: 100%;" data-order='[[1, "asc"]]'>
+                    <thead>
+                        <tr>
+                            <th data-priority="3" data-orderable="false" style="width: 40px;"></th>
+                            <th data-priority="1">Name</th>
+                            <th data-priority="2">SKU</th>
+                            <th data-priority="1">Unit</th>
+                            <th data-priority="3">Product Group</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (traderItems.Any())
+                        {
+                            foreach (var item in traderItems)
+                            {
+                                <tr>
+                                    <td>
+                                        <div class="table-avatar mini" style="background-image: url('@api@item.ImageUri');"></div>
+                                    </td>
+                                    <td>@item.Name</td>
+                                    <td>@item.SKU</td>
+                                    <td>@string.Join(", ", item.Units.Select(q => q.Name).ToArray())</td>
+                                    <td>@item.Group.Name</td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+
+            </div>
+            <!-- END Items & Products -->
+
+        </div>
+
+    </div>
+
+</div>

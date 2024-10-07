@@ -1,0 +1,128 @@
+﻿@using Qbicles.Models.B2C_C2C
+@using Qbicles.Models
+@using Qbicles.BusinessRules
+@model B2CQbicle
+@{
+    var currentUserId = (string)ViewBag.CurrentUserId;
+    var currentDomain = (QbicleDomain)ViewBag.CurrentDomain;
+    var locations = currentDomain.TraderLocations;
+    var isDomainAdmin = currentDomain.Administrators.Any(p => p.Id == currentUserId);
+}
+@if (Model != null)
+{
+    Html.RenderAction("GenerateModalMedia", "Qbicles");
+    Html.RenderAction("GenerateModalDiscussion", "Qbicles", new { disId = 0 });
+    if (isDomainAdmin||Model.Members.Any(s=>s.Id==currentUserId&&s.Id!=Model.Customer.Id))
+    {
+        var usersOfDomain = currentDomain.Users.Where(s=>s.Id!=Model.Customer.Id).ToList();
+        if(!Model.Members.Any(s=>s.Id == Model.Customer.Id))
+        {
+            usersOfDomain.Add(Model.Customer);
+        }
+        <div class="modal fade right" id="b2c-managers" role="dialog" aria-labelledby="b2c-managers" style="display: none;">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+                        <h5 class="modal-title">Relationship managers</h5>
+                    </div>
+                    <div class="modal-body">
+
+                        <div class="activity-overview generic help-text animated bounce" style="margin-bottom: 15px;">
+                            <i class="fa fa-info-circle"></i>
+                            <p>
+                                Configure the people in your organisation that are allowed to communicate with <span class="txt-fullname"></span>. These relationship
+                                managers will be the only people able to see the contact and interact with them.
+                            </p>
+                        </div>
+
+                        <div class="well custom">
+                            <div class="form-group" style="margin: 0;">
+                                <label for="folder">Current manager(s)</label>
+                                <span class="multiselect-native-select">
+                                    <select id="slrelationshipmanagers" name="slrelationshipmanagers" class="form-control checkmulti" multiple="">
+                                        @foreach (var user in usersOfDomain)
+                                        {
+                                            <option value="@user.Id" @(user.Id == currentUserId&&Model.Members.Any(s => s.Id == user.Id)? "disabled" : "") @(Model.Members.Any(s => s.Id == user.Id) ? "selected" : "")>@HelperClass.GetFullNameOfUser(user)</option>
+                                        }
+                                    </select>
+                                </span>
+                            </div>
+                        </div>
+
+                        <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-success" onclick="updateManagers()">Confirm</button>
+
+                    </div>
+                </div><!-- /.modal-content -->
+            </div><!-- /.modal-dialog -->
+        </div>
+        <script>
+            $('.checkmulti').multiselect({
+                includeSelectAllOption: false,
+                enableFiltering: false,
+                buttonWidth: '100%',
+                maxHeight: 400,
+                enableClickableOptGroups: true
+            });
+        </script>
+    }
+
+    <div class="modal fade left" id="b2c-menu-add" role="dialog" aria-labelledby="b2c-menu-add" style="display: none; padding-right: 17px;">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+                    <h5 class="modal-title">Add a Product Menu</h5>
+                </div>
+                <div class="modal-body">
+
+                    <div class="well custom" style="padding-bottom: 5px;">
+                        <form id="frmShareMenu" method="post" action="~/B2C/SaveDiscussionForProductMenu">
+                            <div class="row">
+                                <div class="col-xs-12">
+                                    <div class="form-group">
+                                        <label for="location">Location</label>
+                                        <select id="menu-add-location-select" name="location" onchange="loadMenusByLocationId();" class="form-control select2" style="width: 100%;">
+                                            <option value=""></option>
+                                            @if (locations != null)
+                                            {
+                                                foreach (var item in locations)
+                                                {
+                                                    <option value="@item.Id">@item.Name</option>
+                                                }
+                                            }
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-xs-12">
+                                    <div class="form-group">
+                                        <label for="media-title">Choose menu</label>
+                                        <select name="menu" onchange="$(this).valid();" class="form-control select2" style="width: 100%;">
+                                            <option value=""></option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-xs-12">
+                                    <div class="form-group">
+                                        <label for="media-description">Add a covering note</label>
+                                        <textarea name="description" class="form-control" style="height: 80px; max-width: 100%;"></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+
+                    <button type="button" class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                    <button type="submit" form="frmShareMenu" class="btn btn-success">Confirm</button>
+
+
+                </div>
+            </div><!-- /.modal-content -->
+        </div><!-- /.modal-dialog -->
+    </div>
+}

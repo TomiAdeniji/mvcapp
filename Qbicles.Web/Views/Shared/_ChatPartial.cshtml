@@ -1,0 +1,99 @@
+﻿@using Qbicles.BusinessRules
+@using Qbicles.Models
+@using Qbicles.Models.B2C_C2C
+@using Qbicles.Models.B2B
+@{
+    var chatType = (ChatType)ViewBag.ChatType;
+    var qbicleTopics = (List<Topic>)ViewBag.qbicleTopics;
+
+    var orderId = 0;
+    var orderKey = "";
+    var talkTo = "Say something...";
+    var users = "";
+    var orderChatTo = (OrderChatTo)ViewBag.OrderChatTo;
+
+    if (ViewBag.OrderCreation != null)
+    {
+        if (ViewBag.OrderCreation is B2COrderCreation)
+        {
+            var orderB2C = ViewBag.OrderCreation as B2COrderCreation;
+            orderId = orderB2C.Id;
+            orderKey = orderB2C.Key;
+            switch (orderChatTo)
+            {
+                case OrderChatTo.Business:
+                    talkTo = $"Talk to {orderB2C.TradeOrder.SellingDomain.Name}";
+                    users = string.Join(",", orderB2C.TradeOrder.SellingDomain.Id.BusinesProfile().DefaultB2CRelationshipManagers.Select(e => e.Email));
+                    break;
+                case OrderChatTo.Customer:
+                    talkTo = $"Talk to {orderB2C.TradeOrder.Customer.GetFullName()}";
+                    users = orderB2C.TradeOrder.Customer.Email;
+                    break;
+            }
+        }
+        else if (ViewBag.OrderCreation is B2BOrderCreation)
+        {
+            var orderB2B = ViewBag.OrderCreation as B2BOrderCreation;
+            orderId = orderB2B.Id;
+            orderKey = orderB2B.Key;
+        }
+
+    }
+
+}
+
+@{
+    <input type="hidden" id="chatting-type" value="@chatType" />
+    switch (chatType)
+    {
+        case ChatType.Qbicle:
+            <input hidden id="order-discussion-id" value="0" />
+            <input type="text" id="post-text" class="form-control text" placeholder="@talkTo" maxlength="1000" style="margin-bottom: 0;">
+            <select id="toppic-value" class="selectpicker select2 form-control select" onchange="SetTopic($(this).val())" style="width: 30%;" tabindex="-1" aria-hidden="true">
+                @foreach (var item in qbicleTopics)
+                {
+                    <option value="@item.Id">@item.Name</option>
+                }
+            </select>
+            <span class="input-group-btn">
+                <button id="button-post-submit" class="btn btn-primary my-group-button" onclick="ChatQbicle()" style="position: relative;" disabled>Post</button>
+            </span>
+            break;
+        case ChatType.B2C:
+        case ChatType.C2C:
+        case ChatType.Commerce:
+            <input hidden id="order-discussion-id" value="0" />
+            <input type="text" class="form-control" id="post-text" style="margin-bottom: 0;" placeholder="@talkTo" maxlength="1000">
+            <span class="input-group-btn">
+                <button id="button-post-submit" class="btn btn-primary my-group-button" onclick="ChatCommunity();" type="button" disabled>Post</button>
+            </span>
+            <div class="input-group-btn removefilters" style="display: none;">
+                <button class="btn btn-danger" onclick="resetFilters()"><i class="fa fa-remove"></i> &nbsp; Clear filters</button>
+            </div>
+            <div class="clearfix"></div>
+            break;
+        case ChatType.Order:
+            <input type="hidden" id="order-chat-to-users" value="@users" />
+            <input type="hidden" id="order-discussion-id" value="@orderId" />
+            <textarea id="txt-comment-order" name="addcomment" class="form-control" style="height: 70px; max-width: 100%; margin-bottom: 5px;"
+                      placeholder="@talkTo"></textarea>
+            <label id="addcomment-error" class="error" for="addcomment" style="display: none;">
+                Your post is longer than the 1,500 character limit. Please reduce the length, or split it across multiple posts
+            </label>
+            <button disabled id="message-order-button" class="btn btn-primary community-button" onclick="ChatFromOrder('@orderKey');">Post message</button>
+            break;
+    }
+
+}
+@{
+
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/chatting.js"></script>
+    }
+    else
+    {
+        @*<script src="~/Scripts/dev/chatting.min.js"></script>*@
+        <script src="~/Scripts/dev/chatting.js"></script>
+    }
+}

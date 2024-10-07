@@ -1,0 +1,1991 @@
+﻿@using CleanBooksData;
+@using Qbicles.BusinessRules
+@model IEnumerable<taskgroup>
+
+@{
+    ViewBag.Title = "Manage Tasks";
+    List<TasksModel> tasks = (List<TasksModel>)ViewBag.tasks;
+
+    var taskexecutioninterval = (IEnumerable<taskexecutioninterval>)ViewBag.taskexecutioninterval;
+    var accountgroup = (IEnumerable<accountgroup>)ViewBag.accountgroup;
+    List<Account> taskaccount = (List<Account>)ViewBag.taskaccount;
+    List<transactionmatchingtype> transactionmatching = (List<transactionmatchingtype>)ViewBag.transactionmatching;
+
+    List<tasktype> tasktype = (List<tasktype>)ViewBag.tastype;
+    var result_save_task = TempData["result_save_task"] as string;
+
+}
+<link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/smoothness/jquery-ui.css">
+<style>
+    .fillter-tasktype-right {
+        width: 375px;
+        float: right;
+    }
+
+    .tasktype {
+        float: right !important;
+        width: 250px;
+    }
+
+    .select2-container {
+        box-sizing: border-box;
+        display: inline-block;
+        margin: 0;
+        position: relative;
+        vertical-align: middle;
+        float: right !important;
+    }
+
+    .tasktypeName {
+        margin-top: 8px;
+    }
+
+    .tasktypeTitle {
+        width: 200px;
+    }
+</style>
+<script>
+    function Fillter_Tasktype(groupid) {
+        var tasktype = $("#fillter_" + groupid + " :selected").val();
+        $("#" + groupid).html('');
+        setTimeout(function () {
+            $.ajax({
+                type: "POST",
+                datatype: "json",
+                data: { taskTypeId: tasktype, groupId: groupid },
+                url: '@Url.Action("FillterTaskToTaskType", "Tasks")',
+                success: function (data) {
+
+                    if (data != '') {
+                        var str = "";
+                        var isDeleteTask = 0;
+                        for (var i = 0; i < data.length; ++i) {
+
+                            if (data[i].taskInstance != null) {
+                                isDeleteTask = 1;
+                            }
+                            str += "<tr>";
+                            str += "<td>" + data[i].taskName + "</td>";
+                            str += "<td>" + data[i].tasktypeName + "</td>";
+                            str += "<td><a href='mailto:" + data[i].Email + "'>" + data[i].userCreate + "</a></td>";
+                            str += "<td>" + data[i].status + "</td>";
+                            str += "<td>" + "<a href='javascript:void(0)' reconciliationtask-id='" + data[i].taskId + "' name='button_edit_reconciliationtask" + groupid + "'>Edit</a> |" +
+                                               " <a href='javascript:void(0)' name='button_remove_reconciliationtask" + groupid + "' reconciliationtask-id='" + data[i].taskId + "'  task-delete-permission='" + isDeleteTask + "' task-name-delete='" + data[i].taskName + "' task-des-delete='" + data[i].taskDecription + "' >Delete</a></td>";
+                            str += "</tr>";
+                        }
+                        $("#" + groupid).html(str);
+                        BindDataSource(groupid);
+                    }
+                }
+            });
+        }, 1000);
+    }
+</script>
+
+<div id="modal-delete-taskGroup" class="modal fade" role="dialog">
+    <div class="modal-dialog">
+
+        <!-- Modal content-->
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4 class="modal-title">Delete Task Group</h4>
+            </div>
+            <div class="modal-body">
+
+                <div id="confirm-del-taskGroup" hidden class="alert alert-danger">
+                    <p>You are about to delete Task Group: <strong><span id="taskGroup-name-confirm"></span></strong></p>
+                    <br />
+                    <button data-dismiss="modal" class="btn btn-warning">Cancel</button>
+                    <button onclick="DeleteTaskGroup()" class="btn btn-danger">Confirm Delete</button>
+                </div>
+
+                <div id="permission-del-taskGroup" hidden class="alert alert-warning">
+                    <p>You may not delete Task Group: <strong><span id="taskGroup-name-permission"></span></strong></p>
+                    <label>The task group is in use.</label>
+                    <br />
+                    <button data-dismiss="modal" class="btn btn-success">OK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="modal-delete" class="modal fade" role="dialog">
+    <div class="modal-dialog">
+
+        <!-- Modal content-->
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4 class="modal-title">Delete Task</h4>
+            </div>
+            <div class="modal-body">
+
+                <div id="confirm-del" class="alert alert-danger">
+                    <p>You are about to delete Task: <strong><span id="task-name-confirm"></span></strong></p>
+                    <br />
+                    <button data-dismiss="modal" class="btn btn-warning">Cancel</button>
+                    <button onclick="deleteTask()" class="btn btn-danger">Confirm Delete</button>
+                </div>
+
+                <div id="permission-del" class="alert alert-warning">
+                    <p>You may not delete Task: <strong><span id="task-name-permission"></span></strong></p>
+                    <label>The task is in use.</label>
+                    <br />
+                    <button data-dismiss="modal" class="btn btn-success">OK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div id="modal-warning" class="modal fade" role="dialog">
+    <div class="modal-dialog">
+
+        <!-- Modal content-->
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4 class="modal-title">Warning Edit Task</h4>
+            </div>
+            <div class="modal-body">
+                <div id="permission-del" class="alert alert-warning">
+                    <p>You may not edit Task: <strong><span id="task-name-info"></span></strong></p>
+                    <label>The task have a instance status In Progress.</label>
+                    <br />
+                    <button data-dismiss="modal" class="btn btn-success">OK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Add/Edit group modal -->
+<div id="modal_group" class="modal fade" role="dialog">
+    <input type="hidden" name="modal_edit_group_title" value="Edit Task Group" />
+    <input type="hidden" name="modal_add_group_title" value="Add Task Group" />
+    <div class="modal-dialog">
+        <!-- Modal content-->
+        <form id="form_reconciliationtaskgroup" name="form_reconciliationtaskgroup" method="post" action="/Tasks/save_reconciliationtaskgroups">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <h4 class="modal-title"></h4>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-12 col-lg-12">
+                            <div class="form-group">
+                                <label for="group_name">Group Name</label>
+                                <input type="hidden" id="input_rectaskgroup_id" name="Id" value="0" />
+                                <input type="hidden" id="input_rectaskgroup_createddate" name="CreatedDate" />
+                                <input type="hidden" id="input_rectaskgroup_createdbyid" name="CreatedById" />
+                                <input type="text" id="input_rectaskgroup_name" name="Name" class="form-control" />
+
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-12 col-lg-12 text-right" style="margin-bottom: 0;">
+                            <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                            <button type="button" class="btn btn-success tab-next" onclick="save_recGroup()">Confirm</button>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+<div class="content-wrapper qbicle-detail" style="background: #ececec;">
+    <section class="content" data-tooltip-animate-function="fadein" data-tooltip-delay="300" data-tooltip-stickTo="top" data-tooltip-stickDistance="30">
+        <!-- Main Content -->
+        <div class="container-fluid">
+            <div class="side-body padding-top">
+                <input type="hidden" value="@result_save_task" id="hdresultsavetask" />
+                <div class="page-heading">
+                    <div class="page-title">
+                        <div class="title">Manage Tasks</div>
+                        <div class="page-action">
+                            <button class="btn btn-success" name="button_add_group">
+                                <i class="fa fa-plus"></i> Add a Group
+                            </button>
+                        </div>
+                        <div style="clear: both;"></div>
+                    </div>
+                </div>
+                <br />
+                @foreach (var recgroup in Model)
+                {
+                    <div class="row" id="taskGroup-@recgroup.Id">
+                        <div class="col-xs-12">
+                            <div class="panel panel-default">
+                                <!-- Default panel contents -->
+                                <div class="panel-heading">@recgroup.Name</div>
+                                <div class="panel-body">
+
+                                    <button class="btn btn-warning" name="button_edit_group" group-id="@recgroup.Id">
+                                        <i class="fa fa-pencil"></i> Edit Group
+                                    </button>
+                                    <button class="btn btn-danger" onclick="btn_deleteTaskGroup_Click('@recgroup.Id','@recgroup.Name')"><i class="fa fa-trash"></i> Delete Group</button>
+                                    <div class="fillter-tasktype-right">
+                                        <span class="col-lg-4 col-md-4 col-xs-4 tasktypeName">Task Type Filter</span>
+                                        <select class="tasktype col-lg-8 col-md-8 col-xs-8" id="fillter_@recgroup.Id" onchange="Fillter_Tasktype(@recgroup.Id)">
+                                            <option value="0">Not Filtered</option>
+                                            @foreach (var item in tasktype)
+                                            {
+                                                <option value="@item.Id">@item.Name</option>
+                                            }
+                                        </select>
+                                    </div>
+                                    <!-- Table -->
+                                    <table class="table table-hover t1style" cellspacing="0" width="100%">
+                                        <thead>
+                                            <tr>
+                                                <th>Name</th>
+                                                <th class="tasktypeTitle">Task Type</th>
+                                                <th class="tasktypeTitle">Added By</th>
+                                                <th class="tasktypeTitle">Status</th>
+                                                <th style="width: 100px;">Admin</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="@recgroup.Id">
+                                            @{
+                                                var task = tasks.Where(t => t.task.ReconciliationTaskGroupId == @recgroup.Id);
+                                                foreach (var rec in task)
+                                                {
+                                                    var isDeleteTask = 0;
+                                                    var status = "Close";
+                                                    if (rec.taskInstance != null)
+                                                    {
+                                                        isDeleteTask = 1;
+                                                        if (rec.task.TaskTypeId == (int)Enums.TypeOfTask.TransactionMatching)
+                                                        {
+                                                            if (rec.taskInstance.IsComplete == 0)
+                                                            { status = "In Progress"; }
+                                                            else
+                                                            { status = "Report Completed"; }
+                                                        }
+                                                        else if (rec.task.TaskTypeId == (int)Enums.TypeOfTask.TransactionAnlysis)
+                                                        {
+                                                            if (rec.taskInstance.IsComplete == 0)
+                                                            { status = "In Progress"; }
+                                                            else
+                                                            { status = "Report Generated"; }
+                                                        }
+                                                    }
+                                                    else
+                                                    {
+                                                        status = "Not run";
+                                                    }
+                                                    <tr>
+                                                        <td>@rec.task.Name</td>
+                                                        <td>@rec.tasktype.Name</td>
+                                                        <td><a href="mailto:@rec.userCreate.Email">@rec.userCreate.Forename @rec.userCreate.Surname</a></td>
+                                                        <td>@status</td>
+                                                        <td>
+                                                            <a href="javascript:void(0)" reconciliationtask-id="@rec.task.Id" reconciliationtask-name="@rec.task.Name" name="button_edit_reconciliationtask">Edit</a> |
+                                                            <a href="javascript:void(0)" name="button_remove_reconciliationtask"
+                                                               reconciliationtask-id="@rec.task.Id"
+                                                               task-delete-permission="@isDeleteTask"
+                                                               task-name-delete="@rec.task.Name"
+                                                               task-des-delete="@rec.task.Description">Delete</a>
+                                                        </td>
+                                                    </tr>
+                                                }}
+                                        </tbody>
+
+                                    </table>
+
+                                    <div style="clear: both;"></div>
+
+                                    <button class="btn btn-success addtask" name="button_add_reconciliationtask" group-id="@recgroup.Id">
+                                        <i class="fa fa-plus"></i> Add a Task
+                                    </button>
+                                </div>
+                            </div>
+
+                        </div>
+
+                    </div>
+                  }
+            </div>
+        </div>
+
+    </section>
+</div>
+@*Add/Edit reconciliationtask*@
+<div id="modal_reconciliationtask" class="modal fade" role="dialog">
+    <div class="modal-dialog large">
+        <input type="hidden" name="modal_edit_reconciliationtask_title" value="Edit Task" />
+        <input type="hidden" name="modal_add_reconciliationtask_title" value="Create a Task" />
+        <!-- Modal content-->
+        <form id="form_reconciliationtask" method="post">
+            <input type="hidden" name="Id" id="hdReconciliationTaskId" value="0" />
+            <input type="hidden" name="ReconciliationTaskGroupId" id="ReconciliationTaskGroupId" value="0" />
+            <input type="hidden" id="hdTransactionMatching" value="@Enums.TypeOfTask.TransactionMatching" />
+            <input type="hidden" id="hdTransactionAnlysis" value="@Enums.TypeOfTask.TransactionAnlysis" />
+            <input type="hidden" id="hdControlReport" value="@Enums.TypeOfTask.ControlReport" />
+            <input type="hidden" id="hdBalanceAnalysis" value="@Enums.TypeOfTask.BalanceAnalysis" />
+            <input type="hidden" id="hdTaskTypeIdOld" name="TaskTypeIdOld" />
+            <input type="hidden" id="hdCreatedById" name="CreatedById" />
+            <input type="hidden" id="hdCreatedDate" name="CreatedDate" />
+            <input type="hidden" name="IsActionNewLedger" id="IsActionNewLedger" value="1" />
+            <input type="hidden" name="IsActionNotify" id="IsActionNotify" value="1" />
+            <input type="hidden" name="IsActionReport" id="IsActionReport" value="1" />
+            <input type="hidden" id="hdtransactionmatchingtaskrulesaccessId" name="transactionmatchingtaskrulesaccessId" />
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <h4 class="modal-title"></h4>
+                </div>
+                <div class="modal-body">
+                    <div class="card-body no-padding">
+                        <div class="step tabs-left card-no-padding">
+                            <ul class="nav nav-tabs" role="tablist">
+                                <li role="step" id="step_1" class="active">
+                                    <a href="#stepv1" id="step1-vtab" role="tab" data-toggle="tab" aria-controls="home"
+                                       aria-expanded="true" style="color: #337ab7;">
+                                        <div class="icon fa fa-info-circle"></div>
+                                        <div class="step-title">
+                                            <div class="title">General</div>
+                                            <div class="description">Task Information</div>
+                                        </div>
+                                    </a>
+                                </li>
+                                <li role="step" id="step_2" class="disabled disabledTab">
+                                    <a href="#stepv2" role="tab" id="step2-vtab" data-toggle="tab" aria-controls="profile">
+                                        <div class="icon fa fa-chain"></div>
+                                        <div class="step-title">
+                                            <div class="title">Rules</div>
+                                            <div class="description">Define Custom Rules</div>
+                                        </div>
+                                    </a>
+                                </li>
+                            </ul>
+                            <div class="tab-content">
+                                <div role="tabpanel" class="tab-pane fade in active" id="stepv1" aria-labelledby="home-tab">
+                                    <div class="row">
+                                        <div class="col-md-6 col-lg-6">
+                                            <div class="form-group">
+                                                <label for="task_title">Name<span>*</span></label>
+                                                <input type="text" name="Name" class="form-control" required="required" id="taskName" maxlength="45" />
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6 col-lg-6">
+                                            <div class="form-group">
+                                                <label for="task_type">Type of Task<span>*</span></label>
+                                                <select name="TaskTypeId" style="width: 100%;" id="typeoftask">
+                                                    <option></option>
+                                                    @if (tasktype != null)
+                                                    {
+                                                        foreach (var b in tasktype)
+                                                        {
+                                                            <option value="@b.Id">@b.Name</option>
+                                                        }
+                                                    }
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row task-account">
+                                        <div class="col-md-12 col-lg-12 col-sm-12 col-xs-12">
+                                            <figure class="highlight">
+                                                <div class="form-group">
+                                                    <div class="alert alert-info" style="background-color: #d9edf7;">
+                                                        Select the two accounts to perform matching against, then which type of matching you wish to occur in this task
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6 col-lg-6" id="taskcount1">
+                                                    <div class="form-group">
+                                                        <select name="AccountId1" class="form-control" style="width: 100%;" id="AccountId1">
+                                                            <option></option>
+                                                            @if (taskaccount != null)
+                                                            {
+                                                                foreach (var b in taskaccount)
+                                                                {
+                                                                    <option value="@b.Id">@(b.Name + " - " + b.Number)</option>
+                                                                }
+                                                            }
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6 col-lg-6" id="taskcount2">
+                                                    <div class="form-group">
+
+                                                        <select name="AccountId2" style="width: 100%;" id="AccountId2">
+                                                            <option></option>
+                                                            @if (taskaccount != null)
+                                                            {
+                                                                foreach (var b in taskaccount)
+                                                                {
+                                                                    <option value="@b.Id">@(b.Name + " - " + b.Number)</option>
+                                                                }
+                                                            }
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6 col-lg-6" id="taskcount3" style="margin-top:10px">
+                                                    <div class="form-group">
+                                                        <select name="TransactionMatchingTypeId" id="TransactionMatchingTypeId" style="width: 100%;">
+                                                            <option></option>
+                                                            @if (transactionmatching != null)
+                                                            {
+                                                                foreach (var b in transactionmatching)
+                                                                {
+                                                                    <option value="@b.Id">@b.Name</option>
+                                                                }
+                                                            }
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6 col-lg-6" id="taskcount4" style="margin-top:10px">
+                                                    <div class="form-group">
+                                                        <input type="hidden" value="0" id="DateVariance" name="DateVariance" />
+                                                        <input type="hidden" value="0" id="amounVariance" name="amounVariance" />
+                                                        <div id="pnDateVariance">
+                                                            <input type="checkbox" id="chkDateVariance" name="chkDateVariance" onchange="checkAmount(this,0)" /> <label for="chkDateVariance">Allow date variance when matching</label>
+                                                        </div>
+                                                        <div id="pnamounVariance">
+                                                            <input type="checkbox" id="chkamounVariance" name="chkamounVariance" onchange="checkAmount(this,1)" /> <label for="chkamounVariance">Allow amount variance when matching</label>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </figure>
+                                        </div>
+                                        <div class="col-md-12 col-lg-12 col-sm-12 col-xs-12">
+                                            <div class="col-md-6 col-lg-6" id="lblInitialTransactionDate" style="margin-top: -50px">
+                                                <div class="form-group">
+                                                    <input type="text" id="InitialTransactionDate" name="InitialTransactionDate" class="form-control" placeholder="Start analysis from..." />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-6 col-lg-6">
+                                            <div class="form-group">
+                                                <label for="task_executes">Automatic Execution Interval<span>*</span></label>
+                                                <select name="TaskExecutionIntervalId" id="TaskExecutionIntervalId" style="width: 100%;">
+                                                    @if (taskexecutioninterval != null)
+                                                    {
+                                                        foreach (var b in taskexecutioninterval)
+                                                        {
+                                                            <option value="@b.Id">@b.Interval</option>
+                                                        }
+                                                    }
+
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6 col-lg-6">
+                                            <div class="form-group">
+                                                <label for="task_association">Assign To</label>
+                                                <select name="AssignedUserId" style="width: 100%;" id="AssignedUserId"></select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-12 col-lg-12">
+                                            <div class="form-group">
+                                                <label for="task_description">Description<span>*</span></label>
+                                                <textarea name="Description" id="Description" class="form-control" required maxlength="3000"></textarea>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <!-- Trans Analysis demo block -->
+                                    <div class="demo_block" style="display: none;" id="balance_analysis">
+                                        <div class="row">
+                                            <div class="col-md-12 col-lg-12" style="margin-bottom: 0; padding-bottom: 0;">
+
+                                                <div class="alert alert-info">
+                                                    You can now begin adding data to the table below. This can be done manually a record at a time, or in bulk
+                                                    via file upload.
+                                                </div>
+                                                <div id="lblBalanceTable">
+                                                    <table class="table table-hover t5style" id="tblBalanceAnalysis" cellspacing="0" width="100%">
+                                                        <thead>
+                                                            <tr>
+                                                                <th></th>
+                                                                <th>Description 1</th>
+                                                                <th>Reference 1</th>
+                                                                <th>Description 2</th>
+                                                                <th>Reference 2</th>
+                                                                <th>Ref 1 - 2 min</th>
+                                                                <th>Ref 1 - 2 max</th>
+                                                                <th>Options</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody></tbody>
+                                                    </table>
+                                                </div>
+
+
+                                                <div class="row">
+                                                    <div class="col-md-6">
+                                                        <button class="btn btn-danger" style="margin-top: 7px;" id="btnRemoveMultipleBalanceAnalysisMapRuler" disabled onclick="RemoveMultiplebalanceanalysismappingrule(); return false;"><i class="fa fa-trash"></i> &nbsp; Delete selected</button>
+                                                    </div>
+                                                    <div class="col-md-6 text-right">
+
+                                                    </div>
+                                                </div>
+
+                                                <hr style="margin-top: 0; padding-top: 0;">
+
+                                                <div class="well tan">
+                                                    <div class="row" style="margin-bottom: 0; padding-bottom: 0;">
+                                                        <div class="col-md-3" style="margin-bottom: 0; padding-bottom: 0;">
+                                                            <div class="form-group">
+                                                                <label for="description_1_add">Description 1</label>
+                                                                <input type="text" name="description_1_add" id="description_1_add" class="form-control">
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-md-2" style="margin-bottom: 0; padding-bottom: 0;">
+                                                            <div class="form-group">
+                                                                <label for="reference_1_add">Reference 1</label>
+                                                                <input type="text" name="reference_1_add" id="reference_1_add" class="form-control">
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-md-3" style="margin-bottom: 0; padding-bottom: 0;">
+                                                            <div class="form-group">
+                                                                <label for="description_2_add">Description 2</label>
+                                                                <input type="text" name="description_2_add" id="description_2_add" class="form-control">
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-md-2" style="margin-bottom: 0; padding-bottom: 0;">
+                                                            <div class="form-group">
+                                                                <label for="reference_2_add">Reference 2</label>
+                                                                <input type="text" name="reference_2_add" id="reference_2_add" class="form-control">
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-md-1" style="margin-bottom: 0; padding-bottom: 0;">
+                                                            <div class="form-group">
+                                                                <label for="ref_min_add">Min</label>
+                                                                <input type="text" name="ref_min_add" id="ref_min_add" class="form-control" oninput="this.value = this.value.replace(/[^0-9.\,-]/g, '');">
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-md-1" style="margin-bottom: 0; padding-bottom: 0;">
+                                                            <div class="form-group">
+                                                                <label for="ref_max_add">Max</label>
+                                                                <input type="text" name="ref_max_add" id="ref_max_add" class="form-control" oninput="this.value = this.value.replace(/[^0-9.\,-]/g, '');">
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <button class="btn btn-primary" style="margin-top: 10px;" onclick="Addbalanceanalysismappingrule(); return false;">Add to table</button>
+                                                </div>
+
+                                                <div class="form-group well" style="margin-bottom: 0;overflow: hidden;">
+                                                    <div class="col-xs-12">
+                                                        <label for="bulk_add">Bulk upload data</label>
+                                                    </div>
+                                                    <div class="col-xs-4">
+                                                        <input name="bulk_add" type="file" id="txtUploadFile" />
+                                                    </div>
+                                                    <div class="col-xs-2"><input type="button" id="btnUpLoad" value="Upload" onclick="uploadfile()" /></div>
+                                                </div>
+
+
+                                            </div>
+                                        </div>
+
+                                        <hr />
+                                    </div>
+                                    <!-- End Trans Analysis demo block -->
+                                    <button type="button" class="btn btn-success" onclick="save_account()">Proceed</button> <!-- tab-next-->
+
+                                </div>
+                                <div role="tabpanel" class="tab-pane fade" id="stepv2" aria-labelledby="profile-tab">
+
+                                    <div id="report_options">
+
+                                        <div class="alert alert-info">
+                                            You can now choose to specify options available as actions within the report. These can be assigned to records individually to indicate what action, if any,
+                                            should be taken based on the results. This step can be ignored if you don't require any.
+                                        </div>
+
+                                        <br />
+
+                                        <div class="row">
+                                            <div class="col-md-8">
+                                                <div class="form-group">
+                                                    <label for="existing_options">Choose from existing options</label>
+                                                    <select name="existing options" id="ddlbalanceanalysispredefaction" class="form-control" style="width: 100%;">
+                                                        <option value="">Choose an option</option>
+                                                        @foreach (var item in ViewBag.balanceanalysispredefactions as List<balanceanalysispredefaction>)
+                                                        {
+                                                            <option value="@item.Id">@item.Name</option>
+                                                        }
+                                                    </select>
+                                                    <br />
+                                                    <button class="btn btn-success" style="margin-top: 5px;" onclick="Add2balanceanalysisaction(); return false;"><i class="fa fa-plus"></i> &nbsp; Add</button>
+                                                </div>
+
+                                                <hr />
+
+                                                <div class="form-group" style="margin-bottom: 0;">
+                                                    <label for="add_new_option">Add a new option</label>
+                                                    <input type="text" name="add_new_option" id="add_new_option" class="form-control" placeholder="e.g. Check reconciliation">
+                                                </div>
+                                                <button class="btn btn-success" style="margin-top: 5px;" onclick="Add2balanceanalysisaction2(); return false;"><i class="fa fa-plus"></i> &nbsp; Add</button>
+                                                <div id="lblWarningError" style="clear:both;display:none">
+                                                    <span id="lblErrorMessage" style="color:red;font-weight:bold;"></span>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <div class="well tan" id="lblwell">
+                                                    <h5>Selected options</h5>
+                                                    <br />
+
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <hr />
+
+                                        <button class="btn btn-warning tab-prev" onclick="Back(); return false;">Back</button>
+                                        <button class="btn btn-success" onclick="SaveTask(); return false;">Finish and Publish</button>
+
+                                    </div>
+
+
+
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="modal_error" class="modal fade" role="dialog">
+    <div class="modal-dialog large">
+
+        <!-- Modal content-->
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4 class="modal-title"></h4>
+            </div>
+            <div class="modal-body">
+
+                <div class="row">
+                    <div class="col-md-12 col-lg-12">
+                        <p id="ReportError" style="color:red; font-size:13px">We found an error in the file upload. Please download the file bug reports here to check: <a id="linkerrorfile">File error reports</a></p>
+
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+<link href="~/Content/DesignStyle/css/style.css" rel="stylesheet" />
+<script src="~/Scripts/app.js"></script>
+<script>
+    var
+        $hdsucessMsg = $("#hdsucessMsg"),
+        $button_add_group = $("button[name='button_add_group']"),
+        $button_edit_group = $("button[name='button_edit_group']"),
+        $button_remove_group = $("button[name='button_remove_group']"),
+
+        $button_add_reconciliationtask = $("button[name='button_add_reconciliationtask']"),
+
+        $modal_task_remove = $("#modal-delete");
+    $modal_task_group_remove = $("#modal-delete-taskGroup");
+    $form_reconciliationtask = $("#form_reconciliationtask"),
+    $form_reconciliationtaskgroup = $("#form_reconciliationtaskgroup"),
+
+    $modal_reconciliationtask = $("#modal_reconciliationtask"),
+    $modal_group = $("#modal_group"),
+
+    $modal_reconciliationtask_title = $("#modal_reconciliationtask [class='modal-title']"),
+    $modal_group_title = $("#modal_group [class='modal-title']"),
+
+    $input_rectaskgroup_name = $("#input_rectaskgroup_name"),
+    $input_rectaskgroup_id = $("#input_rectaskgroup_id"),
+    $input_rectaskgroup_createddate = $("#input_rectaskgroup_createddate"),
+    $input_rectaskgroup_createdbyid = $("#input_rectaskgroup_createdbyid"),
+    $select_task_type = $("select[name='TaskTypeId']"),
+    $hdReconciliationTaskGroupId = $("#ReconciliationTaskGroupId"),
+    $hdReconciliationTaskId = $("#hdReconciliationTaskId"),
+    $hdTransactionMatching = $("#hdTransactionMatching"),
+    $hdTransactionAnlysis = $("#hdTransactionAnlysis"),
+    $hdControlReport = $("#hdControlReport"),
+    $hdBalanceAnalysis = $("#hdBalanceAnalysis"),
+    $hdTaskTypeIdOld = $("#hdTaskTypeIdOld"),
+    $hdCreatedById = $("#hdCreatedById"),
+    $hdCreatedDate = $("#hdCreatedDate"),
+    $TransactionMatchingTypeId = $("select[name='TransactionMatchingTypeId']"),
+    $typeoftask = $("#typeoftask"),
+    $firstaccount = $("#AccountId1"),
+    $secondaccount = $("#AccountId2"),
+    $TaskExecutionIntervalId = $("select[name='TaskExecutionIntervalId']"),
+    $taskname = $("#taskName"),
+    $AssignedUserId = $("select[name='AssignedUserId']"),
+    $taskIdDelete = 0,
+    $taskNameDelete = 0,
+    $taskDesDelete = 0,
+    $tdDelete = null,
+    $trDelete = null,
+    $TaskGroupDelId = null;
+    var arrtmp = [];
+    function BindDataSource(groupId) {
+        var $button_edit_reconciliationtask = $("a[name='button_edit_reconciliationtask" + groupId + "']"),
+                   $button_remove_reconciliationtask = $("a[name='button_remove_reconciliationtask" + groupId + "']");
+
+        $button_remove_reconciliationtask.bind('click', function () {
+            $tdDelete = $(this).parent();
+            $trDelete = $tdDelete.parent();
+            $taskIdDelete = $(this).attr("reconciliationtask-id");
+            $taskNameDelete = $(this).attr("task-name-delete");
+            $taskDesDelete = $(this).attr("task-des-delete");
+            var $idDelete = $(this).attr("task-delete-permission");
+
+            if ($idDelete == 1) {
+                $("#permission-del").show();
+                $("#confirm-del").hide();
+                $('#task-name-permission').text($taskNameDelete);
+            }
+            else {
+                $("#permission-del").hide();
+                $("#confirm-del").show();
+                $('#task-name-confirm').text($taskNameDelete);
+            }
+            $modal_task_remove.modal('toggle');
+        });
+
+        $button_edit_reconciliationtask.bind('click', function () {
+            var $taskId = $(this).attr("reconciliationtask-id");
+            var taskName = $(this).attr("reconciliationtask-name");
+            $hdReconciliationTaskId.val($taskId);
+            clearForm();
+            if ($taskId > 0) {
+                get_editreconciliationtask($taskId, taskName);
+            }
+        });
+    }
+    function checkAmount(obj, type) {
+        var chk = $(obj).is(':checked');
+        if (type == 0) {
+            $("#DateVariance").val(chk ? 1 : 0);
+        }
+        else {
+            $("#amounVariance").val(chk ? 1 : 0);
+        }
+    }
+    $(document).ready(function () {
+        $('#InitialTransactionDate').datepicker({ dateFormat: 'dd/mm/yy' });
+        if ($("#hdresultsavetask").val() != "") {
+            cleanBookNotification.success($("#hdresultsavetask").val(), "Qbicles");
+        }
+        $('#InitialTransactionDate').datepicker({ Format: 'dd/mm/yyyy' });
+
+        $button_add_group.bind('click', function () {
+            clear_error();
+            $input_rectaskgroup_id.val(0);
+            $input_rectaskgroup_name.val("");
+            $input_rectaskgroup_createddate.val("");
+            $input_rectaskgroup_createdbyid.val("");
+
+            $modal_group_title.text($("input[name='modal_add_group_title']").val());
+            $modal_group.modal('toggle');
+        });
+
+        $button_edit_group.bind('click', function () {
+            clear_error();
+            var $this = $(this),
+                id = $this.attr("group-id");
+            if (id && id > 0) {
+                $.ajax({
+                    type: 'GET',
+                    url: "/Tasks/get_reconciliationtaskgroups",
+                    dataType: 'json',
+                    data: { id: id },
+                    success: function(response) {
+                       
+                        if (response.Id) {
+                            $input_rectaskgroup_id.val(response.Id);
+                            $input_rectaskgroup_name.val(response.Name);
+                            $input_rectaskgroup_createddate.val(new Date(parseInt(response.CreatedDate.substr(6)))
+                                .toJSON());
+                            $input_rectaskgroup_createdbyid.val(response.CreatedById);
+                            $modal_group_title.text($("input[name='modal_edit_group_title']").val());
+                            $modal_group.modal('toggle');
+                        }
+                    },
+                    error: function (xhr, ajaxOptions, thrownError) {
+                       
+                    }
+                });
+
+            }
+        });
+        BindDataSource("");
+        $button_add_reconciliationtask.bind('click', function () {
+            GetUser(false);
+            $modal_reconciliationtask_title.text($("input[name='modal_add_reconciliationtask_title']").val());
+            $modal_reconciliationtask.modal('toggle');
+            $hdReconciliationTaskGroupId.val($(this).attr("group-id"));
+            $hdReconciliationTaskId.val("0");
+            clearForm();
+            RemoveAttr();
+            $("#hdtransactionmatchingtaskrulesaccessId").val(0);
+            $("#chkDateVariance").attr('checked', false);
+            $("#chkamounVariance").attr('checked', false);
+            $("#DateVariance").val(0);
+            $("#amounVariance").val(0);
+        });
+        //place holder select 2
+        $typeoftask.select2({
+            placeholder: "Choose task type"
+        });
+        $firstaccount.select2({
+            placeholder: "Choose first account"
+        });
+        $secondaccount.select2({
+            placeholder: "Choose second account"
+        });
+        $TransactionMatchingTypeId.select2({
+            placeholder: "Choose matching type",
+        });
+        $AssignedUserId.select2({
+            placeholder: "Choose user to assign",
+            allowClear: true
+        });
+        // change task of type
+        $select_task_type.change(function () {
+            $('#InitialTransactionDate').val('');
+            $("#lblInitialTransactionDate").hide();
+            if ($select_task_type.val() == $hdTransactionMatching.val()) { // if task of task = transaction matching
+                $(".task-account").show();
+                $(".task-account .alert").html("Please select the two accounts to perform matching against, then which type of matching you wish to occur in this task");
+                $("#taskcount3").show();
+                $("#taskcount2").show();
+                $("#pnDateVariance").show();
+                $("#pnamounVariance").show();
+                $("#balance_analysis").hide();
+
+                if ($hdReconciliationTaskId.val() != "0" && $select_task_type.val() == $select_task_type.attr("data-type")) {
+                    $firstaccount.val($firstaccount.attr("data-account")).trigger("change");
+                    $secondaccount.val($secondaccount.attr("data-account")).trigger("change");
+                    $TransactionMatchingTypeId.val($TransactionMatchingTypeId.attr("data-id")).trigger("change");
+                } else {
+                    $firstaccount.val(null).trigger("change");
+                    $secondaccount.val(null).trigger("change");
+                    $TransactionMatchingTypeId.val(null).trigger("change");
+                }
+                $("#lblInitialTransactionDate").show();
+                $("#lblInitialTransactionDate").css({ 'margin-top': '-50px' });
+
+            } else if ($select_task_type.val() == $hdTransactionAnlysis.val()) {
+                $(".task-account").show();
+                $("#taskcount3").hide();
+                $("#taskcount2").hide();
+                $("#pnDateVariance").hide();
+                $("#pnamounVariance").hide();
+                $("#balance_analysis").hide();
+                $(".task-account .alert").html("Please select account to analyse");
+                if ($hdReconciliationTaskId.val() != "0" && $select_task_type.val() == $select_task_type.attr("data-type")) {
+                    $firstaccount.val($firstaccount.attr("data-account")).trigger("change");
+                    ;
+                } else {
+                    $firstaccount.val(null).trigger("change");
+
+                }
+                $secondaccount.val(null).trigger("change");
+                $TransactionMatchingTypeId.val(null).trigger("change");
+                $("#lblInitialTransactionDate").show();
+                $("#lblInitialTransactionDate").css({ 'margin-top': '-15px' });
+            }
+            else if ($select_task_type.val() == $hdControlReport.val()) {
+                $(".task-account").hide();
+                $("#pnDateVariance").hide();
+                $("#pnamounVariance").hide();
+                $("#balance_analysis").hide();
+                $firstaccount.val(null).trigger("change");
+                $secondaccount.val(null).trigger("change");
+                $TransactionMatchingTypeId.val(null).trigger("change");
+            }
+            else if ($select_task_type.val() == $hdBalanceAnalysis.val()) {
+
+                $(".task-account").hide();
+                $("#taskcount3").hide();
+                $("#taskcount2").hide();
+                $("#pnDateVariance").hide();
+                $("#pnamounVariance").hide();
+                $("#balance_analysis").show();
+
+            }
+
+        });
+        // change first account, second account
+        $firstaccount.change(function () {
+            if ($firstaccount.val() != "") {
+                if ($firstaccount.val() == $secondaccount.val() && $select_task_type.val() != $hdControlReport.val()) {
+                    cleanBookNotification.error(_L("ERROR_MSG_474"), "Qbicles");
+                }
+            }
+        });
+        $secondaccount.change(function () {
+            if ($secondaccount.val() != "") {
+                if ($firstaccount.val() == $secondaccount.val() && $select_task_type.val() != $hdControlReport.val()) {
+                    cleanBookNotification.error(_L("ERROR_MSG_474"), "Qbicles");
+                }
+            }
+        });
+        // paging
+        var $trs = $(".t1style");
+        $trs.DataTable({
+            "sDom": '<"top">rt<"bottomtable"ip><"clear">',
+            "bInfo": true,
+            "bFilter": false,
+            "bPaginate": true,
+            "bSearchable": false,
+            "sPaginationType": "numbers",
+            "pageLength": 10,
+            "columnDefs": [{
+                "targets": 3,
+                "orderable": false
+            }, {
+                "targets": 2,
+                "orderable": false
+            }]
+
+        });
+    });
+    function formatDate(jsonDate) {
+        if (jsonDate != null) {
+            var value = new Date
+                (
+                     parseInt(jsonDate.replace(/(^.*\()|([+-].*$)/g, ''))
+                );
+            return value.getMonth() +
+                                     1 +
+                                   "/" +
+                       value.getDate() +
+                                   "/" +
+                   value.getFullYear();
+        } return '';
+    }
+    function deleteTask() {
+        if ($taskIdDelete <= 0)
+            return;
+        var model = {
+            Id: $taskIdDelete,
+            Name: $taskNameDelete,
+            Description: $taskDesDelete,
+        };
+        $.ajax({
+            type: 'post',
+            url: '/Tasks/DeleteTask',
+            dataType: 'json',
+            data: model,
+            success: function (res) {
+                if (res.status) {
+                    $modal_task_remove.modal('hide');
+                    cleanBookNotification.removeSuccess();
+                    //change the background color to red before removing
+                    $trDelete.css("background-color", "#FF3700");
+                    $trDelete.fadeOut(1500, function () {
+                        $trDelete.remove();
+                    });
+                    $taskIdDelete = 0;
+                }
+                else
+                    cleanBookNotification.removeFail();
+            }
+        })
+    }
+    //remove attr
+    function RemoveAttr() {
+        $taskname.removeAttr("disabled");
+        $typeoftask.removeAttr("disabled");
+        $TaskExecutionIntervalId.removeAttr("disabled");
+        $TransactionMatchingTypeId.removeAttr("disabled");
+        $firstaccount.removeAttr("disabled");
+        $secondaccount.removeAttr("disabled");
+    }
+    //clear form
+    function clearForm() {
+        $TaskExecutionIntervalId.val("1").trigger("change");
+        $taskname.val("");
+        $select_task_type.val(null).trigger("change");
+        $firstaccount.val(null).trigger("change");
+        $secondaccount.val(null).trigger("change");
+        $(".task-account").hide();
+        $AssignedUserId.val(null).trigger("change");
+        $TransactionMatchingTypeId.val(null).trigger("change");
+        $("textarea[name='Description']").val("");
+        $("#description_1_add").val('');
+        $("#reference_1_add").val('');
+        $("#description_2_add").val('');
+        $("#reference_2_add").val('');
+        $("#ref_min_add").val('');
+        $("#ref_max_add").val('');
+        $("#tblBalanceAnalysis tbody tr").remove();
+        $("#lblwell div").remove();
+        arrEdit = [];
+        $("#lblWarningError").css({ "display": "none" });
+        $("#lblErrorMessage").html("");
+        $("#balance_analysis").css({ "display": "none" });
+        $('#InitialTransactionDate').val('');
+    }
+    //add task
+    function save_account() {
+
+        if ($form_reconciliationtask.valid()) {
+            if ($select_task_type.val() == "") {
+                cleanBookNotification.error(_L("ERROR_MSG_477"), "Qbicles");
+                return false;
+            }
+            else if ($firstaccount.val() == "" && $select_task_type.val() != $hdControlReport.val() && $select_task_type.val() != $hdBalanceAnalysis.val()) {
+                cleanBookNotification.error(_L("ERROR_MSG_478"), "Qbicles");
+                return false;
+            }
+            else if ($secondaccount.val() == "" && $select_task_type.val() == $hdTransactionMatching.val()) {
+                cleanBookNotification.error(_L("ERROR_MSG_479"), "Qbicles");
+                return false;
+            }
+            else if ($firstaccount.val() == $secondaccount.val() && $select_task_type.val() != $hdControlReport.val() && $select_task_type.val() != $hdBalanceAnalysis.val()) {
+                cleanBookNotification.error(_L("ERROR_MSG_474"), "Qbicles");
+                return false;
+            }
+            else if ($TransactionMatchingTypeId.val() == "" && $select_task_type.val() == $hdTransactionMatching.val()) {
+                cleanBookNotification.error(_L("ERROR_MSG_667"), "Qbicles");
+                return false;
+            }
+            else if ($("select[name='AssignedUserId']").val() == "") {
+                bootbox.confirm({
+                    show: true,
+                    backdrop: true,
+                    closeButton: true,
+                    animate: true,
+                    className: "my-modal",
+                    title: "Qbicles",
+                    message: "The Assign To  is not set when the Task is saved. Are you sure continue?",
+                    callback: function (result) {
+                        if (!result) {
+                            $('body').css('overflow-y', 'hidden');
+                            return;
+                        }
+                        $('body').css('overflow-y', 'auto');
+                        saveaddtask();
+                    }
+                });
+            } else {
+                saveaddtask();
+            }
+        }
+    }
+
+    function saveaddtask() {
+        $.ajax({
+            type: 'post',
+            url: '/Tasks/TaskNameCheck',
+            datatype: 'json',
+            data: { name: $taskname.val(), id: $hdReconciliationTaskId.val() },
+            success: function (dupplicate) {
+                if (!dupplicate.dupplicate) {
+                    var typeoftaskId = $("#typeoftask :selected").val();
+                    if (typeoftaskId == $("#hdBalanceAnalysis").val()) {
+                        if ($('#tblBalanceAnalysis tbody tr td').length <= 1) {
+                            cleanBookNotification.error(_L("ERROR_MSG_668"), "Qbicles");
+                            return;
+                        }
+                        else {
+                            $("#step_1").removeClass('active').addClass('disabled disabledTab');
+                            $("#stepv1").removeClass('in active').addClass('disabled disabledTab');
+                            $("#step_2").removeClass('disabled disabledTab').addClass('active');
+                            $("#stepv2").removeClass('disabled disabledTab').addClass('in active');
+                            $("#step2-vtab").css({ 'color': '#337ab7' });
+                            $("#step1-vtab").removeAttr('style');
+                        }
+
+                    }
+                    else {
+                        SaveTask();
+                    }
+
+                }
+                else
+                    $form_reconciliationtask.validate().showErrors({ Name: "name of reconciliation task already exists" });
+            }
+        });
+    }
+    function SaveTask() {
+        var taskName = $("#taskName").val();
+        var typeoftaskId = $("#typeoftask :selected").val();
+        var AccountId1 = $("#AccountId1 :selected").val();
+        var AccountId2 = $("#AccountId2 :selected").val();
+        var TransactionMatchingTypeId = $("#TransactionMatchingTypeId :selected").val();
+        var TaskExecutionIntervalId = $("#TaskExecutionIntervalId :selected").val();
+        var AssignedUserId = $("#AssignedUserId :selected").val();
+        var Description = $("#Description").val();
+        var chkDateVariance = $("#chkDateVariance").is(":checked");
+        var chkamounVariance = $("#chkamounVariance").is(":checked");
+        var TaskId = $("#hdReconciliationTaskId").val();
+        var TaskGroupId = $("#ReconciliationTaskGroupId").val();
+        var TaskTypeIdOldId = $("#hdTaskTypeIdOld").val();
+        var DateVariance = $("#DateVariance").val();
+        var amounVariance = $("#amounVariance").val();
+        var transactionmatchingtaskrulesaccessId = $("#hdtransactionmatchingtaskrulesaccessId").val();
+        var dateExcute = $('#InitialTransactionDate').val();
+
+        var arrBalance = [], arrBalanceAction = [];
+        if (typeoftaskId == $("#hdTransactionMatching").val()) {
+            if (dateExcute == '') {
+                cleanBookNotification.error(_L("ERROR_MSG_669"), "Qbicles");
+                return;
+            }
+        }
+        else if (typeoftaskId == $("#hdTransactionAnlysis").val()) {
+            if (dateExcute == '') {
+                cleanBookNotification.error(_L("ERROR_MSG_669"), "Qbicles");
+                return;
+            }
+        }
+        if (typeoftaskId == $("#hdBalanceAnalysis").val()) {
+            if (arrNumberrow.length <= 0) {
+                cleanBookNotification.error(_L("ERROR_MSG_670"), "Qbicles");
+                return;
+            }
+
+
+            if ($('#tblBalanceAnalysis tbody tr td').length <= 1) {
+                cleanBookNotification.error(_L("ERROR_MSG_668"), "Qbicles");
+                return;
+            }
+            for (var j = 0; j < arrNumberrow.length; ++j) {
+                var id = $("#hdValue" + arrNumberrow[j]).val();
+                var Id = 0, Name = "";
+                var arrtmp = id.split('#');
+                if (arrtmp.length > 1) {
+                    Id = arrtmp[0] == "" ? "0" : arrtmp[0];
+                    Name = arrtmp[1];
+                }
+                else
+                    Name = arrtmp[0];
+                var item2 = {
+                    Id: Id,
+                    Name: Name
+                };
+                arrBalanceAction.push(item2);
+            }
+
+            for (var r = 0; r < arrEdit.length; r++) {
+                var desc1 = $("#desc1" + arrEdit[r]).html();
+                var ref1 = $("#ref1" + arrEdit[r]).html();
+                var desc2 = $("#desc2" + arrEdit[r]).html();
+                var ref2 = $("#ref2" + arrEdit[r]).html();
+                var min = $("#min" + arrEdit[r]).html();
+                var max = $("#max" + arrEdit[r]).html();
+                var item = {
+                    Id: 0,
+                    TaskId: TaskId,
+                    Description1: desc1,
+                    Reference1: ref1,
+                    Description2: desc2,
+                    Reference2: ref2,
+                    MinDifference: min,
+                    MaxDifference: max
+                };
+                arrBalance.push(item);
+            }
+
+        }
+
+
+        var task = {
+            Id: TaskId,
+            Name: taskName,
+            Description: Description,
+            ReconciliationTaskGroupId: TaskGroupId,
+            TaskExecutionIntervalId: TaskExecutionIntervalId,
+            TaskTypeId: typeoftaskId,
+            AssignedUserId: AssignedUserId,
+            TransactionMatchingTypeId: TransactionMatchingTypeId == '' ? '0' : TransactionMatchingTypeId,
+            IsActionNotify: $("#IsActionNotify").val(),
+            IsActionReport: $("#IsActionReport").val(),
+            IsActionNewLedger: $("#IsActionNewLedger").val(),
+            IsActionNewLedger: $("#IsActionNewLedger").val(),
+            InitialTransactionDate: $('#InitialTransactionDate').val()
+        };
+
+        var model = {
+            rectask: task,
+            InitialTransactionDate: dateExcute,
+            AccountId1: AccountId1,
+            AccountId2: AccountId2,
+            TaskTypeIdOld: TaskTypeIdOldId,
+            DateVariance: DateVariance,
+            amounVariance: amounVariance,
+            transactionmatchingtaskrulesaccessId: transactionmatchingtaskrulesaccessId,
+            balancemapingruler: arrBalance,
+            balanceAction: arrBalanceAction
+        };
+        $.ajax({
+            type: 'post',
+            url: '/Tasks/Save_ManageReconciliationTasks',
+            datatype: 'json',
+            data: model,
+            success: function (data) {
+                if (data.status)
+                    location.href = location.href.replace('#', '');
+            }
+        });
+    }
+    function GetRules(id) {
+        $.ajax({
+            url: "/Tasks/get_rulesaccess",
+            type: "GET",
+            dataType: "json",
+            data: { id: id },
+            success: function (data) {
+                if (data != '') {
+                    $("#hdtransactionmatchingtaskrulesaccessId").val(data.Id);
+                    $("#chkDateVariance").attr('checked', data.IsDateVarianceVisible == 1);
+                    $("#chkamounVariance").attr('checked', data.IsAmountVarianceVisible == 1);
+                    $("#DateVariance").val(data.IsDateVarianceVisible);
+                    $("#amounVariance").val(data.IsAmountVarianceVisible);
+                }
+            }
+        });
+    }
+    function GetBalanceAction(id) {
+        $("#lblwell div").remove();
+        arrNumberrow = [];
+        $.ajax({
+            url: "/Tasks/get_editBalanceAction",
+            type: "GET",
+            dataType: "json",
+            data: { id: id },
+            success: function (data) {
+                var str = '';
+                if (data != '') {
+
+                    for (var i = 0; i < data.length; ++i) {
+                        str += '    <div class="row">';
+                        str += '<div class="col-md-10">' + data[i].Name;
+                        str += '<input type="hidden" id="hdValue' + i + '" value="' + data[i].Id + '#' + data[i].Name + '" />';
+                        str += ' </div>';
+                        str += '<div class="col-md-2"><a href="#" style="margin-left: -15px;" onclick="DeleteItembalanceanalysisaction(this,' + i + ',' + data[i].Id + ')">Delete</a></div>';
+                        str += '</div>';
+
+                        arrNumberrow.push(i);
+                        numberrow++;
+                    }
+                    $("#lblwell").append(str);
+                }
+            }
+        });
+    }
+    function GetBalanceMapingRuler(id) {
+        $("#tblBalanceAnalysis tbody tr").remove();
+        arrEdit = [];
+        $.ajax({
+            url: "/Tasks/get_editBalanceMapingRuler",
+            type: "GET",
+            dataType: "json",
+            data: { id: id },
+            success: function (data) {
+
+                if (data != '') {
+                    var str2 = '';
+
+                    for (var i = 0; i < data.length; ++i) {
+                        arrtmp.push(data[i].Reference1 + '#' + data[i].Reference2);
+                        str2 += '    <tr id="balance' + i + '">';
+                        str2 += '<td><input type="checkbox" name="trows[]" id="chk' + i + '" onchange="CheckBoxChange(this,' + i + ',\'' + data[i].Reference1 + '#' + data[i].Reference2 + '\',' + data[i].Id + ')"></td>';
+                        str2 += '<td><span class="editable" id="desc1' + i + '">' + data[i].Description1 + '</span></td>';
+                        str2 += '<td><span class="editable" id="ref1' + i + '">' + data[i].Reference1 + '</span></td>';
+                        str2 += '<td><span class="editable" id="desc2' + i + '">' + data[i].Description2 + '</span></td>';
+                        str2 += '<td><span class="editable" id="ref2' + i + '">' + data[i].Reference2 + '</span></td>';
+                        str2 += '<td><span class="editable" id="min' + i + '">' + data[i].MinDifference + '</span></td>';
+                        str2 += '<td><span class="editable" id="max' + i + '">' + data[i].MaxDifference + '</span></td>';
+                        str2 += '<td class="table_options"><a href="#" onclick="Removebalanceanalysismappingrule(this,' + i + ',\'' + data[i].Reference1 + '#' + data[i].Reference2 + '\',' + data[i].Id + ')">Delete</a></td>';
+                        str2 += ' </tr>';
+                    }
+                    $('#lblBalanceTable').html('');
+
+                    var str = '<table class="table table-hover t5style" id="tblBalanceAnalysis" cellspacing="0" width="100%">';
+                    str += '     <thead>';
+                    str += '              <tr>';
+                    str += '                <th></th>';
+                    str += '                <th>Description 1</th>';
+                    str += '                 <th>Reference 1</th>';
+                    str += '                 <th>Description 2</th>';
+                    str += '                 <th>Reference 2</th>';
+                    str += '                <th>Ref 1 - 2 min</th>';
+                    str += '                 <th>Ref 1 - 2 max</th>';
+                    str += '                <th>Options</th>';
+                    str += '            </tr>';
+                    str += '        </thead>';
+                    str += '         <tbody>';
+                    str += str2;
+                    str += '   </tbody>';
+                    str += '     </table>';
+                    $('#lblBalanceTable').append(str);
+
+                    $("#tblBalanceAnalysis").DataTable({
+                        "sDom": '<"top">rt<"bottomtable"ip><"clear">',
+                        "bInfo": true,
+                        "bFilter": false,
+                        "bPaginate": true,
+                        "bSearchable": false,
+                        "sPaginationType": "numbers",
+                        "pageLength": 5,
+                        "columnDefs": [{
+                            "targets": 0,
+                            "orderable": false
+                        }, {
+                            "targets": 7,
+                            "orderable": false
+                        }]
+
+                    });
+
+                    $("#description_1_add").val('');
+                    $("#reference_1_add").val('');
+                    $("#description_2_add").val('');
+                    $("#reference_2_add").val('');
+                    $("#ref_min_add").val('');
+                    $("#ref_max_add").val('');
+                }
+            }
+        });
+    }
+
+    function GetUser(isEdit) {
+        $.ajax({
+            url: "/Tasks/GetUserAsign",
+            type: "GET",
+            dataType: "json",
+            data: { isEdit: isEdit },
+            success: function (response) {
+                var str = "";
+                $("#AssignedUserId option").remove();
+                for (var i = 0; i < response.length; i++) {
+                    str += "<option value='" + response[i].Id + "'>" + response[i].UserName + "</option>";
+                }
+                
+                $("#AssignedUserId").html(str);
+            }
+        });
+    }
+    // edit task
+    function get_editreconciliationtask(idtask, name) {
+      
+        $.ajax({
+            url: "/Tasks/checkEdit",
+            type: "GET",
+            dataType: "json",
+            data: { id: idtask },
+            success: function (response) {
+                if (response.Status == true) {
+                    var is_InPresson = response.isInPresson;
+                    if (is_InPresson) {
+                        $("#task-name-info").html(name);
+                        $("#modal-warning").modal('toggle');
+                    }
+                    else {
+                        $.ajax({
+                            url: "/Tasks/get_editreconciliationtasks",
+                            type: "GET",
+                            dataType: "json",
+                            data: { id: idtask },
+                            success: function (response) {
+                                var count = response.length;
+                                GetUser(true);
+                                GetRules(idtask);
+                                setTimeout(function () {
+                                    GetBalanceMapingRuler(idtask);
+                                }, 100);
+                                setTimeout(function () {
+                                    GetBalanceAction(idtask);
+                                }, 200);
+                                setTimeout(function () {
+                                    for (var i = 0; i < count; i++) {
+
+                                        var is_InPresson = response[i].isInPresson;
+                                        if (is_InPresson) {
+                                            $("#task-name-info").html(idtask);
+                                            $("#modal-warning").modal('toggle');
+                                            return false;
+                                        }
+                                        var taskinstance = response[i].taskinstance;
+                                        var task = response[i].task;
+                                        var taskaccount = response[i].taskaccount;
+                                 
+
+                                        if (task != null) {
+                                            $('#InitialTransactionDate').val('');
+                                            $("#lblInitialTransactionDate").hide();
+                                            $hdReconciliationTaskGroupId.val(task.ReconciliationTaskGroupId);
+                                            $taskname.val(task.Name);
+                                            $typeoftask.val(task.TaskTypeId).trigger("change");
+                                            $hdTaskTypeIdOld.val(task.TaskTypeId);
+                                            $typeoftask.attr("data-type", task.TaskTypeId);
+                                            $TaskExecutionIntervalId.val(task.TaskExecutionIntervalId).trigger("change");
+                                            setTimeout(function () {
+                                                $AssignedUserId.val(task.AssignedUserId).trigger("change");
+                                            }, 100);
+                                            $hdCreatedById.val(task.CreatedById);
+                                            $hdCreatedDate.val(task.CreatedDate);
+                                            
+                                            if (task.TaskTypeId == $hdTransactionMatching.val()) {
+                                                $("#balance_analysis").hide();
+                                                $(".task-account").show();
+                                                $TransactionMatchingTypeId.val(task.TransactionMatchingTypeId).trigger("change");
+                                                $TransactionMatchingTypeId.attr("data-id", task.TransactionMatchingTypeId);
+                                                $("#lblInitialTransactionDate").show();
+                                                $("#lblInitialTransactionDate").css({ 'margin-top': '-50px' });
+
+                                                $('#InitialTransactionDate').val(formatDate(task.InitialTransactionDate));
+
+                                            } else if (task.TaskTypeId == $hdTransactionAnlysis.val()) {
+                                                $(".task-account").show();
+                                                $("#taskcount3").hide();
+                                                $("#taskcount2").hide();
+                                                $("#balance_analysis").hide();
+                                                $("#lblInitialTransactionDate").show();
+                                                $("#lblInitialTransactionDate").css({ 'margin-top': '-15px' });
+                                                $('#InitialTransactionDate').val(formatDate(task.InitialTransactionDate));
+                                            }
+                                            else if ($select_task_type.val() == $hdBalanceAnalysis.val()) {
+
+                                                $(".task-account").hide();
+                                                $("#taskcount3").hide();
+                                                $("#taskcount2").hide();
+                                                $("#pnDateVariance").hide();
+                                                $("#pnamounVariance").hide();
+                                                $("#balance_analysis").show();
+
+                                            }
+                                            if (taskaccount.length > 0) {
+                                                for (var i = 0; i < taskaccount.length; i++) {
+                                                    var account = taskaccount[i];
+
+                                                    if (account.Order == 1) {
+                                                        $firstaccount.val(account.AccountId).trigger("change");
+                                                        $firstaccount.attr("data-account", account.AccountId);
+                                                    } else {
+                                                        $secondaccount.val(account.AccountId).trigger("change");
+                                                        $secondaccount.attr("data-account", account.AccountId);
+                                                    }
+                                                }
+                                            }
+                                            $("textarea[name='Description']").val(task.Description);
+                                            if (taskinstance == true) {
+                                                $taskname.attr({ "disabled": "disabled" });
+                                                $typeoftask.attr({ "disabled": "disabled" });
+                                                $TaskExecutionIntervalId.attr({ "disabled": "disabled" });
+                                                $TransactionMatchingTypeId.attr({ "disabled": "disabled" });
+                                                $firstaccount.attr({ "disabled": "disabled" });
+                                                $secondaccount.attr({ "disabled": "disabled" });
+                                            } else {
+                                                RemoveAttr();
+                                            }
+                                        }
+                                    }
+                                    $modal_reconciliationtask_title.text($("input[name='modal_edit_reconciliationtask_title']").val());
+                                    $modal_reconciliationtask.modal('toggle');
+                                }, 500);
+                            }
+                        });
+                    }
+                }
+            }
+        });
+    }
+
+    function get_reconciliationtasks(id) {
+        return $.ajax({
+            url: "/Tasks/get_reconciliationtasks",
+            type: "GET",
+            dataType: "json",
+            data: { id: id }
+        });
+    }
+
+
+
+    function save_recGroup() {
+        if ($form_reconciliationtaskgroup.valid()) {
+            var model = getModelRecTaskGroup();
+            $.ajax({
+                type: 'post',
+                url: '/Tasks/dupplicateRecTaskGroupCheck',
+                dataType: 'json',
+                data: model,
+                success: function(dupplicate) {
+                    if (!dupplicate.dupplicate)
+                        $form_reconciliationtaskgroup.submit();
+                    else
+                        $form_reconciliationtaskgroup.validate()
+                            .showErrors({ Name: "Name of Reconciliation Task Group already exists" })
+                }
+            });
+        }
+    }
+
+    function getModelRecTaskGroup() {
+        var model = {
+            Id: $("#input_rectaskgroup_id").val(),
+            Name: $("#input_rectaskgroup_name").val()
+        };
+        return model;
+    }
+
+
+    function btn_deleteTaskGroup_Click(taskGroupId, taskGroupName) {
+        $("#confirm-del-taskGroup").hide();
+        $("#permission-del-taskGroup").hide();
+        $.ajax({
+            type: 'post',
+            url: '/Tasks/checkDeleteTaskGroup',
+            dataType: 'json',
+            data: { taskGroupId: taskGroupId },
+            success: function (isDelete) {
+
+                if (!isDelete) {
+                    $TaskGroupDelId = taskGroupId;
+                    $("#confirm-del-taskGroup").show();
+                    $('#taskGroup-name-confirm').text(taskGroupName);
+                }
+                else {
+                    $("#permission-del-taskGroup").show();
+                    $('#taskGroup-name-permission').text(taskGroupName);
+                }
+                $modal_task_group_remove.modal('toggle');
+            }
+        });
+
+
+    }
+
+    function DeleteTaskGroup() {
+        $.ajax({
+            type: 'post',
+            url: '/Tasks/DeleteTaskGroup',
+            dataType: 'json',
+            data: { taskGroupId: $TaskGroupDelId },
+            success: function (res) {
+                if (res.status) {
+                    $modal_task_group_remove.modal('hide');
+                    $("#confirm-del-taskGroup").hide();
+                    $("#permission-del-taskGroup").show();
+                    $('#taskGroup-' + $TaskGroupDelId).empty();
+                    $TaskGroupDelId = 0;
+                    cleanBookNotification.clearmessage();
+                    cleanBookNotification.removeSuccess();
+                }
+                else {
+                    cleanBookNotification.clearmessage();
+                    cleanBookNotification.removeFail();
+                }
+            }
+        })
+
+    }
+    function Addbalanceanalysismappingrule() {
+        var desc1 = $("#description_1_add").val();
+        var ref1 = $("#reference_1_add").val();
+        var desc2 = $("#description_2_add").val();
+        var ref2 = $("#reference_2_add").val();
+        var min = $("#ref_min_add").val();
+        var max = $("#ref_max_add").val();
+        if (desc1 == '') {
+            cleanBookNotification.warning("You have not entered a description 1!", "Message");
+            return;
+        }
+        if (ref1 == '') {
+            cleanBookNotification.warning("You have not entered a Reference 1!", "Message");
+            return;
+        }
+        if (desc2 == '') {
+            cleanBookNotification.warning("You have not entered a description 2!", "Message");
+            return;
+        }
+        if (ref2 == '') {
+            cleanBookNotification.warning("You have not entered a Reference 2!", "Message");
+            return;
+        }
+        if (min == '') {
+            cleanBookNotification.warning("You have not entered a min value!", "Message");
+            return;
+        }
+        if (max == '') {
+            cleanBookNotification.warning("You have not entered a max value!", "Message");
+            return;
+        }
+        var TaskId = $("#hdReconciliationTaskId").val();
+        if (TaskId != '' && TaskId != '0') {
+            $.ajax({
+                type: 'post',
+                url: '/BalanceAnalysis/CheckName',
+                dataType: 'json',
+                data: { name1: ref1, Name2: ref2, TaskId: TaskId },
+                success: function (dupplicate) {
+                    var result = false;
+                    if (dupplicate.ref1 == 1) {
+                        cleanBookNotification.warning("Reference 1 already exists", "Message");
+                        result = true;
+                    }
+                    if (dupplicate.ref2 == 1) {
+                        cleanBookNotification.warning("Reference 2 already exists", "Message");
+                        result = true;
+                    }
+                    if (!result) {
+                        for (var i = 0; i < arrtmp.length; ++i) {
+                            var arr = arrtmp[i].split('#');
+                            if (arr[0] == ref1) {
+                                cleanBookNotification.warning("Reference 1 already exists", "Message");
+                                result = true;
+                            }
+                            if (arr[1] == ref2) {
+                                cleanBookNotification.warning("Reference 2 already exists", "Message");
+                                result = true;
+                            }
+                        }
+                    }
+                    if (result)
+                        return;
+                    $("#tblBalanceAnalysis tbody tr.odd").remove();
+                    arrtmp.push(ref1 + '#' + ref2);
+                    var str = '';
+                    indexbalanceanalysis = arrEdit.length;
+                    str = '    <tr id="balance' + indexbalanceanalysis + '">';
+                    str += '<td><input type="checkbox" name="trows[]" id="chk' + indexbalanceanalysis + '" onchange="CheckBoxChange(this,' + indexbalanceanalysis + ',\'' + ref1 + '#' + ref2 + '\',0)"></td>';
+                    str += '<td><span class="editable" id="desc1' + indexbalanceanalysis + '">' + desc1 + '</span></td>';
+                    str += '<td><span class="editable" id="ref1' + indexbalanceanalysis + '">' + ref1 + '</span></td>';
+                    str += '<td><span class="editable" id="desc2' + indexbalanceanalysis + '">' + desc2 + '</span></td>';
+                    str += '<td><span class="editable" id="ref2' + indexbalanceanalysis + '">' + ref2 + '</span></td>';
+                    str += '<td><span class="editable" id="min' + indexbalanceanalysis + '">' + min + '</span></td>';
+                    str += '<td><span class="editable" id="max' + indexbalanceanalysis + '">' + max + '</span></td>';
+                    str += '<td class="table_options"><a href="#" onclick="Removebalanceanalysismappingrule(this,' + indexbalanceanalysis + ',\'' + ref1 + '#' + ref2 + '\',0)">Delete</a></td>';
+                    str += ' </tr>';
+                    $("#tblBalanceAnalysis tbody").append(str);
+                    arrEdit.push(indexbalanceanalysis);
+                    $("#description_1_add").val('');
+                    $("#reference_1_add").val('');
+                    $("#description_2_add").val('');
+                    $("#reference_2_add").val('');
+                    $("#ref_min_add").val('');
+                    $("#ref_max_add").val('');
+                }
+            });
+        }
+        else {
+            var result = false;
+            for (var i = 0; i < arrtmp.length; ++i) {
+                var arr = arrtmp[i].split('#');
+                if (arr[0] == ref1) {
+                    cleanBookNotification.warning("Reference 1 already exists", "Message");
+                    result = true;
+                }
+                if (arr[1] == ref2) {
+                    cleanBookNotification.warning("Reference 2 already exists", "Message");
+                    result = true;
+                }
+            }
+            if (result)
+                return;
+            $("#tblBalanceAnalysis tbody tr.odd").remove();
+            arrtmp.push(ref1 + '#' + ref2);
+            var str = '';
+            var tmp = $("#tblBalanceAnalysis tbody tr:last").attr('id');
+            tmp = tmp.replace('balance', '');
+            indexbalanceanalysis = parseInt(tmp);
+
+            str = '    <tr id="balance' + indexbalanceanalysis + '">';
+            str += '<td><input type="checkbox" name="trows[]" id="chk' + indexbalanceanalysis + '" onchange="CheckBoxChange(this,' + indexbalanceanalysis + ',\'' + ref1 + '#' + ref2 + '\',0)"></td>';
+            str += '<td><span class="editable" id="desc1' + indexbalanceanalysis + '">' + desc1 + '</span></td>';
+            str += '<td><span class="editable" id="ref1' + indexbalanceanalysis + '">' + ref1 + '</span></td>';
+            str += '<td><span class="editable" id="desc2' + indexbalanceanalysis + '">' + desc2 + '</span></td>';
+            str += '<td><span class="editable" id="ref2' + indexbalanceanalysis + '">' + ref2 + '</span></td>';
+            str += '<td><span class="editable" id="min' + indexbalanceanalysis + '">' + min + '</span></td>';
+            str += '<td><span class="editable" id="max' + indexbalanceanalysis + '">' + max + '</span></td>';
+            str += '<td class="table_options"><a href="#" onclick="Removebalanceanalysismappingrule(this,' + indexbalanceanalysis + ',\'' + ref1 + '#' + ref2 + '\',0)">Delete</a></td>';
+            str += ' </tr>';
+            $("#tblBalanceAnalysis tbody").append(str);
+            arrEdit.push(indexbalanceanalysis);
+            $("#description_1_add").val('');
+            $("#reference_1_add").val('');
+            $("#description_2_add").val('');
+            $("#reference_2_add").val('');
+            $("#ref_min_add").val('');
+            $("#ref_max_add").val('');
+        }
+    }
+    function Removebalanceanalysismappingrule(obj, index, condition, id) {
+        $(obj).parent().parent().remove();
+        var index1 = arrtmp.indexOf(condition);
+        if (index1 >= 0)
+            arrtmp.splice(index1, 1);
+        var index2 = arrEdit.indexOf(index);
+        if (index2 >= 0)
+            arrEdit.splice(index2, 1);
+
+        var arrId = [], arrIndex = [];
+        arrId.push(id);
+        arrIndex.push(index);
+        $.ajax({
+            type: 'post',
+            url: '/BalanceAnalysis/DeleteBalanceMapingRuler',
+            dataType: 'json',
+            data: { lstId: arrId, lstindex: arrIndex },
+            success: function (data) {
+
+            }
+        });
+    }
+    var arrtmp2 = [], arrEdit = [], Idarr = [];
+    var multiplebalanceanalysismappingrule = [], indexbalanceanalysis = 0;
+    function RemoveMultiplebalanceanalysismappingrule() {
+        var arrId = [], arrIndex = [];
+        for (var i = 0; i < multiplebalanceanalysismappingrule.length; ++i) {
+            $("#balance" + multiplebalanceanalysismappingrule[i]).remove();
+            var index = arrtmp.indexOf(arrtmp2[i]);
+            if (index >= 0)
+                arrtmp.splice(index, 1);
+            var index2 = arrEdit.indexOf(multiplebalanceanalysismappingrule[i]);
+            if (index2 >= 0) {
+                arrEdit.splice(index2, 1);
+                arrIndex.push(index2);
+            }
+
+            if (Idarr[i] > 0) {
+                arrId.push(Idarr[i]);
+            }
+        }
+        $.ajax({
+            type: 'post',
+            url: '/BalanceAnalysis/DeleteBalanceMapingRuler',
+            dataType: 'json',
+            data: { lstId: arrId, lstindex: arrIndex },
+            success: function (data) {
+
+            }
+        });
+    }
+    function CheckBoxChange(obj, index, condition, id) {
+        if ($(obj).is(':checked')) {
+            multiplebalanceanalysismappingrule.push(index);
+            arrtmp2.push(condition);
+            Idarr.push(id);
+        }
+        else {
+            var index = multiplebalanceanalysismappingrule.indexOf(id);
+            if (index >= 0)
+                multiplebalanceanalysismappingrule.splice(index, 1);
+            var index2 = arrtmp2.indexOf(condition);
+            if (index2 >= 0)
+                arrtmp2.splice(index2, 1);
+        }
+        if (multiplebalanceanalysismappingrule.length > 0) {
+            $("#btnRemoveMultipleBalanceAnalysisMapRuler").removeAttr("disabled");
+        }
+        else {
+            $("#btnRemoveMultipleBalanceAnalysisMapRuler").attr("disabled", "disabled");
+        }
+    }
+    var numberrow = 0, arrNumberrow = [], taskId = 0;
+    function Add2balanceanalysisaction() {
+        var ddlbalanceanalysispredefaction = $("#ddlbalanceanalysispredefaction :selected").val();
+        var ddlbalanceanalysispredefactionName = $("#ddlbalanceanalysispredefaction :selected").html();
+        var tmp = ddlbalanceanalysispredefaction + '#' + ddlbalanceanalysispredefactionName;
+        if (ddlbalanceanalysispredefaction != '' && ddlbalanceanalysispredefaction != undefined) {
+            var check = true;
+            for (var i = 0; i < arrNumberrow.length; ++i) {
+                var id = $("#hdValue" + arrNumberrow[i]).val();
+                if (id == tmp) {
+                    check = false;
+                    break;
+                }
+            }
+            if (check) {
+                var str = '    <div class="row">';
+                str += '<div class="col-md-10">' + ddlbalanceanalysispredefactionName;
+                str += '<input type="hidden" id="hdValue' + numberrow + '" value="' + tmp + '" />';
+                str += ' </div>';
+                str += '<div class="col-md-2"><a href="#" style="margin-left: -15px;" onclick="DeleteItembalanceanalysisaction(this,' + numberrow + ',0)">Delete</a></div>';
+                str += '</div>';
+                $("#lblwell").append(str);
+                arrNumberrow.push(numberrow);
+                numberrow++;
+            }
+            else {
+                $("#lblWarningError").css({ "display": "block" });
+                $("#lblErrorMessage").html(ddlbalanceanalysispredefactionName + " already exists");
+            }
+        }
+        else {
+            $("#lblWarningError").css({ "display": "block" });
+            $("#lblErrorMessage").html("Please select or enter at least one Option");
+        }
+    }
+
+    function Add2balanceanalysisaction2() {
+        var ddlbalanceanalysispredefactionName = $("#add_new_option").val();
+        var tmp = '#' + ddlbalanceanalysispredefactionName;
+        if (ddlbalanceanalysispredefactionName != '') {
+            var check = true;
+            for (var i = 0; i < arrNumberrow.length; ++i) {
+                var id = $("#hdValue" + arrNumberrow[i]).val();
+                if (id.indexOf(tmp) > 0) {
+                    check = false;
+                    break;
+                }
+            }
+            if (check) {
+                var str = '    <div class="row">';
+                str += '<div class="col-md-10">' + ddlbalanceanalysispredefactionName;
+                str += '<input type="hidden" id="hdValue' + numberrow + '" value="' + tmp + '" />';
+                str += ' </div>';
+                str += '<div class="col-md-2"><a href="#" style="margin-left: -15px;" onclick="DeleteItembalanceanalysisaction(this,' + numberrow + ',0)">Delete</a></div>';
+                str += '</div>';
+                $("#lblwell").append(str);
+                arrNumberrow.push(numberrow);
+                numberrow++;
+            }
+            else {
+                $("#lblWarningError").css({ "display": "block" });
+                $("#lblErrorMessage").html(ddlbalanceanalysispredefactionName + " already exists");
+            }
+        }
+        else {
+            $("#lblWarningError").css({ "display": "block" });
+            $("#lblErrorMessage").html("Please enter an option");
+        }
+    }
+    function DeleteItembalanceanalysisaction(obj, num, id) {
+        $(obj).parent().parent().remove();
+        var index = arrNumberrow.indexOf(num);
+        if (index >= 0)
+            arrNumberrow.splice(index, 1);
+        if (id > 0) {
+
+            $.ajax({
+                type: 'post',
+                url: '/BalanceAnalysis/DeleteBalanceAction',
+                dataType: 'json',
+                data: { Id: id },
+                success: function (data) {
+
+                }
+            });
+        }
+    }
+    function Back() {
+        $("#step_2").removeClass('active').addClass('disabled disabledTab');
+        $("#stepv2").removeClass('in active').addClass('disabled disabledTab');
+        $("#step_1").removeClass('disabled disabledTab').addClass('active');
+        $("#stepv1").removeClass('disabled disabledTab').addClass('in active');
+        $("#step1-vtab").css({ 'color': '#337ab7' });
+        $("#step2-vtab").removeAttr('style');
+    }
+    function uploadfile() {
+        var file = document.forms['form_reconciliationtask']['bulk_add'].files[0];
+        if (file != undefined) {
+            if (window.FormData !== undefined) {
+                var data = new FormData();
+                data.append("file", file);
+                var TaskId = $("#hdReconciliationTaskId").val();
+                if (TaskId == '')
+                    TaskId = '0';
+                var index = $('#tblBalanceAnalysis tr:last').attr('id');
+                
+                if (index == undefined)
+                    index = 0;
+                else
+                    index = parseInt(index.replace('balance', '')) + 1;
+                $.ajax({
+                    type: "POST",
+                    url: '/BalanceAnalysis/ReadSheets?Id=' + TaskId + '&index=' + index,
+                    contentType: false,
+                    processData: false,
+                    data: data,
+                    success: function (data) {
+
+                        if (data.status == 2) {
+                            cleanBookNotification.error(_L("ERROR_MSG_EXCEPTION_SYSTEM"), "Qbicles");
+                            //delete file
+                            $('#txtUploadFile').val('');
+                        }
+                        else if (data.status == 1) {
+                            if (data.dataerror != '') {
+                                $("#linkerrorfile").attr('href', '..' + data.dataerror);
+                                $("#modal_error").modal('show');
+                                $('#txtUploadFile').val('');
+                            }
+                            else {
+                                $('#lblBalanceTable').html('');
+
+                                var str = '<table class="table table-hover t5style" id="tblBalanceAnalysis" cellspacing="0" width="100%">';
+                                str += '     <thead>';
+                                str += '              <tr>';
+                                str += '                <th></th>';
+                                str += '                <th>Description 1</th>';
+                                str += '                 <th>Reference 1</th>';
+                                str += '                 <th>Description 2</th>';
+                                str += '                 <th>Reference 2</th>';
+                                str += '                <th>Ref 1 - 2 min</th>';
+                                str += '                 <th>Ref 1 - 2 max</th>';
+                                str += '                <th>Options</th>';
+                                str += '            </tr>';
+                                str += '        </thead>';
+                                str += '         <tbody>';
+                                str += data.datasuccess;
+                                str += '   </tbody>';
+                                str += '     </table>';
+                                $('#lblBalanceTable').append(str);
+
+                                $("#tblBalanceAnalysis").DataTable({
+                                    "sDom": '<"top">rt<"bottomtable"ip><"clear">',
+                                    "bInfo": true,
+                                    "bFilter": false,
+                                    "bPaginate": true,
+                                    "bSearchable": false,
+                                    "sPaginationType": "numbers",
+                                    "pageLength": 5,
+                                    "columnDefs": [{
+                                        "targets": 0,
+                                        "orderable": false
+                                    }, {
+                                        "targets": 7,
+                                        "orderable": false
+                                    }]
+
+                                });
+                                $('#txtUploadFile').val('');
+                            }
+                        }
+                    },
+                    error: function (xhr, status, p3, p4) {
+                        cleanBookNotification.error(_L("ERROR_MSG_EXCEPTION_SYSTEM"), "Qbicles");
+                        $('#txtUploadFile').val('');
+                        return false;
+                    }
+                });
+            } else {
+                cleanBookNotification.error("This browser doesn't support HTML5 file uploads!", "Qbicles");
+            }
+        }
+    }
+
+
+</script>
+
+
+<style>
+    .modal {
+        overflow-y: scroll;
+    }
+
+    .disabled, .disabledTab {
+        pointer-events: none;
+    }
+</style>

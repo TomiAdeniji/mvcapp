@@ -1,0 +1,126 @@
+﻿@using Qbicles.BusinessRules
+@model List<Qbicles.Models.ApprovalGroup>
+
+@{
+    ViewBag.Title = ViewBag.PageTitle;
+    var userRoleRights = (List<string>)ViewBag.UserRoleRights;
+    var rightAddEditGroup = userRoleRights.Any(r => r == "Edit Content") ? "" : "isDisabled";
+    var rightAddnew = userRoleRights.Any(r => r == "Edit Content") ? "" : "isDisabled";
+    var rightEdit = userRoleRights.Any(r => r == "Edit Content") ? "" : "isDisabled";
+    var rightDelete = userRoleRights.Any(r => r == "Edit Content") ? "" : "isDisabled";
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var traderGroup = new List<string>
+        {
+        "Trader Purchase Approvals",
+        "Trader Sale Approvals",
+        "Trader Transfer Processes",
+        "Trader Payment Approvals",
+        "Trader Contact Processes",
+        "Trader Invoice Processes",
+            "Trader Manufacturing Processes",
+            "Trader Spot Count Processes",
+            "Trader Waste Report Processes",
+            "Trader Invoice Processes",
+            "Credit Notes Processes"
+        };
+}
+
+<div id="approval-group-div" class="tab-content app_general">
+
+    @foreach (var group in Model)
+    {
+        <h5>
+            <span id="app-group-name-grid-@group.Id">@group.Name</span>
+        </h5>
+        <hr />
+        if (!traderGroup.Contains(group.Name))
+        {
+            <button id="button_edit_group_grid-@group.Id" onclick="EditGroup('@group.Id')" class="btn btn-warning @rightAddEditGroup"><i class="fa fa-pencil"></i> &nbsp; Edit group</button>
+            <button id="button_add_app_grid-@group.Id" class="btn btn-success @rightAddnew" onclick="AddNewApprovalApp('@group.Id')"><i class="fa fa-plus"></i> &nbsp; Create a request process</button>
+            <br />
+            <br />
+        }
+
+        <ul id="ul-app-@group.Id" class="grid-list flattened">
+            @foreach (var item in group.Approvals)
+            {
+                var createdBy = HelperClass.GetFullNameOfUser(item.CreatedBy);
+
+                <li id="approval-@item.Id" class="grid-list-item">
+                    <div class="grid-list-content">
+                        <div class="cb-grid-heading">
+                            <h4>
+                                @if (traderGroup.Contains(group.Name))
+                                {
+                                    <a href="javascript:void(0)">Trader WorkGroup: @item.Title</a>
+                                }
+                                else
+                                {
+                                    <a href="javascript:void(0)">@item.Title</a>
+                                }
+                            </h4>
+                            <h6>Created by @createdBy</h6>
+                        </div>
+                        <div class="cb-grid-details">
+                            @{
+                                if (item.ApprovalImage == null)
+                                {
+                                    <div class="item-avatar" style="background-image: url('https://www.placehold.it/300x250/EFEFEF/AAAAAA&text=no+image+selected');">&nbsp;</div>
+                                }
+                                else
+                                {
+                                    <div class="item-avatar" style="background-image: url('@api@item.ApprovalImage');">&nbsp;</div>
+                                }
+                            }
+
+                            <div class="row">
+                                <div class="col-xs-12">
+                                    <span>Description</span>
+                                    <p>@Html.Raw(item.Description.Replace("\n", "<br/>"))</p>
+                                </div>
+                            </div>
+
+                            <div class="btn-group options">
+                                <button type="button" class="btn btn-success dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                    <i class="fa fa-cog"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-right" style="right: 0;">
+                                    @if (traderGroup.Contains(group.Name))
+                                    {
+                                        <li>
+                                            <a href="javascript:void(0)" onclick="ViewProcessApp('@item.Id', @item.Group.Id, this)">View</a>
+                                        </li>
+                                    }
+                                    else
+                                    {
+                                        var cssDelete = "";
+                                        if (item.ApprovalReqs.Any())
+                                        {
+                                            cssDelete = "isDisabled";
+                                        }
+                                        <li>
+                                            <a href="javascript:void(0)" class="@rightEdit" onclick="EditProcessApp('@item.Id', @item.Group.Id, this)">Edit</a>
+                                        </li>
+
+                                        <li>
+                                            <a href="javascript:void(0)" class="@rightDelete @cssDelete" onclick="DeleteApproval('@item.Id', '@item.Title', this)">Delete</a>
+                                        </li>
+                                    }
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </li>
+            }
+
+        </ul>
+        <br />
+        <br />
+    }
+
+
+
+
+
+
+</div>

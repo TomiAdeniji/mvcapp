@@ -1,0 +1,378 @@
+﻿@using Qbicles.BusinessRules;
+@using Qbicles.Models;
+@model QbicleTask
+@{
+    ViewBag.Title = ViewBag.PageTitle;
+    var QbicleName = (string)ViewBag.QbicleName;
+    var Relates = Model.AssociatedSet != null ? Model.AssociatedSet.Relateds : new List<QbicleRelated>();
+    var dateFormat = (string)ViewBag.CurrentDateFormat;
+    var currentUserId = (string)ViewBag.CurrentUserId;
+    var watchers = (List<QbiclePeople>)ViewBag.Watchers;
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var cbtask = Model.task;
+    var cbTaskInstances = cbtask != null ? cbtask.taskinstances : new List<CleanBooksData.taskinstance>();
+    var pageSize = HelperClass.activitiesPageSize;
+    var Comments = Model.Posts.OrderByDescending(x => x.StartedDate).Take(pageSize);
+    var count_Comments = Model.Posts.Count();
+    var count_Medias = Model.SubActivities.Count();
+    var timeZone = (string)ViewBag.CurrentTimeZone;
+    var currentDomainId = (int)ViewBag.CurrentDomainId;
+    var domainAdministrators = ((ApplicationUser)ViewBag.CurrentUser).DomainAdministrators;
+
+}
+<div class="content-wrapper qbicle-detail mdv2-wrapper" style="position: relative; min-height: 452px;">
+    <!-- Main content -->
+    <section class="mdv2 dash" data-tooltip-color="teal" data-tooltip-delay="300" data-tooltip-animate-function="spin" style="border-top: 1px solid #f1f1f1;">
+        <!-- App bar -->
+        <div class="mdv2-col-app" style="margin-bottom: 0;">
+
+            <div data-spy="affix" class="contained-sidebar affix">
+
+                <div class="activity-overview plain company-overview welcome-info" style="text-align: left !important; flex: none; margin: 0; padding-top: 30px; padding-bottom: 0;">
+
+                    <div class="pull-left" style="margin-bottom: 15px;">
+                        <a href="/Qbicles/Dashboard" class="btn btn-info"><i class="fa fa-angle-up"></i> &nbsp; Qbicle</a>
+                    </div>
+                    <div class="clearfix"></div>
+
+                    <br>
+
+                    <h1 style="line-height: 1.2;">@Model.Name</h1>
+                    <br>
+
+                    <span class="label label-lg label-default">Cleanbooks</span>
+                    <span class="label label-lg label-primary">@(cbtask != null ? cbtask.tasktype?.Name : "")</span>
+
+                    <br><br><br>
+                    <p style="color: rgba(0, 0, 0, 0.5);">@Model.Description</p>
+
+                    <br><br>
+
+                    <div class="row">
+                        <div class="col-xs-6">
+                            <label>Created</label>
+                            <p>@Model.StartedDate.ToString(dateFormat + ", hh:mmtt")</p>
+                        </div>
+                        <div class="col-xs-6">
+                            @*<label>Last updated</label>
+                                <p></p>*@
+                        </div>
+                    </div>
+
+
+                    <br><br>
+                    <a href="/Apps/Tasks" class="btn btn-primary community-button" style="margin-bottom: 60px;"><i class="fa fa-eye"></i> &nbsp; View in Cleanbooks</a>
+                </div>
+            </div>
+        </div>
+        <!-- END App bar -->
+        <!-- Main area -->
+        <div class="mdv2-col-dash">
+            <ul class="subapps-nav" role="navigation" data-tooltip-stickto="bottom">
+                <li class="active">
+                    <a href="#" data-toggle="tab" data-target="#task-instances" data-tooltip="Task Instances" aria-expanded="true">
+                        <i class="fa fa-th"></i>
+                    </a>
+                </li>
+                <li class="">
+                    <a href="#" data-toggle="tab" data-target="#task-team" data-tooltip="Watchers" aria-expanded="false">
+                        <i class="fa fa-users"></i>
+                    </a>
+                </li>
+                <li class="">
+                    <a href="#" data-toggle="tab" data-target="#task-discuss" data-tooltip="Discuss" aria-expanded="false">
+                        <i class="fa fa-comment-alt"></i>
+                    </a>
+                </li>
+            </ul>
+            <div class="tab-content" style="padding-bottom: 30px;">
+
+                <!-- Team -->
+                <div class="tab-pane fade" id="task-team">
+
+                    <ul class="widget-contacts task-participants" style="padding: 0 15px;">
+                        <li>
+                            <a href="#">
+                                <div class="contact-avatar">
+                                    <div style="background-image: url('@(api+Model.StartedBy.ProfilePic)&size=T');">&nbsp;</div>
+                                </div>
+                                <div class="contact-info">
+                                    <h5>@(currentUserId == Model.StartedBy.Id ? "Me" : HelperClass.GetFullNameOfUser(Model.StartedBy))</h5>
+                                </div>
+                            </a>
+                        </li>
+                        @if (watchers != null)
+                        {
+                            foreach (var item in watchers)
+                            {
+                                <li>
+                                    <a href="#">
+                                        <div class="contact-avatar">
+                                            <div style="background-image: url('@(api+item.User.ProfilePic)&size=T');">&nbsp;</div>
+                                        </div>
+                                        <div class="contact-info">
+                                            <h5>@HelperClass.GetFullNameOfUser(item.User, currentUserId)</h5>
+                                        </div>
+                                    </a>
+                                </li>
+                            }
+                        }
+                    </ul>
+                </div>
+                <!-- END Team -->
+                <!-- Time logging -->
+                <div class="tab-pane fade active in" id="task-instances">
+                    <div class="subspacing">
+                        <h5>Task Instances</h5>
+                        <table class="datatable table-hover table-striped" style="width: 100%;">
+                            <thead>
+                                <tr>
+                                    <th data-priority="1">Date &amp; time</th>
+                                    <th data-priority="3">Run by</th>
+                                    <th data-priority="1">Status</th>
+                                    <th data-priority="2" data-orderable="false">Options</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in cbTaskInstances)
+                                {
+                                    <tr>
+                                        <td>@item.DateExecuted.ToString(dateFormat.Replace("/", ".") + " HH:mm")</td>
+                                        <td>@HelperClass.GetFullNameOfUser(item.user)</td>
+                                        <td>
+                                            @if (item.IsComplete.HasValue && item.IsComplete == 1)
+                                            {
+                                                <span class="label label-success label-lg">Complete - report generated</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="label label-lg label-warning">In progress</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            @if (item.IsComplete.HasValue && item.IsComplete == 1)
+                                            {
+                                                <button onclick="window.location.href='/TransactionMatching/InitTransactionMatchingReport?taskInsId=@item.id';" class="btn btn-success">
+                                                    <i class="fa fa-file-text-o"></i> &nbsp; View report
+                                                </button>
+                                            }
+                                            else
+                                            {
+                                                <button onclick="window.location.href='/TransactionMatching/InitTransactionMatchingRecords?taskInsId=@item.id';" class="btn btn-info">
+                                                    <i class='fa fa-eye'></i>&nbsp; View progress
+                                                </button>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <!-- END Time logging -->
+                <!-- Discuss -->
+                <div class="tab-pane fade" id="task-discuss">
+
+                    <div class="spacing" style="padding-top: 0;">
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <ul class="app_subnav admintabs" style="padding-top: 0;">
+                                    <li class="active"><a href="#task-comments" data-toggle="tab">Comments</a></li>
+                                    <li><a href="#task-files" data-toggle="tab">Files</a></li>
+                                </ul>
+                            </div>
+                        </div>
+                        <br />
+                        <div class="tab-content">
+                            <!-- Comments -->
+                            <div class="tab-pane fade in active" id="task-comments">
+                                <div class="well custom" style="margin-bottom: 60px;">
+                                    <div class="row">
+                                        <div class="col-xs-12">
+                                            <div class="form-group">
+                                                <label for="add-comment">Add a comment</label>
+                                                <textarea id="txt-comment-task" name="addcomment" onkeyup="validateAddCommentTask()" style="height: 80px;" class="form-control"></textarea>
+                                                <label id="addcomment-error" class="error" for="addcomment" style="display: none;">Your post is longer than the 1,500 character limit. Please reduce the length, or split it across multiple posts</label>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <button class="btn btn-success" onclick="AddCommentToTask('@Model.Key')">Submit</button>
+                                </div>
+                                <div id="list-comments-task">
+                                    @if (Comments != null && count_Comments > 0)
+                                    {
+                                        foreach (var item in Comments)
+                                        {
+                                            <!-- General post -->
+                                            <article id="post-@item.Id" class="activity post">
+                                                <div class="activity-avatar" style="background-image: url('@(api+item.CreatedBy.ProfilePic)&size=T');"></div>
+                                                <div class="activity-detail">
+                                                    <div class="activity-meta">
+                                                        <h4>@HelperClass.GetFullNameOfUser(item.CreatedBy, currentUserId)</h4>
+                                                        <small>@item.StartedDate.ConvertTimeFromUtc(timeZone).ToString(dateFormat + ", hh:mmtt")</small>
+                                                    </div>
+
+                                                    <div class="activity-overview media-comment">
+                                                        <p>@Html.Raw(item.Message.Replace(Environment.NewLine, "<br/>"))</p>
+                                                    </div>
+                                                </div>
+                                                <div class="clearfix"></div>
+                                            </article>
+                                            <!-- END General post -->
+                                        }
+                                    }
+                                </div>
+                                @if (count_Comments > pageSize)
+                                {
+                                    <button id="btnLoadPosts" onclick="LoadMorePosts('@Model.Key', @pageSize, 'list-comments-task')" class="btn btn-info trigger_load">Load older medias</button>
+                                }
+                            </div>
+                            <!-- END Comments -->
+                            <!-- Files -->
+                            <div class="tab-pane fade" id="task-files">
+                                @if (Model.ClosedBy == null)
+                                {
+                                    <button class="btn btn-success community-button" data-toggle="modal" data-target="#create-media" style="max-width: 230px; margin: 15px 0 30px 0;">
+                                        <i class="fa fa-upload"></i> &nbsp; Add a file
+                                    </button>
+                                }
+                                <div id="list-medias">
+                                    @if (count_Medias > 0)
+                                    {
+                                        foreach (var item in Model.SubActivities.OrderByDescending(x => x.Id).Take(pageSize))
+                                        {
+                                            var media = (QbicleMedia)item;
+                                            var createdByName = media.StartedBy.Id == currentUserId ? "Me" : HelperClass.GetFullNameOfUser(media.StartedBy);
+                                            var createdDate = media.StartedDate.Date == DateTime.UtcNow.Date ? "Today, " + media.StartedDate.ToString("hh:mmtt") : media.StartedDate.ToString(dateFormat + " hh:mmtt");
+                                            var lastUpdateFile = "";
+                                            var mediaLastupdate = media.VersionedFiles.Where(e => !e.IsDeleted).OrderByDescending(x => x.UploadedDate).FirstOrDefault() ?? null;
+                                            if (mediaLastupdate != null)
+                                            {
+                                                lastUpdateFile = mediaLastupdate?.UploadedDate.Date == DateTime.UtcNow.Date ? "Today, " + mediaLastupdate.UploadedDate.ToString("hh:mmtt") : mediaLastupdate.UploadedDate.ToString(dateFormat + " hh:mmtt");
+                                            } //Media post
+                                            <!-- Media post -->
+                                            <article class="activity media">
+                                                <div class="activity-avatar" style="background-image: url('@api@(media.StartedBy.ProfilePic)&size=T');"></div>
+                                                <div class="activity-detail" style="width: 100%; max-width: 100%;">
+                                                    <div class="activity-meta">
+                                                        <h4>@createdByName</h4>
+                                                        <small>@createdDate</small>
+                                                        <br class="visible-xs">
+                                                    </div>
+
+                                                    <div class="activity-overview media">
+                                                        <div class="row">
+                                                            <div class="col-xs-12 col-sm-5 col-lg-4">
+                                                                <a href="javascript:void(0)" onclick="ShowMediaPage('@media.Key')">
+                                                                    @if (media.FileType.Type == "Image File")
+                                                                    {
+                                                                        <img id="media-@item.Id" class="img-responsive" src='@api@(mediaLastupdate.Uri)&size=M' />
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <img src="@media.FileType.ImgPath" class="img-responsive">
+                                                                    }
+                                                                </a>
+                                                            </div>
+                                                            <div class="col-xs-12 col-sm-7 col-lg-8 description" style="padding-top: 0;">
+                                                                <h5>@media.Name</h5>
+                                                                <p>
+                                                                    @media.Description
+                                                                </p>
+                                                                <small>@Utility.GetFileTypeDescription(media.FileType.Extension) | Update @lastUpdateFile</small>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="clearfix"></div>
+                                            </article>
+                                            <!-- END Media post -->
+                                        }
+                                    }
+                                    @if (count_Medias > pageSize)
+                                    {
+                                        <button id="btnLoadMedias" onclick="LoadMoreMedias(@Model.Id, @pageSize, 'list-medias')" class="btn btn-info trigger_load">Load older medias</button>
+                                    }
+                                </div>
+                            </div>
+                            <!-- END Files -->
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Right side -->
+        <div class="mdv2-col-user">
+            <h5 style="margin: 0; padding: 0 0 20px 0;">Related activities</h5>
+            @foreach (var item in Relates)
+            {
+                if (item.Activity.ActivityType == QbicleActivity.ActivityTypeEnum.TaskActivity)
+                {
+                    var activity = item.Activity as QbicleTask;
+                    var domain = activity.Qbicle.Domain;
+                    var qbicle = activity.Qbicle;
+                    var stepPercent = activity.QSteps.Where(s => s.StepInstance.Any(st => st.isComplete)).Sum(s => s.Weight);
+                    <div class="mdv2-activity" style="height: auto; margin-bottom: 15px;">
+                        <span class="status green"></span>
+                        <ul class="breadcrumb">
+                            <li><a href="#" onclick="DomainSelected('@domain.Key','')">@domain.Name</a></li>
+                            <li><a href="#" onclick="QbicleSelected('@qbicle.Key', 'Dashboard')">@qbicle.Name</a></li>
+                            <li>Task</li>
+                        </ul>
+                        <a href="javascript:ShowTaskPage('@activity.Key', false);">
+                            <h2>@activity.Name</h2>
+                        </a>
+                        <p>@activity.Description</p>
+                        @if (!activity.isComplete && activity.ActualStart != null && activity.ActivityType == QbicleActivity.ActivityTypeEnum.TaskActivity)
+                        {
+                            <div class="mdv2-progress">
+                                <p class="countdown">...</p>
+                                <div class="progress">
+                                    <div class="progress-bar" role="progressbar" style="width: @stepPercent%" aria-valuenow="@stepPercent" aria-valuemin="0" aria-valuemax="100"></div>
+                                </div>
+                                <small>@(stepPercent)%</small>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    var activity = item.Activity as QbicleEvent;
+                    var domain = activity.Qbicle.Domain;
+                    var qbicle = activity.Qbicle;
+                    <div class="mdv2-activity" style="height: auto; margin-bottom: 15px;">
+                        <span class="status green"></span>
+                        <ul class="breadcrumb">
+                            <li><a href="#" onclick="DomainSelected('@domain.Key','')">@domain.Name</a></li>
+                            <li><a href="#" onclick="QbicleSelected('@qbicle.Key', 'Dashboard')">@qbicle.Name</a></li>
+                            <li>Event</li>
+                        </ul>
+                        <a href="javascript:ShowTaskPage('@activity.Key', false);">
+                            <h2>@activity.Name</h2>
+                        </a>
+                        <p>@activity.Description</p>
+                        <h5 style="font-size: 10px;"><i class="fa fa-calendar"></i> &nbsp; @activity.Start.ToString("dd.MMMM.yyyy HH:mm") in @activity.Location</h5>
+                    </div>
+                }
+
+            }
+        </div>
+    </section>
+    <!-- ./content -->
+</div>
+@if (Model.StartedBy.Id == currentUserId || domainAdministrators.Any(x => x.Id == currentDomainId))
+{
+    Html.RenderAction("GenerateModalMedia", "Qbicles");
+}
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/cleanbook.cbtask.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/cleanbook.cbtask.min.js"></script>
+    }
+}

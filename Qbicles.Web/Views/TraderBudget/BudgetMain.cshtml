@@ -1,0 +1,291 @@
+﻿
+@using System.Diagnostics
+@using Qbicles.BusinessRules
+@using Qbicles.Models.Trader
+@using Qbicles.Models.Trader.Budgets
+@model Qbicles.Models.Trader.Budgets.BudgetScenario
+@{
+    ViewBag.Title = "Trader Budget #" + Model.Id;
+
+    var productGroups = (List<TraderGroup>)ViewBag.ProductGroups;
+    var budgetGroups = (List<BudgetGroup>)ViewBag.BudgetGroups;
+    var timeZone = (string)ViewBag.CurrentTimeZone ?? "";
+
+    var api = (string)ViewBag.DocRetrievalUrl;
+}
+
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail">
+
+
+    <!-- Main content -->
+    <section class="content">
+
+        <div class="row">
+            <div class="col-xs-12 item_detail" style="padding-left: 15px;">
+
+                <br />
+                <div class="item_type_icon" style="position: relative; top: 12px;">
+                    <img src="/Content/DesignStyle/img/icon_bookkeeping.png">
+                </div>
+                <div class="item_titling">
+                    <span class="item_type">Trader</span>
+                    <h3>@Model.Title</h3>
+                </div>
+                <div class="clearfix"></div>
+
+                <br /><br />
+
+                <div class="row">
+                    <div class="col-xs-12">
+                        <div class="app_filter">
+                            <div class="row">
+                                <div class="col-xs-12">
+                                    @*<a href="/Trader/AppTrader" onclick="setTabTrader('apptrader')" class="btn btn-primary"><i class="fa fa-home"></i> &nbsp; Home</a>*@
+                                    <a href="/Trader/AppTrader" onclick="setTabTrader('budget','scenario')" class="btn btn-info"><i class="fa fa-angle-left"></i> &nbsp; Budget Scenarios</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+
+        <br />
+        <div class="app_upper_dash text-center">
+            <div class="row">
+                <div class="col-xs-12 col-sm-6 col-lg-4">
+                    <div class="stat_label">
+                        <span>Fiscal Period</span>
+                        <h3>@(Model.FiscalStartPeriod.DatetimeToOrdinal()) - @(Model.FiscalEndPeriod.DatetimeToOrdinal())</h3>
+                    </div>
+                </div>
+                <div class="col-xs-12 col-sm-6 col-lg-4">
+                    <div class="stat_label">
+                        <span>Reporting period</span>
+                        <h3>@Model.ReportingPeriod</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+
+        <br />
+        <div class="row">
+            <div class="col-xs-12">
+                <ul class="app_subnav">
+                    <li class="active">
+                        <a onclick="LoadBudgetStartingQuantities(@Model.Id)" href="#budget-quantities" data-toggle="tab">Starting Quantities</a>
+                    </li>
+                    <li><a onclick="LoadBudgetProcess(@Model.Id)" href="#budget-process" data-toggle="tab">Process</a></li>
+                    <li><a onclick="LoadBudgetReport(@Model.Id)" href="#budget-report" data-toggle="tab">Report</a></li>
+                    <li><a onclick="LoadBudgetCashflow(@Model.Id)" href="#budget-cashflow" data-toggle="tab">Cashflow</a></li>
+                    <li><a onclick="LoadBudgetVsActual(@Model.Id)" href="#budget-vs" data-toggle="tab">Budget vs Actual</a></li>
+                </ul>
+            </div>
+        </div>
+
+        <br />
+
+        <div class="tab-content">
+
+
+            <!-- Starting Quantities -->
+            <div class="tab-pane fade in active" id="budget-quantities">
+                <div class="well custom" style="padding-bottom: 5px;">
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-6 col-lg-3">
+                            <div class="form-group">
+                                <label for="fiscal year">Search for something</label>
+                                <input id="filter-col-123" type="text" class="form-control budget-quantities-search" data-column="1" placeholder="Search for...">
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-sm-6 col-lg-2">
+                            <div class="form-group">
+                                <label for="showtype">Limit by method(s)</label>
+                                <select id="filter-col-4" class="form-control checkmulti" data-column="4" multiple style="display:none;">
+                                    <option value="Item I B_u_y">Items I buy</option>
+                                    <option value="Item I Sell">Items I sell</option>
+                                    <option value="Item I Buy & Sell">Items I buy and sell</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-sm-6 col-lg-2">
+                            <div class="form-group">
+                                <label for="showtype">Limit by Product Group(s)</label>
+                                <select id="filter-col-5" class="form-control checkmulti" data-column="5" multiple style="display:none;" style="width: 100%;">
+                                    @foreach (var group in productGroups)
+                                    {
+                                        <option value="@group.Name">@group.Name</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-sm-6 col-lg-2">
+                            <div class="form-group">
+                                <label for="showtype">Limit by Budget Group(s)</label>
+                                <select id="filter-col-8" class="form-control checkmulti" data-column="8" multiple style="display:none;" style="width: 100%;">
+                                    @foreach (var group in budgetGroups)
+                                    {
+                                        <option value="@group.Title">@group.Title</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+                <br /><br />
+                <div class="activity-overview no-search">
+                    <table class="datatable table-striped table-hover" id="budget-quantities-list" style="width: 100%;" data-paging="false">
+                        <thead>
+                            <tr>
+                                <th data-priority="5" style="width: 40px;" data-orderable="false"></th>
+                                <th data-priority="1">Name</th>
+                                <th data-priority="1">SKU</th>
+                                <th data-priority="1">Description</th>
+                                <th data-priority="1">Method</th>
+                                <th data-priority="1">Product Group</th>
+                                <th data-priority="1">Unit</th>
+                                <th data-priority="1">Starting Quantity</th>
+                                <th data-priority="1">Budget Group(s)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var scenarioItemStartingQuantity in Model.ScenarioItemStartingQuantities)
+                            {
+                                var method = "";
+                                var methodFilter = "";
+                                if (scenarioItemStartingQuantity.Item.IsBought && scenarioItemStartingQuantity.Item.IsSold)
+                                {
+                                    method = "Item I Buy & Sell";
+                                }
+                                else if (scenarioItemStartingQuantity.Item.IsBought && !scenarioItemStartingQuantity.Item.IsSold)
+                                {
+                                    method = "Item I Buy"; methodFilter = "Item I B_u_y";
+                                }
+                                else if (!scenarioItemStartingQuantity.Item.IsBought && scenarioItemStartingQuantity.Item.IsSold)
+                                {
+                                    method = "Item I Sell";
+                                }
+                                <tr>
+                                    <td>
+                                        <div class="table-avatar mini" style="background-image: url('@api@scenarioItemStartingQuantity.Item.ImageUri');">&nbsp;</div>
+                                    </td>
+                                    <td>@scenarioItemStartingQuantity.Item.Name</td>
+                                    <td>@scenarioItemStartingQuantity.Item.SKU</td>
+                                    <td>@scenarioItemStartingQuantity.Item.Description</td>
+                                    <td>
+                                        <span hidden="">@methodFilter</span>@method
+                                    </td>
+                                    <td>@(scenarioItemStartingQuantity.Item?.Group?.Name)</td>
+                                    <td>
+                                        <select id="unit-@scenarioItemStartingQuantity.Id" onchange="UpdateScenarioItemStartingUnit(@scenarioItemStartingQuantity.Id)" class="form-control select2-unit" style="width: 100%;">
+                                            @foreach (var unit in scenarioItemStartingQuantity.Item.Units)
+                                            {
+                                                if (scenarioItemStartingQuantity.Unit?.Id == unit.Id)
+                                                {
+                                                    <option selected="" value="@unit.Id">@unit.Name</option>
+                                                }
+                                                else
+                                                {
+                                                    <option value="@unit.Id">@unit.Name</option>
+                                                }
+                                            }
+                                        </select>
+                                    </td>
+                                    <td><input type="number" id="quantity-@scenarioItemStartingQuantity.Id" onchange="UpdateScenarioItemStartingQuantity(@scenarioItemStartingQuantity.Id)" value="@scenarioItemStartingQuantity.Quantity" class="form-control" name="startqty"></td>
+                                    <td>
+                                        <ul>
+                                            @foreach (var group in scenarioItemStartingQuantity.BudgetScenario.BudgetGroups)
+                                            {
+                                                <li>@group.Title</li>
+                                            }
+                                        </ul>
+                                    </td>
+                                </tr>
+                            }
+
+                        </tbody>
+                    </table>
+                </div>
+
+            </div>
+            <!-- END Starting Quantities -->
+            <!-- Overview -->
+            <div class="tab-pane fade" id="budget-process">
+
+            </div>
+            <!-- END Overview -->
+            <!-- Budget Report -->
+            <div class="tab-pane fade" id="budget-report">
+
+            </div>
+            <!-- END Budget Report -->
+            <!-- Budget Cashflow -->
+            <div class="tab-pane fade" id="budget-cashflow">
+
+
+            </div>
+            <!-- END Budget Cashflow -->
+            <!-- Budget vs Actual -->
+            <div class="tab-pane fade" id="budget-vs">
+
+            </div>
+            <!-- END Budget vs Actual -->
+
+
+
+        </div> <!-- ./tab-content -->
+
+
+
+    </section>
+    <!-- ./content -->
+
+</div>
+<!-- /.content-wrapper -->
+<div class="modal fade" id="app-trader-workgroup-preview" role="dialog" aria-labelledby="app-trader-workgroup-preview"></div><!-- /.modal -->
+<div class="modal fade" id="app-trader-budget-process-items" role="dialog" aria-labelledby="app-trader-budget-process-items"></div><!-- /.modal -->
+
+<div class="modal fade left" id="app-trader-budget-item-add-edit" role="dialog" aria-labelledby="app-trader-budget-item-add"></div><!-- /.modal -->
+<div class="modal fade left" id="app-trader-budget-item-breakdown-buysell" role="dialog" aria-labelledby="app-trader-budget-item-breakdown-buysell"></div><!-- /.modal -->
+
+<div class="modal fade" style="z-index: 9999" id="confirm-delete" role="dialog" aria-labelledby="confirm-delete">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-body">
+
+                <div class="activity-overview generic help-text" style="margin: 0;">
+                    <i class="fa fa-info-circle"></i>
+                    <p>You are about to delete item permanently. This action cannot be undone. If you are sure you wish to proceed, please confirm below...</p>
+
+
+                    <button class="btn btn-danger" onclick="CancelDelete()">Cancel</button>
+                    <button class="btn btn-success" onclick="RemoveRowItem()">Confirm &amp; Delete</button>
+                </div>
+
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+
+@{
+    <script src="~/Content/DesignStyle/js/bootstrap-multiselect.min.js"></script>
+    if (Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/trader.budget.main.js"></script>
+        <script src="~/Scripts/dev/trader.domain.js"></script>
+
+    }
+    else
+    {
+        <script src="~/Scripts/dev/trader.budget.main.min.js"></script>
+        <script src="~/Scripts/dev/trader.domain.min.js"></script>
+
+    }
+}

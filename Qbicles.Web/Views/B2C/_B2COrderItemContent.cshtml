@@ -1,0 +1,542 @@
+﻿@using Qbicles.Models;
+@using System.Linq;
+@using Qbicles.Models.Catalogs;
+@using Qbicles.BusinessRules.Helper;
+@using Qbicles.BusinessRules;
+@model CategoryItem
+@{
+    var api = (string)ViewBag.DocRetrievalUrl;
+
+    var currencySetting = (CurrencySetting)ViewBag.CurrencySetting;
+
+    var imageUri = Model.ImageUri;
+    if (string.IsNullOrEmpty(imageUri))
+    {
+        imageUri = Model.PosVariants.FirstOrDefault(v => v.IsDefault)?.ImageUri;
+    }
+    if (string.IsNullOrEmpty(imageUri))
+    {
+        imageUri = "https://www.placehold.it/300x250/EFEFEF/AAAAAA&text=no+image+selected";
+    }
+    else
+    {
+        imageUri = api + imageUri;
+    }
+
+
+    var minPrices = Model.PosVariants.Count == 0 ? 0 : Model.PosVariants.Min(p => p.Price?.GrossPrice ?? 0);
+    var priceFrom = currencySetting.CurrencySymbol + Qbicles.BusinessRules.CurrencyUserConfiguration.ToDecimalPlace(minPrices, (int)currencySetting.DecimalPlace);
+
+
+    var variantDefault = Model.PosVariants.FirstOrDefault(v => v.IsDefault) ?? new Variant();
+    var posVariantSelected = new
+    {
+        Id = variantDefault.Id,
+        Name = variantDefault.Name,
+        Price = variantDefault.Price?.GrossPrice ?? 0,
+        ImageUri = variantDefault.ImageUri ?? "",
+        IsActive = variantDefault.IsActive,
+        Options = variantDefault.VariantOptions?.OrderBy(o => o.Id).Select(p => new { p.Id }).ToList()
+    };
+
+
+    var firstPrices = Qbicles.BusinessRules.CurrencyUserConfiguration.ToDecimalPlace(variantDefault?.Price?.GrossPrice ?? 0, (int)currencySetting.DecimalPlace);
+
+    var isAllowAdd = (bool)ViewBag.isAllowAdd;
+    var propertyIndex = 0;
+    var optionLength = Model.VariantProperties.Count - 1;
+
+    var galleryItems = variantDefault.TraderItem.GalleryItems;
+
+    var isShopping = (bool)ViewBag.IsShopping;
+}
+
+<link href="~/Content/DesignStyle/css/easyzoom.css" rel="stylesheet" />
+<div class="modal-dialog modal-xl cx" role="document" id="add-new-item-to-order-modal">
+    <input type="hidden" id="currencyDecimalPlace" value="@((int)currencySetting.DecimalPlace)" />
+    <input type="hidden" id="currencySymbol" value="@currencySetting.CurrencySymbol" />
+    <input type="hidden" id="variant-image" value="@imageUri" />
+    <input type="hidden" id="category-item-id" value="@(Model.Id)" />
+
+    <div class="modal-content">
+        <div class="modal-body" style="padding: 0;">
+            <div class="product-modaltop" style="background-image: url('@imageUri');"></div>
+
+            <div class="product-sell">
+
+                <div class="text-center" style="margin-bottom: 50px;">
+                    <h6>@Model.Category.Name</h6>
+                    <h1>@Model.Name</h1>
+                    <h2><span style="font-size: 12px; color: rgba(0, 0, 0, 0.4); font-weight: 500;">Price from</span> @priceFrom</h2>
+                </div>
+                <br />
+
+                <div class="row">
+                    @{
+                        var col = "col-sm-6";
+                        if (!galleryItems.Any())
+                        {
+
+                            col = "col-sm-12";
+                        }
+                    }
+                    @if (galleryItems.Any())
+                    {
+                        <div class="col-xs-12 @col">
+
+                            <div class="prodgallery" style="max-width: none;">
+                                @{
+                                    var galleryItemFirst = galleryItems.FirstOrDefault(e => e.Order == 0);
+                                    var index = 0;
+                                }
+                                <div class="easyzoom easyzoom--adjacent easyzoom--with-thumbnails">
+                                    <a href="@galleryItemFirst.FileUri.ToUri()">
+                                        <img src="@galleryItemFirst.FileUri.ToUri(Enums.FileTypeEnum.Image,"M")" alt="" style="width: 100%; height: auto;" />
+                                    </a>
+                                </div>
+
+
+                                <br /><br />
+
+                                <ul class="flex-grid-quarters thumbnails">
+                                    @foreach (var gallery in galleryItems)
+                                    {
+                                        var activethumb = "activethumb";
+                                        if (index > 0) { activethumb = ""; }
+                                        <li class="col @activethumb">
+                                            <a href="@gallery.FileUri.ToUri()" data-standard="@gallery.FileUri.ToUri(Enums.FileTypeEnum.Image,"M")">
+                                                <div class="standardcontain" style="background-image: url('@gallery.FileUri.ToUri(Enums.FileTypeEnum.Image,"T")');"></div>
+                                            </a>
+                                        </li>
+                                        index++;
+                                    }
+                                    <li class="col"></li>
+                                </ul>
+
+                            </div>
+
+
+                        </div>
+                    }
+
+
+                    <div class="col-xs-12 @col">
+
+                        <div class="spacing" style="padding-top: 0;">
+
+
+                            <h5>More information</h5>
+                            <br />
+
+                            <div class="quillcontent">
+                                @Html.Raw(variantDefault.TraderItem.Description)
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+
+                <div class="well custom rounded" style="padding-bottom: 5px;">
+
+                    <div class="row">
+                        @{
+                            var colSize = 6;
+                            if (Model.VariantProperties.Any() == false && Model.PosExtras.Any() == false)
+                            {
+                                colSize = 12;
+                            }
+
+
+                        }
+                        @if (colSize == 6)
+                        {
+                            <div class="col-xs-12 col-sm-6">
+
+                                <div class="row" id="item-variants">
+                                    @foreach (var property in Model.VariantProperties.OrderBy(e => e.Name))
+                                    {
+                                        <div class="col-xs-12 col-md-11">
+                                            <div class="form-group">
+                                                <label for="variant0">@property.Name</label>
+                                                <select id="select-index-@propertyIndex" property-id="@property.Id" onchange="changeVariantOption(this)" class="variant-selector form-control select2modal" style="width: 100%;">
+                                                    @foreach (var option in property.VariantOptions.OrderBy(e => e.Name))
+                                                    {
+                                                        if (Model.VariantProperties.Any(variantProp => variantProp.VariantOptions.Any(m => m.Id == option.Id && m.VariantProperty.Id == property.Id)))
+                                                        {
+                                                            var optionDefault = variantDefault.VariantOptions.Any(o => o.Id == option.Id && o.VariantProperty.Id == property.Id) ? "selected" : "";
+
+                                                            <option class="option-select" id="option-@option.Id" option-id="@option.Id" @optionDefault value="@option.Id">@option.Name</option>
+                                                        }
+                                                    }
+                                                </select>
+                                            </div>
+                                        </div>
+                                        propertyIndex++;
+                                    }
+                                </div>
+
+                                @if (Model.VariantProperties.Any())
+                                {
+                                    <button class="btn btn-danger animated fadeIn" onclick="ResetVariantSelectedOption()" style="margin-top: 10px; width: 30%;" id="reset-variant-option-btn">Reset choices</button>
+                                }
+
+
+                                <br />
+                                <br />
+                                <br />
+                                <div class="row">
+                                    <div class="col-xs-12">
+                                        <div id="item-extras" class="form-group">
+                                            <label style="display: block; margin-bottom: 10px;">Optional extras</label>
+                                            @foreach (var extra in Model.PosExtras)
+                                            {
+                                                var formattedExtraPrice = Qbicles.BusinessRules.CurrencyUserConfiguration.ToDecimalPlace(extra.Price?.GrossPrice ?? 0, (int)currencySetting.DecimalPlace);
+                                                <div class="checkbox toggle">
+                                                    <label>
+                                                        <input id="extra-@extra.Id" extra-id="@extra.Id" value="@(extra.Price?.GrossPrice??0)" onchange="UpdateTotalOrder()" extraprice="@formattedExtraPrice" data-toggle="toggle" class="toggle-switch" data-onstyle="success" type="checkbox"  oninput="validity.valid || (value = '0')" min="0">
+                                                        @extra.Name (+@currencySetting.CurrencySymbol @formattedExtraPrice)
+                                                    </label>
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+                        }
+
+
+                        <div class="col-xs-12 col-sm-@colSize">
+
+                            <div class="activity-overview plain rounded" style="margin: 0 0 15px 0;">
+                                @if (isShopping)
+                                {
+                                    <label>Quantity</label><br />
+                                    <div class="input-group" style="max-width: 100%; margin-bottom: 15px;">
+                                        <input onchange="UpdateTotalOrder()" id="item-quantity" type="number" class="form-control" value="1"  oninput="validity.valid || (value = '1')" min="1">
+                                    </div>
+                                    <br />
+                                }
+                                else
+                                {
+                                    <input style="display:none;" id="item-quantity" type="number" class="form-control" value="1">
+                                }
+
+
+                                <label>Total</label>
+                                <h2 class="order-total" style="margin-top: 0 !important;">
+                                    <i id="tot" style="font-style: normal;">
+                                        <span style="font-size: 36px; margin-top: 0; padding-top: 0;" id="order-total-prices" value="@(firstPrices)">@Html.Raw(currencySetting.CurrencySymbol)@firstPrices</span>
+                                    </i>
+                                    <span style="font-size: 12px; color: rgba(0, 0, 0, 0.4); font-weight: 500;"> incl. tax</span>
+                                </h2>
+                                <h2 class="order-total-empty" style="margin-top: 0 !important; display:none;">
+                                    <i id="tot" style="font-style: normal;">
+                                        <span style="font-size: 36px; margin-top: 0; padding-top: 0;"> @($"{currencySetting.CurrencySymbol}0")</span>
+                                    </i>
+                                    <span style="font-size: 12px; color: rgba(0, 0, 0, 0.4); font-weight: 500;"> incl. tax</span>
+                                </h2>
+
+                                @if (isAllowAdd)
+                                {
+                                    <button class="btn btn-success community-button w-auto" style="min-width: 250px;" onclick="AddItemToB2COrder(@Model.Id)"><i class="fa fa-shopping-cart"></i> &nbsp; Add to cart</button>
+                                }
+
+                                @if (isShopping)
+                                {
+                                    <button class="btn btn-primary community-button w-auto" data-dismiss="modal">Continue shopping</button>
+                                }
+                                else
+                                {
+                                    <button class="btn btn-success community-button w-auto" data-dismiss="modal">Close</button>
+                                }
+
+
+                            </div>
+
+
+
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/b2c.discussionorder.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/b2c.discussionorder.js"></script>
+    }
+}
+
+<script src="~/Content/DesignStyle/js/easyzoom.js"></script>
+
+
+
+
+<script>
+    var $posVariantSelected = @Html.Raw(Json.Encode(posVariantSelected));
+    var variantChangeEventActive = true;
+
+    var variants = @Html.Raw(Json.Encode(Model.PosVariants.Where(v => v.IsActive).Select(x => new
+              {
+                  x.Id,
+                  x.Name,
+                  GrossPrice= x.Price?.GrossPrice ?? 0,
+                  x.ImageUri,
+                  x.IsActive,
+                  Options = x.VariantOptions.OrderBy(o=>o.Id).Select(p=> new { p.Id }).ToList(),
+                  VariantOption = x.VariantOptions.OrderBy(o => o.VariantProperty.Id).Select(p => new {
+                      Id = p.Id,
+                      PropertyId = p.VariantProperty.Id
+                  }).ToList()
+              })));
+
+    var variantsDisable = @Html.Raw(Json.Encode(Model.PosVariants.Where(v=>!v.IsActive).Select(x => new
+                     {
+                         x.Id,
+                         x.Name,
+                         GrossPrice= x.Price?.GrossPrice ?? 0,
+                         x.ImageUri,
+                         x.IsActive,
+                         Options = x.VariantOptions.OrderBy(o=>o.Name).Select(p=> new { p.Id }).ToList()
+                     })));
+
+    $(document).ready(function () {
+        UpdateTotalOrder();
+
+        var $easyzoom = $('.easyzoom').easyZoom();
+        // Setup thumbnails example
+        var api1 = $easyzoom.filter('.easyzoom--with-thumbnails').data('easyZoom');
+
+        $('.thumbnails').on('click', 'a', function (e) {
+            var $this = $(this);
+
+            $('.thumbnails li').removeClass('activethumb');
+            $this.parent().addClass('activethumb');
+
+            e.preventDefault();
+
+            // Use EasyZoom's `swap` method
+            api1.swap($this.data('standard'), $this.attr('href'));
+        });
+    });
+
+    function ResetVariantSelectedOption() {
+        var variantPropertiesElement = $('.variant-selector');
+        variantChangeEventActive = false;
+        _.forEach(variantPropertiesElement, function (propertyElementItem) {
+            $(propertyElementItem).removeAttr('element-index');
+            $(propertyElementItem).select2('val', '');
+            // Reset active/disable status
+            _.forEach($(propertyElementItem).find('option'), function (optionItem) {
+                $(optionItem).prop('disabled', false);
+            })
+            $(propertyElementItem).select2();
+            $(".order-total").hide();
+            $(".order-total-empty").show();
+        })
+        setTimeout(function () {
+            variantChangeEventActive = true;
+        }, 200);
+    }
+
+    function UpdateTotalOrder() {
+        //$('.option-select').removeAttr('disabled');
+        //$('#item-variants div select').select2();
+
+
+        var lastOptions = [];
+        $('#select-index-' +@optionLength+' option').each(function () {
+            lastOptions.push(_.toNumber(this.value));
+        });
+
+        // variant options
+        var selectedOptions = $('#item-variants div select option:selected');
+        var variantPropertiesElement = $('.variant-selector');
+
+        // If not all properties have selected option - hide the price and return
+        if (selectedOptions.length != variantPropertiesElement.length) {
+            $(".order-total").hide();
+            $(".order-total-empty").show();
+            return;
+        }
+
+        var optionsSelected = [];
+
+        // variant processing
+        _.forEach(selectedOptions, function (option) {
+            var optionId = option.attributes["option-id"].value;
+            optionsSelected.push(_.toNumber(optionId) );
+        });
+
+        var quantity = parseFloat($("#item-quantity").val());
+
+        $.ajax({
+            'method': 'POST',
+            'dataType': 'JSON',
+            'url': '/B2C/GetVariantBySelectedOption',
+            'data': {
+                'listVariantOptionIds': optionsSelected,
+                'categoryItemId': Number($("#category-item-id").val()),
+                'quantity': quantity
+            },
+            'success': function (response) {
+                if (response.result) {
+                    var data = response.Object;
+                    if (data.PriceStr != null && data.PriceStr != '') {
+                        var extraItems = $('#item-extras div label div input');
+                        var extraPrice = 0;
+                        // extra processing
+                        _.forEach(extraItems, function (extra) {
+                            if ($('#' + extra.id).prop('checked'))
+                                extraPrice += parseFloat(extra.value);
+                        });
+
+                        var totalPrice = parseFloat(data.Price) + extraPrice;
+                        var totalPriceStr = '@(currencySetting.CurrencySymbol)' + totalPrice.toFixed(@((int)currencySetting.DecimalPlace));
+
+                        $("#order-total-prices").html("");
+                        $("#order-total-prices").append(totalPriceStr);
+                        $("#order-total-prices").attr("value", totalPrice);
+                        $(".order-total").show();
+                        $(".order-total-empty").hide();
+                        return;
+                    } else {
+                        $(".order-total").hide();
+                        $(".order-total-empty").show();
+                        return;
+                    }
+                } else {
+                    $(".order-total").hide();
+                    $(".order-total-empty").show();
+                    return;
+                }
+            },
+            'error': function (err) {
+                $(".order-total").hide();
+                $(".order-total-empty").show();
+                return;
+            }
+        })
+    }
+
+    function changeVariantOption(ev) {
+        if (!variantChangeEventActive)
+            return;
+        variantChangeEventActive = false;
+        // New requirements logic
+        // Get Property Id of the changed element - call this as ElementA
+        var selectedElement = $(ev);
+        var propertyId = selectedElement.attr('property-id');
+        var currentElementIndex = selectedElement.attr('element-index');
+        var lstVariantSelectors = $('.variant-selector');
+
+        // If ElementA has Index attribute value - call this as IndexA
+        // Remove the index attribute and disabled status from elements whose index is greater than IndexA
+        // Reset selected value status from elements whose index is greater than IndexA
+        if (currentElementIndex != null) {
+            _.forEach(lstVariantSelectors, variantSelector => {
+                var elementIndex = $(variantSelector).attr('element-index');
+                if ((elementIndex != null && Number(elementIndex) > Number(currentElementIndex)) || elementIndex == null) {
+                    $(variantSelector).removeAttr('element-index');
+                }
+            });
+        }
+        // If ElementA does NOT have index
+        // Get max index value and set IndexA = max index value + 1 to ElementA
+        else {
+            var maxIndex = 0;
+            _.forEach(lstVariantSelectors, variantSelector => {
+                var elementIndex = $(variantSelector).attr('element-index');
+                if (elementIndex != null && Number(elementIndex) > maxIndex) {
+                    maxIndex = Number(elementIndex);
+                }
+            })
+            selectedElement.attr('element-index', (maxIndex + 1));
+            currentElementIndex = maxIndex + 1;
+        }
+
+        // Disable all the options of the other
+        _.forEach(lstVariantSelectors, variantSelector => {
+            var elementIndex = $(variantSelector).attr('element-index');
+            if (elementIndex == null) {
+                $(variantSelector).select2('val', '');
+                $(variantSelector).find('option').prop('disabled', true);
+                $(variantSelector).select2();
+            }
+        });
+
+        // Get selected options set from elements having index
+        var selectedOptionSet = []
+        for (var i = 1; i <= currentElementIndex; i++) {
+            var propertyItem = $(".variant-selector[element-index=" + i + "]");
+            var selectedItem = {
+                'Id': $(propertyItem).find(':selected').attr('option-id'),
+                'PropertyId': $($(propertyItem)).attr('property-id')
+            };
+            selectedOptionSet.push(selectedItem);
+        }
+        selectedOptionSet.sort((a, b) => (a.PropertyId > b.PropertyId) ? 1 : -1);
+
+        // With Selected options set, get available variant properties sets - call this as AvailableOptionSet
+
+        // START: Getting different for arrays of objects
+        const isSameOptionSet = (a, b) => a.Id == b.Id && a.PropertyId == b.PropertyId;
+        // Get items that only occur in the left array,
+        // using the compareFunction to determine equality.
+        const onlyInLeft = (left, right, compareFunction) =>
+            left.filter(leftValue =>
+                !right.some(rightValue =>
+                    compareFunction(leftValue, rightValue)));
+        // END: Getting different for arrays of objects
+
+        var otherPropertyAvailableOptionSet = []
+        _.forEach(variants, availableVariantItem => {
+            var availableOptions = availableVariantItem.VariantOption;
+            var differentSet = onlyInLeft(availableOptions, selectedOptionSet, isSameOptionSet);
+            if (differentSet.length === (availableOptions.length - selectedOptionSet.length)) {
+                otherPropertyAvailableOptionSet.push(differentSet)
+            }
+        })
+
+        // Active the options for other property selectors that are in the 'otherPropertyAvailableOptionSet'
+        _.forEach(otherPropertyAvailableOptionSet, optionSet => {
+            _.forEach(optionSet, optionItem => {
+                var propertyId = optionItem.PropertyId;
+                var optionId = optionItem.Id;
+
+                // Active the options
+                $('.variant-selector[property-id=' + propertyId + "] option[option-id=" + optionId + "]").prop('disabled', false);
+                $('.variant-selector[property-id=' + propertyId + "]").select2();
+            })
+        })
+
+        // Active changable for variant selector
+        variantChangeEventActive = true;
+        UpdateTotalOrder();
+    }
+
+    //setTimeout(function () { LoadingOverlayEnd(); }, 500);
+
+
+
+
+</script>
+<style>
+    .select2-container--default .select2-results__option[aria-disabled=true] {
+        color: red;
+        text-decoration: line-through;
+    }
+    /*.easyzoom {
+        display: inline !important;
+    }*/
+</style>

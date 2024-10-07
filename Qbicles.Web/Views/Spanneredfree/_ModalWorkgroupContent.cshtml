@@ -1,0 +1,211 @@
+﻿@using Qbicles.BusinessRules;
+@using Qbicles.Models.Spannered;
+@using Qbicles.Models;
+@using Qbicles.Models.Trader;
+@model SpanneredWorkgroup
+@{
+    var defaultTopics = (List<ItemTopic>)ViewBag.topics;
+    var members = (List<ApplicationUser>)ViewBag.members;
+    var qbicles = (List<Qbicle>)ViewBag.qbicles;
+    var process = (List<SpanneredProcess>)ViewBag.process;
+    var wgMembers = Model != null && Model.Members != null ? Model.Members : new List<ApplicationUser>();
+    var wgApprovers = Model != null && Model.ReviewersApprovers != null ? Model.ReviewersApprovers : new List<ApplicationUser>();
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var tradergroups=(List<TraderGroup>)ViewBag.tradergroups;
+}
+<div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <h5 class="modal-title">@(Model != null && Model.Id > 0 ? "Edit a Workgroup" : "Add a Workgroup")</h5>
+        </div>
+        <div class="modal-body">
+            <form id="frmSpanneredWorkgroup" action="/Spanneredfree/SaveWorkgroup" method="post">
+                <div class="row">
+                    <div class="col-xs-12">
+                        <ul id="tabNavWorkgroup" class="app_subnav" style="list-style-type: none;">
+                            <li class="active"><a href="#add-specifics" data-toggle="tab">Specifics</a></li>
+                            <li><a href="#add-members" data-toggle="tab">Members &amp; roles</a></li>
+                        </ul>
+                    </div>
+                </div>
+                <br />
+                <div class="tab-content">
+
+                    <!-- Specifics -->
+                    <div class="tab-pane fade in active" id="add-specifics">
+                        <div class="well custom" style="padding-bottom: 10px;">
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label for="name">Workgroup name</label>
+                                        <input type="hidden" name="Id" value="@(Model?.Id??0)" />
+                                        <input type="hidden" id="txtWGLocationId" name="LocationId" value="@(Model?.Location?.Id??0)" />
+                                        <input type="text" name="Name" value="@(Model?.Name)" class="form-control">
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label for="LocationName">Location</label>
+                                        <input type="text" id="txtLocationName" name="LocationName" value="" disabled class="form-control">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label for="qbicle">Qbicle</label>
+                                        <select id="wg-qbicle" name="QbicleId" onchange="$('#wg-topic').empty(); reloadDefaultTopic(@(Model!=null&&Model.DefaultTopic!=null?Model.DefaultTopic.Id:0));" class="form-control select2" style="width: 100%;">
+                                            @foreach (var item in qbicles)
+                                            {
+                                                <option value="@item.Id" @(Model != null && Model.SourceQbicle != null && item.Id == Model.SourceQbicle.Id ? "selected" : "")>@item.Name</option>
+                                            }
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label for="qbicle">Default topic</label>
+                                        <select name="TopicId" id="wg-topic" class="form-control select2" style="width: 100%;">
+                                            @foreach (var item in defaultTopics)
+                                            {
+                                                <option value="@item.Id" @(Model != null && Model.DefaultTopic != null && item.Id == Model.DefaultTopic.Id ? "selected" : "")>@item.Name</option>
+                                            }
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label for="process">Associated processes (check all that apply)</label>
+                                        <select name="Processes" onchange="$(this).valid();" class="form-control checkmulti" style="width: 100%;" multiple>
+                                            @foreach (var item in process)
+                                            {
+                                                <option value="@item.Id" @(Model != null && Model.Processes.Any(s => s.Id == item.Id) ? "selected" : "")>@item.Name</option>
+                                            }
+                                        </select>
+                                        <label id="Processes-error" class="error" for="Processes" style="display: none;"></label>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label for="products">Linked product group(s) <span>*</span></label>
+                                        <select name="Groups" class="form-control select2" style="width: 100%;" multiple="" required>
+                                            @foreach (var item in tradergroups)
+                                            {
+                                                <option value="@item.Id" @(Model!=null&&Model.ProductGroups.Any(s=>s.Id==item.Id)?"selected":"")>@item.Name</option>
+                                            }
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                        <a href="#add-members" data-toggle="tab" class="btn btn-success btnNext">Next &nbsp; <i class="fa fa-angle-right"></i></a>
+                    </div>
+                    <!-- END Specifics -->
+                    <!-- Members -->
+                    <div class="tab-pane fade" id="add-members">
+
+                        <div class="contact-list" style="margin: 0 15px;">
+
+                            <div class="well custom">
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-8">
+                                        <div class="form-group" style="margin: 0;">
+                                            <label for="search">Search Domain users</label>
+                                            <input type="text" id="spkeyword" name="search" onkeyup="filterMembers();" class="form-control">
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-4">
+                                        <div class="form-group" style="margin: 0;">
+                                            <label for="search">Show</label>
+                                            <select name="show" id="slShow" onchange="filterMembers();" class="form-control select2" style="width: 100%;">
+                                                <option value="0" selected>All Domain users</option>
+                                                <option value="1">Workgroup members</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style="margin: 25px 0 60px 0;">
+
+                                <div>
+                                    <select id="slMembers" name="Members" class="form-control" style="width: 100%;display:none" multiple>
+                                        @if (members != null)
+                                        {
+                                            foreach (var item in members)
+                                            {
+                                                <option value="@item.Id" @(wgMembers != null && wgMembers.Any(s => s.Id == item.Id) ? "selected" : "")></option>
+                                            }
+                                        }
+                                    </select>
+                                    <select id="slReviewersApprovers" name="Approvers" class="form-control" style="width: 100%;display:none" multiple>
+                                        @if (members != null)
+                                        {
+                                            foreach (var item in members)
+                                            {
+                                                <option value="@item.Id" @(wgApprovers != null && wgApprovers.Any(s => s.Id == item.Id) ? "selected" : "")></option>
+                                            }
+                                        }
+                                    </select>
+                                    <ul id="wgMembers" class="widget-contacts">
+                                        @{
+                                            members = members.OrderBy(o => o.Surname).ToList();
+                                            var i = 0;
+                                            foreach (var item in members)
+                                            {
+                                                var isMember = (wgMembers != null && wgMembers.Any(s => s.Id == item.Id) ? true : false);
+                                                var fullname = HelperClass.GetFullNameOfUser(item);
+                                                if (i == 0)
+                                                {
+                                                    <li fullname="@fullname" class="letters @(isMember?"ismember":"")" style="padding-top: 0;">@(item.Surname != null ? item.Surname[0].ToString().ToUpper() : fullname?.Substring(0, 1))</li>
+                                                }
+                                                else
+                                                {
+                                                    <li fullname="@fullname" class="letters @(isMember?"ismember":"")">@(item.Surname != null ? item.Surname[0].ToString().ToUpper() : "")</li>
+                                                }
+                                                <li fullname="@fullname" class="@(isMember?"ismember":"")">
+                                                    <a href="#">
+                                                        <div class="contact-avatar">
+                                                            <div style="background-image: url('@(api+item.ProfilePic)');">&nbsp;</div>
+                                                        </div>
+                                                        <div class="contact-info">
+                                                            <h5>@(fullname)</h5>
+                                                        </div>
+
+                                                        <div class="contact-sideoptions">
+                                                            <button type="button" class="btn btn-success contact@(item.Id)-add" style="margin-top: 12px;@(isMember?"display: none;":"")" onclick="$(this).toggle(); $('.contact@(item.Id)-remove').toggle();addMembers('@item.Id');"><i class="fa fa-plus"></i> &nbsp; Add to Workgroup</button>
+                                                            <div class="contact@(item.Id)-remove" style="@(isMember?"":"display: none;");">
+                                                                <label style="color: #333; font-weight: 400;" class="pull-right"><input id="apr@(item.Id)" type="checkbox" @(wgApprovers != null && wgApprovers.Any(s => s.Id == item.Id) ? "checked" : "") onchange="isApprover('@item.Id',this);"> <i style="position: relative; top: -2px; left: 4px; font-style: normal;">Is an Approver</i></label><br>
+                                                                <button type="button" class="btn btn-danger pull-right" style="margin-top: 3px;" onclick="$('.contact@(item.Id)-remove').hide(); $('.contact@(item.Id)-add').toggle();removeMembers('@item.Id');"><i class="fa fa-trash"></i> &nbsp; Remove</button>
+                                                                <div class="clearfix"></div>
+                                                            </div>
+                                                        </div>
+                                                    </a>
+                                                </li>
+                                                i++;
+                                            }
+                                        }
+                                    </ul>
+                                </div>
+
+                            </div>
+
+                        </div>
+
+
+                        <br />
+                        <a href="#add-specifics" data-toggle="tab" class="btn btn-warning btnPrevious"><i class="fa fa-angle-left"></i> &nbsp; Previous</a>
+                        <button type="submit" class="btn btn-success">Confirm</button>
+
+                    </div>
+                    <!-- END Members -->
+                </div>
+            </form>
+        </div>
+    </div><!-- /.modal-content -->
+</div><!-- /.modal-dialog -->

@@ -1,0 +1,476 @@
+﻿@*@using Qbicles.Models;
+@using Qbicles.BusinessRules; 
+@model QbicleDomain
+@{
+    ViewBag.Title = ViewBag.PageTitle;
+    var userCurrentDomain = (List<ApplicationUser>)ViewBag.UserCurrentDomain;
+    var userDomains = (List<QbicleDomain>)ViewBag.Domains;
+    var cubeCurrentUserId = (string)ViewBag.CurrentUserId;
+}
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper" style="min-height: 346px;">
+    <div class="content">
+        <div class="row">
+            <div class="col-xs-12">
+                <h1>@Model.Name</h1>
+            </div>
+        </div>
+
+
+        <div class="row">
+            <div class="col-xs-12">
+                <div class="activity-overview task" role="navigation" style="padding: 15px;">
+
+                    <div class="row">
+                        <div class="col-xs-12">
+                            <div class="qbicle-display" style="margin: 8px 0;">
+                                <form name="" class="form-inline">
+                                    <div class="checkbox-inline">
+                                        <label>
+                                            <input id="checkPublic" onchange="FilterQbicle()" type="checkbox" checked=""> Public
+                                        </label>
+                                    </div>
+                                    <div class="checkbox-inline">
+                                        <label>
+                                            <input id="checkPrivate" onchange="FilterQbicle()" type="checkbox" checked=""> Private
+                                        </label>
+                                    </div>
+                                    <div class="checkbox-inline">
+                                        <label>
+                                            <input id="checkOpen" onchange="FilterQbicle()" type="checkbox" checked=""> Open
+                                        </label>
+                                    </div>
+                                    <div class="checkbox-inline">
+                                        <label>
+                                            <input id="checkClosed" onchange="FilterQbicle()" type="checkbox" checked=""> Closed
+                                        </label>
+                                    </div>
+                                </form>
+                            </div> <!-- ./pull-right -->
+                        </div> <!-- ./subnav -->
+                    </div>
+                </div>
+            </div>
+        </div>
+        <br /><br />
+        <div id="div-domainPartial"></div>
+        <p style="text-align: center;">
+            <span>
+                <img id="loadingGif" style="display: none;" src="~/Content/DesignStyle/img/loading.gif" />
+            </span>
+        </p>
+    </div>
+</div>
+<!-- /.content-wrapper -->
+<div id="create-qbicle" class="modal fade" role="dialog" aria-labelledby="create-qbicle" data-focus-on="input:first" data-keyboard="true" data-backdrop="true">
+    <input type="hidden" name="modal_edit_title" value="Edit Qbicle" />
+    <input type="hidden" name="modal_add_title" value="Create a Qbicle" />
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title"></h5>
+            </div>
+            <div class="modal-body">
+                <form id="form_qbicle_addedit" method="post" action="/Qbicles/SaveQbicle" enctype="multipart/form-data">
+                    <input id="qbicId" type="hidden" name="Id" />
+                    <input id="input_group_logopath" type="hidden" name="qbicleLogo" />
+                    <div class="well">
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label>Domain <span>*</span></label>
+                                    <select id="domainId" name="domainId" class="form-control">
+                                        @{
+                                            if (userDomains != null)
+                                            {
+                                                foreach (var u in userDomains.OrderBy(n => n.Name).ToList())
+                                                {
+                                                    if (u.Id == Model.Id)
+                                                    {
+                                                        <option value="@u.Id" selected>@u.Name</option>
+                                                    }
+                                                    else
+                                                    {
+                                                        <option value="@u.Id">@u.Name</option>
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    </select>
+                                    <div style="clear: both;"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <div class="form-group" data-provides="fileinput">
+                                    <label for="media-file">Icon/Logo</label>
+                                    <input type="file" id="qbicImage" class="form-control" name="qbicleLogo" accept=".jpg,.jpeg,.png" onchange="loadImg(event)">
+                                    <img id="qbicleImg" src="" class="img-circle icon" style="width:46px;height:46px;">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label for="media-title">Title <span>*</span></label>
+                                    <input type="text" id="qbicName" name="Name" class="form-control" tabindex="1">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label for="media-description">Add a description <span>*</span></label>
+                                    <textarea id="qbicDescription" name="Description" class="form-control" tabindex="2"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label for="qbicle-type">Is this Qbicle public or private?</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="selectUser" class="row">
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label>Invite the following people</label>
+                                    <select id="qbicUserDomainSelect" data-placeholder="..." name="userQbicle[]" multiple style="width:100%;" tabindex="4"></select>
+                                    <div style="clear: both;"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row hidden">
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label>Invite guests</label>
+                                    <br />
+                                    <select multiple id="qbicleGuests" name="guestsQbicle[]" type="text" class="form-control" data-role="tagsinput" style="width: 100%;"></select>
+                                    <div style="clear: both;"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <p style="text-align: center;">
+                            <span>
+                                <img id="loadingAddEditGif" style="display: none;" src="~/Content/DesignStyle/img/loading.gif" />
+                            </span>
+                        </p>
+                    </div>
+                    <button class="btn btn-success trigger_load" type="button" onclick="SaveQbicle()"><i class="fa fa-check"></i>&nbsp; Save Qbicle</button>
+                    <a id="close-reopen-qbicle" style="display:none;" href="#" class="btn btn-danger" onclick="CloseQbicleModal()" data-dismiss="modal"></a>
+                    <a href="#" class="btn btn-danger" onclick="ClearInputModalAddEdit()" data-dismiss="modal">Cancel</a>
+                </form>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>*@
+<!-- /.modal -->
+@*<script src="~/Content/DesignStyle/js/select2.full.min.js"></script>
+<script>
+    var $qbicleModal = $("#create-qbicle"),
+        $modal_group_title = $("#create-qbicle [class='modal-title']"),
+        $form_qbicle_addedit = $("#form_qbicle_addedit"),
+        $qbicName = $('#qbicName'),
+        $qbicImage = $('#qbicImage'),
+        $qbicDescription = $('#qbicDescription'),
+        $qbicScopeSelect = $('#qbicScopeSelect'),
+        $qbicUserDomainSelect = $('#qbicUserDomainSelect'),
+        $qbicId = $("#qbicId"),
+        $selectDomain = $("#domainId");
+    var $open_close = 0;
+    var $cubeOpen = true, $cubeClosed = true, $cubePublic = true, $cubePrivate = true, $cubeSearch = "";
+
+    var $checkPublic = $("#checkPublic"),
+        $checkPrivate = $("#checkPrivate"),
+        $checkOpen = $("#checkOpen"),
+        $checkClosed = $("#checkClosed"),
+        $inputCubeSearch = $("#inputCubeSearch");
+
+    var $qbicleGuests = $("#qbicleGuests");
+    jQuery(function ($) {
+        $qbicUserDomainSelect.select2();
+        $qbicUserDomainSelect.on("select2:unselecting", function (e) {
+            if (e.params.args.data.id == '@cubeCurrentUserId')
+                e.preventDefault();
+        });
+        ////get list users associated with the Domain has selected in the dropdown
+        $selectDomain.change(function () {
+            $("#loadingAddEditGif").show();
+            $("#selectUser").hide();
+            var domainSelected = $(this).find("option:selected");
+            $.ajax({
+                type: 'post',
+                url: '/Domain/GetUsersByDomainId',
+                datatype: 'json',
+                data: {
+                    domainId: domainSelected.val()
+                },
+                success: function (refModel) {
+                    if (refModel.result) {
+                        $qbicUserDomainSelect.empty().append(refModel.Object);
+                    }
+                    else {
+                    }
+                    $("#loadingAddEditGif").hide();
+                    $("#selectUser").show();
+                },
+                error: function (xhr, status, error) {
+                   
+                    $("#loadingAddEditGif").hide();
+                    $("#selectUser").show();
+                }
+            });
+        });
+
+        $("#inputCubeSearch").keyup(function () {
+            if ($.trim($("#inputCubeSearch").val())) {
+                $('#buttonSearchQbicle').removeAttr('disabled', '');
+            }
+            else {
+                $('#buttonSearchQbicle').attr('disabled', '');
+            }
+        });
+        // set name,logo for Domain selected
+        $('#qbicleNameSelected').text('@Model.Name');
+        $("#qbicleLogoSelect").attr("src", "");
+        //input guests
+        $('#qbicleGuests').on('beforeItemAdd', function (event) {
+            var tag = event.item;
+            // Do some processing here
+            if (!event.options || !event.options.preventPost) {
+                if (validateEmail(tag)) {
+                    $.ajax({
+                        type: 'post',
+                        url: '/Account/CheckUserEmailInSystem',
+                        datatype: 'json',
+                        data: {
+                            userEmail: event.item
+                        },
+                        success: function (refModel) {
+                            if (refModel.result) {
+                                $('#qbicleGuests').tagsinput('remove', tag, { preventPost: true });
+                                event.item = refModel.msg;//exist user in the system, set by user's name
+                                $('#qbicleGuests').tagsinput('add', event.item, { preventPost: true });
+                            }
+                        }
+                    });
+                    return event;
+                }
+                else {
+                    event.cancel = true;
+                }
+            }
+        });
+    });
+    var loadImg = function (event) {
+        var output = document.getElementById('qbicleImg');
+        output.src = URL.createObjectURL(event.target.files[0]);
+    };
+    function AddnewQbicleClick() {
+
+        $("#close-reopen-qbicle").hide();
+        $selectDomain.removeAttr('disabled', '');
+        $.ajax({
+            type: 'post',
+            url: '/Domain/GetUsersByDomain',
+            datatype: 'json',
+            success: function (refModel) {
+                if (refModel.result) {
+                    $qbicUserDomainSelect.empty().append(refModel.Object);
+                    $qbicUserDomainSelect.select2().val(['@cubeCurrentUserId']).change();
+                }
+                else {
+                }
+            }
+        });
+        ClearError();
+        $qbicId.val(0);
+        $('#form_qbicle_addedit').find('[name="qbicName"]').focus();
+        $("#Scope").val($("#Scope option:first").val());
+        $modal_group_title.text($("input[name='modal_add_title']").val());
+    };
+
+    function SearchQbicleClick(obj) {
+        if (obj == 0) {//cancel clicked
+            $("#inputCubeSearch").val('');
+            $('#buttonSearchQbicle').attr('disabled', '');
+            ClearError();
+            $("#divSearchFor").hide();
+        }
+        else {//search clicked
+            $("#divSearchFor").show();
+            $('#spanSearchForStr').text($("#inputCubeSearch").val());
+        }
+        FilterQbicle();
+    }
+
+    function FilterQbicle() {
+        $cubeOpen = $checkOpen.is(':checked');
+        $cubeClosed = $checkClosed.is(':checked');
+        $cubePublic = $checkPublic.is(':checked');
+        $cubePrivate = $checkPrivate.is(':checked');
+        $cubeSearch = $("#inputCubeSearch").val();
+
+        if ((!$cubeClosed & !$cubeOpen) || (!$cubePrivate & !$cubePublic)) {
+            $("#qbicle-domain").remove();
+        } else {
+
+            $("#loadingGif").show();
+            $("#qbicle-domain").remove();
+
+        }
+    };
+
+    function CloseQbicle(qbicleId) {
+        $.ajax({
+            type: 'post',
+            url: '/Qbicles/CloseQbicle',
+            datatype: 'json',
+            data: {
+                closeQbicleId: qbicleId
+            },
+            success: function (refModel) {
+                if (refModel.result) {
+                    $("#qbicle-" + qbicleId).fadeOut(1000, function () {
+                        $("#qbicle-" + qbicleId).remove();
+                        FilterQbicle();
+                    });
+                }
+                else {
+                }
+            }
+        });
+    };
+    function ReOpenQbicle(qbicleId) {
+        $.ajax({
+            type: 'post',
+            url: '/Qbicles/ReOpenQbicle',
+            datatype: 'json',
+            data: {
+                openQbicleId: qbicleId
+            },
+            success: function (refModel) {
+                if (refModel.result) {
+                    FilterQbicle();
+                }
+                else {
+                }
+            }
+        });
+    };
+    function CloseQbicleModal() {
+        if ($open_close == 0)
+            CloseQbicle($qbicId.val());
+        else
+            ReOpenQbicle($qbicId.val());
+    }
+    function ClearInputModalAddEdit() {
+        $qbicId.val(0);
+        $qbicName.val('');
+        $qbicImage.val('');
+        $("#qbicleImg").attr("src", "");
+        $qbicDescription.val('');
+        $('#qbicleGuests').tagsinput('removeAll');
+        ClearError();
+    };
+    function SaveQbicle() {
+        var guests = $qbicleGuests.val();
+        var domainId = $selectDomain.val();
+        var addEdit = $qbicId.val() == 0 ? true : false;
+        SaveCube();
+    };
+    function SaveCube() {
+        if ($('#form_qbicle_addedit').valid()) {
+            $.ajax({
+                url: "/Qbicles/DuplicateQbicleNameCheck",
+                data: { key: $qbicId.val(), qbicName: $qbicName.val(), domainId: $selectDomain.val() },
+                type: "GET",
+                dataType: "json",
+            }).done(function (refModel) {
+                if (refModel.result)
+                    $("#form_qbicle_addedit").validate().showErrors({ Name: "Name of Qbicle already exists." });
+                else {
+                    $form_qbicle_addedit.submit();
+                }
+
+            }).fail(function () {
+                $("#form_qbicle_addedit").validate().showErrors({ Name: "Error checking existing name of Qbicle" });
+            })
+        }
+    }
+    function GetQbicle(qbicleId) {
+        return $.ajax({
+            url: "/Qbicles/GetQbicle",
+            type: "GET",
+            dataType: "json",
+            data: { qbicleId: qbicleId }
+        });
+    }
+    function EditQbicle(qbicleId) {
+        $modal_group_title.text($("input[name='modal_edit_title']").val());
+        $selectDomain.attr('disabled', '');
+        $("#close-reopen-qbicle").hide();
+        $qbicImage.val('');
+        $("#qbicleImg").attr("src", "");
+        GetQbicle(qbicleId).done(function (cube) {
+            if (cube.Id) {
+                $qbicId.val(cube.Id);
+                $("#qbicId").val(cube.Id);
+                $qbicName.val(cube.Name);
+                $qbicDescription.val(cube.Description);
+                $qbicScopeSelect.val(cube.Scope);
+                $selectDomain.val(cube.DomainId);
+                $("#qbicleImg").attr("src",cube.LogoUri);
+                $("#selectUser").hide();
+                $("#loadingAddEditGif").show();
+                if (cube.Closed) {
+                    $("#close-reopen-qbicle").text('Re-open Qbicle');
+                    $open_close = 1;
+                }
+                else {
+                    $("#close-reopen-qbicle").text('Close Qbicle');
+                    $open_close = 0;
+                }
+                $("#close-reopen-qbicle").show();
+                $.ajax({
+                    type: 'post',
+                    url: '/Domain/GetUsersByDomainId',
+                    datatype: 'json',
+                    data: {
+                        domainId: cube.DomainId
+                    },
+                    success: function (refModel) {
+                        if (refModel.result) {
+                            $qbicUserDomainSelect.empty().append(refModel.Object);
+                            var arrayUser = cube.CubeUser.split(',');
+                            $qbicUserDomainSelect.select2().val(arrayUser).change();
+                            $("#selectUser").show();
+                            $("#loadingAddEditGif").hide();
+                        }
+                        else {
+                        }
+
+                    },
+                    error: function (xhr, status, error) {
+                        
+                        $("#selectUser").show();
+                        $("#loadingAddEditGif").hide();
+                    }
+                });
+                var arrayGuests = cube.CubeGuest.split(',');
+                $.each(arrayGuests, function (index, value) {
+                    $('#qbicleGuests').tagsinput('add', value, { preventPost: true });
+                });
+            }
+        })
+    }
+
+
+
+    $(document).ready(function () {
+        FilterQbicle();
+    });
+</script>*@

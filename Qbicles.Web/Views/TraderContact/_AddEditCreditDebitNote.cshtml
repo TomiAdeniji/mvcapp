@@ -1,0 +1,284 @@
+﻿@using Qbicles.BusinessRules
+@using Qbicles.Models
+@using Qbicles.Models.Trader
+@using Qbicles.Models.Qbicles
+@using Qbicles.Models.Trader.Payments;
+@model  CreditNote
+@{
+    var contact = (TraderContact)ViewBag.Contact;
+    var type = (TraderReferenceType)ViewBag.Type;
+    var workgroups = (List<WorkGroup>)ViewBag.WorkGroups;
+    var itemGroups = new List<string>();
+    if (Model.WorkGroup != null && Model.WorkGroup.ItemCategories != null && Model.WorkGroup.ItemCategories.Any())
+    {
+        itemGroups = Model.WorkGroup.ItemCategories.Select(g => g.Name).Distinct().ToList();
+    }
+    var showGroup = "none";
+    if (Model.Id > 0)
+    {
+        showGroup = "block";
+    }
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+}
+<div class="modal-dialog modal-xl" role="document">
+    <div class="modal-content">
+        <div class="modal-header">
+            <input value="@Model.Id" id="credit_id" type="hidden" />
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            @if (type == TraderReferenceType.CreditNote)
+            {
+                <h5 class="modal-title">Create a Credit Note for @contact.Name</h5>
+            }
+            else
+            {
+                <h5 class="modal-title">Create a Debit Note for @contact.Name</h5>
+            }
+        </div>
+        <div class="modal-body">
+
+
+            <div class="row">
+                <div class="col-xs-12 col-md-4">
+                    <form id="form_creditdebit">
+                        <div class="activity-overview generic" style="padding: 20px; max-width: 600px;">
+                            <div class="form-group" style="margin: 0;">
+                                @if (type == TraderReferenceType.CreditNote)
+                                {
+                                    <label for="workgroup">Assign a Workgroup to this Credit note</label>
+                                }
+                                else
+                                {
+                                    <label for="workgroup">Assign a Workgroup to this Debit note</label>
+                                }
+                                <select name="workgroup" id="workgroup-select-credit" class="form-control select2" style="width: 100%;" onchange="WorkGroupSelectedChange()">
+                                    <option value=""></option>
+                                    @foreach (var wg in workgroups)
+                                    {
+                                        if (Model.WorkGroup != null && Model.WorkGroup.Id == wg.Id)
+                                        {
+                                            <option selected value="@wg.Id">@wg.Name</option>
+                                        }
+                                        else
+                                        {
+                                            <option value="@wg.Id">@wg.Name</option>
+                                        }
+
+                                    }
+                                </select>
+                            </div>
+
+                            @if (@Model.WorkGroup != null)
+                            {
+                                <div class="preview-workgroup" style="display: @showGroup;">
+                                    <br />
+                                    <table class="table app_specific" style="margin: 0;">
+                                        <tr>
+                                            <td><h5>Location</h5></td>
+
+                                            <td class="location_name">@Model.WorkGroup.Location.Name</td>
+                                        </tr>
+                                        <tr>
+                                            <td><h5>Process</h5></td>
+                                            <td class="workgroup_process">@string.Join(", ",Model.WorkGroup.Processes.Select(q=>q.Name))</td>
+                                        </tr>
+                                        <tr>
+                                            <td><h5>Qbicle</h5></td>
+                                            <td class="workgroup_qbicle">@Model.WorkGroup.Qbicle.Name</td>
+                                        </tr>
+                                        <tr>
+                                            <td><h5>Product Group</h5></td>
+                                            <td class="workgroup_item">
+                                                <span>
+                                                    @string.Join(", ", itemGroups);
+                                                </span>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td><h5>Members</h5></td>
+                                            <td><button class="btn btn-info" onclick="ShowGroupMember()" data-toggle="modal" data-target="#app-trader-workgroup-preview"><i class="fa fa-user"></i> &nbsp; <span>@Model.WorkGroup.Members.Count</span></button></td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="preview-workgroup" style="display: @showGroup;">
+                                    <br />
+                                    <table class="table app_specific" style="margin: 0;">
+                                        <tr>
+                                            <td><h5>Location</h5></td>
+                                            <td class="location_name"></td>
+                                        </tr>
+                                        <tr>
+                                            <td><h5>Process</h5></td>
+                                            <td class="workgroup_process"> </td>
+                                        </tr>
+                                        <tr>
+                                            <td><h5>Qbicle</h5></td>
+                                            <td class="workgroup_qbicle"></td>
+                                        </tr>
+                                        <tr>
+                                            <td><h5>Product Group</h5></td>
+                                            <td class="workgroup_item">
+                                                <span></span>
+                                            </td>
+                                        </tr>
+
+                                        <tr>
+                                            <td><h5>Members</h5></td>
+                                            <td class="workgroup_member"><button class="btn btn-info" onclick="ShowGroupMember()" data-toggle="modal" data-target="#app-trader-workgroup-preview"><i class="fa fa-user"></i> &nbsp; <span></span></button></td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            }
+                        </div>
+                    </form>
+                </div>
+                <div class="col-xs-12 col-md-8">
+
+                    <div class="well custom">
+
+                        <div class="form-group">
+                            <label for="reference">Reference</label>
+
+                            <div class="show-ref">
+                                <p>
+                                    <span id="bit_prefic">@Model.Reference.Prefix</span>&nbsp;<span id="bit_delimeter_first">@Model.Reference.Delimeter</span>&nbsp;<span id="bit_numberic">@Model.Reference.NumericPart</span>&nbsp;<span id="bit_delimeter_last">@Model.Reference.Delimeter</span>&nbsp;<span id="bit_suffic">@Model.Reference.Suffix</span>&nbsp; &nbsp;
+                                </p>
+                            </div>
+                            <input type="hidden" class="form-control" value="@Model.Reference.Id" id="bit_reference_id">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="title">Reason</label>
+                            @if (type == TraderReferenceType.CreditNote)
+                            {
+                                <select name="reason" id="bit_reason" class="form-control select2Modal" style="width: 100%;">
+                                    <option value="@CreditNoteReason.CreditNote.ToString()">Credit note</option>
+                                    <option value="@CreditNoteReason.Discount.ToString()">Discount</option>
+                                    <option value="@CreditNoteReason.PriceDecrease.ToString()">Price decrease</option>
+                                    <option value="@CreditNoteReason.Voucher.ToString()">Voucher</option>
+                                </select>
+                            }
+                            else
+                            {
+                                <select name="reason" id="bit_reason" class="form-control select2Modal" style="width: 100%;">
+                                    <option value="@CreditNoteReason.DebitNote.ToString()">Debit note</option>
+                                    <option value="@CreditNoteReason.PriceIncrease.ToString()">Price increase</option>
+                                </select>
+                            }
+                        </div>
+
+                        <label>Amount</label><br />
+                        <div class="input-group" style="margin-bottom: 15px;">
+                            <span class="input-group-addon">@currencySettings.CurrencySymbol</span>
+                            <input type="number" id="bit_amount" value="@Model.Value" class="form-control" min="0">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="notes">Notes (optional)</label>
+                            @if (Model.Notes != null)
+                            {
+                                <textarea name="notes" class="form-control" id="bit_note" style="min-height: 80px;">@Model.Notes</textarea>
+                            }
+                            else
+                            {
+                                <textarea name="notes" class="form-control" id="bit_note" style="min-height: 80px;"></textarea>
+                            }
+                        </div>
+
+                        @if (type == TraderReferenceType.CreditNote)
+                        {
+                            <label>Invoice</label><br>
+                            <div class="input-group" style="margin-bottom: 15px;">
+                                @if (Model.Invoice != null && Model.Invoice.Reference != null)
+                                {
+                                    <input type="text" name="name" id="bit_invoice_key" class="form-control" value="@Model.Invoice.Reference.FullRef" placeholder="Reference (if known)">
+                                }
+                                else
+                                {
+                                    <input type="text" name="name" id="bit_invoice_key" class="form-control" value="" placeholder="Reference (if known)">
+                                }
+                                <div class="input-group-btn"><button class="btn btn-info" data-toggle="modal" onclick="creditFindInvoiceBitContact()" data-target="#contact-invoice-finder"><i class="fa fa-search"></i> &nbsp; Find</button></div>
+                            </div>
+                        }
+                        else
+                        {
+                            <label>Bill</label><br>
+                            <div class="input-group" style="margin-bottom: 15px;">
+                                @if (Model.Invoice != null && Model.Invoice.Reference != null)
+                                {
+                                    <input type="text" name="name" id="bit_invoice_key" class="form-control" value="@Model.Invoice.Reference.FullRef" placeholder="Reference (if known)">
+                                }
+                                else
+                                {
+                                    <input type="text" name="name" id="bit_invoice_key" class="form-control" value="" placeholder="Reference (if known)">
+                                }
+                                <div class="input-group-btn"><button class="btn btn-info" data-toggle="modal" onclick="debitFindIBillBitContact()" data-target="#contact-invoice-finder"><i class="fa fa-search"></i> &nbsp; Find</button></div>
+                            </div>
+                        }
+
+
+                        @if (type == TraderReferenceType.CreditNote)
+                        {
+                            <label>Sale</label><br>
+                            <div class="input-group">
+                                @if (Model.Sale != null && Model.Sale.Reference != null)
+                                {
+                                    <input type="text" name="name" id="bit_sale_value" class="form-control" value="@Model.Sale.Reference.FullRef" placeholder="Reference (if known)">
+                                }
+                                else
+                                {
+                                    <input type="text" name="name" id="bit_sale_value" class="form-control" value="" placeholder="Reference (if known)">
+                                }
+                                <div class="input-group-btn"><button class="btn btn-info" data-toggle="modal" onclick="creditFindSaleBitContact()" data-target="#contact-sale-finder"><i class="fa fa-search"></i> &nbsp; Find</button></div>
+                            </div>
+                        }
+                        else
+                        {
+                            <label>Purchases</label><br>
+                            <div class="input-group">
+                                @if (Model.Purchase != null && Model.Purchase.Reference != null)
+                                {
+                                    <input type="text" name="name" id="bit_purchase_value" class="form-control" value="@Model.Purchase.Reference.FullRef" placeholder="Reference (if known)">
+                                }
+                                else
+                                {
+                                    <input type="text" name="name" id="bit_purchase_value" class="form-control" value="" placeholder="Reference (if known)">
+                                }
+                                <div class="input-group-btn"><button class="btn btn-info" data-toggle="modal" onclick="debitFindSPurchaseBitContact()" data-target="#contact-sale-finder"><i class="fa fa-search"></i> &nbsp; Find</button></div>
+                            </div>
+                        }
+
+                    </div>
+
+                </div>
+            </div>
+        <br/><br /><br />
+
+            <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+            <button class="btn btn-primary" onclick="saveDraft()">Save Draft</button>
+            <button type="submit" class="btn btn-success" onclick="savePreview()">Send to Review</button>
+
+        </div>
+    </div><!-- /.modal-content -->
+</div><!-- /.modal-dialog -->
+<script>
+    $('#workgroup-select-credit, .select2Modal').select2({
+        placeholder: 'Please select'
+    });
+
+</script>
+@if (Model.Invoice != null && Model.Invoice.Reference != null)
+{
+    <script>selectInvoice = @Html.Raw(Json.Encode( new { Id = Model.Invoice.Id, Ref = Model.Invoice.Reference.FullRef }));</script>
+}
+@if (Model.Sale != null && Model.Sale.Reference != null)
+{
+    <script>selectSale = @Html.Raw(Json.Encode( new { Id = Model.Sale.Id, RefName = Model.Sale.Reference.FullRef, RefId = Model.Sale.Reference.Id }));</script>
+}
+@if (Model.Purchase != null && Model.Purchase.Reference != null)
+{
+    <script>selectPurchase = @Html.Raw(Json.Encode( new { Id = Model.Purchase.Id, RefName = Model.Purchase.Reference.FullRef, RefId = Model.Purchase.Reference.Id }));</script>
+}

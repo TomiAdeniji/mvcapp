@@ -1,0 +1,76 @@
+﻿@using Qbicles.Models.B2B
+@using Qbicles.BusinessRules
+@model TradeOrderB2B
+@{
+    var currentDomainId = (int)ViewBag.CurrentDomainId;
+    var isBuyingDomain = Model.BuyingDomain.Id == currentDomainId ? true : false;
+        var statusLabel = "";
+
+    switch((int)(Model?.OrderStatus)){
+        case 0: statusLabel = "label-info";
+            break;
+        case 1:
+        case 2: statusLabel = "label-primary";
+            break;
+        case 3: statusLabel = "label-success";
+            break;
+        case 4: statusLabel = "label-danger";
+            break;
+    }
+}
+@if (isBuyingDomain)
+{
+    if (!Model.IsAgreedByCustomer && !Model.IsAgreedByBusiness)
+    {
+        <button type="button" class="btn btn-primary community-button w-auto" style="width: 100%;" onclick="buyingChooseWGModal()">Submit proposal</button>
+    }
+    else if (!Model.IsAgreedByCustomer && Model.IsAgreedByBusiness)
+    {
+        <button type="button" class="btn btn-success community-button w-auto" style="width: 100%;" onclick="buyingChooseWGModal()">Agree terms</button>
+    }
+    else if (Model.IsAgreedByCustomer && !Model.IsAgreedByBusiness)
+    {
+        <button class="btn btn-info community-button w-auto" style="width: 100%;" disabled>@(Model.SellingDomain.Id.BusinesProfile()?.BusinessName ?? "") reviewing</button>
+    }
+    else if (Model.IsAgreedByCustomer && Model.IsAgreedByBusiness && Model.OrderStatus == Qbicles.Models.B2C_C2C.TradeOrderStatusEnum.Draft)
+    {
+        <button type="button" class="btn btn-info community-button w-auto" style="width: 100%;" disabled>Waiting for @(Model.SellingDomain.Id.BusinesProfile()?.BusinessName ?? "") to finalise order</button>
+    }
+}
+else
+{
+    if (!Model.IsAgreedByCustomer)
+    {
+        <button type="button" class="btn btn-primary community-button w-auto" style="width: 100%;" disabled>Submit proposal</button>
+    }
+    else if (Model.IsAgreedByCustomer && !Model.IsAgreedByBusiness)
+    {
+        <button type="button" class="btn btn-primary community-button w-auto" style="width: 100%;" onclick="sellingDomainSubmitProposal()">Submit proposal</button>
+    }
+    else if (!Model.IsAgreedByCustomer && Model.IsAgreedByBusiness)
+    {
+        <button type="button" class="btn btn-info community-button w-auto" style="width: 100%;" disabled>@(Model.BuyingDomain.Id.BusinesProfile()?.BusinessName ?? "") reviewing</button>
+        <button type="button" class="btn btn-success community-button w-auto" style="width: 100%;" data-toggle="modal" data-target="#choose-wg" onclick="sellingChooseWGModal()" disabled>Finalise order</button>
+    }
+    else if (Model.IsAgreedByCustomer && Model.IsAgreedByBusiness && Model.OrderStatus == Qbicles.Models.B2C_C2C.TradeOrderStatusEnum.Draft)
+    {
+        <button type="button" class="btn btn-success community-button w-auto" style="width: 100%;" data-toggle="modal" data-target="#choose-wg" onclick="sellingChooseWGModal()">Finalise order</button>
+    }
+    else if (Model.IsAgreedByCustomer && Model.IsAgreedByBusiness && Model.OrderStatus != Qbicles.Models.B2C_C2C.TradeOrderStatusEnum.Draft)
+    {
+        <button class="btn btn-success community-button w-auto" style="width: 100%;" disabled>Finalise order</button>
+    }
+}
+<div class="hide">
+    <label id="hidden-order-status-b2b" class="label label-lg @statusLabel">@(Model?.OrderStatus.GetDescription())</label>
+</div>
+
+<script>
+    $(document).ready(function () {
+        var statusInfo = $("#hidden-order-status-b2b").text();
+        var statusClass = $("#hidden-order-status-b2b").attr("class");
+        $("#b2b-order-status").attr("class", statusClass);
+        $("#b2b-order-status").empty();
+        $("#b2b-order-status").append(statusInfo);
+    })
+</script>

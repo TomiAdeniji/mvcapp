@@ -1,0 +1,291 @@
+﻿@*@using Qbicles.Models;
+@using Qbicles.BusinessRules;
+@using Qbicles.Models.Community;
+@model QbicleDomain
+@{
+    ViewBag.Title = ViewBag.PageTitle;
+    var userCurrentDomain = (List<ApplicationUser>)ViewBag.UserCurrentDomain;
+
+    var userDomains = (List<QbicleDomain>)ViewBag.Domains;
+    var currentDomain = (QbicleDomain)ViewBag.CurrentDomain;
+    var topics = (List<string>)ViewBag.Topics;
+    var cubeCurrentUserId = (string)ViewBag.CurrentUserId;
+    var cubeParameter = new QbicleSearchParameter
+    {
+
+        Open = true
+    };
+
+    var communityPages = (List<CommunityPage>)ViewBag.CommunityPages;
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var imgAcceptedFile = (string)ViewBag.ImageAcceptedExtensions;
+}
+
+
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicles-dash" style="min-height: 100vh;">
+
+    <!-- Main content -->
+    <section class="content">
+
+        <div class="row">
+
+            <!-- Main content area -->
+            <div class="col-xs-12 col-lg-9 main">
+
+                <h1><span>Welcome</span> to Qbicles</h1>
+
+                <form name="search-blocks" method="post" action="">
+                    <div class="row">
+                        <div class="col-xs-12 col-md-12 col-lg-6 block search">
+
+                            <div class="form-group">
+                                <input type="text" name="search_dt" id="search_dt" placeholder="Search for..." class="form-control">
+                            </div>
+
+                            <div class="form-group checkboxes">
+                                <label class="checkbox-inline">
+                                    <input id="checkPublic" type="checkbox" value="" checked>Public
+                                </label>
+                                <label class="checkbox-inline">
+                                    <input id="checkPrivate" type="checkbox" value="" checked>Private
+                                </label>
+                                <label class="checkbox-inline">
+                                    <input id="checkOpen" type="checkbox" value="" checked>Open
+                                </label>
+                                <label class="checkbox-inline">
+                                    <input id="checkClosed" type="checkbox" value="">Closed
+                                </label>
+                            </div>
+
+                        </div>
+                        <div class="col-xs-12 col-md-6 col-lg-3 block">
+
+                            <div class="form-group">
+                                <label for="filter-people">People</label>
+                                <select id="filter-people" class="form-control chosen-select" multiple="multiple" style="width: 100%;" data-placeholder="Limit to specific people">
+                                    @foreach (var user in currentDomain.Users)
+                                    {
+                                        <option value="@user.Id">@HelperClass.GetFullNameOfUser(user)</option>
+                                    }
+                                </select>
+                            </div>
+
+                        </div>
+                        <div class="col-xs-12 col-md-6 col-lg-3 block">
+
+                            <div class="form-group">
+                                <label for="filter-topics">Topics</label>
+                                <select id="filter-topics" class="form-control chosen-select" multiple="multiple" style="width: 100%;" data-placeholder="Limit to specific topics">
+                                    @foreach (var topic in topics)
+                                    {
+                                        <option value="@topic">@topic</option>
+                                    }
+                                </select>
+                            </div>
+
+                        </div>
+                    </div>
+                </form>
+
+
+                <div class="row">
+                    <div class="col-xs-12 col-sm-9 dash-search-results">
+                        <button onclick="ApplySearch()" class="btn btn-success trigger_load">Apply search/filters</button>
+                        <a href="/" class="btn btn-danger trigger_load">Reset results</a>
+                        <br class="visible-xs">
+                        <p>Showing <strong><span id="total-cube"></span></strong> Qbicles based on your criteria</p>
+                    </div>
+                </div>
+
+
+                <br />
+
+                <!-- Grid view -->
+                <div id="qbicles-dash-grid">
+                    @{Html.RenderAction("ApplyFilterQbicle", "Qbicles", new { cubeParameter = cubeParameter });}
+                </div>
+                <!-- END Grid view -->
+            </div>
+            <!-- END Main content area -->
+            <!-- Sidebar (inline on xs) -->
+            <aside class="col-xs-12 col-lg-3">
+
+                <h1>In the <span>Community</span></h1>
+                <br />
+                @foreach (var comm in communityPages)
+                {
+                    <article class="community-feature">
+                        <a href="/Community/CommunityPage?id=@comm.Id" class="featured-image" style="background: url('@api@comm.FeaturedImage');"></a>
+
+                        <div class="content-block">
+                            <div class="content-block-upper">
+                                <smaller>@comm.Followers.Count() followers</smaller>
+
+                                <a href="/Community/CommunityPage?id=@comm.Id">
+                                    <h2>@comm.Title</h2>
+                                </a>
+                                @{
+                                    if (comm.Domain.CommunityPages.Count > 0)
+                                    {
+                                        <small>
+                                            Created by
+                                            <a href="/Community/CommunityPage?id=@comm.Domain.CommunityPages.FirstOrDefault().Id">@comm.Domain.Name</a>
+                                        </small>
+                                    }
+                                    else
+                                    {
+                                        <small>Created by @comm.Domain.Name</small>
+                                    }
+                                }
+
+                                <p>
+                                    @Html.Raw(comm.BodyText.Replace(Environment.NewLine, "<br/>").Replace("\n", "<br/>"))
+                                </p>
+                            </div>
+                            <div class="content-block-lower">
+                                @foreach (var tag in comm.Tags)
+                                {
+                                    <label class="label label-primary">@tag.Name</label>
+                                }
+
+                            </div>
+                        </div>
+                    </article>
+                }
+
+
+            </aside>
+            <!-- END Sidebar -->
+
+        </div>
+
+
+
+
+
+
+    </section>
+    <!-- ./content -->
+
+</div>
+<!-- Add Edit Qbicle -->
+<div id="create-qbicle" class="modal fade" role="dialog" aria-labelledby="create-qbicle" data-focus-on="input:first" data-keyboard="true" data-backdrop="true">
+    <input type="hidden" name="modal_edit_title" value="Edit Qbicle" />
+    <input type="hidden" name="modal_add_title" value="Create a Qbicle" />
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title"></h5>
+            </div>
+            <div class="modal-body">
+                <form id="form_qbicle_addedit" method="post" action="/Qbicles/SaveQbicle" enctype="multipart/form-data">
+                    <input id="qbicId" type="hidden" name="Key" />
+                    <input id="input_group_logopath" type="hidden" name="qbicleLogo" />
+                    <div class="well">
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label>Domain <span>*</span></label>
+                                    <select id="domainId" name="domainId" class="form-control">
+                                        @{
+                                            if (userDomains != null)
+                                            {
+                                                foreach (var u in userDomains.OrderBy(n => n.Name).ToList())
+                                                {
+                                                    if (u.Id == Model.Id)
+                                                    {
+                                                        <option value="@u.Id" selected>@u.Name</option>
+                                                    }
+                                                    else
+                                                    {
+                                                        <option value="@u.Id">@u.Name</option>
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    </select>
+                                    <div style="clear: both;"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <div class="form-group" data-provides="fileinput">
+                                    <label for="media-file">Icon/Logo</label>
+                                    <input type="file" id="qbicImage" class="form-control" name="qbicleLogo" accept="@imgAcceptedFile" onchange="loadImg(event)">
+                                    <br /><img id="qbicleImg" src="https://www.placehold.it/300x250/EFEFEF/AAAAAA&text=no+image+selected" class="img-circle icon" style="width:46px;height:46px;">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label for="media-title">Title <span>*</span></label>
+                                    <input type="text" id="qbicName" name="Name" class="form-control" tabindex="1">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label for="media-description">Add a description <span>*</span></label>
+                                    <textarea id="qbicDescription" name="Description" class="form-control" tabindex="2"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label for="qbicle-type">Is this Qbicle public or private?</label>
+                                    <select id="qbicScopeSelect" name="qbicleScope" class="form-control" tabindex="3">
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="selectUser" class="row">
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label>Invite the following people</label>
+                                    <select id="qbicUserDomainSelect" data-placeholder="..." name="userQbicle[]" multiple style="width:100%;" tabindex="4"></select>
+                                    <div style="clear: both;"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row hidden">
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label>Invite guests</label>
+                                    <br />
+                                    <select multiple id="qbicleGuests" name="guestsQbicle[]" type="text" class="form-control" data-role="tagsinput" style="width: 100%;"></select>
+                                    <div style="clear: both;"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <p style="text-align: center;">
+                            <span>
+                                <img id="loadingAddEditGif" style="display: none;" src="~/Content/DesignStyle/img/loading.gif" />
+                            </span>
+                        </p>
+                    </div>
+                    <button class="btn btn-success trigger_load" type="button" onclick="SaveQbicle()"><i class="fa fa-check"></i>&nbsp; Save Qbicle</button>
+                    <a id="close-reopen-qbicle" style="display:none;" href="javascript:void(0)" class="btn btn-danger trigger_load" onclick="CloseQbicleModal()" data-dismiss="modal"></a>
+                    <a href="javascript:void(0)" class="btn btn-danger" onclick="ClearInputModalAddEdit()" data-dismiss="modal">Cancel</a>
+                </form>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>*@
+<!-- /.modal -->
+@*@{
+   
+    if (System.Diagnostics.Debugger.IsAttached)
+        {
+            <script src="~/Scripts/dev/qbicles.js"></script>
+        }
+        else
+        {
+            <script src="~/Scripts/dev/qbicles.js"></script>
+        }
+}*@

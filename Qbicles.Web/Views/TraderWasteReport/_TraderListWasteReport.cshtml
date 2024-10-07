@@ -1,0 +1,87 @@
+﻿@using Qbicles.Models.Trader.Inventory;
+@model List<WasteReport>
+
+@{
+}
+
+<table class="datatable table-striped table-hover" style="width: 100%;" id="waste-list">
+    <thead>
+        <tr>
+            <th data-priority="1">Name</th>
+            <th data-priority="2">Workgroup</th>
+            <th data-priority="3">Items</th>
+            <th data-priority="3">Description</th>
+            <th data-priority="1">Status</th>
+            <th data-priority="1" data-orderable="false">Options</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr class="spotcount_@item.Id">
+                <td>@item.Name</td>
+                <td>@item.Workgroup.Name</td>
+                @if (item.ProductList != null)
+                {
+                    <td>@item.ProductList.Count</td>
+                }
+                else
+                {
+                    <td>0</td>
+                }
+                <td>@item.Description</td>
+                <td>
+                    @switch (item.Status)
+                    {
+                        case WasteReportStatus.Draft:
+                            <span class="label label-lg label-primary">Draft</span>
+                            break;
+                        case WasteReportStatus.Discarded:
+                            <span class="label label-lg label-danger">Discarded</span>
+                            break;
+                        case WasteReportStatus.Completed:
+                            <span class="label label-lg label-info">Completed</span>
+                            break;
+                        case WasteReportStatus.Started:
+                            <span class="label label-lg label-warning">Started</span>
+                            break;
+                        case WasteReportStatus.StockAdjusted:
+                            <span class="label label-lg label-success">Stock Adjusted</span>
+                            break;
+                    }
+
+                </td>
+                <td>
+                    @if (item.Status != WasteReportStatus.Draft)
+                    {
+                        <button class="btn btn-primary" onclick="window.location.href='/TraderWasteReport/WasteReportMaster?id=@item.Id';"><i class="fa fa-eye"></i> &nbsp; Manage</button>
+                    }
+                    else
+                    {
+                        <button class="btn btn-info" data-toggle="modal" data-target="#app-trader-waste-report" onclick="editWasteReport(@item.Id)"><i class="fa fa-pencil"></i> &nbsp; Continue</button>
+                    }
+
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+
+
+
+<script>
+
+    $("#search_waste").keyup(function () {
+        $("#waste-list").DataTable().search($(this).val()).draw();
+    });
+    $("#waste-workgroup-filter").on("change",
+        function () {
+            $("#waste-list").DataTable().search($(this).val(), true, false, true).draw();
+        });
+    $('.manage-columns input[type="checkbox"]').on('change', function () {
+        var table = $('#waste-list').DataTable();
+        var column = table.column($(this).attr('data-column'));
+        column.visible(!column.visible());
+    });
+</script>

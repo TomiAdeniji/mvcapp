@@ -1,0 +1,473 @@
+﻿@using Qbicles.BusinessRules
+@using Qbicles.Models
+@using Qbicles.Models.Trader
+@model TraderSalesOrder
+
+@{
+    ViewBag.Title = "Sale Order#" + Model.Id;
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var pageSize = HelperClass.activitiesPageSize;
+
+    var timeZone = (string)ViewBag.CurrentTimeZone ?? "";
+
+    var userId = ViewBag.CurrentUserId;
+
+
+    var display = Model.Sale.Workgroup.Members.Any(u => u.Id == userId) ? "" : "hidden";
+    var invoiceTotal = (decimal)ViewBag.InvoiceTotal;
+    var invoiceSaleTax = (decimal)ViewBag.InvoiceSaleTax;
+    var subtotal = (decimal)ViewBag.SubTotal;
+    var imgTop = (string)ViewBag.imgTop;
+    var imgBottom = (string)ViewBag.imgBottom;
+
+    //permission
+    var saleOrderIssued = "Yes";
+    if (string.IsNullOrEmpty(Model.SalesOrderPDF))
+    {
+        saleOrderIssued = "No";
+    }
+    var dateFormat = (string)ViewBag.CurrentDateFormat;
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+}
+
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail" id="discussion-thread">
+
+    <br />
+
+    <!-- Main content -->
+    <section class="content">
+
+        <div class="row">
+            <div class="col-xs-12 item_detail" style="padding-left: 15px;">
+
+                <div class="item_type_icon">
+                    <img src="~/Content/DesignStyle/img/icon_bookkeeping.png" style="margin-top: -35px;">
+                </div>
+                <div class="item_titling">
+                    <span class="item_type">Trader</span>
+                    @if (Model.Reference != null)
+                    {
+                        <h3>@Model.Reference.FullRef</h3>
+                    }
+                    else
+                    {
+                        <h3>Sale #@Model.Sale.Id</h3>
+                    }
+                </div>
+                <div class="clearfix"></div>
+
+                <br />
+
+                <div class="row">
+                    <div class="col-xs-12">
+                        <div class="app_filter">
+                            <div class="row">
+                                <div class="col-xs-12">
+
+                                    <div class="form-group" style="margin: 0;">
+                                        <a href="/TraderSales/SaleMaster?key=@Model.Sale.Key" class="btn btn-info"><i class="fa fa-angle-up"></i> &nbsp; View Sale</a>
+
+                                        <div class="btn-group options">
+                                            <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                                Options &nbsp; <i class="fa fa-angle-down"></i>
+                                            </button>
+                                            <ul class="dropdown-menu primary">
+                                                <li>
+                                                    <a href="javascript:void(OpenIssueSaleOrderModal())">Issue PDF</a>
+                                                </li>
+                                                <li id="download-1">
+                                                    <a id="download-3" href="javascript:void(DownloadSaleOrder(@Model.Id))">Download</a>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+            <div class="col-xs-12">
+
+
+                <br /><br />
+
+
+                <div class="row">
+                    <div class="col-xs-12">
+
+                        <div class="app_upper_dash text-center" style="max-width: 1200px;">
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-6 col-lg-4">
+                                    <div class="stat_label">
+                                        <span>Issued</span>
+                                        <h3 id="sale-order-issue">@saleOrderIssued</h3>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-6 col-lg-4">
+                                    <div class="stat_label">
+                                        <span>For</span>
+                                        @if (Model.Reference != null)
+                                        {
+                                            <h3>@Model.Reference.FullRef</h3>
+                                        }
+                                        else
+                                        {
+                                            <h3>Sale #@Model.Sale.Id</h3>
+                                        }
+
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-lg-4">
+                                    <div class="stat_label" style="padding-bottom: 10px;">
+                                        <span>Order date</span>
+                                        <h3>@Model.CreatedDate.ConvertTimeFromUtc(timeZone).ToString(dateFormat.Replace("/", "."))</h3>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+
+                        <br />
+
+
+                        <div class="activity-overview task" style="display: inline-block; padding: 20px;">
+                            <div class="row">
+                                <div class="col-xs-12">
+
+                                    <div class="flex-avatar">
+                                        <div class="col-thumb" style="flex: 0 0 80px;">
+                                            <img src="~/Content/DesignStyle/img/icon_file_pdf.png" class="img-circle img-responsive">
+                                        </div>
+                                        <div class="col">
+                                            <h5 style="font-family: 'Roboto'; margin-top: 0;">Sales Order PDF</h5>
+                                            <button onclick="OpenIssueSaleOrderModal()" class="btn btn-primary"><i class="fa fa-mail-forward"></i> &nbsp; Issue</button>
+                                            <button id="download-2" onclick="DownloadSaleOrder(@Model.Id);" class="btn btn-info"><i class="fa fa-download"></i> &nbsp; Download</button>
+                                        </div>
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+
+                        <br /><br />
+
+                        <div class="invoice" id="sale-order-preview">
+                            <div class="row">
+                                <div class="col-xs-12">
+                                    <div class="card">
+                                        <div class="card-body p-0" style="position: relative;">
+                                            <div class="row p-5">
+                                                <div class="col-md-6">
+                                                    <img id="invoice-image-top" src="@api@(imgTop)&size=M" style="width: 250px; height: auto;">
+                                                </div>
+
+                                                <div class="col-md-6 text-right">
+                                                    @if (Model.Reference != null)
+                                                    {
+                                                        <p class="font-weight-bold mb-1">@Model.Reference.FullRef</p>
+                                                    }
+                                                    else
+                                                    {
+                                                        <p class="font-weight-bold mb-1">Sales Order #@Model.Sale.Id</p>
+                                                    }
+
+                                                    <p class="text-muted">Order Date: @Model.Sale.CreatedDate.ConvertTimeFromUtc(timeZone).ToString("dd MMM, yyyy")</p>
+
+                                                    <p class="text-muted" style="font-size: 12px;">
+                                                        @Html.Raw(Model.Sale.Workgroup.Location.Address?.ToAddress().Replace(",", "<br />"))
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            <hr class="my-2">
+
+                                            <div class="row pb-3 p-5">
+                                                <div class="col-xs-12 col-sm-6 col-lg-8">
+                                                    <p class="font-weight-bold mb-4">Billing address</p>
+                                                    @Html.Raw(Model.Sale.Purchaser.Address?.ToAddress().Replace(",", "<br />"))
+                                                </div>
+                                                <div class="col-xs-12 col-sm-6 col-lg-4 text-right">
+                                                    <p class="font-weight-bold mb-4">Additional information</p>
+                                                    <p>
+                                                        @Model.Sale.SalesOrders.FirstOrDefault().AdditionalInformation
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            <div class="row p-5">
+                                                <div class="col-md-12">
+                                                    <div class="table-responsive">
+                                                        <table class="table">
+                                                            <thead>
+                                                                <tr>
+                                                                    <th data-priority="1">Item</th>
+                                                                    <th data-priority="1">Unit</th>
+                                                                    <th data-priority="2">Quantity</th>
+                                                                    <th data-priority="2">Unit price <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                                                    <th data-priority="3">Discount</th>
+                                                                    <th data-priority="2">Tax <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                                                    <th data-priority="3">Total <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                @{
+                                                                    foreach (var item in Model.Sale.SaleItems)
+                                                                    {
+                                                                        <tr>
+                                                                            <td>@item.TraderItem.Name</td>
+                                                                            <td>
+                                                                                @{
+                                                                                    if (item.Unit != null)
+                                                                                    {
+                                                                                        @item.Unit.Name
+                                                                                    }
+                                                                                }
+                                                                            </td>
+                                                                            <td>@item.Quantity.ToDecimalPlace(currencySettings)</td>
+                                                                            <td>@item.SalePricePerUnit.ToDecimalPlace(currencySettings)</td>
+                                                                            <td>@item.Discount.ToDecimalPlace(currencySettings)%</td>
+                                                                            <td>
+                                                                                @Html.Raw(item.HtmlTaxRates(currencySettings))
+                                                                            </td>
+
+                                                                            <td>@item.Price.ToDecimalPlace(currencySettings)</td>
+                                                                        </tr>
+                                                                    }
+                                                                }
+
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="d-flex flex-row-reverse bg-dark text-white p-5">
+                                                <div class="py-3 px-5 text-right">
+                                                    <div class="mb-2">Total</div>
+                                                    <div class="h2 font-weight-light">@invoiceTotal.ToCurrencySymbol(currencySettings)</div>
+                                                </div>
+
+                                                <div class="py-3 px-5 text-right">
+                                                    <div class="mb-2">Sales tax</div>
+                                                    <div class="h2 font-weight-light">@invoiceSaleTax.ToCurrencySymbol(currencySettings)</div>
+                                                </div>
+
+                                                <div class="py-3 px-5 text-right">
+                                                    <div class="mb-2">Subtotal</div>
+                                                    <div class="h2 font-weight-light">@subtotal.ToCurrencySymbol(currencySettings)</div>
+                                                </div>
+                                            </div>
+
+                                            <div class="row p-5">
+                                                <div class="col-md-6">
+                                                    <img id="invoice-image-bottom" src="@api@(imgBottom)&size=T" style="width: 80px; height: auto;">
+                                                </div>
+
+                                                <div class="col-md-6 text-right">
+                                                    <p class="text-muted">Powered by Qbicles</p>
+
+                                                    <p class="text-muted" style="font-size: 12px;">
+                                                        Strapline information or copyright notices here
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+
+                        </div> <!-- ./invoice -->
+
+
+
+                    </div>
+                </div>
+
+
+                @if (Model.Sale.SaleApprovalProcess != null)
+                {
+                    <br /><br />
+                    @* comment and media*@
+                    <div class="app_topnav entity_adds" style="background: #fff; padding: 0;">
+                        <ul class="nav nav-pills app_main_nav">
+                            <li role="presentation" class="active">
+                                <a href="#tab1" data-toggle="tab">
+                                    <i class="fa fa-comments"></i>
+                                    Comments
+                                </a>
+                            </li>
+                            <li role="presentation">
+                                <a href="#tab2" data-toggle="tab">
+                                    <i class="fa fa-folder-open"></i>
+                                    Files
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                    <br />
+                    <div class="row">
+                        <div class="col-xs-12">
+                            <div class="tab-content">
+                                <div class="tab-pane fade in active" id="tab1">
+                                    <div class="row">
+                                        <div class="col-xs-12">
+                                            <div class="well" style="max-width: 800px;">
+                                                <div class="form-group">
+                                                    <label for="add-comment">Add a comment</label>
+                                                    <textarea id="txt-comment-approval" name="add-comment" class="form-control"></textarea>
+                                                </div>
+                                                <button onclick="addCommentForApproval('@(Model.Sale?.SaleApprovalProcess?.Key ?? "")')" class="btn btn-success">Submit</button>
+                                            </div>
+                                            <br />
+                                        </div>
+                                    </div>
+                                    <div id="list-comments-approval">
+                                        @foreach (var post in Model.Sale.SaleApprovalProcess.Posts.OrderByDescending(x => x.StartedDate).Take(pageSize))
+                                        {
+
+                                            <!-- General post -->
+                                            var fullName = HelperClass.GetFullNameOfUser(post.CreatedBy, userId);
+                                            <article id="post-@post.Id" class="activity post">
+                                                <img style="background-image: url('@api@(post.CreatedBy.ProfilePic)&size=T')" class="activity-avatar" />
+                                                <div class="activity-detail">
+                                                    <div class="activity-meta">
+                                                        <h4>@fullName</h4>
+                                                        <small>@post.StartedDate.ConvertTimeFromUtc(timeZone).ToString(dateFormat + ", hh:mmtt")</small>
+                                                    </div>
+                                                    <div class="activity-overview media-comment">
+                                                        <p>
+                                                            @Html.Raw(post.Message.Replace(Environment.NewLine, "<br />"))
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <div class="clearfix"></div>
+                                            </article>
+                                            <!-- END General post -->
+                                        }
+                                    </div>
+                                    @if (Model.Sale.SaleApprovalProcess.Posts.Count() > pageSize)
+                                    {
+                                        <button id="btnLoadPosts" onclick="LoadMorePosts('@Model.Sale.SaleApprovalProcess.Key', @pageSize,'list-comments-approval')" class="btn btn-info trigger_load">Load older posts</button>
+                                    }
+                                </div>
+
+                                <div class="tab-pane fade" id="tab2">
+                                    <br />
+                                    <a href="javascript:void(0)" class="btn btn-success" id="btnAddFile" data-toggle="modal" data-target="#create-media"><i class="fa fa-upload"></i> &nbsp; Upload a file</a>
+
+                                    <br /><br />
+                                    <div id="list-medias">
+                                        @if (Model.Sale.SaleApprovalProcess.SubActivities.Count > 0)
+                                        {
+                                            foreach (var item in Model.Sale.SaleApprovalProcess.SubActivities.OrderByDescending(x => x.Id).Take(pageSize))
+                                            {
+                                                var media = (QbicleMedia)item;
+                                                var createdByName = HelperClass.GetFullNameOfUser(media.StartedBy, userId);
+                                                var createdDate = media.StartedDate.Date == DateTime.UtcNow.Date ? "Today, " + media.StartedDate.ToString("hh:mmtt").ToLower() : media.StartedDate.ToString(dateFormat + " hh:mmtt").ToLower();
+                                                var mediaLastupdate = media.VersionedFiles.Where(e => !e.IsDeleted).OrderByDescending(x => x.UploadedDate).First() ?? null;
+                                                var lastUpdateFile = mediaLastupdate != null ? (mediaLastupdate.UploadedDate.Date == DateTime.UtcNow.Date ? "Today, " + mediaLastupdate.UploadedDate.ToString("hh:mmtt").ToLower() : mediaLastupdate.UploadedDate.ToString(dateFormat + " hh:mmtt").ToLower()) : createdDate;
+                                                //Media post
+                                                <article class="activity media">
+                                                    <img style="background-image: url('@api@(media.StartedBy.ProfilePic)&size=T')" class="activity-avatar" />
+                                                    <div class="activity-detail">
+                                                        <div class="activity-meta">
+                                                            <h4>@createdByName</h4>
+                                                            <small>@createdDate</small>
+                                                            <br class="visible-xs">
+                                                        </div>
+                                                        <div class="activity-overview media">
+                                                            <div class="row">
+                                                                <div class="col-xs-12 col-sm-5 col-md-6 col-lg-5">
+                                                                    <a href="javascript:void(0)" onclick="ShowMediaPage('@media.Key')">
+                                                                        @if (media.FileType.Type == "Image File")
+                                                                        {
+                                                                            <img id="media-@item.Id" class="img-responsive" src='@api@(mediaLastupdate.Uri)&size=M' />
+                                                                        }
+                                                                        else
+                                                                        {
+                                                                            <img src="@media.FileType.IconPath" class="img-responsive">
+                                                                        }
+                                                                    </a>
+                                                                </div>
+                                                                <div class="col-xs-12 col-sm-7 col-md-6 col-lg-7 description">
+                                                                    <h5>@media.Name</h5>
+                                                                    <p>
+                                                                        @media.Description
+                                                                    </p>
+                                                                    <small>@media.FileType.Type | Update @lastUpdateFile</small>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="clearfix"></div>
+                                                </article>
+                                                <!-- END Media post -->
+                                            }
+                                        }
+                                    </div>
+                                    @if (Model.Sale.SaleApprovalProcess.SubActivities.Count() > pageSize)
+                                    {
+                                        <button id="btnLoadMedias" onclick="LoadMoreMedias(@Model.Sale.SaleApprovalProcess.Id,@pageSize,'list-medias')" class="btn btn-info trigger_load">Load older medias</button>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+
+
+            </div>
+        </div>
+
+    </section>
+    <!-- ./content -->
+
+</div>
+@{
+    Html.RenderAction("GenerateModalMedia", "Qbicles");
+}
+<!-- /.content-wrapper -->
+
+
+<div class="modal fade" id="adding-other-mail-addresses" role="dialog" aria-labelledby="adding-other-mail-addresses">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Send to additional contacts</h5>
+            </div>
+            <div class="modal-body">
+                <div class="activity-overview task" style="padding: 20px;">
+                    <div class="form-group" style="margin: 0;">
+                        <label for="displayunit">Email addresses (<small>comma separated</small>) </label>
+                        <textarea id="mail-addresses" class="form-control" placeholder="Optional"></textarea>
+                    </div>
+                </div>
+
+                <br />
+                <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                <button class="btn btn-success" onclick="IssueSaleOrder(@Model.Id)">Issue</button>
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/trader.sales.order.js"></script>
+        <script src="~/Scripts/dev/trader.domain.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/trader.sales.order.js"></script>
+        <script src="~/Scripts/dev/trader.domain.min.js"></script>
+    }
+}

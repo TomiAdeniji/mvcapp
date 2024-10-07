@@ -1,0 +1,60 @@
+﻿@using Qbicles.BusinessRules;
+@using Qbicles.Models;
+@model List<QbicleMedia>
+@{
+    var currentTimeZone = (string)ViewBag.CurrentTimeZone;
+    var currentUserId = (string)ViewBag.CurrentUserId;
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var enOfOlder = (bool)ViewBag.EndOfOlder;
+}
+@{
+    foreach (var media in Model)
+    {
+        var createdByName = HelperClass.GetFullNameOfUser(media.StartedBy, currentUserId);
+        var createdDate = media.StartedDate.Date == DateTime.UtcNow.Date ? "Today, " + media.StartedDate.ToString("hh:mmtt").ToLower() : media.StartedDate.ToString("dd/MM/yyyy hh:mmtt").ToLower();
+        var mediaLastupdate = media.VersionedFiles.Where(e => !e.IsDeleted).OrderByDescending(x => x.UploadedDate).First();
+        var lastUpdateFile = mediaLastupdate != null ? (mediaLastupdate.UploadedDate.Date == DateTime.UtcNow.Date ? "Today, " + mediaLastupdate.UploadedDate.ToString("hh:mmtt").ToLower() : mediaLastupdate.UploadedDate.ToString("dd/MM/yyyy hh:mmtt").ToLower()) : createdDate;
+        //Media post
+        <article class="activity media">
+            <img style="background-image: url('@api@media.StartedBy.ProfilePic')" class="activity-avatar" />
+            <div class="activity-detail">
+                <div class="activity-meta">
+                    <h4>@createdByName</h4>
+                    <small>@createdDate</small>
+                    <br class="visible-xs">
+                </div>
+                <div class="activity-overview media">
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-5 col-md-6 col-lg-5">
+                            <a href="javascript:void(0)" onclick="ShowMediaPage('@media.Key')">
+                                @if (media.FileType.Type == "Image File")
+                                {
+                                    <img id="media-@media.Id" class="img-responsive" src='@api@mediaLastupdate.Uri' />
+                                }
+                                else
+                                {
+                                    <img src="@media.FileType.IconPath" class="img-responsive">
+                                }
+                            </a>
+                        </div>
+                        <div class="col-xs-12 col-sm-7 col-md-6 col-lg-7 description">
+                            <h5>@media.Name</h5>
+                            <p>
+                                @media.Description
+                            </p>
+                            <small>@media.FileType.Type | Update @lastUpdateFile</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="clearfix"></div>
+        </article>
+                                <!-- END Media post -->
+    }
+}
+<script>
+    jQuery(function ($) {
+        if ('@enOfOlder'==='True')
+            $('#btnLoadMedias').remove();
+    });
+</script>

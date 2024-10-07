@@ -1,0 +1,250 @@
+﻿@using Qbicles.Models.SalesMkt;
+@using Qbicles.BusinessRules.Model;
+@{
+    var Type = ViewBag.Type as string;
+    //var NetworkAccounts = (List<SocialNetworkAccount>)ViewBag.NetworkAccounts;
+}
+@if (Type == "queue")
+{
+    var LstQueuePosts = (List<SocialCampaignQueue>)ViewBag.LstQueuePosts;
+
+    <table class="datatable table-striped table-hover" style="width: 100%;">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Title</th>
+                <th>Target accounts</th>
+                <th>Expected post time</th>
+                <th style="width: 95px">Options</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in LstQueuePosts)
+            {
+                <tr>
+                    <td>@item.Id.ToString("000")</td>
+                    <td><a href="#">@item.Post.Title</a></td>
+                    <td>
+                        @{
+                            var social_accounts = item.Post.SharingAccount;
+                            var lstAcs = new List<AccountNetworkCustomeModel>();
+                            foreach (var it in social_accounts)
+                            {
+                                if (it.Type.Name == "FaceBook")
+                                {
+                                    var fa = (FaceBookAccount)it;
+                                    lstAcs.Add(new AccountNetworkCustomeModel { SocialName = "Facebook", SocialUsername = fa.UserName });
+                                }
+                                
+                                else if (it.Type.Name == "Twitter")
+                                {
+                                    var ta = (TwitterAccount)it;
+                                    lstAcs.Add(new AccountNetworkCustomeModel { SocialName = "Twitter", SocialUsername = ta.UserName });
+                                }
+
+                            }
+                        }
+                        @string.Join(",", lstAcs.Select(s => string.Format("{0} ({1})", s.SocialName, s.SocialUsername)).ToArray())
+                    </td>
+                    <td>@*<span id="queue-example"></span>*@ @(item.PostingDate.ToString("dd/MM/yyyy, hh:mmtt"))(GMT)</td>
+                    <td>
+                        <div class="dropdown">
+                            <button class="btn btn-primary" data-toggle="dropdown">
+                                <i class="fa fa-cog"></i>
+                            </button>
+                            <ul class="dropdown-menu primary">
+                                <li><a href="#" data-toggle="modal"  onclick="LoadDownloadModal(@item.Id, 'queue')">Download</a></li>
+                                <li><a href="#" onclick="SentBackFromQueueToReview(@item.Id)">Send back to review</a></li>
+                                <li><a href="#" data-toggle="modal" onclick="$('#discard-post-queue-id').val(@item.Id)" data-target="#app-marketing-discard-post-queue">Cancel and discard</a></li>
+                            </ul>
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else if (Type == "approved")
+{
+    var LstapprovedPosts = (List<CampaignPostApproval>)ViewBag.LstApprovedPosts;
+    <table class="datatable table-striped table-hover" style="width: 100%;">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Title</th>
+                <th>Target accounts</th>
+                <th>Approved on</th>
+                <th>Status</th>
+                <th style="width: 95px">Options</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in LstapprovedPosts)
+            {
+                <tr>
+                    <td>@item.Id.ToString("000")</td>
+                    <td><a href="/SalesMarketing/SocialPostInApp?id=@item.CampaignPost.Id">@item.CampaignPost.Title</a></td>
+                    <td>
+                        @{
+                            var social_accounts = item.CampaignPost.SharingAccount;
+                            var lstAcs = new List<AccountNetworkCustomeModel>();
+                            foreach (var it in social_accounts)
+                            {
+                                if (it.Type.Name == "FaceBook")
+                                {
+                                    var fa = (FaceBookAccount)it;
+                                    lstAcs.Add(new AccountNetworkCustomeModel { SocialName = "Facebook", SocialUsername = fa.UserName });
+                                }
+                                else if (it.Type.Name == "Twitter")
+                                {
+                                    var ta = (TwitterAccount)it;
+                                    lstAcs.Add(new AccountNetworkCustomeModel { SocialName = "Twitter", SocialUsername = ta.UserName });
+                                }
+
+                            }
+                        }
+                        @string.Join(",", lstAcs.Select(s => string.Format("{0} ({1})", s.SocialName, s.SocialUsername)).ToArray())
+                    </td>
+                    <td>@(item.ApprovedDate.HasValue ? item.ApprovedDate.Value.ToString("dd/MM/yyyy, hh:mmtt") : null)</td>
+                    <td>
+                        @if (item.ApprovalStatus == SalesMktApprovalStatusEnum.Approved)
+                        {
+                            <span class="label label-lg label-success">Approved</span>
+                        }
+                        else
+                        {
+                            <span class="label label-lg label-danger">Denied</span>
+                        }
+                    </td>
+                    <td>
+                        <div class="dropdown">
+                            <button class="btn btn-primary" data-toggle="dropdown">
+                                <i class="fa fa-cog"></i>
+                            </button>
+                            <ul class="dropdown-menu primary">
+                                @if (item.ApprovalStatus == SalesMktApprovalStatusEnum.Approved)
+                                {
+                                    <li><a href="#"  data-toggle="modal" onclick="LoadDownloadModal(@item.Id, 'approved')">Download</a></li>
+                                    <li><a href="#" data-toggle="modal" onclick="$('#aId').val(@item.Id)" data-target="#app-marketing-schedule-queue">Schedule for reminder</a></li>
+                                }
+                                <li><a href="#" onclick="SentBackToReview(@item.Id)">Send back to review</a></li>
+                                <li><a href="#" data-toggle="modal" onclick="$('#discard-post-id').val(@item.Id)" data-target="#app-marketing-discard-post">Cancel and discard</a></li>
+                            </ul>
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else if (Type == "approvals")
+{
+    var LstapprovalPosts = (List<CampaignPostApproval>)ViewBag.LstApprovedPosts;
+    <table class="datatable table-striped table-hover" style="width: 100%;">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Title</th>
+                <th>Target accounts</th>
+                <th>Created</th>
+                <th>Status</th>
+                <th>Options</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in LstapprovalPosts)
+            {
+                <tr>
+                    <td>@item.Id.ToString("000")</td>
+                    <td><a href="/SalesMarketing/SocialPostInApp?id=@item.Id">@item.CampaignPost.Title</a></td>
+                    <td>
+                        @{
+                            var social_accounts = item.CampaignPost.SharingAccount;
+                            var lstAcs = new List<AccountNetworkCustomeModel>();
+
+                            foreach (var it in social_accounts)
+                            {
+                              //var nw=  NetworkAccounts.Where(s => s.Id == it.Id).FirstOrDefault();
+                                if (it.Type.Name == "FaceBook")
+                                {
+                                    var fa = (FaceBookAccount)it;
+                                    lstAcs.Add(new AccountNetworkCustomeModel { SocialName = "Facebook", SocialUsername = fa.UserName });
+                                }
+                                else if (it.Type.Name == "Twitter")
+                                {
+                                    var ta = (TwitterAccount)it;
+                                    lstAcs.Add(new AccountNetworkCustomeModel { SocialName = "Twitter", SocialUsername = ta.UserName });
+                                }
+
+                            }
+                        }
+                        @string.Join(",", lstAcs.Select(s => string.Format("{0} ({1})", s.SocialName, s.SocialUsername)).ToArray())
+                    </td>
+                    <td>@(item.ApprovedDate.HasValue ? item.ApprovedDate.Value.ToString("dd/MM/yyyy, hh:mmtt") : null)</td>
+                    <td>
+                        @if (item.ApprovalStatus == SalesMktApprovalStatusEnum.InReview)
+                        {
+                            <span class="label label-lg label-warning">Pending</span>
+                        }
+                    </td>
+                    <td>
+                        <div class="dropdown">
+                            <button class="btn btn-primary" data-toggle="dropdown">
+                                <i class="fa fa-cog"></i>
+                            </button>
+                            <ul class="dropdown-menu primary">
+                                <li><a href="#" data-toggle="modal" onclick="$('#discard-post-id').val(@item.Id)" data-target="#app-marketing-discard-post">Cancel and discard</a></li>
+                            </ul>
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else
+{
+    var LstQueuePosts = (List<SocialCampaignQueue>)ViewBag.LstQueuePosts;
+    <table class="datatable table-striped table-hover" style="width: 100%;">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Title</th>
+                <th>Target accounts</th>
+                <th>Downloaded on</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in LstQueuePosts)
+            {
+            <tr>
+                <td>@item.Id.ToString("000")</td>
+                <td><a href="#">@item.Post.Title</a></td>
+                <td>
+                    @{
+                        var social_accounts = item.Post.SharingAccount;
+                        var lstAcs = new List<AccountNetworkCustomeModel>();
+                        foreach (var it in social_accounts)
+                        {
+                            if (it.Type.Name == "FaceBook")
+                            {
+                                var fa = (FaceBookAccount)it;
+                                lstAcs.Add(new AccountNetworkCustomeModel { SocialName = "Facebook", SocialUsername = fa.UserName });
+                            }
+                            else if (it.Type.Name == "Twitter")
+                            {
+                                var ta = (TwitterAccount)it;
+                                lstAcs.Add(new AccountNetworkCustomeModel { SocialName = "Twitter", SocialUsername = ta.UserName });
+                            }
+
+                        }
+                    }
+                    @string.Join(",", lstAcs.Select(s => string.Format("{0} ({1})", s.SocialName, s.SocialUsername)).ToArray())
+                </td>
+                <td>@item.PostingDate.ToString("dd/MM/yyyy, hh:mmtt")</td>
+            </tr>
+            }
+        </tbody>
+    </table>
+}
+

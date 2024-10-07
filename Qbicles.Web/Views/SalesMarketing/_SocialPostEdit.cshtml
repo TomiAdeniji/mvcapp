@@ -1,0 +1,315 @@
+@using Qbicles.Models.SalesMkt;
+@using System.Globalization;
+@using Qbicles.Models;
+@using Qbicles.BusinessRules;
+@model SocialCampaignPost
+@{
+    var NetworkAccounts = (List<SocialNetworkAccount>)ViewBag.NetworkAccounts;
+    var selectedsAcc = Model.SharingAccount;
+    var ListMedia = (List<QbicleMedia>)ViewBag.ListMedia;
+}
+<div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+            <h5 class="modal-title">Edit Social Media Post</h5>
+        </div>
+        <div class="modal-body">
+            <form id="frm_marketing-social-post-edit" enctype="multipart/form-data">
+                <div class="row">
+                    <div class="col-xs-12">
+                        <ul class="app_subnav admintabs" style="padding-top: 0;">
+                            <li class="active"><a href="#social-edit-1" data-toggle="tab">Edit your post</a></li>
+                            <li><a href="#social-reminder" data-toggle="tab" aria-expanded="true">Set Reminder</a></li>
+                            <li><a href="#social-edit-2" onclick="loadEditPreview()" data-toggle="tab">Preview changes</a></li>
+                        </ul>
+                    </div>
+                </div>
+                <br>
+                <div class="tab-content">
+                    <div class="tab-pane fade in active" id="social-edit-1">
+
+                        <div class="well custom">
+
+                            <div class="row">
+                                <div class="col-xs-12">
+                                    <div class="form-group">
+                                        <label for="title">Give this post a title <span class="red">*</span></label>
+                                        <input type="text" name="Title" value="@Model.Title" class="form-control">
+                                        <input type="hidden" name="Id" value="@Model.Id" />
+                                        <input type="hidden" value="@Model.AssociatedCampaign.Id" name="SocialCampaignId" id="SocialCampaignId" />
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-xs-12">
+                                    <div class="form-group">
+                                        <label for="brandname">Where are you sharing? <span class="red">*</span></label>
+                                        <span class="multiselect-native-select">
+                                            <select name="SharingAccount" class="checkmulti" multiple="" style="display:none">
+                                                @{
+                                                    var lstAccountFacebooks = NetworkAccounts.Where(s => s.Type.Name == "FaceBook").ToList();
+                                                }
+                                                @if (lstAccountFacebooks.Count > 0)
+                                                {
+                                                    <optgroup label="Facebook">
+                                                        @foreach (var item in lstAccountFacebooks)
+                                                        {
+                                                            var acF = (FaceBookAccount)item;
+                                                            if (acF != null)
+                                                            {
+                                                                <option avatarUrl="@acF.AvatarUrl" displayName="@acF.DisplayName" value="@item.Id" @(selectedsAcc.Any(s => s.Id == acF.Id) ? "selected" : "")>@acF.UserName</option>
+                                                            }
+
+                                                        }
+                                                    </optgroup>
+                                                }
+                                                @{
+                                                    var lstAccountTwitter = NetworkAccounts.Where(s => s.Type.Name == "Twitter").ToList();
+                                                }
+                                                @if (lstAccountTwitter.Count > 0)
+                                                {
+                                                    <optgroup label="Twitter">
+                                                        @foreach (var item in lstAccountTwitter)
+                                                        {
+                                                            var acT = (TwitterAccount)item;
+                                                            if (acT != null)
+                                                            {
+                                                                <option avatarUrl="@acT.AvatarUrl" displayName="@acT.DisplayName" value="@item.Id" @(selectedsAcc.Any(s => s.Id == acT.Id) ? "selected" : "")>@acT.UserName</option>
+                                                            }
+
+                                                        }
+                                                    </optgroup>
+                                                }
+                                            </select>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-xs-12">
+                                    <div class="form-group">
+                                        <label for="socialtext">What do you want to say? <span class="red">*</span></label>
+                                        <textarea name="Content" class="form-control socialpost" style="height: 90px;" id="texteditfield">@Model.Content</textarea>
+                                        <div class="socialconstraints"><i class="fa fa-twitter aqua"></i> &nbsp; <span id="EditcharNum">0/460</span></div>
+                                        <div class="socialconstraints"><i class="fa fa-instagram default"></i> &nbsp; <span id="EditcharNum2">0/2,200</span></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <br>
+                            <div class="form-group" style="margin: 0;">
+                                <label for="media">Attach an image or video (optional)</label>
+                                <select name="attachtype" class="form-control select2 select2-hidden-accessible" style="width: 100%;" onchange="AttachChange(this,false)" tabindex="-1" aria-hidden="true">
+                                    <option value=""></option>
+                                    <option value="1" @(Model.ImageOrVideo != null ? "selected" : "")>Choose an existing Campaign Resource</option>
+                                    <option value="2">Upload a new image or video</option>
+                                </select>
+                                <input type="hidden" value="0" name="ImageOrVideo" id="ImageOrVideoEdit" />
+                                <input type="hidden" id="sm-social-post-feature-image-object-key" name="mediaSocialPostFeatureObjectKey" />
+                                <input type="hidden" id="sm-social-post-feature-image-object-name" name="mediaSocialPostFeatureObjectName" />
+                                <input type="hidden" id="sm-social-post-feature-image-object-size" name="mediaSocialPostFeatureObjectSize" />
+                            </div>
+                            <div class="uploadnew" style="display: none; margin-top: 15px;">
+                                <div class="form-group">
+                                    <label for="featuredimg">Choose an image or video to upload</label>
+                                    <input id="sm-social-post-feature-upload-media" type="file" name="featuredimg" class="form-control previewimgpost" data-target=".newpreview">
+                                </div>
+                                <img class="newpreview" src="" alt="Your attachment" style="display: none; width: 100%; height: auto;">
+                            </div>
+                            <div class="campaign-resource-picker" style="display: @(Model.ImageOrVideo!=null?"block":"none"); padding: 25px 0 0 0;">
+                                <div id="Choose-campaign-resource-edit" class="flex-grid-half-lg from-community c1" style="width: 100%;">
+                                    @foreach (var item in ListMedia)
+                                    {
+                                        <div id="rse-@item.Id" style="display:@(Model.ImageOrVideo==null||(Model.ImageOrVideo!=null&&item.Id == Model.ImageOrVideo.Id) ? "block" : "none")" class="col othere">
+                                            <a href="#" class="article-feature">
+                                                @{
+                                                    var vs = item.VersionedFiles != null ? item.VersionedFiles.Where(e => !e.IsDeleted)
+.OrderByDescending(f => f.UploadedDate).FirstOrDefault() : null;
+                                                    var isVideo = vs != null && vs.FileType.Type == "Video File" ? true : false;
+                                                    var api = (string)ViewBag.DocRetrievalUrl;
+                                                }
+                                                <div class="article-feature-img" style="background: url('@(isVideo? "/Content/DesignStyle/img/media-item-video.jpg": Utility.CheckImgPath(item.FileType,vs, "S"))');">
+                                                </div>
+                                                <div class="info" style="padding: 30px 0 15px 0;">
+                                                    <h1 style="margin: 0; padding: 0 20px 5px 20px;">@item.Name</h1>
+                                                    <p>@Utility.GetFileTypeDescription(item.FileType.Extension)</p>
+
+                                                    <div style="padding: 0 20px;">
+                                                        <button type="button" class="btn btn-info community-button usethemee@(item.Id)" style="display:@(Model.ImageOrVideo!=null&&item.Id == Model.ImageOrVideo.Id ? "none" : "block")" onclick="chooseMediaEdit(this,@(item.Id),'@(isVideo?api+vs.Uri:Utility.CheckImgPath(item.FileType,vs))',true,@(isVideo?"true":"false"))">
+                                                            <i class="fa fa-check"></i> &nbsp; Use this
+                                                        </button>
+
+                                                        <button type="button" class="btn btn-warning community-button changee@(item.Id)" style="display:@(Model.ImageOrVideo!=null&&item.Id == Model.ImageOrVideo.Id ? "block" : "none")" onclick="chooseMediaEdit(this,@(item.Id),'#',false,@(isVideo?"true":"false"))">
+                                                            <i class="fa fa-pencil"></i> &nbsp; Change
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </a>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                        <br>
+                        <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                        <a onclick="loadEditPreview(); $('.admintabs a[href=#social-reminder]').trigger('click')" class="btn btn-success">Preview &nbsp; <i class="fa fa-angle-right"></i></a>
+                    </div>
+                    <div class="tab-pane fade" id="social-reminder">
+
+                        <div class="activity-overview generic help-text animated bounce">
+                            <i class="fa fa-info-circle"></i>
+                            <p>
+                                Optionally include a Reminder at a date and time of your choosing. A Reminder will email you and send you a Qbicles notification when you desire,
+                                and is useful for things like remembering to post to other networks that aren't included in your Queue.
+                            </p>
+                        </div>
+
+                        <div class="well custom">
+                            @if (Model.Reminder != null)
+                            {
+                                <input type="hidden" id="isReminder" name="isReminder" value="true">
+                                <div class="checkbox toggle allowreminder" style="margin: 0; display:none">
+                                    <label>
+                                        <input data-toggle="toggle" data-onstyle="success" id="reminderCheckbox" value="true" name="reminderCheckbox" type="checkbox" onchange="$('.setreminder').toggle();$('#isReminder').val($('#isReminder').val() === 'true' ? 'false': 'true');">
+                                        Include a Reminder
+                                    </label>
+                                </div>
+                                <div class="row setreminder" style="margin-top: 30px; display: block;">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <label for="remindertime">When do you want to receive this Reminder?</label>
+                                        <div class="input-group" style="margin-bottom: 15px;">
+                                            <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                                            <input type="text" name="reminderDate" value="@Model.Reminder.ReminderDate.ToString("dd/MM/yyyy hh:mm", CultureInfo.InvariantCulture)" class="form-control singledateandtime">
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12">
+                                        <div class="form-group" style="margin: 0;">
+                                            <label for="reminder">Reminder content</label>
+                                            <textarea name="Reminder.Content" value="@Model.Reminder.Content" class="form-control" style="height: 80px;">@Model.Reminder.Content</textarea>
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12">
+                                        <br />
+                                        <a href="javascript:void(0);" class="btn btn-danger" onclick="RemoveReminder(this)"><i class="fa fa-trash"></i> &nbsp; Cancel Reminder</a>
+                                    </div>
+                                </div>
+                            }
+                            else
+                            {
+                                <input type="hidden" id="isReminder" name="isReminder" value="false">
+                                <div class="checkbox toggle" style="margin: 0;">
+                                    <label>
+                                        <input data-toggle="toggle" data-onstyle="success" name="reminderCheckbox" type="checkbox" onchange="$('.setreminder').toggle(); $('#isReminder').val($('#isReminder').val() === 'true' ? 'false': 'true');">
+                                        Include a Reminder
+                                    </label>
+                                </div>
+                                <div class="row setreminder" style="margin-top: 30px; display: none;">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <label for="remindertime">When do you want to receive this Reminder?</label>
+                                        <div class="input-group" style="margin-bottom: 15px;">
+                                            <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                                            <input type="text" name="reminderDate" class="form-control singledateandtime">
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12">
+                                        <div class="form-group" style="margin: 0;">
+                                            <label for="reminder">Reminder content</label>
+                                            <textarea name="Reminder.Content" class="form-control" style="height: 80px;"></textarea>
+                                        </div>
+                                    </div>
+
+                                </div>
+                            }
+                        </div>
+
+
+                        <br />
+                        <a href="#social-1" data-toggle="tab" class="btn btn-warning btnPrevious"><i class="fa fa-angle-left"></i> &nbsp; Previous</a>
+                        <a onclick="loadEditPreview(); $('.admintabs a[href=#social-edit-2]').trigger('click')" class="btn btn-success">Preview &nbsp; <i class="fa fa-angle-right"></i></a>
+
+
+                    </div>
+                    <div class="tab-pane fade" id="social-edit-2">
+                        <div class="social-post" style="margin: 0 0 30px 0; border: 1px solid #e1e1e1; max-width: 800px;">
+                            <div class="social-heading">
+                                <div class="social-avatar" style="background-image: url('');"></div>
+                                <div class="social-content">
+                                    <small><strong style="color: #14171a;" class="preview-disname"></strong><br><span class="preview-username"></span></small>
+                                </div>
+                            </div>
+                            <div id="the-post" class="thepost">
+                                <p class="preview-content"></p>
+                                @{
+                                    var mdia = Model.ImageOrVideo;
+                                    var preimg = Model.ImageOrVideo != null ? (Utility.CheckImgPath(mdia.FileType, mdia.VersionedFiles != null ? mdia.VersionedFiles.Where(e => !e.IsDeleted)
+                                                               .OrderByDescending(f => f.UploadedDate).FirstOrDefault() : null)) : "";
+                                }
+                                <img class="img-responsive preview-post-edit" style="max-width:711px" src="@preimg" alt="Associated image">
+                                <div id="video-preview-container-edit" class="img-responsive" style="display:none">
+                                    <video id="video-preview-edit" class="img-responsive" controls="controls" />
+                                </div>
+                            </div>
+                        </div>
+                        <a class="btn btn-warning" onclick="$('.admintabs a[href=#social-reminder]').trigger('click')"><i class="fa fa-angle-left"></i> &nbsp; Previous</a>
+                        <a class="btn btn-success" onclick="$('.inreview').show(); $('.inreviewitem').show(); ProcessSocialPost('app-marketing-social-post-edit','frm_marketing-social-post-edit');">Confirm</a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<script>
+    $(document).ready(function () {
+        $(".previewimgpost").change(function () {
+            var target = $(this).data('target');
+            if (isFileImage(this) > 0) {
+                readImgURL(this, target);
+                $(target).fadeIn();
+                $('#video-preview-edit').attr('src', '');
+            } else {
+                $(target).attr('src', '');
+                $(target).hide();
+                if (isVideo($(this).val())) {
+                    $('.preview-post-edit').attr('src', '');
+                    $('#video-preview-edit').attr('src', URL.createObjectURL(this.files[0]));
+                }
+                else {
+                    $('#video-preview-edit').attr('src', '');
+                }
+            }
+        });
+    });
+    function loadEditPreview() {
+        var select = $('#app-marketing-social-post-edit select[name=SharingAccount] option:selected')[0];
+        $('#social-edit-2 .social-avatar').css('background-image', 'url(' + $(select).attr("avatarUrl") + ')');
+        $('#social-edit-2 .preview-disname').text($(select).attr("displayName"));
+        $('#social-edit-2 .preview-username').text($(select).text());
+        $('#social-edit-2 .preview-content').text($('#texteditfield').val());
+        var vpce = $('#video-preview-container-edit');
+        var imgpre = $('#social-edit-2 .preview-post-edit');
+        if (imgpre.attr("src") && imgpre.attr("src") != "#") {
+            imgpre.show();
+            vpce.hide();
+        }
+        else {
+            imgpre.hide();
+            if (vpce.find("#video-preview-edit").attr("src"))
+                vpce.show();
+            else
+                vpce.hide();
+        }
+        if ($('#social-edit-1 select[name=attachtype]').val() == "2") {
+            $("#social-edit-2 .preview-post-edit").attr("src", $("#social-edit-1 .newpreview").attr("src"));
+        }
+    }
+
+    function RemoveReminder(e) {
+        var result = confirm("This will cancel and remove your Reminder. Are you sure?");
+        if (result == true) {
+            $('.setreminder').hide(); $('.allowreminder').show();
+            $('#isReminder').val($('#isReminder').val() === 'true' ? 'false' : 'true');
+            $('#reminderCheckbox').closest('div').removeClass('btn-success').addClass('btn-default off');
+            $('#reminderCheckbox')[0].checked = false;
+        }
+    }
+</script>

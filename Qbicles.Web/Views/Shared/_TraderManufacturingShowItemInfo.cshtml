@@ -1,0 +1,83 @@
+﻿@using Qbicles.Models.Trader;
+@using Qbicles.BusinessRules;
+@model Recipe
+@{
+    var traderItem = (TraderItem)ViewBag.Item;
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+}
+<div class="row">
+    <input type="hidden" id="manu_recipe" value="@Model.Id" />
+    <div class="col-xs-12">
+        <ul class="app_subnav admintabs" style="padding-top: 0;">
+            <li class="active"><a href="#manu-1" data-toggle="tab">Recipe</a></li>
+            <li><a href="#manu-2" data-toggle="tab">History</a></li>
+        </ul>
+    </div>
+</div>
+
+<br /><br />
+
+<div class="tab-content">
+    <input id="manujob_recipe_id" type="hidden" value="@Model.Id" />
+    <!-- Recipe -->
+    <div class="tab-pane fade in active" id="manu-1">
+
+        <table class="datatable table-striped table-hover" id="table_recipe_ingredients" style="width: 100%; background: #fff;">
+            <thead>
+                <tr>
+                    <th style="width: 60px;"></th>
+                    <th>Item</th>
+                    <th>Unit</th>
+                    <th>Quantity</th>
+                    <th>Cost <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model.Ingredients)
+                {
+                    string cost = "0";
+                    if (item.SubItem.InventoryDetails != null && item.SubItem.InventoryDetails.Count > 0)
+                    {
+                        //cost = item.SubItem.InventoryDetails[0].AverageCost;
+                        var averageCost = item.SubItem.InventoryDetails.FirstOrDefault().AverageCost;
+                        var quantityOfBaseunit = item.Unit.QuantityOfBaseunit;
+                        cost = (averageCost * quantityOfBaseunit * item.Quantity).ToDecimalPlace(currencySettings);
+                    }
+                    <tr>
+                        <td><div class="table-avatar mini" style="background-image: url('@(api+item.SubItem.ImageUri)&size=T');"></div></td>
+                        <td>@item.SubItem.Name</td>
+                        <td>@item.Unit.Name</td>
+                        <td>@item.Quantity</td>
+
+                        <td>@cost</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+    </div>
+    <!-- END Recipe -->
+    <!-- History -->
+    <div class="tab-pane fade" id="manu-2">
+
+
+
+    </div>
+    <!-- END History -->
+
+</div>
+<script>
+    unitsSlected = @Html.Raw(Json.Encode(traderItem.Units.Select(x => new ProductUnit
+                {
+                    Id = x.Id,
+                    Name = x.Name,
+                    Quantity = x.Quantity,
+                    QuantityOfBaseunit = x.QuantityOfBaseunit,
+                    IsActive = x.IsActive
+                }).ToList()));
+
+    $('#table_recipe_ingredients').DataTable().draw();
+    $('#manu-2 table').DataTable().draw();
+</script>

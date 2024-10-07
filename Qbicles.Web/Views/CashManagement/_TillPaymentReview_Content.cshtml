@@ -1,0 +1,276 @@
+﻿@using Qbicles.BusinessRules;
+@using Qbicles.BusinessRules.CMs;
+@using Qbicles.BusinessRules.Model;
+@using Qbicles.BusinessRules.PoS;
+@using Qbicles.BusinessRules.Trader;
+@using Qbicles.Models
+@using Qbicles.Models.Trader.CashMgt;
+@model TillPayment
+@{
+    var dateTimeFormat = (string)ViewBag.CurrentDateTimeFormat;
+    var userRight = "none";
+    var traderAppRight = (IsReviewerAndApproverModel)ViewBag.TraderApprovalRight;
+    var userId = ViewBag.CurrentUserId;
+    var timeZone = (string)ViewBag.CurrentTimeZone ?? "";
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var dateFormat = (string)ViewBag.CurrentDateFormat;
+
+    //o1
+    if (!traderAppRight.IsInitiators && !traderAppRight.IsReviewer && !traderAppRight.IsApprover)
+    { userRight = "none"; }//hiden approval, no edit
+                           //o2
+    else if (traderAppRight.IsInitiators && !traderAppRight.IsReviewer && !traderAppRight.IsApprover)
+    { userRight = "initiator"; } // readonly approval, no edit
+                                 //o3
+    else if (traderAppRight.IsReviewer && Model.TillPaymentApprovalProcess.RequestStatus == ApprovalReq.RequestStatusEnum.Pending)
+    {
+        userRight = "reviewer";
+    }//If the user is an ApprovalReq.ApprovalRequestDefinition.Reviewer and the Status of the ApprovalReq is Pending, the drop down displays the items Discard, or Send to Approval.
+     //o4
+    else if (traderAppRight.IsApprover && Model.TillPaymentApprovalProcess.RequestStatus == ApprovalReq.RequestStatusEnum.Reviewed)
+    {
+        userRight = "approver";
+    }
+    //o4.1
+    else if (traderAppRight.IsApprover && Model.TillPaymentApprovalProcess.RequestStatus == ApprovalReq.RequestStatusEnum.Pending)
+    {
+        userRight = "initiator";
+    }
+    //o5
+    else if (Model.TillPaymentApprovalProcess.RequestStatus == ApprovalReq.RequestStatusEnum.Approved
+             || Model.TillPaymentApprovalProcess.RequestStatus == ApprovalReq.RequestStatusEnum.Denied
+             || Model.TillPaymentApprovalProcess.RequestStatus == ApprovalReq.RequestStatusEnum.Discarded)
+    {
+        userRight = "completed";
+    }
+
+    var confirm = "";
+    var isChange = "";
+    if (userRight == "initiator" || userRight == "completed")
+    {
+        isChange = "disabled";
+        confirm = "hidden";
+    }
+    if (userRight == "none")
+    {
+        isChange = "disabled";
+        confirm = "hidden";
+    }
+
+    //var add = "";
+    var today = (DateTime)ViewBag.Today;
+    var timeline = (List<ApprovalStatusTimeline>)ViewBag.Timeline;
+    var timelineDate = (List<DateTime>)ViewBag.TimelineDate;
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+}
+
+<input type="hidden" id="tillpayment-id" name="tillpayment-id" value="@Model.Id" />
+<!-- Main content -->
+<section class="mdv2 dash" data-tooltip-color="teal" data-tooltip-delay="300" data-tooltip-animate-function="spin" style="border-top: 1px solid #f1f1f1;">
+
+
+    <!-- App bar -->
+    <div class="mdv2-col-app" style="margin-bottom: 0;">
+
+        <div data-spy="affix" class="contained-sidebar">
+
+            <div class="activity-overview plain company-overview welcome-info" style="text-align: left !important; flex: none; margin: 0 0 30px 0; padding-top: 30px; padding-bottom: 0;">
+
+                <div class="pull-left" style="margin-bottom: 15px;">
+                    <a href="/Qbicles/Dashboard" class="btn btn-primary"><i class="fa fa-angle-up"></i> &nbsp; Qbicle</a>
+                    <a href="/CashManagement/TillDetail?tillId=@Model.AssociatedTill.Id" class="btn btn-info"><i class="fa fa-eye"></i> &nbsp; View in Trader</a>
+                </div>
+                <div class="clearfix"></div>
+
+                <br />
+
+                <h6 class="subhead">Cash Management</h6>
+
+                @{
+                    var titleTillPayment = "";
+                    var directionType = "";
+                    if (Model.Direction == TillPayment.TillPaymentDirection.InToTill)
+                    {
+                        directionType = "Payment in to till";
+                        titleTillPayment = "Payment in to " + Model.AssociatedTill.Name;
+                    }
+                    else
+                    {
+                        directionType = "Payment out of till";
+                        titleTillPayment = "Payment out of " + Model.AssociatedTill.Name;
+                    }
+                }
+
+                <h1 style="line-height: 1.2;">@titleTillPayment</h1>
+                @if (Model != null)
+                {
+                    var label = "";
+                    switch (Model.TillPaymentApprovalProcess.RequestStatus)
+                    {
+                        case ApprovalReq.RequestStatusEnum.Approved:
+                            label = StatusLabelStyle.Approved;
+                            break;
+                        case ApprovalReq.RequestStatusEnum.Denied:
+                            label = StatusLabelStyle.Denied;
+                            break;
+                        case ApprovalReq.RequestStatusEnum.Discarded:
+                            label = StatusLabelStyle.Discarded;
+                            break;
+                        case ApprovalReq.RequestStatusEnum.Pending:
+                            label = StatusLabelStyle.Pending;
+                            break;
+                        case ApprovalReq.RequestStatusEnum.Reviewed:
+                            label = StatusLabelStyle.Reviewed;
+                            break;
+                    }
+                    <span class="label label-lg @label">@(Model.TillPaymentApprovalProcess.RequestStatus.GetDescription())</span>
+                }
+                <div class="clearfix"></div>
+
+
+                <br /><br /><br />
+                <div class="row">
+                    <div class="col-xs-12 col-sm-6">
+                        <label>Date &amp; time</label><br />
+                        <p>@Model.CreatedDate.ConvertTimeFromUtc(timeZone).FormatDateTimeByUser(dateTimeFormat)</p>
+                    </div>
+                    <div class="col-xs-12 col-sm-6">
+                        <label>Method</label><br />
+                        <p>@directionType</p>
+                    </div>
+                </div>
+
+
+                <br /><br />
+                <div class="row">
+                    <div class="col-xs-12 col-sm-6">
+                        <button class="btn btn-primary community-button" style="margin-bottom: 3px;" data-toggle="modal" data-target="#team-view">
+                            <i class="fa fa-users"></i> &nbsp; Team
+                        </button>
+                    </div>
+                    <div class="col-xs-12 col-sm-6">
+                        <button class="btn btn-info community-button" onclick="$('#view-timeline').empty(); $('#view-timeline').append($('#timeline_review').html());" data-toggle="modal" data-target="#history-view"><i class="fa fa-history"></i> &nbsp; History</button>
+                    </div>
+                </div>
+
+            </div>
+
+
+        </div>
+    </div>
+    <!-- END App bar -->
+    <!-- Main area -->
+    <!--Hiển thị main content-->
+    <div class="mdv2-col-dash">
+
+        <div class="spacing">
+
+            @{
+                if (confirm == "" && Model.TillPaymentApprovalProcess != null)
+                {
+                    <div style="width: 500px; max-width: 100%; margin-bottom: 40px;">
+                        <div class="alert activity-overview generic reviewer" style="padding: 10px 20px !important; margin: 0;">
+                            <form name="action" method="post" action="" style="padding: 10px 0;">
+                                <label for="status">Approval options available to you</label>
+                                <div class="input-group">
+                                    <input type="hidden" id="action_approval_default" value="@Model.TillPaymentApprovalProcess.RequestStatus" />
+                                    <select @isChange id="action_approval" name="action_element" class="form-control select2" style="width: 100%;" data-placeholder="Please choose...">
+                                        @{
+                                            switch (userRight)
+                                            {
+                                                case "initiator":
+                                                case "none":
+                                                    <option>@Model.TillPaymentApprovalProcess.RequestStatus</option>
+                                                    break;
+                                                case "reviewer":
+                                                    <option value="Reviewed" selected>Send to Approval</option>
+                                                    <option value="Discarded">Discard</option>
+                                                    break;
+                                                case "approver":
+                                                    <option value="Approved" selected>Approve</option>
+                                                    <option value="Pending">Send back to Review</option>
+                                                    <option value="Denied">Deny</option>
+                                                    break;
+                                                case "completed":
+                                                    <option>@Model.TillPaymentApprovalProcess.RequestStatus</option>
+                                                    break;
+                                            }
+                                        }
+                                    </select>
+                                    <span class="input-group-btn">
+                                        @{
+                                            if (userRight != "none")
+                                            {
+                                                var approvalId = Model.TillPaymentApprovalProcess.Id.Encrypt();
+                                                <button onclick="javascript:UpdateStatusApproval('@approvalId', '@Model.Id');" class="btn btn-success">Confirm</button>
+                                            }
+                                        }
+                                    </span>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                }
+            }
+
+
+
+            <table class="datatable table-striped table-hover" style="width: 100%;">
+                <thead>
+                    <tr>
+                        <th data-priority="1">Date &amp; time</th>
+                        <th data-priority="1">Location</th>
+                        <th data-priority="2">Till</th>
+                        <th data-priority="2">Safe</th>
+                        <th data-priority="3">Amount (@(currencySettings.CurrencySymbol ?? ""))</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>@Model.CreatedDate.ConvertTimeFromUtc(timeZone).FormatDateTimeByUser(dateTimeFormat)</td>
+                        <td>@Model.AssociatedTill.Location.Name</td>
+                        <td>@Model.AssociatedTill.Name</td>
+                        <td>@Model.AssociatedSafe.Name</td>
+                        <td>@Model.Amount</td>
+                    </tr>
+                </tbody>
+            </table>
+
+        </div>
+
+    </div>
+
+
+</section>
+
+<div id="timeline_review" style="display: none;">
+    <ul class="timeline">
+        @foreach (var date in timelineDate)
+        {
+            var dateStart = date.ConvertTimeFromUtc(timeZone).FormatDateTimeByUser(dateFormat);
+            var dateStr = date.Date == today.Date ? "Today" : dateStart;
+
+            <li class="time-label">
+                <span class="label label-lg label-info">
+                    @dateStr
+                </span>
+            </li>
+            foreach (var tl in timeline.Where(d => d.LogDate.Date == date.Date))
+            {
+                <li>
+                    <div class="person" style="background-image: url('@api@tl.UserAvatar');"></div>
+                    <div class="timeline-item">
+                        <span class="time"><i class="fa fa-clock-o"></i> @tl.Time</span>
+                        <h4 class="timeline-header">@tl.Status</h4>
+                    </div>
+                </li>
+            }
+            <br />
+        }
+    </ul>
+</div>
+
+<script>
+    $("#action_approval").select2();
+</script>

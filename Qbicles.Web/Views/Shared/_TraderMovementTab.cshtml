@@ -1,0 +1,346 @@
+﻿@using System.Diagnostics
+@using Qbicles.Models.Trader
+@{
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var locationManage = (int)ViewBag.CurrentLocationManage;
+    var dateTimeFormat = (string)ViewBag.CurrentDateTimeFormat;
+}
+
+<div class="row">
+    <div class="col-xs-12">
+        <ul class="app_subnav admintabs" style="padding-top: 0;">
+            <li class="active"><a href="#movement-list" data-toggle="tab" data-target="#movement-list">Movement</a></li>
+            <li><a href="#alert-setup" data-toggle="tab" data-target="#alert-setup">Alert setup</a></li>
+            <li><a href="#alert-reports" data-toggle="tab" data-target="#alert-reports">Alert reports</a></li>
+        </ul>
+    </div>
+</div>
+
+<br />
+
+<div class="tab-content">
+    <!--Movement-list sub tab-->
+    <div class="tab-pane fade in active" id="movement-list">
+        <div class="well custom" style="padding-bottom: 5px;">
+            <div class="row">
+                <div class="col-xs-12 col-sm-4">
+                    <div class="form-group">
+                        <label for="search_dt">Search for something</label>
+                        <input type="text" name="search_dt" id="movement_search_dt" class="search_dt form-control" placeholder="Search for something">
+                    </div>
+                </div>
+                <div class="col-xs-12 col-sm-4">
+                    <div class="form-group">
+                        <label for="search_dt">Date range</label>
+                        <input type="text" id="movement_daterange" class="daterange form-control" value="@DateTime.Today.ToString(dateTimeFormat) - @DateTime.Today.AddDays(1).AddTicks(-1).ToString(dateTimeFormat)" placeholder="Click here to select">
+                    </div>
+                </div>
+                <div class="col-xs-12 col-sm-4">
+                    <label>Table options</label>
+                    <br />
+                    <div class="form-group">
+                        <div class="btn-group options">
+                            <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                <i class="fa fa-sliders"></i> &nbsp; Manage display
+                            </button>
+                            <ul class="dropdown-menu primary v2 table-movement">
+                                <li><label><input type="checkbox" data-column="2" checked> Item</label></li>
+                                <li><label><input type="checkbox" data-column="3" checked> In</label></li>
+                                <li><label><input type="checkbox" data-column="4" checked> Out</label></li>
+                                <li><label><input type="checkbox" data-column="5" checked> Difference</label></li>
+                            </ul>
+                        </div>
+                        <button class="btn btn-warning" data-toggle="modal" data-target="#inventory-alert-show"><i class="fa fa-bell"></i> &nbsp; 2 alerts</button>
+                        <!-- Export -->
+                        <div class="btn-group options">
+                            <button type="button" class="btn btn-warning dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                <i class="fa fa-download"></i> &nbsp; Export
+                            </button>
+                            <div class="dropdown-menu" id="kt_datatable_example_export_menu" aria-labelledby="dropdownMenuButton" style="background-color: #a37a41;">
+                                <li>
+                                    <a class="dropdown-item data-qb-excel" href="javascript:void(0)" onclick="GetDataTableContentExport()">Excel</a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item data-qb-csv" href="javascript:void(0)" onclick="GetDataTableContentExport(2)">CSV</a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item data-qb-pdf" href="javascript:void(0)" onclick="GetDataTableContentExport(3)">PDF</a>
+                                </li>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <br />
+        <div id="movement-table"></div>
+    </div>
+    <!--END Movement-list sub tab-->
+    <!--Alert-setup sub tab-->
+    <div class="tab-pane fade" id="alert-setup">
+        <div class="well custom" style="padding-bottom: 5px;">
+            <div class="row">
+
+                <div class="col-xs-12 col-sm-6 col-lg-3">
+                    <div class="form-group">
+                        <label for="search">Search</label>
+                        <input type="text" id="key-search-alert-setting" class="form-control">
+                    </div>
+                </div>
+                <div class="col-xs-12 col-sm-6 col-lg-3">
+                    <div class="form-group">
+                        <label for="status">Status</label>
+                        <select name="status" id="alert-setting_status" class="form-control select2" style="width: 100%;">
+                            <option value="3" selected>Show all</option>
+                            <option value="1">Enabled</option>
+                            <option value="2">Disabled</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-xs-12 col-sm-6 col-lg-3">
+                    <label for="search">Date range</label>
+                    <div class="input-group">
+                        <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                        <input type="text" id="alert-settings-daterange" class="form-control daterange" value="" placeholder="Click here to select">
+                    </div>
+                </div>
+                <div class="col-xs-12 col-sm-6 col-lg-3">
+                    <div class="form-group">
+                        <label for="search">Options</label><br />
+                        <button class="btn btn-success" onclick="window.location.href='/TraderMovement/TraderMovementSetting'"><i class="fa fa-plus"></i> &nbsp; Add settings</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <br />
+
+        <div id="alert-settings-table">
+            <table class="datatable table-striped table-hover" id="alert-settings_table" style="width: 100%;">
+                <thead>
+                    <tr>
+                        <th>Reference</th>
+                        <th>Date</th>
+                        <th>No movement alerts</th>
+                        <th>Min/max alerts</th>
+                        <th>Accumulation alerts</th>
+                        <th>Options</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+    <!--END Alert-setup sub tab-->
+    <!--Alert-reports sub tab-->
+    <div class="tab-pane fade" id="alert-reports">
+        <div class="row">
+            <div class="col-xs-12 col-sm-4 col-md-3">
+                <ul class="nav nav-stacked nav-pills nav-marketing" style="margin-bottom: 30px;">
+                    <li class="active"><a href="#" data-toggle="tab" data-target="#report-nomovement">No movement</a></li>
+                    <li><a href="#" data-toggle="tab" data-target="#report-minmax">Min/max inventory</a></li>
+                    <li><a href="#" data-toggle="tab" data-target="#report-accumulation">Accumulation</a></li>
+                </ul>
+            </div>
+            <div class="col-xs-12 col-sm-8 col-lg-9">
+
+
+                <div class="tab-content">
+
+
+                    <!-- No Movement -->
+                    <div class="tab-pane fade in active" id="report-nomovement">
+
+                        <div class="well custom" style="padding-bottom: 5px;">
+                            <div class="row">
+
+                                <div class="col-xs-12 col-sm-6 col-lg-3">
+                                    <div class="form-group">
+                                        <label for="search">Search</label>
+                                        <input type="text" class="form-control">
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-6 col-lg-3">
+                                    <label for="search">Date range</label>
+                                    <div class="input-group">
+                                        <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                                        <input type="text" class="form-control daterange">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <br />
+
+                        <table class="datatable table-striped table-hover" id="community-list" style="width: 100%;">
+                            <thead>
+                                <tr>
+                                    <th>Alert setup</th>
+                                    <th>Execution group</th>
+                                    <th>Date run</th>
+                                    <th>Product group</th>
+                                    <th>Item</th>
+                                    <th>In threshold (days)</th>
+                                    <th data-orderable="false">Date range(s)</th>
+                                    <th>Out threshold (days)</th>
+                                    <th data-orderable="false">Date range(s)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>ABC123</td>
+                                    <td>Execution Group 1</td>
+                                    <td>12/11/2020</td>
+                                    <td>Footwear</td>
+                                    <td>Nike Trainers</td>
+                                    <td>5 &nbsp; <i class="fa fa-check green"></i></td>
+                                    <td></td>
+                                    <td>3 &nbsp; <i class="fa fa-remove red"></i></td>
+                                    <td>
+                                        <ul style="padding-left: 15px;">
+                                            <li>28/10/2020 - 31/10/2020</li>
+                                            <li>28/10/2020 - 01/11/2020</li>
+                                            <li>02/11/2020 - 05/11/2020</li>
+                                        </ul>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                    </div>
+                    <!-- END No Movement -->
+                    <!-- Min/max -->
+                    <div class="tab-pane fade" id="report-minmax">
+
+                        <div class="well custom" style="padding-bottom: 5px;">
+                            <div class="row">
+
+                                <div class="col-xs-12 col-sm-6 col-lg-3">
+                                    <div class="form-group">
+                                        <label for="search">Search</label>
+                                        <input type="text" class="form-control">
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-6 col-lg-3">
+                                    <label for="search">Date range</label>
+                                    <div class="input-group">
+                                        <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                                        <input type="text" class="form-control daterange">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <br />
+
+                        <table class="datatable table-striped table-hover" id="community-list" style="width: 100%;">
+                            <thead>
+                                <tr>
+                                    <th>Alert setup</th>
+                                    <th>Execution group</th>
+                                    <th>Date run</th>
+                                    <th>Product group</th>
+                                    <th>Item</th>
+                                    <th>Min threshold</th>
+                                    <th data-orderable="false">Date range(s)</th>
+                                    <th>Max threshold (days)</th>
+                                    <th data-orderable="false">Date range(s)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>DEF123</td>
+                                    <td>Execution Group 2</td>
+                                    <td>13/11/2020</td>
+                                    <td>Apparel</td>
+                                    <td>Trespass Jacket</td>
+                                    <td>1 &nbsp; <i class="fa fa-check green"></i></td>
+                                    <td></td>
+                                    <td>150 &nbsp; <i class="fa fa-remove red"></i></td>
+                                    <td>
+                                        <ul style="padding-left: 15px;">
+                                            <li>28/10/2020 - 31/10/2020</li>
+                                        </ul>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                    </div>
+                    <!-- END Min/max -->
+                    <!-- Accumulation -->
+                    <div class="tab-pane fade" id="report-accumulation">
+
+                        <div class="well custom" style="padding-bottom: 5px;">
+                            <div class="row">
+
+                                <div class="col-xs-12 col-sm-6 col-lg-3">
+                                    <div class="form-group">
+                                        <label for="search">Search</label>
+                                        <input type="text" class="form-control">
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-6 col-lg-3">
+                                    <label for="search">Date range</label>
+                                    <div class="input-group">
+                                        <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                                        <input type="text" class="form-control daterange">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <br />
+
+                        <table class="datatable table-striped table-hover" id="community-list" style="width: 100%;">
+                            <thead>
+                                <tr>
+                                    <th>Alert setup</th>
+                                    <th>Execution group</th>
+                                    <th>Date run</th>
+                                    <th>Product group</th>
+                                    <th>Item</th>
+                                    <th>Threshold</th>
+                                    <th data-orderable="false">Date range(s)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>GHI123</td>
+                                    <td>Execution Group 3</td>
+                                    <td>13/11/2020</td>
+                                    <td>Winterwear</td>
+                                    <td>Hat &amp; scarf</td>
+                                    <td>200 &nbsp; <i class="fa fa-check green"></i></td>
+                                    <td></td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                    </div>
+                    <!-- END Accumulation -->
+
+                </div>
+
+            </div>
+
+        </div>
+        <!-- END Alert reports -->
+    </div>
+    <!--END Alert-reports sub tab-->
+</div>
+
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/trader.movement.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/trader.movement.js"></script>
+    }
+}
+
+<script>
+    initAlertSettingPage();
+</script>

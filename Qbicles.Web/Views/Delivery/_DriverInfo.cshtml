@@ -1,0 +1,81 @@
+﻿@using Qbicles.BusinessRules
+@using Qbicles.Models.Trader.DDS
+@model Driver
+@{
+    var inDelivery = (bool)ViewBag.InDelivery;
+    var driver = new { Model.Id, Model.Key, Title = Model.User.User.GetFullName(), Model.Latitude, Model.Longitude };
+}
+
+<button class="btn btn-danger pull-right" onclick="CloseManagementInfo(true)">Close</button>
+<div class="clearfix"></div>
+<br />
+<br />
+<h1 style="line-height: 1.2;">Order @Model.User.User.GetFullName()</h1>
+<span class="label label-lg label-@Model.Status.GetClass()">@Model.Status.GetDescription()</span>
+<br />
+<br />
+<br />
+
+
+<div style="padding: 0 15px;">
+    <table class="table table-condensed table-borderless" style="margin: 0 0 15px 0; color: #828da0; font-size: 12px; font-family: 'Roboto';">
+        <tbody>
+            <tr>
+                <td><strong>Distance</strong></td>
+                <td><span id="driver-info-distance-@Model.Id"></span></td>
+            </tr>
+            <tr>
+                <td><strong>Duration</strong></td>
+                <td><span id="driver-info-duration-@Model.Id"></span></td>
+            </tr>
+            <tr>
+                <td><strong>Employment Location</strong></td>
+                <td>@Model.EmploymentLocation.Name</td>
+            </tr>
+            <tr>
+                <td><strong>Work Location</strong></td>
+                <td>
+                    @{
+                        var wlocations = "";
+                        if (Model.WorkLocations != null)
+                        {
+                            wlocations = string.Join(",", Model.WorkLocations.Select(e => e.Name));
+                        }
+                    }
+                    @wlocations
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
+    <br />
+    <br />
+    @if (!inDelivery)
+    {
+        if (Model.Status != DriverStatus.IsBusy)
+        {
+            <button onclick="AssignDriver(@Model.Id,@Model.Latitude,@Model.Longitude,'@Model.User.User.GetFullName()','@Model.User.User.ProfilePic.ToUri()')" class="btn btn-success">
+                <i class="fa fa-plus"></i>&nbsp;Add to delivery
+            </button>
+        }
+        <br /><br />
+    }
+
+</div>
+
+<script>
+
+    var $driver =@Html.Raw(Json.Encode(driver));
+
+    $(document).ready(function () {        
+        CalculateRoute();
+    });
+
+    function CalculateRoute() {
+        var routeTo = { Title: $driver.Title, Latitude: $driver.Latitude, Longitude: $driver.Longitude };
+
+        routeMapsFromDepot(routeTo, icons.driver, true);
+        getSetDistance($driver.Latitude, $driver.Longitude, "driver-info-distance-" + $driver.Id, "driver-info-duration-" + $driver.Id, $driver);
+
+    }
+</script>

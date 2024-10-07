@@ -1,0 +1,336 @@
+﻿@using Qbicles.BusinessRules;
+@using Qbicles.Models;
+@using Qbicles.Models.Invitation;
+@model List<OurPeopleModel>
+@{
+    ViewBag.Title = ViewBag.PageTitle;
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var domain = (QbicleDomain)ViewBag.Domain;
+    var Roles = (List<DomainRole>)ViewBag.Roles;
+    var currentuserId = (string)ViewBag.CurrentUserId;
+    var lstInvitation = (List<InvitationCustom>)ViewBag.Invitation;
+    var dateFormat = (string)ViewBag.CurrentDateFormat;
+    var currentDomainPlan = (DomainPlan)ViewBag.CurrentDomainPlan ?? null;
+    var currentDomainPlanLevel = currentDomainPlan?.Level?.Level ?? BusinessDomainLevelEnum.Free;
+    var canSendInvite = (bool)ViewBag.CanSendInvite;
+}
+
+
+<input type="hidden" name="active_page" id="active_page" value="#dashboard">
+
+
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail mdv2-wrapper" style="position: relative;">
+
+
+    <!-- Main content -->
+    <section class="mdv2 dash" data-tooltip-color="teal" data-tooltip-delay="300" data-tooltip-animate-function="spin" style="border-top: 1px solid #f1f1f1;">
+
+        <!-- App bar -->
+        <div class="mdv2-col-app" style="margin-bottom: 0;">
+            <div data-spy="affix" class="contained-sidebar">
+
+                <ul class="subapps-nav" role="navigation" data-tooltip-stickto="bottom">
+                    <li class="active">
+                        <a href="#" data-toggle="tab" data-target="#subapp-people" data-tooltip="Domain users" onclick="$('.people_2').hide(); $('.people_1').show();">
+                            <i class="fa fa-users"></i>
+                        </a>
+                    </li>
+                    @if (currentDomainPlanLevel >= BusinessDomainLevelEnum.Starter)
+                    {
+                        <li>
+                            <a href="#" data-toggle="tab" data-target="#subapp-invites" id="manage-invites" data-tooltip="Invites" onclick="$('.people_1').hide(); $('.people_2').show();">
+                                <i class="fa fa-user-plus"></i>
+                            </a>
+                        </li>
+                    }
+                </ul>
+
+                <div class="spacing" style="padding: 10px 20px;">
+
+                    <div class="people_1 pricing">
+                        <!-- People tab 1 -->
+                        <div class="card" style="background: #f4f8f9; box-shadow: none;">
+                            <div class="card-body">
+                                <h5 class="card-title text-muted text-uppercase text-center">User slots</h5>
+                                <h6 class="card-price text-center"><span class="user-slots">@ViewBag.ActualMembers</span>/@ViewBag.UsersAllowed <small>used</small></h6>
+                                @if (domain.Administrators.Any(a => a.Id == currentuserId) && currentDomainPlanLevel >= BusinessDomainLevelEnum.Starter && canSendInvite)
+                                {
+                                    <br />
+                                    <div class="row">
+                                        <div class="col-xs-12">
+                                            <button class="btn btn-success community-button sm" data-toggle="modal" data-target='#people-user-add' style="margin-bottom: 5px;">
+                                                Send an invitation
+                                            </button>
+                                        </div>
+                                    </div>
+                                }
+
+                            </div>
+                        </div>
+
+                        @*<div class="row">
+                            <div class="col-xs-12 col-sm-6">
+                                <a href="/Qbicles" class="btn btn-primary community-button smb"><i class="fa fa-angle-left"></i> &nbsp; Domain</a>
+                            </div>
+                            <div class="col-xs-12 col-sm-6">
+                                @if (domain.Administrators.Any(a => a.Id == currentuserId) && currentDomainPlanLevel >= BusinessDomainLevelEnum.Starter)
+                                {
+                                    <button class="btn btn-success community-button" data-toggle="modal" data-target='#people-user-add' style="margin-bottom: 30px;">
+                                        <i class="fa fa-user-plus"></i> &nbsp; Invite
+                                    </button>
+                                }
+
+                            </div>
+                            <br />
+
+                        </div>*@
+
+                        <div class="well custom">
+
+                            <div class="form-group">
+                                <label for="search">Search for people</label>
+                                <input type="text" name="search" id="searchPeople" class="form-control" placeholder="Search people by name or email">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="level">Limit to admin level</label>
+                                <select id="ddlRoleLevel" name="level" class="form-control select2" style="width: 100%;" onchange="initPeopleList()">
+                                    <option value="0">Show all</option>
+                                    <option value="1">Domain User</option>
+                                    <option value="2">Qbicle Creator</option>
+                                    @if (domain.Administrators.Any(a => a.Id == currentuserId))
+                                    {
+                                        <option value="3">Domain Administrator</option>
+                                    }
+
+                                </select>
+                            </div>
+
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label for="tags">Limit to app role(s)</label>
+                                <select name="role" class="form-control select2" style="width: 100%;" data-placeholder="Show all roles" id="ddlDomainRole" multiple onchange="initPeopleList()">
+                                    @foreach (var item in Roles)
+                                    {
+                                        <option value="@item.Id">@item.Name</option>
+                                    }
+
+                                </select>
+                            </div>
+
+                        </div>
+
+                        <!-- END People 1 -->
+                    </div>
+
+
+                    <div class="people_2" style="display: none;">
+                        <!-- People tab 2 -->
+
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-6">
+                                <a href="/Qbicles" class="btn btn-primary community-button smb"><i class="fa fa-angle-left"></i> &nbsp; Domain</a>
+                            </div>
+                            <div class="col-xs-12 col-sm-6">
+                                @if (domain.Administrators.Any(a => a.Id == currentuserId))
+                                {
+                                    <button class="btn btn-success community-button" data-toggle="modal" data-target='#people-user-add' style="margin-bottom: 30px;">
+                                        <i class="fa fa-user-plus"></i> &nbsp; Invite
+                                    </button>
+                                }
+
+                            </div>
+                        </div>
+
+                        <div class="well custom" style="padding-bottom: 5px;">
+
+                            <div class="form-group">
+                                <label for="search">Search for people</label>
+                                <input type="text" name="search" id="searchInvitation" class="form-control" onkeyup="SearchInvitationPeople()">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="level">Limit to status</label>
+                                <select id="ddlStatus" name="level" class="form-control select2" style="width: 100%;" onchange="SearchInvitationPeople()">
+                                    <option value="0">Show all</option>
+                                    <option value="2">Accepted</option>
+                                    <option value="1">Pending</option>
+                                    <option value="3">Rejected</option>
+                                </select>
+                            </div>
+
+                        </div>
+
+                        <!-- END People tab 2 -->
+                    </div>
+                </div>
+
+            </div>
+        </div>
+        <!-- END App bar -->
+        <!-- Main area -->
+        <div class="mdv2-col-dash">
+
+            <div class="spacing">
+
+                <div class="tab-content">
+
+
+                    <!-- People -->
+                    <div class="tab-pane fade in active" id="subapp-people">
+
+                        <h5>People</h5>
+                        <br />
+                        <div id="content-peoplelist">
+                            <table class="datatable table-hover table-striped responsive" id="Peoplelist" style="width: 100%; background: #fff; margin-left: -2px;" data-searching="false">
+                                <thead>
+                                    <tr>
+                                        <th data-priority="3" data-orderable="false" style="width: 30px;"></th>
+                                        <th data-priority="1">Name</th>
+                                        <th data-priority="4">Member since</th>
+                                        <th data-priority="2">Email</th>
+                                        <th data-priority="1">Admin Level(s)</th>
+                                        <th data-priority="1">App Role(s)</th>
+                                        <th data-priority="3">Associated Qbicles</th>
+                                        <th data-priority="1" data-orderable="false"></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                </tbody>
+                            </table>
+                            <div class="info hidden" id="info-people-datatable" administrators ="@((int)AdminLevel.Administrators)" manager="@((int)AdminLevel.QbicleManagers)" user="@((int)AdminLevel.Users)" currentuserId ="@currentuserId">
+                            </div>
+                        </div>
+                    </div>
+                    <!-- END People -->
+                    <!-- Invites -->
+                    <div class="tab-pane fade" id="subapp-invites">
+
+                        <h5>Invites</h5>
+                        <br />
+                        <div id="content-invites">
+                            <table class="datatable table-hover table-striped" id="lstInvitation" style="width: 100%; background: #fff;" data-searching="false" data-order='[[ 3, "desc" ]]'>
+                                <thead>
+                                    <tr>
+                                        <th data-priority="3" data-orderable="false" style="width: 30px;"></th>
+                                        <th data-priority="1">Name</th>
+                                        <th data-priority="1">Email address</th>
+                                        <th data-priority="4">Invite date</th>
+                                        <th data-priority="3">Notes</th>
+                                        <th data-priority="1">Status</th>
+                                        <th data-priority="1" data-orderable="false"></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @if (lstInvitation != null && lstInvitation.Any())
+                                    {
+                                        foreach (var item in lstInvitation)
+                                        {
+                                            <tr>
+                                                <td><div class="table-avatar mini" style="background-image: url('@(string.IsNullOrEmpty(item.ProfilePic)?"../Content/DesignStyle/img/icon_contact.png": api+item.ProfilePic+"&size=T")');">&nbsp;</div></td>
+                                                <td><a href="/Community/UserProfilePage?uId=@item.UserId">@((string.IsNullOrEmpty(item.Forename) || string.IsNullOrEmpty(item.Surname)) ? item.UserName : item.Forename + " " + item.Surname)</a></td>
+                                                <td><a href="mailto:@item.Email">@item.Email</a></td>
+                                                <td data-sort="@item.CreatedDate.Ticks">@item.CreatedDate.ToString(dateFormat.Replace("/","."))</td>
+                                                <td>@item.Note</td>
+                                                <td>
+                                                    @if (item.Status == InvitationStatusEnum.Accepted)
+                                                    {
+                                                        <span class="label label-lg label-success">Accepted</span>
+                                                    }
+                                                    else if (item.Status == InvitationStatusEnum.Pending)
+                                                    {
+                                                        <span class="label label-lg label-warning">Pending</span>
+                                                    }
+                                                    else if (item.Status == InvitationStatusEnum.Rejected || item.Status == InvitationStatusEnum.Discarded)
+                                                    {
+                                                        <span class="label label-lg label-danger">Rejected</span>
+                                                    }
+                                                </td>
+                                                <td>
+                                                    @if (item.Status == InvitationStatusEnum.Pending || item.Status == InvitationStatusEnum.Rejected)
+                                                    {
+                                                        <button class="btn btn-primary" onclick="reSendEmail(@item.Id, '@item.Email', '@((string.IsNullOrEmpty(item.Forename) || string.IsNullOrEmpty(item.Surname)) ? item.UserName : item.Forename + " " + item.Surname)')"><i class="fa fa-redo"></i> &nbsp; Resend</button>
+                                                    }
+                                                </td>
+                                            </tr>
+                                        }
+
+                                    }
+
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <!-- END Invites -->
+
+
+                </div>
+            </div>
+
+
+        </div>
+        <!-- END Main col -->
+
+    </section>
+
+
+</div>
+<!-- /.content-wrapper -->
+
+<div class="modal in" id="PromoteOrDemoteConfirm" role="dialog" aria-labelledby="PromoteOrDemoteConfirm" style="display: none;" data-focus-on="input:first" data-keyboard="true" data-backdrop="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+                <h5 class="modal-title">Remove from Domain</h5>
+            </div>
+            <div class="modal-body">
+
+                <input type="hidden" id="hduserId" />
+                <div class="activity-overview generic help-text animated bounce">
+                    <i class="fa fa-info-circle"></i>
+                    <p>Are you sure you want to delete <span id="lblUserName"></span> from the <span id="lblDomainName"></span> domain?</p>
+                </div>
+
+                <br>
+
+                <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                <button class="btn btn-success" onclick="RemoveUserFromDomain()">Accept</button>
+
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+@Html.Partial("_OurPeopleInvited")
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/qbicle.OurPeople.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/qbicle.OurPeople.min.js"></script>
+    }
+}
+
+<script src="~/Content/DesignStyle/js/mixitup.min.js"></script>
+<script>
+    jQuery(function ($) {
+        var $filterSelect = $('#mix-filters');
+        var $sortSelect = $('#mix-sorting');
+
+        $container = $('#mix-wrapper');
+        $container.mixItUp();
+
+        $filterSelect.on('change', function () {
+            $container.mixItUp('filter', this.value);
+        });
+
+        $sortSelect.on('change', function () {
+            $container.mixItUp('sort', this.value);
+        });
+
+    })
+
+</script>

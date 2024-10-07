@@ -1,0 +1,92 @@
+﻿@using Qbicles.Models.Trader
+@using Qbicles.Models.Trader.SalesChannel;
+@using Qbicles.BusinessRules
+@model TraderSale
+@{
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+}
+
+<table id="sale-review-item-preview-table" class="datatable table-hover" style="background: #fff; width: 100%;" data-paging="false">
+    <thead>
+        <tr>
+            <th data-priority="5" style="width: 80px;" data-orderable="false"></th>
+            <th data-priority="1">Item</th>
+            <th data-priority="1">Unit</th>
+            <th data-priority="2">Quantity</th>
+            <th data-priority="2">Unit price <strong>(@currencySettings.CurrencySymbol)</strong></th>
+            <th data-priority="3">Discount</th>
+            <th data-priority="2">Tax <strong>(@currencySettings.CurrencySymbol)</strong></th>
+            <th data-priority="3">Total <strong>(@currencySettings.CurrencySymbol)</strong></th>
+        </tr>
+    </thead>
+    <tbody>
+        @{
+            foreach (var item in Model.SaleItems)
+            {
+
+                string taxrateName = "(Tax free)";
+                decimal taxRate = 0;
+                decimal taxValue = 0;
+                decimal priceIncludeTax = 0;
+
+                decimal priceExcludeTax = 0;
+                if (item.Taxes != null)
+                {
+                    taxRate = item.SumTaxRates();
+                    taxrateName = item.StringTaxRates(currencySettings);
+
+                    switch (Model.SalesChannel)
+                    {
+                        case SalesChannelEnum.Trader:
+
+                            priceIncludeTax = item.SalePricePerUnit * item.Quantity * (1 - (item.Discount / 100)) * (1 + taxRate);
+                            priceExcludeTax = priceIncludeTax / (1 + taxRate);
+                            taxValue = priceIncludeTax - priceExcludeTax;
+                            break;
+                        case SalesChannelEnum.POS:
+                            taxValue = item.SalePricePerUnit - item.SalePricePerUnit / (1 + taxRate);
+                            break;
+                    }
+                }
+                <tr>
+                    <td>
+                        <div class="table-avatar" style="background-image: url('@(api+item.TraderItem.ImageUri)&size=T');">&nbsp;</div>
+                    </td>
+                    <td>@item.TraderItem.Name</td>
+                    <td>
+                        @{
+                            @(item.Unit == null ? "" : item.Unit.Name)
+                        }
+                    </td>
+                    <td>@item.Quantity.ToDecimalPlace(currencySettings)</td>
+                    <td>@item.SalePricePerUnit.ToDecimalPlace(currencySettings)</td>
+                    <td>@item.Discount.ToDecimalPlace(currencySettings)%</td>
+                    <td class="row_taxname">
+                        @Html.Raw(taxrateName)
+                    </td>
+                    <td>@item.Price.ToDecimalPlace(currencySettings)</td>
+                </tr>
+            }
+        }
+
+    </tbody>
+</table>
+
+<br />
+<input type="hidden" id="sale-item-workgroup-id" value="@(Model.Workgroup?.Id ?? 0)" />
+<input type="hidden" id="sale-item-location-id" value="@(Model.Location?.Id ?? 0)" />
+<a href="javascript:void(0)" class="btn btn-warning" onclick="ChangeItems(@Model.Id)"><i class="fa fa-pencil"></i> &nbsp; Change</a>
+
+<script>
+    //$("#sale-review-item-preview-table")
+    if (jQuery().DataTable) {
+        $("#sale-review-item-preview-table").DataTable({
+            responsive: true,
+            order: [[0, 'asc']]
+        });
+
+        $("#sale-review-item-preview-table").show();
+    }
+</script>

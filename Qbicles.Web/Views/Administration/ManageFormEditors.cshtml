@@ -1,0 +1,166 @@
+﻿@using Qbicles.Models;
+@{
+    ViewBag.Title = ViewBag.PageTitle;
+    var CurrentDomain = ViewBag.CurrentDomain;
+    var api = (string)ViewBag.DocRetrievalUrl;
+}
+<link href="~/Content/DesignStyle/css/checkbox3.min.css" rel="stylesheet" />
+
+<div class="content-wrapper qbicle-detail" style="min-height: 465px;">
+    <div class="tabnav-spacer">&nbsp;</div>
+
+    <!-- Main content -->
+    <section class="content">
+        <div class="mod_title">
+            <h5>Task Forms</h5>
+            <h4>Permissions</h4>
+        </div>
+        <div class="app_topnav restyle">
+            <ul class="nav nav-pills app_main_nav hidden-xs hidden-sm">
+                <li role="presentation">
+                    <a href="/Administration/ManageTaskForms">
+                        <i class="fa fa-file-code-o"></i>
+                        Manage Forms
+                    </a>
+                </li>
+                <li role="presentation">
+                    <a href="/Administration/QueryTasksForm">
+                        <i class="fa fa-question"></i>
+                        Queries/Reports
+                    </a>
+                </li>
+                <li role="presentation" class="active">
+                    <a href="/Administration/ManageFormEditors">
+                        <i class="fa fa-lock"></i>
+                        Permissions
+                    </a>
+                </li>
+            </ul>
+
+            <select name="app_tab" class="form-control visible-xs visible-sm">
+                <option value="/Administration/ManageTaskForms">Manage Forms</option>
+                <option value="/Administration/QueryTasksForm">Queries/Reports</option>
+                <option value="/Administration/ManageFormEditors" selected="">Permissions</option>
+            </select>
+        </div>
+        <div class="row">
+            <div class="col-xs-12">
+                <div class="app_filter">
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-4 col-lg-4 button_options" style="padding-bottom: 0;">
+                            <a href="/Apps/AppManagement" class="btn btn-info"><i class="fa fa-th"></i> &nbsp; All apps</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <br />
+        <br />
+        <div class="domain_flash">
+            @if (CurrentDomain != null)
+            {
+                var currentDomain = (QbicleDomain)CurrentDomain;
+                <img id="media-@currentDomain.Id" src='@api@currentDomain.LogoUri' class="img-circle icon" />
+                <h5><input type="hidden" id="current-domain" name="id_domain" value="@currentDomain.Id">@currentDomain.Name</h5>
+            }
+        </div>
+        <table class="datatable table-hover table-striped dataTable no-footer dtr-inline" width="100%" id="tableManageFormEditors" role="grid" aria-describedby="tableManageFormEditors" style="width: 100%;">
+            <thead>
+                <tr role="row">
+                    <th data-priority="3" data-orderable="false" class="sorting_asc" rowspan="1" colspan="1" style="width: 50px;" aria-label=""></th>
+                    <th data-priority="1" class="sorting" tabindex="0" aria-controls="tableManageFormEditors" rowspan="1" colspan="1" style="width: 127px;" aria-label="Name: activate to sort column ascending">Name</th>
+                    <th data-priority="2" class="sorting" tabindex="0" aria-controls="tableManageFormEditors" rowspan="1" colspan="1" style="width: 322px;" aria-label="Email: activate to sort column ascending">Email</th>
+                    <th data-priority="1" class="sorting" tabindex="0" aria-controls="tableManageFormEditors" rowspan="1" colspan="1" style="width: 245px;" aria-label="Manage Forms: activate to sort column ascending">Manage Forms</th>
+                    <th data-priority="1" class="sorting" tabindex="0" aria-controls="tableManageFormEditors" rowspan="1" colspan="1" style="width: 317px;" aria-label="Query/Report Forms: activate to sort column ascending">Query/Report Forms</th>
+                </tr>
+            </thead>
+            <tbody id="tbodyManageFormEditors"></tbody>
+        </table>
+    </section>
+</div>
+
+<script>
+    var $cbcurrentDomain = $("#current-domain");
+
+    $(document).ready(function () {
+        cbCurrentDomainChange();
+    });
+
+    function generateDataTaskFormEditorsByDomainIdToTable(domainId) {
+        var dataForTaskFormEditorsByDomainId = getDataforTaskFormEditorsByDomainId(domainId);
+        var tbody = '';
+        $.each(dataForTaskFormEditorsByDomainId, function (index, item) {
+            var checked = item.IsEditor ? 'checked' : '';
+            var queryChecked = item.IsQueryOrReport ? 'checked' : '';
+            tbody += '<tr><td class="table_avatar sorting_1"><img src="' + item.LogoUrl + '"></td><td>' + item.FirstName + ' ' + item.LastName + '</td><td><a href="' + item.Email + '">' + item.Email + '</a></td><td><div class="checkbox toggle"> <input data-toggle="toggle" data-onstyle="success" type="checkbox" id="' + item.Id + '" value="' + item.Id + '" onchange="checkboxManageTaskFormsChange(this)" ' + checked + ' /> <label for="' + item.Id + '"></label></div></td><td><div class="checkbox toggle"> <input data-toggle="toggle" data-onstyle="success" type="checkbox" id="queryRepost' + item.Id + '" value="' + item.Id + '" onchange="checkboxQueryReportChange(this)" ' + queryChecked + ' /> <label for="queryRepost' + item.Id + '"></label></div></td></tr>';
+        });
+        $('#tbodyManageFormEditors').html(tbody);
+    }
+
+
+    function cbCurrentDomainChange() {
+        generateDataTaskFormEditorsByDomainIdToTable($cbcurrentDomain.val());
+    }
+
+    function getDataforTaskFormEditorsByDomainId(domainId) {
+        var listFormTaskEditor = [];
+        $.ajax({
+            type: 'GET',
+            url: '/TaskFormEditors/GetDataForTaskFormEditorsByDomainId',
+            datatype: 'json',
+            async: false,
+            data: { domainId: domainId },
+            success: function (listFormTaskEditorRespones) {
+                listFormTaskEditor = listFormTaskEditorRespones;
+            }
+        });
+        return listFormTaskEditor;
+    }
+
+
+    function checkboxManageTaskFormsChange(element) {
+        isChecked = element.checked;
+        userId = element.value;
+        domainId = $cbcurrentDomain.val();
+        $.ajax({
+            type: 'POST',
+            url: '/FormManager/InsertOrDeleteManageTaskFormsPermissionByChecked',
+            datatype: 'json',
+            async: false,
+            data: {
+                isChecked: isChecked,
+                userId: userId,
+                domainId: domainId
+            },
+            success: function (result) {
+                if (result) {
+                }
+            },
+            error: function (err) {
+            }
+        });
+    }
+
+    function checkboxQueryReportChange(element) {
+        isChecked = element.checked;
+        userId = element.value;
+        domainId = $cbcurrentDomain.val();
+        $.ajax({
+            type: 'POST',
+            url: '/FormManager/InsertOrDeleteQueryOrReportPermissionByChecked',
+            datatype: 'json',
+            async: false,
+            data: {
+                isChecked: isChecked,
+                userId: userId,
+                domainId: domainId
+            },
+            success: function (result) {
+                if (result) {
+                }
+            }
+        });
+    }
+    
+
+</script>

@@ -1,0 +1,497 @@
+﻿@using System.Globalization
+@using Qbicles.BusinessRules
+@using Qbicles.Models
+@using Qbicles.Models.Trader
+@model Invoice
+@{
+    ViewBag.Title = "Bill #" + Model.Reference?.FullRef ?? Model.Id.ToString();
+
+    var timeZone = (string)ViewBag.CurrentTimeZone ?? "";
+
+    var api = (string)ViewBag.DocRetrievalUrl;
+
+
+    var type = CashAccountTransactionTypeEnum.Transfer;
+    if (Model.Sale != null)
+    {
+        type = CashAccountTransactionTypeEnum.PaymentIn;
+    }
+    else if (Model.Purchase != null)
+    {
+        type = CashAccountTransactionTypeEnum.PaymentIn;
+    }
+
+    bool isDisplayPayment = Model.Status == TraderInvoiceStatusEnum.InvoiceApproved || Model.Status == TraderInvoiceStatusEnum.InvoiceIssued;
+
+    var invoiceTotal =(decimal)ViewBag.InvoiceTotal;
+
+
+    //permission
+
+    var billImage = ViewBag.BillImage;
+    var purchaseRef = Model.Purchase?.Reference?.FullRef ?? Model.Id.ToString();
+    var billRef = Model.Reference?.FullRef ?? Model.Id.ToString();
+    var dateFormat = (string)ViewBag.CurrentDateFormat;
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+    var timeline = (List<ApprovalStatusTimeline>)ViewBag.Timeline;
+    var timelineDate = (List<DateTime>)ViewBag.TimelineDate;
+    var today = (DateTime)ViewBag.Today;
+}
+
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail" id="discussion-thread">
+
+    <input hidden="" id="invoice-id" value="@Model.Id" />
+    <input hidden="" id="invoice-key" value="@Model.Key" />
+    <!-- Main content -->
+    <section class="content">
+
+        <div class="row">
+            <div class="col-xs-12 item_detail" style="padding-left: 15px;">
+
+                <div class="item_type_icon">
+                    <img src="~/Content/DesignStyle/img/icon_invoice.png" />
+                </div>
+                <div class="item_titling">
+                    <span class="item_type">Trader Purchase #@purchaseRef</span>
+                    <h3>Bill #@billRef</h3>
+                    @{
+                        var css = "";
+                        var statusString = Model.Status.ToString();
+                        switch (Model.Status)
+                        {
+                            case TraderInvoiceStatusEnum.PendingReview:
+                                statusString = "Pending Review";
+                                css = "label-primary";
+                                break;
+                            case TraderInvoiceStatusEnum.PendingApproval:
+                                statusString = "Pending Approval";
+                                css = "label-success";
+                                break;
+                            case TraderInvoiceStatusEnum.InvoiceApproved:
+                                statusString = "Approved";
+                                css = "label-primary";
+                                break;
+                            case TraderInvoiceStatusEnum.Draft:
+                                statusString = "Draft";
+                                css = "label-info";
+                                break;
+                            case TraderInvoiceStatusEnum.InvoiceDenied:
+                                statusString = "Denied";
+                                css = "label-danger";
+                                break;
+                            case TraderInvoiceStatusEnum.InvoiceDiscarded:
+                                statusString = "Discarded";
+                                css = "label-warning";
+                                break;
+                        }
+                    }
+                    <span class="label @css">@statusString</span>
+                </div>
+                <div class="clearfix"></div>
+                <br />
+                <div class="row">
+                    <div class="col-xs-12">
+                        <div class="app_filter">
+                            <div class="row">
+                                <div class="col-xs-12">
+
+                                    <div class="form-group" style="margin: 0;">
+                                        <a href="/TraderPurchases/PurchaseMaster?id=@Model.Purchase.Id" class="btn btn-info"><i class="fa fa-eye"></i> &nbsp; View Purchase</a>
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+            <div class="col-xs-12">
+
+
+                <br /><br />
+
+
+                <div class="row">
+                    <div class="col-xs-12 col-sm-8">
+
+                        <div class="app_upper_dash text-center" style="max-width: 1200px;">
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-6 col-lg-4">
+                                    <div class="stat_label">
+                                        <span>Total</span>
+                                        <h3>@invoiceTotal.ToCurrencySymbol(currencySettings)</h3>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-6 col-lg-4">
+                                    <div class="stat_label">
+                                        <span>For</span>
+                                        <h3>Purchase #@purchaseRef</h3>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-12 col-lg-4">
+                                    <div class="stat_label" style="padding-bottom: 10px;">
+                                        <span>Due</span>
+                                        <h3>@Model.DueDate.ConvertTimeFromUtc(timeZone).ToString(dateFormat.Replace("/","."))</h3>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <ul class="app_subnav">
+                                    <li class="active"><a href="#overview" data-toggle="tab">Overview</a></li>
+                                    <li><a href="#itemsproduct" data-toggle="tab">Items &amp; Products</a></li>
+                                    @if (isDisplayPayment)
+                                    {
+                                        <li><a href="#invoice-payments" data-toggle="tab" id="payment-tab">Payments</a></li>
+                                    }
+                                </ul>
+                            </div>
+                        </div>
+
+                        <br /><br />
+
+
+                              <div class="tab-content">
+
+                                  <!-- Invoices -->
+                                  <div class="tab-pane fade in active" id="overview">
+
+                                      <div class="row">
+                                          <div class="col-xs-12 col-sm-8">
+
+                                              <div class="activity-overview task" style="padding: 20px;">
+                                                  <h5>Notes</h5>
+                                                  <p>
+                                                      @if (!string.IsNullOrEmpty(Model.PaymentDetails))
+                                                      {@Html.Raw(Model.PaymentDetails.Replace(Environment.NewLine, "<br />").Replace("\n", "<br />"))}
+                                                  </p>
+
+                                                  <br />
+
+                                                  <div class="row">
+                                                      <div class="col-xs-12">
+
+                                                          <div class="flex-avatar">
+                                                              <div class="col-thumb" style="flex: 0 0 80px;">
+                                                                  <img src="@billImage" class="img-circle img-responsive">
+                                                              </div>
+                                                              <div class="col">
+                                                                  <h5 style="font-family: 'Roboto'; margin-top: 0;">Bill options</h5>
+                                                                  @if (isDisplayPayment)
+                                                                  {
+                                                                      <button class="btn btn-success" onclick="AddInvoicePayment(@Model.Id, '@type')"><i class="fa fa-plus"></i> &nbsp; Add payment</button>
+                                                                  }
+                                                                  @if (!string.IsNullOrEmpty(Model.InvoicePDF))
+                                                                  {
+                                                                      <a href="@api@Model.InvoicePDF" target="_blank" class="btn btn-info"><i class="fa fa-download"></i> &nbsp; Download Bill</a>
+                                                                  }
+                                                                  else
+                                                                  {
+                                                                      <a class="btn btn-warning">No bill uploaded</a>
+                                                                  }
+                                                              </div>
+                                                          </div>
+
+                                                      </div>
+                                                  </div>
+                                              </div>
+
+                                          </div>
+                                          <div class="col-xs-12 col-sm-4">
+
+                                              <div>
+                                                  <ul class="domain-change-list unstyled inline" style="margin-top: 0; border: 0;">
+                                                      @foreach (var media in Model.AssociatedFiles)
+                                                      {
+                                                          <li>
+                                                              <a href="javascript:void(0);" onclick="ShowMediaPage('@media.Key', false);">
+                                                                  <img src="@media.FileType.IconPath" style="max-width: 80px; height: auto; padding-right: 10px;"> @media.Name
+                                                              </a>
+                                                          </li>
+                                                      }
+                                                  </ul>
+                                              </div>
+
+                                          </div>
+                                      </div>
+
+                                  </div>
+                                  <!-- END Invoices -->
+                                  <!-- Items & Products -->
+                                  <div class="tab-pane fade" id="itemsproduct">
+
+                                      <table class="datatable table-striped table-hover" style="width: 100%;" data-order='[[1, "asc"]]'>
+                                          <thead>
+                                              <tr>
+                                                  <th data-priority="5" style="width: 60px;" data-orderable="false"></th>
+                                                  <th data-priority="1">Item</th>
+                                                  <th data-priority="1">Unit</th>
+                                                  <th data-priority="2">Qty</th>
+                                                  <th data-priority="3">Discount</th>
+                                                  <th data-priority="2">Tax <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                                  <th data-priority="2">Purchase value <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                                  <th data-priority="3">Billed qty</th>
+                                                  <th data-priority="3">Bill tax <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                                  <th data-priority="3">Bill discount <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                                  <th data-priority="3">Bill total <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                              </tr>
+                                          </thead>
+                                          <tbody>
+                                          @foreach (var item in Model.InvoiceItems)
+                                          {
+                                              string taxrateName = "(Tax free)";
+                                              decimal taxRate = 0;
+                                              decimal taxValue = 0;
+                                              if (item.TransactionItem.Taxes != null)
+                                              {
+                                                  taxRate = item.TransactionItem.SumTaxRates();
+                                                  taxrateName = item.TransactionItem.StringTaxRates(currencySettings);
+
+
+                                                  var priceIncludeTax = item.TransactionItem.CostPerUnit * item.TransactionItem.Quantity * (1 - (item.TransactionItem.Discount / 100)) * (1 + taxRate);
+                                                  var priceExcludeTax = priceIncludeTax / (1 + taxRate);
+                                                  taxValue = priceIncludeTax - priceExcludeTax;
+                                              }
+                                              <tr>
+                                                  <td>
+                                                      <div class="table-avatar mini" style="background-image: url('@api@item.TransactionItem.TraderItem.ImageUri');">&nbsp;</div></td>
+                                                  <td>@item.TransactionItem.TraderItem.Name</td>
+                                                  <td>@item.TransactionItem.Unit.Name</td>
+                                                  <td>@item.TransactionItem.Quantity.ToDecimalPlace(currencySettings)</td>
+                                                  <td>@item.TransactionItem.Discount.ToDecimalPlace(currencySettings)%</td>
+                                                  <td>
+                                                      @Html.Raw(taxrateName)
+                                                  </td>
+                                                  <td><span>@item.TransactionItem.Cost.ToDecimalPlace(currencySettings)</span></td>
+                                                  <td>@item.InvoiceItemQuantity</td>
+                                                  <td>
+                                                      <span style="display:@(Model.Id > 0?"none":"block")">@(item.InvoiceTaxValue.HasValue ? item.InvoiceTaxValue.Value.ToDecimalPlace(currencySettings) : ((decimal)0).ToDecimalPlace(currencySettings))</span>
+                                                      <div style="@(Model.Id>0?"":"display:none;")">
+                                                          @Html.Raw(taxrateName)
+                                                      </div>
+                                                  </td>
+                                                  <td>@item.InvoiceDiscountValue.ToDecimalPlace(currencySettings)</td>
+                                                  <td>@item.InvoiceValue.ToDecimalPlace(currencySettings)</td>
+                                              </tr>
+                                          }
+                                          </tbody>
+                                      </table>
+
+                                  </div>
+                                  <!-- END Items & Products -->
+                                  <!-- Payment history -->
+                                  @if (isDisplayPayment)
+                                  {
+                                      <div class="tab-pane fade @isDisplayPayment" id="invoice-payments">
+
+                                          <div class="well custom" style="padding-bottom: 5px;">
+                                              <div class="row">
+                                                  <div class="col-xs-12 col-sm-5">
+                                                      <div class="form-group">
+                                                          <label for="search_dt">Search for something</label>
+                                                          <input type="text" name="search_dt" id="search_dt" class="form-control" placeholder="Search for something">
+                                                      </div>
+                                                  </div>
+                                                  <div class="col-xs-12 col-sm-7">
+                                                      <label>Options</label>
+                                                      <br />
+                                                      <button class="btn btn-success" onclick="AddInvoicePayment(@Model.Id)"><i class="fa fa-plus"></i> &nbsp; Add a payment</button>
+                                                      <div class="btn-group options">
+                                                          <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                                              <i class="fa fa-sliders"></i> &nbsp; Manage display
+                                                          </button>
+                                                          <ul class="dropdown-menu primary manage-columns">
+                                                              <li><label><input type="checkbox" data-column="1" checked> Reference</label></li>
+                                                              <li><label><input type="checkbox" data-column="2" checked> Information</label></li>
+                                                              <li><label><input type="checkbox" data-column="3" checked> Payment method</label></li>
+                                                              <li><label><input type="checkbox" data-column="4" checked> Date</label></li>
+                                                              <li><label><input type="checkbox" data-column="5" checked> Amount</label></li>
+                                                              <li><label><input type="checkbox" data-column="6" checked> Bank</label></li>
+                                                              <li><label><input type="checkbox" data-column="7" checked> Status</label></li>
+                                                          </ul>
+                                                      </div>
+                                                  </div>
+                                              </div>
+                                              <div class="visible-xs" style="width: 100%; height: 15px;">&nbsp;</div>
+
+                                          </div>
+
+                                          <br /><br />
+
+                                    <table class="datatable table-hover table-striped" width="100%" cellspacing="0" id="community-list">
+                                        <thead>
+                                            <tr>
+                                                <th data-priority="1">#</th>
+                                                <th data-priority="1">Reference</th>
+                                                <th data-priority="1">Information</th>
+                                                <th data-priority="1">Payment method</th>
+                                                <th data-priority="1">Date</th>
+                                                <th data-priority="1">Amount <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                                <th data-priority="1">Bank</th>
+                                                <th data-priority="1">Status</th>
+                                                <th data-priority="1" class="nosort">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var p in Model.Payments)
+                                            {
+                                                var bank = "";
+                                                var status = "";
+                                                var appCss = "primary";
+                                                var info = "";
+                                                if (p.AssociatedInvoice.Sale != null)
+                                                {
+                                                    bank = p.DestinationAccount?.Name;
+                                                    info = "Sale";
+                                                }
+                                                else if (p.AssociatedInvoice.Purchase != null)
+                                                {
+                                                    bank = p.OriginatingAccount?.Name;
+                                                    info = "Purchase";
+                                                }
+                                                else if (p.AssociatedInvoice != null)
+                                                {
+                                                    info = "Invoice";
+                                                }
+                                                switch (p.Status)
+                                                {
+                                                    case TraderPaymentStatusEnum.Draft:
+                                                        status = "Draft";
+                                                        appCss = "label-info";
+                                                        break;
+                                                    case TraderPaymentStatusEnum.PendingReview:
+                                                        status = "Pending Review";
+                                                        appCss = "label-warning";
+                                                        break;
+                                                    case TraderPaymentStatusEnum.PendingApproval:
+                                                        status = "Pending Approval";
+                                                        appCss = "label-primary";
+                                                        break;
+                                                    case TraderPaymentStatusEnum.PaymentDenied:
+                                                        status = "Denied";
+                                                        appCss = "label-danger";
+                                                        break;
+                                                    case TraderPaymentStatusEnum.PaymentApproved:
+                                                        status = "Approved";
+                                                        appCss = "label-success";
+                                                        break;
+                                                    case TraderPaymentStatusEnum.PaymentDiscarded:
+                                                        status = "Discarded";
+                                                        appCss = "label-danger";
+                                                        break;
+                                                }
+                                                <tr>
+                                                    <td>@p.Id.ToString("D6")</td>
+                                                    <td>@p.Reference</td>
+                                                    <td>@info</td>
+                                                    <td>
+                                                        @{
+                                                            var method = p.PaymentMethod?.Name ?? "";
+                                                        }
+                                                        @method
+                                                    </td>
+                                                    <td>@p.CreatedDate.ConvertTimeFromUtc(timeZone).ToString("dd/MM/yyyy")</td>
+                                                    <td>@p.Amount.ToDecimalPlace(currencySettings)</td>
+                                                    <td>@bank</td>
+                                                    <td><span class="label label-lg @appCss">@status</span></td>
+                                                    @if (p.Status == TraderPaymentStatusEnum.Draft)
+                                                    {
+                                                        <td>
+                                                            <button class="btn btn-info" onclick="EditInvoicePayment(@p.Id)"><i class="fa fa-pencil"></i> &nbsp; Continue</button>
+                                                        </td>
+                                                    }
+                                                    else
+                                                    {
+                                                        <td>
+                                                            @{ 
+                                                                var paymentDomainId = 0;
+                                                                if (p.OriginatingAccount != null)
+                                                                {
+                                                                    paymentDomainId = p.OriginatingAccount.Domain?.Id ?? 0;
+                                                                }else if (p.DestinationAccount != null)
+                                                                {
+                                                                    paymentDomainId = p.DestinationAccount.Domain?.Id ?? 0;
+                                                                }
+                                                            }
+                                                            <button class="btn btn-primary" onclick="window.location.href = '/TraderPayments/PaymentManage?id=@p.Id';"><i class="fa fa-eye"></i> &nbsp; Manage</button>
+                                                        </td>
+                                                    }
+                                                </tr>
+                                            }
+
+                                              </tbody>
+                                          </table>
+
+                                      </div>
+                                  }
+
+                                  <!-- END Payment history -->
+
+
+                              </div> <!-- ./tab-content -->
+                    </div>
+                    <div class="col-xs-12 col-sm-4">
+
+                        <ul class="timeline">
+                            @foreach (var date in timelineDate)
+                            {
+                                var dateStart = @HelperClass.DatetimeToOrdinal(date);
+                                var dateStr = date.Date == today.Date ? "Today" : dateStart;
+
+                                <li class="time-label">
+                                    <span class="label label-lg label-primary">
+                                        @dateStr
+                                    </span>
+                                </li>
+                                foreach (var tl in timeline.Where(d => d.LogDate.Date == date.Date))
+                                {
+                                    <li>
+                                        <div class="person" style="background-image: url('@api@tl.UserAvatar');"></div>
+                                        <div class="timeline-item">
+                                            <span class="time"><i class="fa fa-clock-o"></i> @tl.Time</span>
+                                            <h4 class="timeline-header">@tl.Status</h4>
+                                        </div>
+                                    </li>
+                                }
+                                <br />
+                            }
+                        </ul>
+
+
+                    </div>
+                </div>
+
+
+            </div>
+        </div>
+    </section>
+    <!-- ./content -->
+
+</div>
+<!-- /.content-wrapper -->
+<!-- /.modal -->
+<div class="modal fade" id="app-trader-invoice-payment" role="dialog" aria-labelledby="app-trader-invoice-payment">
+
+</div>
+
+<div class="modal fade" id="app-trader-workgroup-preview" role="dialog" aria-labelledby="app-trader-workgroup-preview">
+
+</div><!-- /.modal -->
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/trader.bill.manage.js"></script>
+        <script src="~/Scripts/dev/trader.domain.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/trader.bill.manage.js"></script>
+        <script src="~/Scripts/dev/trader.domain.min.js"></script>
+    }
+}

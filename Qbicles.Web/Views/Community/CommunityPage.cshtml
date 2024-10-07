@@ -1,0 +1,233 @@
+﻿@using Qbicles.BusinessRules;
+@using Qbicles.Models.Community
+@using Qbicles.Models;
+@model CommunityPage
+@{
+    ViewBag.Title = "Qbicles Community - Community page";
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var userCommunitySubscription = (CommunitySubscriptionLevelEnum)ViewBag.UserCommunitySubscription;
+    var currentUserId = ViewBag.CurrentUserId;
+
+    var UserRoleRights = (List<string>)ViewBag.UserRoleRights;
+    var rightAddEditCommuntyPage = UserRoleRights.Any(r => r == RightPermissions.CMAddEditCommunityPage);
+}
+
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail">
+
+    <!-- Main content -->
+    <section class="content">
+
+        <br /><br />
+
+        <div class="mod_title">
+            <h5>Community</h5>
+            <h4>@Model.Title</h4>
+            <p>Created &amp; maintained by <strong>@HelperClass.GetFullNameOfUser(Model.CreatedBy)</strong></p>
+        </div>
+
+        <div class="row">
+            <div class="col-xs-12">
+                <div class="app_filter">
+                    <div class="row">
+                        <div class="col-xs-12">
+                            <a href="~/Community/CommunityApps" class="btn btn-primary"><i class="fa fa-th"></i> &nbsp; Dashboard</a>
+                            <a href="/Community/UserProfilePreview" class="btn btn-info"><i class="fa fa-address-card"></i> &nbsp; Creator profile</a>
+                            @if (rightAddEditCommuntyPage)
+                            {
+                                <a href="~/Community/EditPage?edit=@Model.Id" class="btn btn-warning"><i class="fa fa-pencil"></i> &nbsp; Edit page</a>
+                            }
+                            @if (Model.CreatedBy.Id != currentUserId)
+                            {
+                                if (Model.Followers.Any(u => u.Id == currentUserId))
+                                {
+                                    <a id="follow-page" onclick="FollowPage(@Model.Id)" class="btn btn-success hidden"><i class="fa fa-feed"></i> &nbsp; Follow</a>
+                                    <a id="unfollow-page" onclick="unFollowPage(@Model.Id)" class="btn btn-danger"><i class="fa fa-remove"></i> &nbsp; UnFollow</a>
+                                }
+                                else
+                                {
+                                    <a id="follow-page" onclick="FollowPage(@Model.Id)" class="btn btn-success"><i class="fa fa-feed"></i> &nbsp; Follow</a>
+                                    <a id="unfollow-page" onclick="unFollowPage(@Model.Id)" class="btn btn-danger hidden"><i class="fa fa-remove"></i> &nbsp; UnFollow</a>
+                                }
+                            }
+
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <div class="tab-content app_general community-page community-dash-body">
+
+            <div class="row">
+                <div class="col-xs-12 col-md-5 col-lg-6">
+
+                    <img src="@api@Model.FeaturedImage" class="img-responsive" style="min-width: 100%;">
+                    <div class="caption">
+                        <small>@Model.FeaturedImageCaption</small>
+                    </div>
+
+                    @{
+                        <p>
+                            @Html.Raw(Model.BodyText.Replace(Environment.NewLine, "<br/>").Replace("\n", "<br/>"))
+                        </p>
+                    }
+
+                    <div class="activity-overview task task-meta">
+                        <div class="flex-grid-fluid">
+                            <div class="col">
+                                <span>Contact email</span>
+                                <p><a href="mailto:@Model.PublicContactEmail">@Model.PublicContactEmail</a></p>
+                            </div>
+                            <div class="col">
+                                <span>Last edit</span>
+                                <p style="margin: 0;">@Model.LastUpdated.ToString("dd/MM/yyyy hh:mm:ss")</p>
+                            </div>
+                        </div>
+                    </div>
+
+
+
+
+
+                    <br /><br />
+                    @if (Model.ArticlesDisplayStatus != CommunityPageActivityVisibilityEnum.Disabled)
+                    {
+
+                        <h1 style="margin: 0; padding: 0;">Related <strong>Articles</strong></h1>
+                        <span class="premium">@userCommunitySubscription</span>
+
+                        <br /><br />
+
+                        var articles = new List<Article>();
+                        switch (userCommunitySubscription)
+                        {
+                            case CommunitySubscriptionLevelEnum.None:
+                                if (Model.ArticlesDisplayStatus == CommunityPageActivityVisibilityEnum.Public)
+                                {
+                                    articles = Model.Articles;
+                                }
+                                break;
+                            case CommunitySubscriptionLevelEnum.Premium:
+                                if (Model.ArticlesDisplayStatus == CommunityPageActivityVisibilityEnum.Public
+                                    || Model.ArticlesDisplayStatus == CommunityPageActivityVisibilityEnum.Premium)
+                                {
+                                    articles = Model.Articles;
+                                }
+                                break;
+                            case CommunitySubscriptionLevelEnum.SuperPremium:
+                                articles = Model.Articles;
+                                break;
+                        }
+
+                        <div class="articles-carousel owl-theme">
+                            @foreach (var item in articles.Where(q => q.IsDisplayed))
+                            {
+                                <div class="item">
+                                    <div class="community-card">
+                                        @if (item.URL.IndexOf("http://") == 0 || item.URL.IndexOf("https://") == 0)
+                                        {
+                                            <a href="@item.URL" target="_blank">
+                                                <div class="upper" style="background-image: url('@api@item.Image');">&nbsp;</div>
+                                            </a>
+                                        }
+                                        else
+                                        {
+                                            <a href="http://@item.URL" target="_blank">
+                                                <div class="upper" style="background-image: url('@api@item.Image');">&nbsp;</div>
+                                            </a>
+                                        }
+
+                                        <section class="info">
+                                            @if (item.URL.IndexOf("http://") == 0 || item.URL.IndexOf("https://") == 0)
+                                            {
+                                                <a href="@item.URL" target="_blank">
+                                                    <h2>@item.Title</h2>
+                                                    <span>@item.Source</span>
+                                                </a>
+                                            }
+                                            else
+                                            {
+                                                <a href="http://@item.URL" target="_blank">
+                                                    <h2>@item.Title</h2>
+                                                    <span>@item.Source</span>
+                                                </a>
+                                            }
+
+                                        </section>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+
+                    }
+                </div>
+                <div class="col-xs-12 col-md-7 col-lg-6">
+
+                    <h1>Top <strong>Followers</strong></h1>
+
+                    <ul class="followers" data-tooltip-color="slate" data-tooltip-delay="100" data-tooltip-animate-function="foldin">
+                        @if (Model.Follower_1 != null && !string.IsNullOrEmpty(Model.Follower_1.Id))
+                        {
+                            <li>
+                                <a href="/Community/UserProfilePage" style="background-image: url('@api@Model.Follower_1.ProfilePic');"
+                                   data-tooltip="@Model.Follower_1.Forename @Model.Follower_1.Surname"></a>
+                            </li>
+                        }
+                        @if (Model.Follower_2 != null && !string.IsNullOrEmpty(Model.Follower_2.Id))
+                        {
+                            <li>
+                                <a href="/Community/UserProfilePage" style="background-image: url('@api@Model.Follower_2.ProfilePic');"
+                                   data-tooltip="@Model.Follower_2.Forename @Model.Follower_2.Surname"></a>
+                            </li>
+                        }
+                        @if (Model.Follower_3 != null && !string.IsNullOrEmpty(Model.Follower_3.Id))
+                        {
+                            <li>
+                                <a href="/Community/UserProfilePage" style="background-image: url('@api@Model.Follower_3.ProfilePic');"
+                                   data-tooltip="@Model.Follower_3.Forename @Model.Follower_3.Surname"></a>
+                            </li>
+                        }
+                        @if (Model.Follower_4 != null && !string.IsNullOrEmpty(Model.Follower_4.Id))
+                        {
+                            <li>
+                                <a href="/Community/UserProfilePage" style="background-image: url('@api@Model.Follower_4.ProfilePic');"
+                                   data-tooltip="@Model.Follower_4.Forename @Model.Follower_4.Surname"></a>
+                            </li>
+                        }
+                        @if (Model.Follower_5 != null && !string.IsNullOrEmpty(Model.Follower_5.Id))
+                        {
+                            <li>
+                                <a href="/Community/UserProfilePage" style="background-image: url('@api@Model.Follower_5.ProfilePic');"
+                                   data-tooltip="@Model.Follower_5.Forename @Model.Follower_5.Surname"></a>
+                            </li>
+                        }
+                    </ul>
+
+                    <br />
+                    @*activities*@
+                    @{Html.RenderAction("CommunityActivities", "Community", new { cube = Model.Qbicle, hidenCss = "", page = Model });}
+                </div>
+            </div>
+
+        </div>
+
+    </section>
+    <!-- ./content -->
+
+</div>
+<!-- /.content-wrapper -->
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/community.pageapp.js"></script>
+
+    }
+    else
+    {
+        <script src="~/Scripts/dev/community.pageapp.min.js"></script>
+
+    }
+}

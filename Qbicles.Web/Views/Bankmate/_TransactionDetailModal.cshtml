@@ -1,0 +1,98 @@
+﻿@using Qbicles.Models.Trader
+@using Qbicles.BusinessRules
+@model CashAccountTransaction
+@{ 
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var associatedAccountId = (int)ViewBag.AssociatedAccountId;
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+    var timeZone = (string)ViewBag.TimeZone;
+
+    var destinationAcc = Model.DestinationAccount;
+    var originatingAcc = Model.OriginatingAccount;
+    var transactionType = "";
+    var transactionAmountString = "";
+    if (destinationAcc != null && destinationAcc.Id == associatedAccountId)
+    {
+        transactionAmountString = "+" + currencySettings.CurrencySymbol + (Model.Amount.ToDecimalPlace(currencySettings));
+        transactionType = "Credit";
+    }
+    else if (Model.OriginatingAccount != null && Model.OriginatingAccount.Id == associatedAccountId)
+    {
+        transactionType = "Debit";
+        transactionAmountString = "-" + currencySettings.CurrencySymbol + (Model.Amount.ToDecimalPlace(currencySettings));
+    }
+}
+
+<div class="modal-dialog" role="document">
+    <div class="modal-content">
+        <div class="modal-body">
+
+            @{ 
+                var showName = "";
+                var imgUri = "";
+                if (destinationAcc != null && destinationAcc.Id == associatedAccountId)
+                {
+                    showName = originatingAcc?.Name ?? "";
+                    imgUri = originatingAcc?.ImageUri ?? "";
+                } else if (originatingAcc != null && originatingAcc.Id == associatedAccountId)
+                {
+                    showName = destinationAcc?.Name ?? "";
+                    imgUri = destinationAcc?.ImageUri ?? "";
+                }
+            }
+
+            <ul class="mbm-acclist statement">
+                <li>
+                    <a style="border: 0; padding: 15px 0;">
+                        <div class="accimg" style="background-image: url('@api@(imgUri)');"></div>
+                        <div class="accinf">
+                            <h5>@(showName)</h5>
+                            <p style="font-size: 12px;">@transactionType</p>
+                        </div>
+                    </a>
+                </li>
+            </ul>
+
+            <br />
+            <table class="table table-striped app_specific table-borderless" style="font-size: 13px;">
+                <tbody>
+                    <tr>
+                        <td><strong>Date &amp; time</strong></td>
+                        <td>@Model.CreatedDate.ConvertTimeFromUtc(timeZone).ToString("dd/MM/yyyy hh:mm tt")</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Reference</strong></td>
+                        <td>@(Model.Reference ?? "")</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Initiator</strong></td>
+                        <td>@(Model.CreatedBy?.DisplayUserName ?? "")</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Bank</strong></td>
+                        <td>@(destinationAcc?.Name ?? "")</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Amount</strong></td>
+                        <td>@transactionAmountString</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Method</strong></td>
+                        <td>@(Model.PaymentMethod?.Name ?? "")</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Status</strong></td>
+                        <td>@(Model.Status.GetDescription() ?? "")</td>
+                    </tr>
+                </tbody>
+            </table>
+
+
+            <br />
+            <button class="btn btn-primary" data-dismiss="modal">Close</button>
+
+
+        </div>
+    </div><!-- /.modal-content -->
+</div><!-- /.modal-dialog -->

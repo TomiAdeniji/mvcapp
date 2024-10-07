@@ -1,0 +1,1073 @@
+﻿@using Qbicles.BusinessRules
+@using Qbicles.Models
+@using Qbicles.Models.Trader
+@using Qbicles.Models.Trader.Movement
+@using Qbicles.Models.Trader.SalesChannel;
+@model TraderSale
+@{
+    ViewBag.Title = "Sale manage #" + (Model.Reference?.FullRef ?? "");
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var timeZone = (string)ViewBag.CurrentTimeZone ?? "";
+
+    var userId = ViewBag.CurrentUserId;
+
+    var isMemberTransfer = (bool)ViewBag.IsMemberTransferWorkgroup;
+    var itemOrder = (TraderSalesOrder)ViewBag.SaleOrder;
+    var display = Model.Workgroup.Members.Any(u => u.Id == userId) ? "" : "hidden";
+    var invoiceTotal = (decimal)ViewBag.InvoiceTotal;
+    var invoiceSaleTax = (decimal)ViewBag.InvoiceSaleTax;
+    var subtotal = (decimal)ViewBag.SubTotal;
+    var imgTop = (string)ViewBag.imgTop;
+    var imgBottom = (string)ViewBag.imgBottom;
+    if (Model.SaleApprovalProcess != null && Model.SaleApprovalProcess.RequestStatus != ApprovalReq.RequestStatusEnum.Pending)
+    {
+        display = "hidden";
+    }
+
+
+    var today = (DateTime)ViewBag.Today;
+    var timeline = (List<ApprovalStatusTimeline>)ViewBag.Timeline;
+    var timelineDate = (List<DateTime>)ViewBag.TimelineDate;
+    var dateFormat = (string)ViewBag.CurrentDateFormat;
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+    var goBackPage = (string)ViewBag.GoBackPage;
+}
+<input id="TraderSaleId" value="@Model.Id" hidden="" />
+<input id="TraderSaleKey" value="@Model.Key" hidden="" />
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail">
+
+
+    <!-- Main content -->
+    <section class="content">
+
+        <br /><br />
+
+        <div class="mod_title">
+            <h5>Trader</h5>
+            @if (Model.Reference != null)
+            {
+                <h4>@(Model.Reference?.FullRef ?? "")</h4>
+            }
+            else
+            {
+                <h4></h4>
+            }
+        </div>
+
+
+        <div class="app_filter">
+            <div class="row">
+                <div class="col-xs-12">
+                    @if (!string.IsNullOrEmpty(goBackPage) && goBackPage == "BusinessReports")
+                    {
+                        <a href="~/BusinessReports?tab=sales" class="btn btn-primary"><i class="fa fa-angle-left"></i> &nbsp; Sales</a>
+                    }
+                    else
+                    {
+                        <a href="/Trader/AppTrader" onclick="setTabTrader('apptrader')" class="btn btn-primary"><i class="fa fa-angle-left"></i> &nbsp; Sales</a>
+                    }
+                </div>
+            </div>
+        </div>
+
+
+        <br />
+
+
+        <div class="row">
+            <div class="col-xs-12">
+
+                <br /><br />
+
+                <div class="row">
+                    <div class="col-xs-12 col-md-8">
+
+                        <div class="app_upper_dash text-center" style="max-width: 1200px;">
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-6 col-lg-4">
+                                    <div class="stat_label" id="sale-total">
+                                        <span>Sale total</span>
+                                        <h3>@Model.SaleTotal.ToCurrencySymbol(currencySettings)</h3>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-6 col-lg-4">
+                                    <div class="stat_label">
+                                        <span>Creator</span>
+                                        <h3>@HelperClass.GetFullNameOfUser(Model.CreatedBy)</h3>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-lg-4">
+                                    <div class="stat_label" style="padding-bottom: 10px;">
+                                        <span>Type</span>
+                                        <h3>@Model.DeliveryMethod.GetDescription()</h3>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <ul class="app_subnav">
+                                    <li class="active"><a href="#overview" data-toggle="tab">Overview</a></li>
+                                    <li><a href="#items" data-toggle="tab">Items &amp; Products</a></li>
+                                    <li class="hidden"><a href="#payments" data-toggle="tab">Payments</a></li>
+                                    @if (Model.Status == TraderSaleStatusEnum.SaleApproved || Model.Status == TraderSaleStatusEnum.SalesOrderedIssued)
+                                    {
+                                        <li><a href="#invoices" data-toggle="tab" aria-expanded="true">Invoices</a></li>
+                                    }
+
+                                    <li><a href="#transfers" data-toggle="tab">Transfers</a></li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <br /><br />
+
+                        <div class="tab-content">
+
+                            <!-- Overview -->
+                            <div class="tab-pane fade in active" id="overview">
+
+                                <div class="activity-overview task" style="padding: 20px;">
+                                    <div class="row vspace-sm-md">
+                                        <div class="col-xs-12 col-sm-6">
+
+                                            <div class="flex-avatar" style="margin-bottom: 30px;">
+                                                <div class="col-thumb" style="flex: 0 0 80px;">
+                                                    <img src="@api@(Model.Purchaser.AvatarUri)&size=T" class="img-circle img-responsive">
+                                                </div>
+                                                <div class="col">
+                                                    <h5 style="font-family: 'Roboto'; margin-top: 0;">Contact: @Model.Purchaser.Name</h5>
+                                                    <a href="/TraderContact/ContactMaster?key=@(HttpUtility.UrlEncode(Model.Purchaser.Key))" class="btn btn-info"><i class="fa fa-eye"></i> &nbsp; View profile</a>
+                                                </div>
+                                            </div>
+
+                                        </div>
+                                        <div class="col-xs-12 col-sm-6">
+                                            @if (Model.DeliveryMethod != DeliveryMethodEnum.CustomerPickup)
+                                            {
+                                                <div class="flex-avatar" style="margin-bottom: 30px;">
+                                                    <div class="col-thumb" style="flex: 0 0 80px;">
+                                                        <img src="~/Content/DesignStyle/img/icon_delivery.png" class="img-circle img-responsive">
+                                                    </div>
+                                                    <div class="col">
+                                                        <h5 style="font-family: 'Roboto'; margin-top: 0;">Delivery Address</h5>
+                                                        <p>
+                                                            @Html.Raw(Model.DeliveryAddress?.ToAddress().Replace(",", "<br />"))
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            }
+
+                                        </div>
+                                    </div>
+                                    <div class="row vspace-sm-md">
+                                        <div class="col-xs-12 col-sm-6">
+                                            @if (Model.Status == TraderSaleStatusEnum.SaleApproved || Model.Status == TraderSaleStatusEnum.SalesOrderedIssued)
+                                            {
+                                                <div class="row">
+                                                    <div class="col-xs-12">
+
+                                                        <div class="flex-avatar">
+                                                            <div class="col-thumb" style="flex: 0 0 80px;">
+                                                                <img src="~/Content/DesignStyle/img/icon_bookkeeping.png" class="img-circle img-responsive">
+                                                            </div>
+                                                            <div class="col">
+                                                                <div class="row">
+                                                                    <div class="col-xs-12">
+
+                                                                        <div class="form-group">
+                                                                            <label for="reference">Reference</label>
+                                                                            <input type="hidden" value="@(itemOrder.Reference?.Id)" id="referenceSale_id" />
+                                                                            <input type="hidden" value="@(itemOrder.Reference?.Type.ToString())" id="referenceSale_type" />
+                                                                            <input type="hidden" value="@(itemOrder.Reference?.Prefix)" id="referenceSale_prefix" />
+                                                                            <input type="hidden" value="@(itemOrder.Reference?.Suffix)" id="referenceSale_suffix" />
+                                                                            <input type="hidden" value="@(itemOrder.Reference?.Delimeter)" id="referenceSale_delimeter" />
+                                                                            <input type="hidden" value="@(itemOrder.Reference?.FullRef)" id="referenceSale_fullref" />
+                                                                            <div class="show-ref">
+                                                                                <p>
+                                                                                    @if (itemOrder.Reference != null)
+                                                                                    {
+                                                                                        @itemOrder.Reference.Prefix@itemOrder.Reference.Delimeter<span id="refeditSale">@itemOrder.Reference.NumericPart</span>@itemOrder.Reference.Delimeter@itemOrder.Reference.Suffix
+                                                                                    }
+                                                                                    else
+                                                                                    {
+                                                                                        <span id="refeditSale"></span>
+                                                                                    }
+                                                                                </p>
+                                                                            </div>
+                                                                        </div>
+
+                                                                    </div>
+                                                                </div>
+                                                                <div class="row">
+                                                                    <div class="col-xs-12">
+                                                                        @*<h5 style="font-family: 'Roboto'; margin-top: 0;">Sales Order SO#@Model.Id</h5>*@
+                                                                        @if (Model.Status == TraderSaleStatusEnum.SaleApproved || Model.Status == TraderSaleStatusEnum.SalesOrderedIssued)
+                                                                        {
+                                                                            if (Model.SalesOrders == null || Model.SalesOrders.Count == 0)
+                                                                            {
+                                                                                <button class="btn btn-success" data-toggle="modal" data-target="#app-trader-so-additions"><i class="fa fa-play"></i> &nbsp; Generate</button>
+                                                                                <button disabled="" class="btn btn-primary"><i class="fa fa-mail-forward"></i> &nbsp; Issue PDF</button>
+                                                                            }
+                                                                            else
+                                                                            {
+                                                                                <a href="/TraderSales/SaleOrder?id=@Model.SalesOrders[0].Id" class="btn btn-info"><i class="fa fa-eye"></i> &nbsp; View</a>
+                                                                                <button onclick="OpenIssueSaleOrderModal()" class="btn btn-primary"><i class="fa fa-mail-forward"></i> &nbsp; Issue PDF</button>
+                                                                            }
+
+                                                                        }
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            }
+                                        </div>
+                                        <div class="col-xs-12 col-sm-6">
+                                            @if (Model.Voucher?.Id > 0)
+                                            {
+                                                <ul class="widget-contacts animated bounce" style="margin: 0 0 30px 0;">
+                                                    <li>
+                                                        <a style="width: 450px; max-width: 100%;">
+                                                            <div class="contact-avatar">
+                                                                <div style="background-image: url('/Content/DesignStyle/img/icon_coupons.png');">&nbsp;</div>
+                                                            </div>
+                                                            <div class="contact-info">
+                                                                <p>@Model.Voucher.Promotion.VoucherInfo.Type.GetDescription()</p>
+                                                                <h5>@Model.Voucher.Promotion.Name</h5>
+                                                                <p>Voucher <strong>@Model.Voucher.Code</strong> applied by customer</p>
+                                                            </div>
+                                                        </a>
+                                                    </li>
+                                                </ul>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                                <!----------------------------------------------------->
+                                <br /><br />
+                            </div>
+                            <!-- END Overview -->
+                            <!-- Items &amp; products -->
+                            <div class="tab-pane fade" id="items">
+
+                                <div id="table-sale-review-items-preview" class="activity-overview task dt-nosearch" style="padding: 20px;">
+
+                                    <table class="datatable table-hover" style="background: #fff; width: 100%;" data-paging="false">
+                                        <thead>
+                                            <tr>
+                                                <th data-priority="5" style="width: 80px;" data-orderable="false"></th>
+                                                <th data-priority="1">Item</th>
+                                                <th data-priority="1">Unit</th>
+                                                <th data-priority="2">Quantity</th>
+                                                <th data-priority="2">Unit price <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                                <th data-priority="3">Discount</th>
+                                                <th data-priority="2">Tax <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                                <th data-priority="3">Total <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                                <th data-priority="1" data-orderable="false"></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @{
+                                                foreach (var item in Model.SaleItems)
+                                                {
+
+
+                                                    <tr>
+                                                        <td>
+                                                            <div class="table-avatar" style="background-image: url('@api@(item.TraderItem.ImageUri)&size=T');">&nbsp;</div>
+                                                        </td>
+                                                        <td>@item.TraderItem.Name</td>
+                                                        <td>
+                                                            @{
+                                                                if (item.Unit != null)
+                                                                {
+                                                                    @item.Unit.Name
+                                                                }
+                                                            }
+                                                        </td>
+                                                        <td>@item.Quantity.ToDecimalPlace(currencySettings)</td>
+                                                        <td>@item.SalePricePerUnit.ToDecimalPlace(currencySettings)</td>
+                                                        <td>@item.Discount.ToDecimalPlace(currencySettings)%</td>
+                                                        <td class="row_taxname">
+                                                            @Html.Raw(item.HtmlTaxRates(currencySettings))
+                                                        </td>
+                                                        <td>@item.Price.ToDecimalPlace(currencySettings)</td>
+                                                        <td>
+                                                            <button class="btn btn-info @display" data-toggle="modal" data-target="#app-trader-item-specifics">
+                                                                <i class="fa fa-eye"></i> &nbsp; Details
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                }
+                                            }
+
+                                        </tbody>
+                                    </table>
+
+                                    <br />
+                                    @if (Model.SalesChannel != SalesChannelEnum.POS)
+                                    {
+                                        <input type="hidden" id="sale-item-workgroup-id" value="@(Model.Workgroup?.Id ?? 0)" />
+                                        <input type="hidden" id="sale-item-location-id" value="@(Model.Location?.Id ?? 0)" />
+                                        <a href="javascript:void(0)" id="btn_change_@Model.Id" class="btn btn-warning @display" onclick="ChangeItems(@Model.Id)"><i class="fa fa-pencil"></i> &nbsp; Change</a>
+                                    }
+                                </div>
+
+                            </div>
+                            <!-- END Items & Products -->
+                            <!-- Invoice -->
+                            @if (Model.Status == TraderSaleStatusEnum.SaleApproved || Model.Status == TraderSaleStatusEnum.SalesOrderedIssued)
+                            {
+                                <div class="tab-pane fade" id="invoices">
+                                    <div class="activity-overview task dt-nosearch" style="padding: 20px;">
+                                        <div id="table_invoice">
+                                            <table class="datatable table-hover" id="tradersale_invoice_table" style="background: #fff; width: 100%;" data-paging="false">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Date</th>
+                                                        <th>Ref</th>
+                                                        <th>Amount <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                                        <th>Status</th>
+                                                        <th>Payments</th>
+                                                        <th data-orderable="false">Options</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @foreach (var item in Model.Invoices)
+                                                    {
+                                                        <tr>
+                                                            <td>@item.DueDate.ConvertTimeFromUtc(timeZone).ToString(dateFormat)</td>
+                                                            <td>
+                                                                @if (item.Reference != null)
+                                                                {
+                                                                    @item.Reference.FullRef
+                                                                }
+                                                            </td>
+                                                            <td>@item.TotalInvoiceAmount.ToDecimalPlace(currencySettings)</td>
+                                                            <td>
+                                                                @{
+                                                                    var cssTrader = "";
+                                                                    switch (item.Status)
+                                                                    {
+                                                                        case TraderInvoiceStatusEnum.Draft:
+                                                                            cssTrader = StatusLabelStyle.Draft;
+                                                                            break;
+                                                                        case TraderInvoiceStatusEnum.PendingReview:
+                                                                            cssTrader = StatusLabelStyle.Pending;
+                                                                            break;
+                                                                        case TraderInvoiceStatusEnum.PendingApproval:
+                                                                            cssTrader = StatusLabelStyle.Reviewed;
+                                                                            break;
+                                                                        case TraderInvoiceStatusEnum.InvoiceDenied:
+                                                                            cssTrader = StatusLabelStyle.Denied;
+                                                                            break;
+                                                                        case TraderInvoiceStatusEnum.InvoiceIssued:
+                                                                        case TraderInvoiceStatusEnum.InvoiceApproved:
+                                                                            cssTrader = StatusLabelStyle.Approved;
+                                                                            break;
+                                                                        case TraderInvoiceStatusEnum.InvoiceDiscarded:
+                                                                            cssTrader = StatusLabelStyle.Discarded;
+                                                                            break;
+                                                                    }
+                                                                }
+                                                                <span class="label label-lg @cssTrader">@item.Status.GetDescription()</span>
+                                                            </td>
+                                                            <td>@item.Payments.Count</td>
+                                                            <td>
+                                                                @if (item.Status == TraderInvoiceStatusEnum.Draft)
+                                                                {
+                                                                    <button class="btn btn-info" onclick="EditInvoice(@item.Id, '@Model.Key')" data-toggle="modal" data-target="#app-trader-invoice-add"><i class="fa fa-pencil"></i> &nbsp;Continue</button>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <button class="btn btn-primary" onclick="window.location.href='/TraderInvoices/InvoiceManage?key=@item.Key'"><i class="fa fa-eye"></i> &nbsp;Manage</button>
+                                                                }
+
+                                                            </td>
+                                                        </tr>
+                                                    }
+                                                </tbody>
+                                            </table>
+                                        </div>
+
+
+                                        <br />
+                                        <a href="javascript:void(0)" class="btn btn-success" onclick="AddInvoice('0', '@Model.Key')" data-toggle="modal" data-target="#app-trader-invoice-add"><i class="fa fa-plus"></i> &nbsp; Add an invoice</a>
+                                    </div>
+                                </div>
+                            }
+
+                            <!-- End Invoice -->
+                            <!-- Payments -->
+                            <div class="tab-pane fade hidden" id="payments">
+
+                                <div class="activity-overview task dt-nosearch" style="padding: 20px;">
+                                    <table class="datatable table-hover" style="background: #fff; width: 100%;" data-paging="false">
+                                        <thead>
+                                            <tr>
+                                                <th>Date</th>
+                                                <th>Ref</th>
+                                                <th>Amount</th>
+                                                <th>Bank</th>
+                                                <th>Status</th>
+                                                <th data-orderable="false">Options</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td>09.10.2018</td>
+                                                <td>QB12-324</td>
+                                                <td>&#8358;1,000</td>
+                                                <td>GTB</td>
+                                                <td><span class="label label-lg label-warning">Initiated</span></td>
+                                                <td><button class="btn btn-info" onclick="window.location.href='app_trader_payment_inapp.php';">View</button></td>
+                                            </tr>
+                                            <tr>
+                                                <td>01.10.2018</td>
+                                                <td>QB12-124</td>
+                                                <td>&#8358;2,000</td>
+                                                <td>GTB</td>
+                                                <td><span class="label label-lg label-success">Finalised</span></td>
+                                                <td><button class="btn btn-info" onclick="window.location.href='app_trader_payment_inapp.php';">View</button></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+
+                                    <br />
+                                    <a href="#" class="btn btn-success" data-toggle="modal" data-target="#app-trader-sale-initiate-payment"><i class="fa fa-plus"></i> &nbsp; Initiate payment</a>
+                                </div>
+
+                            </div>
+                            <!-- END Payments -->
+                            <!-- Transfers -->
+                            <div class="tab-pane fade" id="transfers">
+
+                                <div class="activity-overview task dt-nosearch" style="padding: 20px;">
+                                    <div id="table_transfer">
+                                        <table id="app-trader-sale-transfer-table" class="datatable table-hover" style="background: #fff; width: 100%;" data-paging="false">
+                                            <thead>
+                                                <tr>
+                                                    <th>#</th>
+                                                    <th>From</th>
+                                                    <th>To</th>
+                                                    <th>Date</th>
+                                                    <th>Status</th>
+                                                    <th data-orderable="false">Options</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach (var transfer in Model.Transfer)
+                                                {
+                                                    var status = transfer.Status.GetDescription();
+                                                    <tr>
+                                                        <td>@(transfer.Reference?.FullRef??"")</td>
+                                                        <td>@transfer.OriginatingLocation.Name</td>
+                                                        <td>@transfer.Contact.Name</td>
+                                                        <td>@transfer.CreatedDate.ConvertTimeFromUtc(timeZone).ToString(dateFormat)</td>
+                                                        <td>
+                                                            @switch (transfer.Status)
+                                                            {
+                                                                case TransferStatus.Initiated:
+                                                                    <span class="label label-lg label-info">@status</span>
+                                                                    break;
+                                                                case TransferStatus.PendingPickup:
+                                                                    <span class="label label-lg label-primary">@status</span>
+                                                                    break;
+                                                                case TransferStatus.PickedUp:
+                                                                    <span class="label label-lg label-success">@status</span>
+                                                                    break;
+                                                                case TransferStatus.Delivered:
+                                                                    <span class="label label-lg label-success">@status</span>
+                                                                    break;
+                                                                case TransferStatus.Draft:
+                                                                    <span class="label label-lg label-primary">@status</span>
+                                                                    break;
+                                                                case TransferStatus.Denied:
+                                                                    <span class="label label-lg label-danger">@status</span>
+                                                                    break;
+                                                                case TransferStatus.Discarded:
+                                                                    <span class="label label-lg label-danger">@status</span>
+                                                                    break;
+                                                            }
+                                                        </td>
+                                                        <td>
+                                                            @if (transfer.Status == TransferStatus.Draft)
+                                                            {
+                                                                <button class="btn btn-info" onclick="EditTransfer(@transfer.Id, '@Model.Key')" data-toggle="modal" data-target="#app-trader-sale-transfer"><i class="fa fa-pencil"></i> &nbsp; Continue</button>
+                                                            }
+                                                            else
+                                                            {
+                                                                <button class="btn btn-primary" onclick="window.location.href = '/TraderTransfers/TransferMaster?key=@transfer.Key';"><i class="fa fa-eye"></i> &nbsp; Manage</button>
+                                                            }
+                                                        </td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    <br />
+                                    @{
+                                        if (isMemberTransfer && (Model.Status == TraderSaleStatusEnum.SaleApproved || Model.Status == TraderSaleStatusEnum.SalesOrderedIssued))
+                                        {
+                                            <a href="#" class="btn btn-success" onclick="InitTransfer('@Model.Key')" data-toggle="modal" data-target="#app-trader-sale-transfer"><i class="fa fa-plus"></i> &nbsp; Initiate transfer</a>
+                                        }
+                                    }
+
+                                </div>
+
+                            </div>
+                            <!-- END Transfers -->
+
+
+                        </div> <!-- ./tab-content -->
+
+                    </div>
+
+
+                    <div class="col-xs-12 col-sm-4">
+
+                        <h5>Status</h5>
+                        <br />
+
+
+                        <ul class="timeline noicon">
+
+                            @foreach (var date in timelineDate)
+                            {
+                                var dateStart = @HelperClass.DatetimeToOrdinal(date);
+                                var dateStr = date.Date == today.Date ? "Today" : dateStart;
+
+                                <li class="time-label">
+                                    <span class="label label-lg label-primary">
+                                        @dateStr
+                                    </span>
+                                </li>
+                                foreach (var tl in timeline.Where(d => d.LogDate.Date == date.Date))
+                                {
+                                    <li>
+                                        <i class="@tl.Icon"></i>
+                                        <div class="timeline-item">
+                                            <span class="time"><i class="fa fa-clock-o"></i> @tl.Time</span>
+                                            <h4 class="timeline-header">@tl.Status</h4>
+                                        </div>
+                                    </li>
+                                }
+                                <br />
+                            }
+
+                        </ul>
+
+
+                    </div>
+                </div>
+
+
+            </div>
+        </div>
+        @{
+            if (Model.SalesOrders.FirstOrDefault() != null)
+            {
+                <!--sale order -->
+                <div id="sale-order-template" class="hidden">
+                    <br /><br /><br /><br /><br /><br /><br /><br /><br /><br />
+                    <div class="invoice" id="sale-order-preview">
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <div class="card">
+                                    <div class="card-body p-0" style="position: relative;">
+                                        <div class="row p-5">
+                                            <div class="col-md-6">
+                                                <img id="invoice-image-top" src="data:image/png;base64,@imgTop" style="width: 250px; height: auto;">
+                                            </div>
+
+                                            <div class="col-md-6 text-right">
+                                                <p class="font-weight-bold mb-1">Sales Order #@Model.Id</p>
+                                                <p class="text-muted">Order Date: @Model.CreatedDate.ConvertTimeFromUtc(timeZone).ToString("dd MMM, yyyy")</p>
+
+                                                <p class="text-muted" style="font-size: 12px;">
+                                                    @Html.Raw(Model.Workgroup.Location.Address?.ToAddress().Replace(",", "<br />"))
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <hr class="my-2">
+
+                                        <div class="row pb-3 p-5">
+                                            <div class="col-xs-12 col-sm-6 col-lg-8">
+                                                <p class="font-weight-bold mb-4">Billing address</p>
+                                                <p>
+                                                    @Html.Raw(Model.Purchaser.Address?.ToAddress().Replace(",", "<br />"))
+                                                </p>
+                                            </div>
+                                            <div class="col-xs-12 col-sm-6 col-lg-4 text-right">
+                                                <p class="font-weight-bold mb-4">Additional information</p>
+                                                <p style="white-space: pre-line; text-align: left !important">
+                                                    @Model.SalesOrders.FirstOrDefault().AdditionalInformation
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <div class="row p-5">
+                                            <div class="col-md-12">
+                                                <div class="table-responsive">
+                                                    <table class="table">
+                                                        <thead>
+                                                            <tr>
+                                                                @*<th data-priority="5" style="width: 80px;" data-orderable="false"></th>*@
+                                                                <th data-priority="1">Item</th>
+                                                                <th data-priority="1">Unit</th>
+                                                                <th data-priority="2">Quantity</th>
+                                                                <th data-priority="2">Unit price <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                                                <th data-priority="3">Discount</th>
+                                                                <th data-priority="2">Tax <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                                                <th data-priority="3">Total <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            @{
+                                                                foreach (var item in Model.SaleItems)
+                                                                {
+                                                                    <tr>
+                                                                        @*<td>
+                                                                                <div class="table-avatar" style="background-image: url('@api@item.TraderItem.ImageUri');">&nbsp;</div>
+                                                                            </td>
+                                                                        *@
+                                                                        <td>@item.TraderItem.Name</td>
+                                                                        <td>
+                                                                            @{
+                                                                                if (item.Unit != null)
+                                                                                {
+                                                                                    @item.Unit.Name
+                                                                                }
+                                                                            }
+                                                                        </td>
+                                                                        <td>@item.Quantity.ToDecimalPlace(currencySettings)</td>
+                                                                        <td>@item.CostPerUnit.ToDecimalPlace(currencySettings)</td>
+                                                                        <td>@item.Discount.ToDecimalPlace(currencySettings)%</td>
+                                                                        <td>
+                                                                            @Html.Raw(item.HtmlTaxRates(currencySettings))
+                                                                        </td>
+                                                                        <td>@item.Price.ToDecimalPlace(currencySettings)</td>
+                                                                    </tr>
+                                                                }
+                                                            }
+
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="d-flex flex-row-reverse bg-dark text-white p-5">
+                                            <div class="py-3 px-5 text-right">
+                                                <div class="mb-2">Total</div>
+                                                <div class="h2 font-weight-light">@invoiceTotal.ToCurrencySymbol(currencySettings)</div>
+                                            </div>
+
+                                            <div class="py-3 px-5 text-right">
+                                                <div class="mb-2">Sales tax</div>
+                                                <div class="h2 font-weight-light">@invoiceSaleTax.ToCurrencySymbol(currencySettings)</div>
+                                            </div>
+
+                                            <div class="py-3 px-5 text-right">
+                                                <div class="mb-2">Subtotal</div>
+                                                <div class="h2 font-weight-light">@subtotal.ToCurrencySymbol(currencySettings)</div>
+                                            </div>
+                                        </div>
+
+                                        <div class="row p-5">
+                                            <div class="col-md-6">
+                                                <img id="invoice-image-bottom" src="data:image/png;base64,@imgBottom" style="width: 80px; height: auto;">
+                                            </div>
+
+                                            <div class="col-md-6 text-right">
+                                                <p class="text-muted">Powered by Qbicles</p>
+
+                                                <p class="text-muted" style="font-size: 12px;">
+                                                    Strapline information or copyright notices here
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!--endof sale order-->
+            }
+        }
+
+    </section>
+    <!-- ./content -->
+
+</div>
+<!-- /.content-wrapper -->
+
+
+
+
+
+
+<div class="modal fade" id="app-trader-item-specifics" role="dialog" aria-labelledby="app-trader-item-specifics">
+    <div class="modal-xl modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">RoadChef Classic specifics</h5>
+            </div>
+            <div class="modal-body">
+
+
+                <div class="row">
+                    <div class="col-xs-12">
+                        <ul class="app_subnav admintabs" style="padding-top: 0;">
+                            <li class="active"><a href="#item-inventory" data-toggle="tab">Inventory</a></li>
+                            <li><a href="#item-movement" data-toggle="tab">Movement</a></li>
+                            <li><a href="#item-benchmark" data-toggle="tab">Benchmark</a></li>
+                            <li><a href="#item-budget" data-toggle="tab">Budget</a></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <br />
+
+                <div class="tab-content">
+
+                    <!-- Inventory -->
+                    <div class="tab-pane fade in active" id="item-inventory">
+
+                        <div class="activity-overview task dt-nosearch" style="padding: 20px;">
+                            <table class="datatable" style="background: #fff; width: 100%; margin: 0;" data-paging="false">
+                                <thead>
+                                    <tr>
+                                        <th data-orderable="false">Description</th>
+                                        <th data-orderable="false">Unit</th>
+                                        <th data-orderable="false">Average cost</th>
+                                        <th data-orderable="false">Current inventory</th>
+                                        <th data-orderable="false">Days to last</th>
+                                        <th data-orderable="false">Min inventory</th>
+                                        <th data-orderable="false">Max inventory</th>
+                                        <th data-orderable="false">Inventory total</th>
+                                        <th data-orderable="false">Associated</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Example descriptive text to be placed here</td>
+                                        <td>Crate</td>
+                                        <td>&#8358;100</td>
+                                        <td>600</td>
+                                        <td><label class="label label-danger" data-tooltip="Reorder required" data-tooltip-color="#dd4b39">3</label></td>
+                                        <td>500</td>
+                                        <td>1000</td>
+                                        <td>&#8358;100,000</td>
+                                        <td>
+                                            <button data-toggle="modal" data-target="#associated-items-view" class="btn btn-info"><i class="fa fa-cube"></i> &nbsp; 3 items</button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <!-- END Inventory -->
+                    <!-- Movement -->
+                    <div class="tab-pane fade" id="item-movement">
+
+                        <div class="well custom" style="padding-bottom: 5px;">
+
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label for="search_dt">Date range</label>
+                                        <select name="date_range" id="toggle_custom" class="form-control select2" style="width: 100%;">
+                                            <option value="Day">Today</option>
+                                            <option value="Week">This week</option>
+                                            <option value="Custom">Use a custom date range</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-6" id="custom_view" style="display: none;">
+                                    <div class="form-group">
+                                        <label for="search_dt">Custom</label>
+                                        <input type="text" class="daterange form-control" placeholder="Click here to select">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <br /><br />
+
+                        <div class="activity-overview task" style="padding: 20px;">
+
+                            <table class="datatable table-hover community-list" style="width: 100%; background: #fff;">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Supply</th>
+                                        <th>Transfer</th>
+                                        <th>Sold</th>
+                                        <th>Waste</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>11.10.2018</td>
+                                        <td>500 in</td>
+                                        <td>0</td>
+                                        <td>200</td>
+                                        <td>0</td>
+                                    </tr>
+                                    <tr>
+                                        <td>10.10.2018</td>
+                                        <td>700 in</td>
+                                        <td>500</td>
+                                        <td>10</td>
+                                        <td>5</td>
+                                    </tr>
+                                    <tr>
+                                        <td>09.10.2018</td>
+                                        <td>200 out</td>
+                                        <td>0</td>
+                                        <td>0</td>
+                                        <td>100</td>
+                                    </tr>
+                                    <tr>
+                                        <td>08.10.2018</td>
+                                        <td>0</td>
+                                        <td>200</td>
+                                        <td>0</td>
+                                        <td>0</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+                        </div>
+                    </div>
+                    <!-- END Movement -->
+                    <!-- Benchmark -->
+                    <div class="tab-pane fade" id="item-benchmark">
+                        <p>Content to be determined</p>
+                    </div>
+                    <!-- END Benchmark -->
+                    <!-- Budget -->
+                    <div class="tab-pane fade" id="item-budget">
+                        <p>Content to be determined</p>
+                    </div>
+                    <!-- END Budget -->
+
+
+                    <br />
+                    <a href="javascript:void(0)" class="btn btn-danger" data-dismiss="modal">Close</a>
+
+                </div>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+<!-- /.modal -->
+
+<div class="modal fade" id="app-trader-sale-contact" role="dialog" aria-labelledby="app-trader-sale-contact">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Change sale contact #@(Model.Reference?.FullRef ?? "")</h5>
+            </div>
+            <div id="sale-review-contact" class="modal-body">
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+<!-- /.modal -->
+
+<div class="modal fade" id="sale-review-items-modal" role="dialog" aria-labelledby="sale-review-items-modal">
+    <div class="modal-dialog modal-xl" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Sale #@(Model.Reference?.FullRef ?? "")</h5>
+            </div>
+            <div id="sale-review-items" class="modal-body">
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+<!-- /.modal -->
+
+
+<div class="modal fade" id="app-trader-sale-initiate-payment" role="dialog" aria-labelledby="app-trader-sale-initiate-payment">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header" style="padding: 15px 15px 0 0;">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            </div>
+            <div class="modal-body">
+
+                <div class="flex-avatar">
+                    <div class="col-thumb" style="flex: 0 0 80px;">
+                        <img src="~/Content/DesignStyle/img/icon_payment.png" class="img-circle img-responsive" style="max-width: 80px;">
+                    </div>
+                    <div class="col">
+                        <h1 style="font-size: 16px; margin: 0 0 7px 0;">Sale #123</h1>
+                        <h5 style="margin: 0; color: rgba(0, 0, 0, 0.4);">
+                            Total: &#8358;10,000 &nbsp;/&nbsp;
+                            <span style="font-size: 13px; color: #333;">Remaining balance: &#8358;7,000</span>
+                        </h5>
+                    </div>
+                </div>
+
+                <br />
+
+                <div class="activity-overview generic" style="padding: 20px 20px 10px 20px;">
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group">
+                                <label for="workgroup">Workgroup</label>
+                                <select name="workgroup" class="form-control select2" style="width: 100%;">
+                                    <option value=""></option>
+                                    <option value="1">Workgroup 1</option>
+                                    <option value="2">Workgroup 2</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group">
+                                <label for="bank">Bank</label>
+                                <select name="bank" class="form-control select2" style="width: 100%;">
+                                    <option value=""></option>
+                                    <option value="FCMB">FCMB</option>
+                                    <option value="GTB">GTB</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group">
+                                <label for="amount">Amount to pay</label>
+                                <div class="input-group">
+                                    <span class="input-group-addon">&#8358;</span>
+                                    <input type="text" name="amount" class="form-control">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <br />
+                <button class="btn btn-danger" data-dismiss="modal">Close</button>
+                <button class="btn btn-success" data-dismiss="modal">Confirm &amp; pay</button>
+            </div>
+
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+<!-- /.modal -->
+
+<div class="modal fade left" id="app-trader-sale-transfer" role="dialog" aria-labelledby="app-trader-sale-transfer">
+
+</div><!-- /.modal -->
+
+<div class="modal fade left" id="app-trader-invoice-add" role="dialog" aria-labelledby="app-trader-invoice-add">
+
+</div><!-- /.modal -->
+<div class="modal fade left" id="app-trader-workgroup-preview" role="dialog" aria-labelledby="app-trader-workgroup-preview">
+
+</div><!-- /.modal -->
+
+@if (Model.Status == TraderSaleStatusEnum.SaleApproved || Model.Status == TraderSaleStatusEnum.SalesOrderedIssued)
+{
+    if (Model.SalesOrders == null || Model.SalesOrders.Count == 0)
+    {
+        <div class="modal fade" id="app-trader-so-additions" role="dialog" aria-labelledby="app-trader-so-additions">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                        <h5 class="modal-title">Generate a Sales Order</h5>
+                    </div>
+                    <div class="modal-body">
+
+                        <div class="activity-overview generic help-text animated bounce" style="margin: 0 0 15px 10px;">
+                            <i class="fa fa-info-circle"></i>
+                            <p>
+                                Please provide any information you want to appear in your Sales Order before proceeding. Once you confirm, your new
+                                Sales Order will be generated. Please note this information cannot be edited once you proceed, so take care to include
+                                anything you need visible.
+                            </p>
+                        </div>
+
+                        <div class="activity-overview task" style="padding: 20px;">
+                            <div class="form-group" style="margin: 0;">
+                                <label for="displayunit">Additional information </label>
+                                <textarea id="sale-order-additions" class="form-control"></textarea>
+                            </div>
+                        </div>
+
+                        <br />
+                        <button class="btn btn-danger" data-dismiss="modal" onclick="ClearText()">Cancel</button>
+                        <button class="btn btn-success" onclick="SaveSaleOrder(@Model.Id)">Generate &amp; proceed</button>
+
+                    </div>
+                </div><!-- /.modal-content -->
+            </div><!-- /.modal-dialog -->
+        </div>
+    }
+}
+
+
+
+
+<div class="modal fade" id="adding-other-mail-addresses" role="dialog" aria-labelledby="adding-other-mail-addresses">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Send to additional contacts</h5>
+            </div>
+            <div class="modal-body">
+                <div class="activity-overview task" style="padding: 20px;">
+                    <div class="form-group" style="margin: 0;">
+                        <label for="displayunit">Email addresses (<small>comma separated</small>) </label>
+                        <textarea id="mail-addresses" class="form-control" placeholder="Optional"></textarea>
+                    </div>
+                </div>
+
+                <br />
+                <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                @if (Model.SalesOrders.Count > 0)
+                {
+                    <button class="btn btn-success" onclick="IssueSaleOrder(@(Model.SalesOrders[0].Id))">Issue</button>
+                }
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+
+<!-- /.modal -->
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/trader.sales.manage.js"></script>
+        <script src="~/Scripts/dev/trader.transfer.quantity.change.js"></script>
+        <script src="~/Scripts/dev/trader.domain.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/trader.sales.manage.js"></script>
+        <script src="~/Scripts/dev/trader.transfer.quantity.change.js"></script>
+        <script src="~/Scripts/dev/trader.domain.min.js"></script>
+    }
+}

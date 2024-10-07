@@ -1,0 +1,237 @@
+﻿@using Qbicles.Models;
+@using Qbicles.Models.SalesMkt;
+@using Qbicles.BusinessRules;
+@model Place
+@{
+    ViewBag.Title = "Sales & Marketing > Place > " + Model.Name;
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var setting = (Settings)ViewBag.Setting;
+    var currentTimeZone = (string)ViewBag.CurrentTimeZone;
+    var discussion = Model.Discussion;
+    var currentUserId = (string)ViewBag.CurrentUserId;
+    var pageSize = HelperClass.activitiesPageSize;
+    var Comments = discussion != null ? discussion.Posts.OrderByDescending(x => x.StartedDate).Take(pageSize) : null;
+    var count_Comments = discussion != null ? discussion.Posts.Count() : 0;
+    var count_Medias = discussion.SubActivities.Count();
+    var allowCommentAndUpload = (discussion!=null&&discussion.ExpiryDate==null)|| (discussion.ExpiryDate.HasValue && discussion.ExpiryDate.Value > DateTime.UtcNow);
+    var dateFormat = (string)ViewBag.CurrentDateFormat;
+}
+<div class="content-wrapper qbicle-detail mdv2-wrapper" style="position: relative; min-height: 937px;">
+    <!-- Main content -->
+    <section class="mdv2 dash" data-tooltip-color="teal" data-tooltip-delay="300" data-tooltip-animate-function="spin" style="border-top: 1px solid #f1f1f1;">
+
+
+        <!-- App bar -->
+        <div class="mdv2-col-app" style="margin-bottom: 0;">
+
+            <div data-spy="affix" class="contained-sidebar affix">
+
+                <div class="activity-overview plain company-overview welcome-info" style="text-align: left !important; flex: none; margin: 0; padding-top: 30px; padding-bottom: 0;">
+
+                    <div class="pull-left" style="margin-bottom: 15px;">
+                        <a href="javascript:QbicleSelected('@(setting != null && setting.SourceQbicle != null ? setting.SourceQbicle.Key : "0")', 'Dashboard');" class="btn btn-info"><i class="fa fa-angle-up"></i> &nbsp; Qbicle</a>
+                    </div>
+                    <div class="clearfix"></div>
+
+                    <br>
+
+                    <img src="@(api+Model.FeaturedImageUri)&size=M" class="img-responsive" style="width: 100%; height: auto; margin-bottom: 25px;">
+
+                    <h1 style="line-height: 1.2;">@Model.Name</h1>
+
+                    <span class="label label-lg label-primary">@(discussion != null && discussion.Topic != null ? discussion.Topic.Name : "")</span>
+                    <span class="label label-lg label-success">Active</span>
+                    <br><br><br>
+                    @*<p style="color: rgba(0, 0, 0, 0.5);">@Model.Explanation</p>*@
+                    <br>
+                    @if (discussion.ExpiryDate.HasValue)
+                    {
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <label>Expires</label>
+                                <p>@discussion.ExpiryDate.Value.ConvertTimeFromUtc(currentTimeZone).ToString("dd/MM/yyyy HH:mm")</p>
+                            </div>
+                        </div>
+                    }
+
+                    
+                    <a href="/SalesMarketingLocation/PlaceDetail?placeId=@Model.Id" style="margin: 30px 0 5px 0;" class="btn btn-primary community-button"><i class="fa fa-eye"></i> &nbsp; View source Activity</a>
+                </div>
+            </div>
+        </div>
+        <!-- END App bar -->
+        <!-- Main area -->
+        <div class="mdv2-col-dash">
+
+            <div class="spacing" style="margin-top: -50px;">
+
+                <a id="discuss"></a>
+                <div class="app_topnav entity_adds" style="background: #fff; padding: 0;">
+                    <ul class="nav nav-pills app_main_nav">
+                        <li role="presentation" class="active">
+                            <a href="#tab1" data-toggle="tab">
+                                <i class="fa fa-comments"></i>
+                                Comments
+                            </a>
+                        </li>
+                        <li role="presentation">
+                            <a href="#tab2" data-toggle="tab">
+                                <i class="fa fa-folder-open"></i>
+                                Files
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+
+                <br><br>
+
+                <div class="row">
+                    <div class="col-xs-12">
+
+                        <div class="tab-content">
+
+                            <div class="tab-pane fade in active" id="tab1">
+                                @if (allowCommentAndUpload)
+                                {
+                                    <div class="row">
+                                        <div class="col-xs-12">
+                                            <div class="well" style="max-width: 800px;">
+                                                <div class="form-group">
+                                                    <label for="add-comment">Add a comment</label>
+                                                    <textarea id="txt-comment-link" name="addcomment" onkeyup="validateAddComment()" class="form-control"></textarea>
+                                                    <label id="addcomment-error" class="error" for="addcomment" style="display: none;">Your post is longer than the 1,500 character limit. Please reduce the length, or split it across multiple posts</label>
+                                                </div>
+
+                                                <button class="btn btn-success" onclick="AddCommentToSocialPostDiscussion('@discussion.Key')">Submit</button>
+                                            </div>
+
+                                            <br>
+                                        </div>
+                                    </div>
+                                }
+                                <div id="list-comments-discussion">
+                                    @if (Comments != null && count_Comments > 0)
+                                    {
+                                        foreach (var item in Comments)
+                                        {
+                                            <!-- General post -->
+                                            <article id="post-@item.Id" class="activity post">
+                                                <div class="activity-avatar" style="background-image: url('@(api+item.CreatedBy.ProfilePic)&size=T');"></div>
+                                                <div class="activity-detail">
+                                                    <div class="activity-meta">
+                                                        <h4>@HelperClass.GetFullNameOfUser(item.CreatedBy, currentUserId)</h4>
+                                                        <small>@item.StartedDate.ConvertTimeFromUtc(currentTimeZone).ToString(dateFormat+ ", hh:mmtt").ToLower()</small>
+                                                    </div>
+
+                                                    <div class="activity-overview media-comment">
+                                                        <p>@Html.Raw(item.Message.Replace(Environment.NewLine, "<br/>"))</p>
+                                                    </div>
+                                                </div>
+                                                <div class="clearfix"></div>
+                                            </article>
+                                            <!-- END General post -->
+                                        }
+                                    }
+                                </div>
+                                @if (count_Comments > pageSize)
+                                {
+                                    <button id="btnLoadPosts" onclick="LoadMorePostsDiscussion('@discussion.Key', @pageSize, 'list-comments-approval')" class="btn btn-info">Load older posts</button>
+                                }
+                            </div>
+                            <div class="tab-pane fade " id="tab2">
+                                <br>
+                                @if (discussion.ClosedBy == null&&allowCommentAndUpload)
+                                {
+                                    <a href="#" class="btn btn-success" data-toggle="modal" data-target="#create-media"><i class="fa fa-upload"></i> &nbsp; Upload a file</a>
+                                }
+                                <br><br>
+                                <div id="list-medias">
+                                    @if (count_Medias > 0)
+                                    {
+                                        foreach (var item in discussion.SubActivities.OrderByDescending(x => x.Id).Take(pageSize))
+                                        {
+                                            var med = (QbicleMedia)item;
+                                            var createdByName = med.StartedBy.Id == currentUserId ? "Me" : HelperClass.GetFullNameOfUser(med.StartedBy);
+                                            var createdDate = med.StartedDate.Date == DateTime.Now.Date ? "Today, " + med.StartedDate.ToString("hh:mmtt").ToLower() : med.StartedDate.ToString(dateFormat + " hh:mmtt").ToLower();
+                                            var lastUpdateFile = "";
+                                            var mediaLastupdate = med.VersionedFiles.Where(e => !e.IsDeleted).OrderByDescending(x => x.UploadedDate).FirstOrDefault() ?? null;
+                                            if (mediaLastupdate != null)
+                                            {
+                                                lastUpdateFile = mediaLastupdate?.UploadedDate.Date == DateTime.Now.Date ? "Today, " + mediaLastupdate.UploadedDate.ToString("hh:mmtt").ToLower() : mediaLastupdate.UploadedDate.ToString(dateFormat + " hh:mmtt").ToLower();
+                                            } //Media post
+                                            <!-- Media post -->
+                                            <article class="activity media">
+                                                <div class="activity-avatar" style="background-image: url('@api@(med.StartedBy.ProfilePic)&size=T');"></div>
+                                                <div class="activity-detail" style="width: 100%; max-width: 100%;">
+                                                    <div class="activity-meta">
+                                                        <h4>@createdByName</h4>
+                                                        <small>@createdDate</small>
+                                                        <br class="visible-xs">
+                                                    </div>
+
+                                                    <div class="activity-overview media">
+                                                        <div class="row">
+                                                            <div class="col-xs-12 col-sm-5 col-lg-4">
+                                                                <a href="javascript:void(0)" onclick="ShowMediaPage('@med.Key')">
+                                                                    @if (med.FileType.Type == "Image File")
+                                                                    {
+                                                                        <img id="media-@item.Id" class="img-responsive" src='@api@(mediaLastupdate.Uri)&size=M' />
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <img src="@med.FileType.ImgPath" class="img-responsive">
+                                                                    }
+                                                                </a>
+                                                            </div>
+                                                            <div class="col-xs-12 col-sm-7 col-lg-8 description" style="padding-top: 0;">
+                                                                <h5>@med.Name</h5>
+                                                                <p>
+                                                                    @med.Description
+                                                                </p>
+                                                                <small>@Utility.GetFileTypeDescription(med.FileType.Extension) | Update @lastUpdateFile</small>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="clearfix"></div>
+                                            </article>
+                                            <!-- END Media post -->
+                                        }
+                                    }
+                                    @if (count_Medias > pageSize)
+                                    {
+                                        <button id="btnLoadMedias" onclick="LoadMoreMediasDiscussion(@discussion.Id, @pageSize, 'list-medias')" class="btn btn-info">Load older medias</button>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+
+
+                    </div>
+                </div>
+
+                <br><br><br>
+
+            </div>
+
+        </div>
+        <!-- END Main Area -->
+
+
+    </section>
+    <!-- ./content -->
+
+</div>
+@{
+    Html.RenderAction("GenerateModalMedia", "Qbicles");
+}
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/salesmarketing.discussion.idea.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/salesmarketing.discussion.idea.min.js"></script>
+    }
+}

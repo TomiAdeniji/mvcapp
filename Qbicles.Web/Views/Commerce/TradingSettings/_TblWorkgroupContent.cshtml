@@ -1,0 +1,64 @@
+﻿@using Qbicles.BusinessRules
+@using Qbicles.Models.Trader;
+@using Qbicles.Models;
+@using System.Linq;
+@model List<WorkGroup>
+@{ 
+    var canDel = Model.Count == 1 ? "disabled" : "";
+    var dateFormat = (string)ViewBag.CurrentDateFormat;
+    var currentDomainPlanLevel = ViewBag.CurrentDomainPlanLevel != null ? (BusinessDomainLevelEnum)ViewBag.CurrentDomainPlanLevel : BusinessDomainLevelEnum.Free;
+}
+<table class="table-hover datatable" id="wg-table" data-order="[[ 0, &quot;asc&quot; ]]" style="width: 100%; background: #fff;">
+    <thead>
+        <tr>
+            <th data-priority="1">Name</th>
+            <th data-priority="3">Creator</th>
+            <th data-priority="3">Created</th>
+            <th data-priority="3">Location</th>
+            <th data-priority="2">Process</th>
+            <th data-priority="2">Qbicle</th>
+            <th data-priority="2">Members</th>
+            <th data-priority="2">Product group(s)</th>
+            @if (currentDomainPlanLevel >= BusinessDomainLevelEnum.Starter)
+            {
+                <th data-priority="1" data-orderable="false">Options</th>
+            }
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var wg in Model)
+        {
+            <tr id="tr_workgroup_user_@wg.Id">
+                <td>@wg.Name</td>
+                <td>@HelperClass.GetFullNameOfUser(wg.CreatedBy)</td>
+                <td data-sort="@wg.CreatedDate.Ticks">@wg.CreatedDate.ToString(dateFormat)</td>
+                <td>@wg.Location.Name</td>
+                <td>
+                    @{
+                        foreach (var name in wg.Processes.Select(n => n.Name))
+                        {
+                            @name <br />
+                        }
+                    }
+                </td>
+                <td>@wg.Qbicle.Name</td>
+                <td>@wg.Members.Count</td>
+                <td>@wg.ItemCategories.Count</td>
+                @if (currentDomainPlanLevel >= BusinessDomainLevelEnum.Starter)
+                {
+                    <td>
+                        <button class="btn btn-warning" onclick="Edit(@wg.Id)" data-toggle="modal" data-target="#app-trader-group-edit"><i class="fa fa-pencil"></i></button>
+                        @if ((wg.ApprovalDefs != null && wg.ApprovalDefs.Any(a => a.ApprovalReqs.Count > 0)) || (wg.Invoices != null && wg.Invoices.Any()) || (wg.Payments != null && wg.Payments.Any()) || (wg.Purchases != null && wg.Purchases.Any()) || (wg.Sales != null && wg.Sales.Any()) || (wg.Contacts != null && wg.Contacts.Any()) || (wg.Transfers != null && wg.Transfers.Any()))
+                        {
+                            <button class="btn btn-danger" disabled=""><i class="fa fa-trash"></i></button>
+                        }
+                        else
+                        {
+                            <button @canDel class="btn btn-danger" onclick="Delete('wg-table', '@wg.Id')"><i class="fa fa-trash"></i></button>
+                        }
+                    </td>
+                }
+            </tr>
+        }
+    </tbody>
+</table>

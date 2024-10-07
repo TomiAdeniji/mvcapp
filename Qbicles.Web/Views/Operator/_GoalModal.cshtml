@@ -1,0 +1,261 @@
+﻿@using Qbicles.Models.Operator;
+@using Qbicles.Models.Operator.Goals;
+@model Goal
+@{
+    var tags = (List<OperatorTag>)ViewBag.tags;
+    var measures = (List<Measure>)ViewBag.measures;
+    var tblLeadingIndicators = Model.GoalMeasures != null? Model.GoalMeasures.Where(s => s.Type == GoalMeasureTypeEnum.LeadingIndicator).ToList():new List<GoalMeasure>();
+    var tblGoalMeasure = Model.GoalMeasures != null ? Model.GoalMeasures.Where(s => s.Type == GoalMeasureTypeEnum.GoalMeasure).ToList() : new List<GoalMeasure>();
+}
+<div class="modal-dialog modal-xl" role="document">
+    <div class="modal-content">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+            <h5 class="modal-title">@(Model.Id > 0 ? "Edit Goal" : "Add a Goal")</h5>
+        </div>
+        <div class="modal-body">
+            <form id="frmGoal" action="/Operator/SaveGoal" method="post" enctype="multipart/form-data" novalidate>
+                <div class="row">
+                    <div class="col-xs-12">
+                        <ul id="tabNavGoals" class="app_subnav admintabs" style="padding-top: 0;">
+                            <li class="active"><a href="#goal-1" data-toggle="tab">Specifics</a></li>
+                            <li><a href="#goal-2" data-toggle="tab" style="cursor:not-allowed;pointer-events:none;">Leading Indicators</a></li>
+                            <li><a href="#goal-3" data-toggle="tab" if;">Goal Measures</a></li>
+                        </ul>
+                    </div>
+                </div>
+                <br>
+                <div class="tab-content">
+
+                    <!-- Specifics -->
+                    <div class="tab-pane fade in active" id="goal-1">
+
+                        <div class="row">
+                            <div class="col-xs-12">
+                                @if(Model.Id == 0)
+                                {
+                                <div class="activity-overview generic help-text animated bounce">
+                                    <i class="fa fa-info-circle"></i>
+                                    <h5 style="margin: 0 0 10px 0;">Goal management</h5>
+                                    <p>Goals allow you to set targets for your business, comprising leading indicators and measures to both predict (and subsequently assess) performance towards the overall Goal.</p>
+                                </div>
+                                }
+                                <div class="well custom" style="padding-bottom: 5px;">
+
+                                    <div class="row">
+                                        <div class="col-xs-12 col-sm-6">
+                                            <div class="form-group">
+                                                <label for="Name">Name <span class="red">*</span></label>
+                                                <input type="hidden" name="Id" value="@Model.Id" />
+                                                <input type="text" class="form-control" name="Name" value="@Model.Name">
+                                            </div>
+                                        </div>
+                                        <div class="col-xs-12 col-sm-6">
+                                            <div class="form-group">
+                                                <label for="goal_qbicle">Tag(s) <span class="red">*</span></label>
+                                                <select name="Tags" class="form-control checkmulti" onchange="if ($(this).val() != '') { $('#frmGoal select[name=Tags]').valid(); }" multiple="">
+                                                    @foreach (var item in tags)
+                                                    {
+                                                        <option value="@item.Id" @(Model.Tags!=null&&Model.Tags.Any(s=>s.Id==item.Id)?"selected":"")>@item.Name</option>
+                                                    }
+                                                </select>
+                                                <label id="Tags-error" class="error" for="Tags" style="display: none;">This field is required.</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-xs-12 col-sm-6">
+                                            <div class="form-group">
+                                                <label for="Summary">Summary <span class="red">*</span></label>
+                                                <textarea name="Summary" class="form-control" style="max-width: 100%; height: 80px;">@Model.Summary</textarea>
+                                            </div>
+                                        </div>
+                                        <div class="col-xs-12 col-sm-6">
+                                            <div class="form-group">
+                                                <label for="image">Image <span class="red">*</span></label>
+                                                <input type="file" class="form-control" id="goal-featured-image" @(Model.Id > 0 ? "" : "required")>
+                                                <input type="hidden" id="operator-goal-feature-image-object-key" name="mediaObjectKey" />
+                                                <input type="hidden" id="operator-goal-feature-image-object-name" name="mediaObjectName" />
+                                                <input type="hidden" id="operator-goal-feature-image-object-size" name="mediaObjectSize" />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                </div>
+
+                            </div>
+                        </div>
+
+                        <br>
+                        <button type="button" class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                        <a href="#goal-2" class="btn btn-success btnNext">Next &nbsp; <i class="fa fa-angle-right"></i></a>
+
+
+                    </div>
+                    <!-- END Specifics -->
+                    <!-- Lead Indicators -->
+                    <div class="tab-pane fade" id="goal-2">
+
+                        <div class="activity-overview generic help-text animated bounce">
+                            <i class="fa fa-info-circle"></i>
+                            <p>Leading indicators are important for building a broad understanding of performance, providing info on likely future outcomes. They'll help you predict whether your Goal's on track.</p>
+                        </div>
+
+                        <div class="well custom" style="padding-bottom: 5px;">
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-4">
+                                    <div class="form-group">
+                                        <label for="forms">Add a measure</label>
+                                        <select name="lm_measure" onchange="if ($(this).val() != '') { $('#btnLMAdd').prop('disabled', false); } else { $('#btnLMAdd').prop('disabled', true); }" class="form-control select2" style="width: 100%;" data-placeholder="Choose a form">
+                                            <option value=""></option>
+                                            @foreach (var item in measures)
+                                            {
+                                                if (Model.Id==0|| tblLeadingIndicators.Count() == 0|| !tblLeadingIndicators.Any(s => s.Measure.Id == item.Id))
+                                                {
+                                                    <option value="@item.Id" desc="@(item.Summary?.Replace("'", "\\'").Replace("\"", "&#34;"))">@item.Name</option>
+                                                }
+                                            }
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-2">
+                                    <label for="score">
+                                        Weight &nbsp;
+                                        <i class="fa fa-info-circle blue" data-tooltip="The combined weight of all of your measures should total 100%. The higher this measure's percentage, the higher its potential performance gains."></i>
+                                    </label>
+                                    <div class="input-group" style="margin-bottom: 15px;">
+                                        <input type="number" class="form-control" name="lm_weight" value="0" min="0" max="100" style="border: 1px solid #e1e1e1;">
+                                        <span class="input-group-addon">%</span>
+                                    </div>
+                                    <label id="lm_weight-error" class="error" for="lm_weight" style="margin-top:-15px"></label>
+                                </div>
+                                <div class="col-xs-12 col-sm-3">
+                                    <div class="form-group">
+                                        <label for="forms">&nbsp;</label><br>
+                                        <button id="btnLMAdd" type="button" disabled class="btn btn-success"><i class="fa fa-plus"></i> &nbsp; Add to list</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <br>
+                        <table id="tblLeadingIndicators" class="datatable table-striped table-hover" style="width: 100%;">
+                            <thead>
+                                <tr>
+                                    <th>Id</th>
+                                    <th>MeasureId</th>
+                                    <th>Lead indicator</th>
+                                    <th>Description</th>
+                                    <th>Weight</th>
+                                    <th>Options</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (tblLeadingIndicators != null)
+                                {
+                                    foreach (var item in tblLeadingIndicators)
+                                    {
+                                        <tr>
+                                            <td>@item.Id</td>
+                                            <td>@item.Measure.Id</td>
+                                            <td>@item.Measure.Name</td>
+                                            <td>@item.Measure.Summary</td>
+                                            <td>@item.Weight%</td>
+                                            <td><button class="btn btn-danger" onclick="deleteRowMeasure('tblLeadingIndicators',this)"><i class="fa fa-trash"></i></button></td>
+                                        </tr>
+                                    }
+                                }
+                            </tbody>
+                        </table>
+                        <br>
+                        <a href="#goal-1" class="btn btn-warning btnPrevious"><i class="fa fa-angle-left"></i> &nbsp; Previous</a>
+                        <a href="#goal-3" class="btn btn-success btnNext">Next &nbsp; <i class="fa fa-angle-right"></i></a>
+                    </div>
+                    <!-- END Lead Indicators -->
+                    <!-- Measures -->
+                    <div class="tab-pane fade" id="goal-3">
+
+                        <div class="activity-overview generic help-text animated bounce">
+                            <i class="fa fa-info-circle"></i>
+                            <p>Measures are output insights, providing retrospective analysis of outcomes towards your Goal. They are often referred to as lagging indicators, pairing with leading indicators to provide control and analysis from concept through achievement of your Goal.</p>
+                        </div>
+
+                        <div class="well custom" style="padding-bottom: 5px;">
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-4">
+                                    <div class="form-group">
+                                        <label for="forms">Add a measure</label>
+                                        <select name="gm_measure" onchange="if ($(this).val() != '') { $('#btnGMAdd').prop('disabled', false); } else { $('#btnGMAdd').prop('disabled', true); }" class="form-control select2" style="width: 100%;" data-placeholder="Choose a form" tabindex="-1" aria-hidden="true">
+                                            <option value=""></option>
+                                            @foreach (var item in measures)
+                                            {
+                                                if (Model.Id == 0 || tblGoalMeasure.Count() == 0 || !tblGoalMeasure.Any(s => s.Measure.Id == item.Id))
+                                                {
+                                                    <option value="@item.Id" desc="@item.Summary">@item.Name</option>
+                                                }
+                                            }
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-2">
+                                    <label for="score">
+                                        Weight &nbsp;
+                                        <i class="fa fa-info-circle blue" data-tooltip="The combined weight of all of your measures should total 100%. The higher this measure's percentage, the higher its potential performance gains."></i>
+                                    </label>
+                                    <div class="input-group" style="margin-bottom: 15px;">
+                                        <input type="number" class="form-control" name="gm_weight" value="0" min="0" max="100" style="border: 1px solid #e1e1e1;">
+                                        <span class="input-group-addon">%</span>
+                                    </div>
+                                    <label id="gm_weight-error" class="error" for="gm_weight" style="margin-top:-15px"></label>
+                                </div>
+                                <div class="col-xs-12 col-sm-3">
+                                    <div class="form-group">
+                                        <label for="forms">&nbsp;</label><br>
+                                        <button id="btnGMAdd" type="button" class="btn btn-success"><i class="fa fa-plus"></i> &nbsp; Add to list</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <br>
+                        <table id="tblGoalMeasures" class="datatable table-striped table-hover" style="width: 100%;">
+                            <thead>
+                                <tr>
+                                    <th>Id</th>
+                                    <th>MeasureId</th>
+                                    <th>Measure</th>
+                                    <th>Description</th>
+                                    <th>Weight</th>
+                                    <th data-orderable="false">Options</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (tblGoalMeasure != null)
+                                {
+                                    foreach (var item in tblGoalMeasure)
+                                    {
+                                        <tr>
+                                            <td>@item.Id</td>
+                                            <td>@item.Measure.Id</td>
+                                            <td>@item.Measure.Name</td>
+                                            <td>@item.Measure.Summary</td>
+                                            <td>@item.Weight%</td>
+                                            <td><button class="btn btn-danger" onclick="deleteRowMeasure('tblGoalMeasures',this)"><i class="fa fa-trash"></i></button></td>
+                                        </tr>
+                                    }
+                                }
+                            </tbody>
+                        </table>
+
+                        <br>
+                        <a href="#goal-2" class="btn btn-warning btnPrevious"><i class="fa fa-angle-left"></i> &nbsp; Previous</a>
+                        <button class="btn btn-success" type="submit">Confirm</button>
+
+                    </div>
+                    <!-- END Measures -->
+
+                </div>
+            </form>
+        </div>
+    </div><!-- /.modal-content -->
+</div><!-- /.modal-dialog -->

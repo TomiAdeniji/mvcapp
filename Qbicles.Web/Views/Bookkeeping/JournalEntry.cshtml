@@ -1,0 +1,352 @@
+﻿@using Qbicles.BusinessRules;
+@using Qbicles.Models.Bookkeeping;
+@using System.Globalization;
+@using Qbicles.Models;
+
+@model JournalEntry
+@{
+    var UserRoleRights = (List<string>)ViewBag.UserRoleRights;
+    var datetimeFormat = (string)ViewBag.CurrentDateTimeFormat;
+    var timeZone = (string)ViewBag.CurrentTimeZone;
+    var dateFormat = (string)ViewBag.CurrentDateFormat;
+    var rightCreateJournalEntry = ViewBag.rightCreateJournalEntry;
+    var currentUserId = ViewBag.CurrentUserId;
+    ViewBag.Title = "Bookkeeping & Journal Entry #" + Model.Number;
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var pageSize = @HelperClass.activitiesPageSize;
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+    var rightShowJournalTab = (bool)ViewBag.rightShowJournalTab;
+    var rightShowAccountTab = (bool)ViewBag.rightShowAccountTab;
+    var rightShowReportsTab = (bool)ViewBag.rightShowReportsTab;
+    var rightShowConfigurationTab = UserRoleRights.Any(r => r == RightPermissions.BKManageAppSettings);
+}
+
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail">
+
+
+    <!-- Main content -->
+    <section class="content">
+
+        <br /><br />
+
+        <div class="mod_title">
+            <h5>Bookkeeping</h5>
+            <h4>Journal Entry #@Model.Number</h4>
+        </div>
+
+        @Html.Partial("_BookkeepingNavigatePartial", new ViewDataDictionary
+       {
+           {"tabSelected", 2 },
+           { "rightShowJournalTab", rightShowJournalTab },
+           { "rightShowAccountTab", rightShowAccountTab },
+           { "rightShowReportsTab", rightShowReportsTab },
+           { "rightShowConfigurationTab", rightShowConfigurationTab }
+       })
+
+        <div class="row">
+            <div class="col-xs-12">
+                <div class="app_filter">
+                    <div class="row">
+                        <div class="col-xs-12">
+                            <a href="/Bookkeeping/BKApps" class="btn btn-info"><i class="fa fa-home"></i> &nbsp; App home</a>
+                            <a href="/Bookkeeping/JournalEntries" class="btn btn-info"><i class="fa fa-chevron-up"></i> &nbsp; Journal entries</a>
+                            @if (Model.Approval != null)
+                            {
+                                <a href="javascript:void(0)" onclick="ShowApprovalPage('@Model.Approval.Key', false, 'journal')" class="btn btn-primary"><i class="fa fa-eye"></i> &nbsp; View in Qbicles</a>
+                            }
+
+                            @if (rightCreateJournalEntry && !Model.IsApproved)
+                            {
+                                if (Model.Approval == null || (Model.Approval?.RequestStatus == ApprovalReq.RequestStatusEnum.Pending || Model.Approval?.RequestStatus == ApprovalReq.RequestStatusEnum.Reviewed))
+                                {
+                                    <a href="/Bookkeeping/EditJournalEntry?id=@Model.Id" class="btn btn-warning"><i class="fa fa-pencil"></i> &nbsp; Edit journal</a>
+                                }
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <div class="row">
+
+
+            <div class="col-xs-12">
+
+                <ul class="breadcrumb">
+                    <li><a href="/Bookkeeping/JournalEntries">Journal Entries</a></li>
+                    <li>Journal Entry #@Model.Number</li>
+                </ul>
+
+
+                <div class="activity-overview task task-meta" style="padding: 26px;">
+                    <div class="row">
+                        <div class="col-xs-6 col-md-3 col-lg-2">
+                            <span>Date</span>
+                            <p>@Model.PostedDate.ConvertTimeFromUtc(timeZone).FormatDateTimeByUser(datetimeFormat)</p>
+                        </div>
+                        <div class="col-xs-6 col-md-3 col-lg-2">
+                            <span>Number</span>
+                            <p>#@Model.Number</p>
+                        </div>
+                        <div class="col-xs-12 col-md-6 col-lg-8">
+
+                            <!-- Spacer --> <div class="visible-xs visible-sm"><br /><br /></div> <!-- ./Spacer -->
+
+                            <span>Description</span>
+                            <p>@Model.Description</p>
+                        </div>
+                    </div>
+                </div>
+
+                <br /><br />
+
+                <h5>Transactions</h5>
+
+                <table class="datatable app_specific table-hover" style="width: 100%;">
+                    <thead>
+                        <tr>
+                            <th data-priority="2">Date</th>
+                            <th data-priority="2">Account</th>
+                            <th data-priority="2">Reference</th>
+                            <th data-priority="1">Debit <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                            <th data-priority="1">Credit <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                            <th data-priority="1">Options</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var tran in Model.BKTransactions)
+                        {
+                            <tr>
+                                <td>@tran.PostedDate.ConvertTimeFromUtc(timeZone).FormatDateTimeByUser(datetimeFormat)</td>
+                                <td>@(tran.Account?.Number??"") - @(tran.Account?.Name??"")</td>
+                                <td>@tran.Reference</td>
+                                <td>@(tran.Debit.ToDecimalPlace(currencySettings))</td>
+                                <td>@(tran.Credit.ToDecimalPlace(currencySettings))</td>
+                                <td>
+                                    <button class="btn btn-info" onclick="ShowBkTransactionDetail(@tran.Id)"><i class="fa fa-info"></i> &nbsp; More</button>
+                                    <div class="btn-group options">
+                                        <button type="button" class="btn btn-success dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                            <i class="fa fa-cog"></i> &nbsp; Actions
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-right">
+                                            <li>
+                                                <a href="javascript:void(0)" onclick="ShowTransactionAttachments(@tran.Id)">
+                                                    Attachments (<span id="attachment-@tran.Id">@tran.AssociatedFiles.Count</span>)
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a href="javascript:void(0)" onclick="ShowTransactionComment(@tran.Id)">
+                                                    Comments (<span id="comment-@tran.Id">@tran.Posts.Count</span>)
+                                                </a>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </td>
+                            </tr>
+
+                        }
+
+                    </tbody>
+                </table>
+
+            </div>
+        </div>
+
+
+        <br />
+        <br />
+        <div class="app_topnav entity_adds" style="background: #fff; padding: 0;">
+            <ul class="nav nav-pills app_main_nav">
+                <li role="presentation" class="active">
+                    <a href="#tab1" data-toggle="tab">
+                        <i class="fa fa-comments"></i>
+                        Comments
+                    </a>
+                </li>
+                <li role="presentation">
+                    <a href="#tab2" data-toggle="tab">
+                        <i class="fa fa-folder-open"></i>
+                        Files
+                    </a>
+                </li>
+            </ul>
+        </div>
+        <br />
+        <div class="row">
+            <div class="col-xs-12">
+                <div class="tab-content">
+                    <div class="tab-pane fade in active" id="tab1">
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <div class="well" style="max-width: 800px;">
+                                    <div class="form-group">
+                                        <label for="add-comment">Add a comment</label>
+                                        <textarea id="txt-comment-task" name="add-comment" class="form-control"></textarea>
+                                    </div>
+                                    <button onclick="AddCommentJournalEntry(@Model.Id)" class="btn btn-success">Submit</button>
+                                </div>
+                                <br />
+                            </div>
+                        </div>
+                        <div id="list-comments-journal">
+                            @foreach (var post in Model.Posts.OrderByDescending(x => x.StartedDate).Take(HelperClass.activitiesPageSize))
+                            {
+                                <!-- General post -->
+                                var fullName = post.CreatedBy.Id == currentUserId ? "Me" : HelperClass.GetFullNameOfUser(post.CreatedBy);
+                                <article id="post-@post.Id" class="activity post">
+                                    <img style="background-image: url('@api@post.CreatedBy.ProfilePic')" class="activity-avatar" />
+                                    <div class="activity-detail">
+                                        <div class="activity-meta">
+                                            <h4>@fullName</h4>
+                                            <small>@post.StartedDate.ConvertTimeFromUtc(timeZone).ToString(dateFormat + ", hh:mmtt")</small>
+                                        </div>
+                                        <div class="activity-overview media-comment">
+                                            <p>@post.Message</p>
+                                        </div>
+                                    </div>
+                                    <div class="clearfix"></div>
+                                </article>
+                                <!-- END General post -->
+                            }
+                        </div>
+                        @if (Model.Posts.Count() > HelperClass.activitiesPageSize)
+                        {
+                            <button id="btnLoadPosts" onclick="LoadMorePosts(@Model.Id, @pageSize,'list-comments-journal')" class="btn btn-info trigger_load">Load older posts</button>
+                        }
+                    </div>
+
+                    <div class="tab-pane fade" id="tab2">
+
+                        <br />
+                        <br />
+                        <a href="#" class="btn btn-success" id="btnAddFile" data-toggle="modal" data-target="#create-media"><i class="fa fa-upload"></i> &nbsp; Upload a file</a>
+
+                        <br /><br />
+                        <div id="list-medias">
+                            @if (Model.AssociatedFiles.Count > 0)
+                            {
+                                foreach (var item in Model.AssociatedFiles.OrderByDescending(x => x.TimeLineDate).Take(HelperClass.activitiesPageSize))
+                                {
+                                    var media = (QbicleMedia)item;
+                                    var createdByName = HelperClass.GetFullNameOfUser(media.StartedBy, currentUserId);
+                                    var createdDate = media.StartedDate.Date == DateTime.UtcNow.Date ? "Today, " + media.StartedDate.ToString("hh:mmtt").ToLower() : media.StartedDate.ToString(dateFormat + " hh:mmtt").ToLower();
+                                    var mediaLastupdate = media.VersionedFiles.Where(e => !e.IsDeleted).OrderByDescending(x => x.UploadedDate).FirstOrDefault();
+                                    var lastUpdateFile = "";
+                                    if (mediaLastupdate != null)
+                                    {
+                                        lastUpdateFile = mediaLastupdate.UploadedDate.Date == DateTime.UtcNow.Date ? "Today, " + mediaLastupdate.UploadedDate.ToString("hh:mmtt").ToLower() : mediaLastupdate.UploadedDate.ToString(dateFormat + " hh:mmtt").ToLower();
+                                    }//Media post
+                                    <article class="activity media">
+                                        <img style="background-image: url('@api@media.StartedBy.ProfilePic')" class="activity-avatar" />
+
+                                        <div class="activity-detail">
+                                            <div class="activity-meta">
+                                                <h4>@createdByName</h4>
+                                                <small>@createdDate</small>
+                                                <br class="visible-xs">
+                                            </div>
+                                            <div class="activity-overview media">
+                                                <div class="row">
+                                                    <div class="col-xs-12 col-sm-5 col-md-6 col-lg-5">
+                                                        <a href="javascript:void(0)" onclick="ShowMediaPage('@media.Key')">
+                                                            @if (media.FileType.Type == "Image File")
+                                                            {
+                                                                <img id="media-@item.Id" class="img-responsive" src='@api@mediaLastupdate.Uri' />
+                                                            }
+                                                            else
+                                                            {
+                                                                <img src="@media.FileType.IconPath" class="img-responsive">
+                                                            }
+                                                        </a>
+                                                    </div>
+                                                    <div class="col-xs-12 col-sm-7 col-md-6 col-lg-7 description">
+                                                        <h5>@media.Name</h5>
+                                                        <p>
+                                                            @media.Description
+                                                        </p>
+                                                        <small>@media.FileType.Type | Update @lastUpdateFile</small>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="clearfix"></div>
+                                    </article>
+                                    <!-- END Media post -->
+                                }
+                            }
+                        </div>
+                        @if (Model.AssociatedFiles.Count() > HelperClass.activitiesPageSize)
+                        {
+                            <button id="btnLoadMedias" onclick="LoadMoreMedias(@Model.Id,@pageSize,'list-medias')" class="btn btn-info trigger_load">Load older medias</button>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <!-- ./content -->
+
+</div>
+<!-- /.content-wrapper -->
+@{
+    Html.RenderAction("GenerateModalMedia", "Qbicles");
+}
+<div class="modal fade left" id="attachments-view" role="dialog" aria-labelledby="attachments-view">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Manage Attachments</h5>
+            </div>
+            <div class="modal-body">
+
+                <div id="transaction-attachments" class="row">
+
+                </div>
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+
+<div class="modal fade left" id="comments-view" role="dialog" aria-labelledby="comments-view">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Comments</h5>
+            </div>
+            <div class="modal-body">
+                <div class="row" id="transaction-comments-view">
+
+                </div> <!-- /.row -->
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+
+<div class="modal fade" id="je-more" role="dialog" aria-labelledby="je-more">
+    <!-- /.modal -->
+</div>
+@{
+    <script src="~/Scripts/dev/journalentry.activity.loadmoreolder.js"></script>
+    <script src="~/Scripts/dev/bookkeeping-journalentrypostmedia.js"></script>
+    <script src="~/Scripts/dev/trader.domain.js"></script>
+    @*if (System.Diagnostics.Debugger.IsAttached)
+        {
+            <script src="~/Scripts/dev/journalentry.activity.loadmoreolder.js"></script>
+            <script src="~/Scripts/dev/bookkeeping-journalentrypostmedia.js"></script>
+            <script src="~/Scripts/dev/trader.domain.js"></script>
+        }
+        else
+        {
+            <script src="~/Scripts/dev/journalentry.activity.loadmoreolder.min.js"></script>
+            <script src="~/Scripts/dev/bookkeeping-journalentrypostmedia.min.js"></script>
+            <script src="~/Scripts/dev/trader.domain.min.js"></script>
+        }*@
+}

@@ -1,0 +1,288 @@
+﻿@using Qbicles.Models.Bookkeeping;
+@using Qbicles.BusinessRules
+@model BKTransaction
+@{
+    var dimensions = (List<TransactionDimension>)ViewBag.dimensions;
+    var formatDateTime = (string)ViewBag.CurrentDateTimeFormat;
+    var timeZone = (string)ViewBag.CurrentTimeZone;
+    if (Model.PostedDate == DateTime.MinValue)
+    {
+        Model.PostedDate = DateTime.UtcNow;
+
+    }
+    if (Model.Parent == null) { Model.Parent = new BKTransaction(); }
+    var selectedTaxRate = ViewBag.SelectedTaxRate;
+    var trSelectedTaxRate = selectedTaxRate + "_tr";
+    var index = ViewBag.index;
+    var isDebit = ViewBag.isDebit;
+    var isAddNew = ViewBag.AddNew;
+    var lstDimensionId = new List<int>();
+    var lstQbmedia = new List<Qbicles.Models.QbicleMedia>();
+    if (Model.Dimensions != null && Model.Dimensions.Count > 0)
+    {
+        lstDimensionId = Model.Dimensions.Select(q => q.Id).ToList();
+    }
+    if (Model.AssociatedFiles != null && Model.AssociatedFiles.Count > 0)
+    {
+        lstQbmedia = Model.AssociatedFiles.Select(q => new Qbicles.Models.QbicleMedia() { Id = q.Id, Name = q.Name, FileType = q.FileType }).ToList();
+    }
+    var bkTransactionRowId = (string)ViewBag.RowNewId;
+    if (Model.Id > 0)
+    { bkTransactionRowId = Model.Id.ToString(); }
+}
+<tr role="row" class="@trSelectedTaxRate">
+    <td class="bkTransactionRowId" onclick="tdchange()">
+        @index
+        @*<input id="jn-bk-transaction-row-id" value="@bkTransactionRowId"/>*@
+        <input type="hidden" value="@bkTransactionRowId" />
+        <input type="hidden" class="row-index" value="@index" />
+
+        @if (Model.Parent != null && Model.Parent.Id != 0)
+        {
+            <span class="hidden parenttransaction_@Model.Parent.Id"></span>
+        }
+        else
+        {
+            <span class="hidden"></span>
+        }
+
+    </td>
+    <td class="td_account @selectedTaxRate">
+        @if (Model.Account != null && !string.IsNullOrEmpty(Model.Account.Name))
+        {
+            <input type="hidden" class="transaction_id" value="@Model.Account.Id" />
+        }
+        else
+        {
+            <input type="hidden" class="transaction_id" value="0" />
+        }
+
+        @if (Model.Account != null)
+        {
+            if (Model.Account.Id > 0 && string.IsNullOrEmpty(Model.Account.Name))
+            {
+                <p style="padding: 0 10px 0 0;"></p>
+                <button class="btn btn-small btn-warning btn-edit hidden" data-toggle="modal" onclick="selectedAccount(this.parentElement,@Model.Account.Id, '@(isDebit?.ToString())')" data-target="#app-bookkeeping-treeview"><i class="fa fa-pencil"></i></button>
+                <button class="btn btn-info btn-add" data-toggle="modal" onclick="selectedAccount(this.parentElement, @Model.Account.Id, '@(isDebit?.ToString())')" data-target="#app-bookkeeping-treeview"><i class="fa fa-plus"></i> &nbsp; Choose account</button>
+            }
+            else
+            {
+                <p style="padding: 0 10px 0 0;">@Model.Account.Name</p>
+                <button class="btn btn-small btn-warning btn-edit" data-toggle="modal" onclick="selectedAccount(this.parentElement,@Model.Account.Id, '@(isDebit?.ToString())')" data-target="#app-bookkeeping-treeview"><i class="fa fa-pencil"></i></button>
+                <button class="btn btn-info btn-add hidden" data-toggle="modal" onclick="selectedAccount(this.parentElement, @Model.Account.Id, '@(isDebit?.ToString())')" data-target="#app-bookkeeping-treeview"><i class="fa fa-plus"></i> &nbsp; Choose account</button>
+            }
+
+        }
+        else
+        {
+            <p class="hidden" style="padding: 0 10px 0 0;"></p>
+            <button class="btn btn-small btn-warning btn-edit hidden" data-toggle="modal" onclick="selectedAccount(this.parentElement)" data-target="#app-bookkeeping-treeview"><i class="fa fa-pencil"></i></button>
+            <button class="btn btn-info btn-add" data-toggle="modal" onclick="selectedAccount(this.parentElement)" data-target="#app-bookkeeping-treeview"><i class="fa fa-plus"></i> &nbsp; Choose account</button>
+        }
+
+    </td>
+    <td class="td_date">
+        <input type="text" name="date" class="form-control bk-single-dateandtime" value="@Model.PostedDate.ConvertTimeFromUtc(timeZone).FormatDateTimeByUser(formatDateTime)">
+    </td>
+    <td class="td_reference">
+        <input type="text" name="reference" class="form-control" value="@Model.Reference">
+    </td>
+    <td class="td_debit @selectedTaxRate">
+        @if ((Model.Credit != null && Model.Debit == null) || (isDebit != null && !isDebit))
+        {
+            <input type="text" onkeypress="checknumber(this, event, true)" onchange="debitChange(this)" readonly name="debit+@index" class="form-control text-right table-transaction-debit" value="@Model.Debit">
+        }
+        else
+        {
+            <input type="text" onkeypress="checknumber(this, event, true)" onchange="debitChange(this)" name="debit+@index" class="form-control text-right table-transaction-debit" value="@Model.Debit">
+        }
+
+    </td>
+    <td class="td_credit @selectedTaxRate">
+        @if ((Model.Debit != null && Model.Credit == null) || (isDebit != null && isDebit))
+        {
+            <input type="text" onkeypress="checknumber(this, event, false)" onchange="creditChange(this)" class="form-control text-right validate_decimal_float" readonly value="@Model.Credit">
+        }
+        else
+        {
+            <input type="text" onkeypress="checknumber(this, event, false)" onchange="creditChange(this)" class="form-control text-right validate_decimal_float" value="@Model.Credit">
+        }
+
+    </td>
+    <td class="td_memo">
+        <input type="text" class="form-control" value="@Model.Memo" style="width: 100%;">
+    </td>
+    <td class="td_dimension">
+        <select name="dimensions" class="form-control select2" multiple style="width: 100%;">
+            @foreach (var item in dimensions)
+            {
+                if (lstDimensionId.Contains(item.Id))
+                {
+                    <option selected value="@item.Id">@item.Name</option>
+                }
+                else
+                {
+                    <option value="@item.Id">@item.Name</option>
+                }
+            }
+        </select>
+        <input type="hidden" class="parentid-transaction" value="@Model.Parent.Id" />
+    </td>
+    <td class="action">
+        <input type="hidden" multiple="multiple" />
+        <input type="hidden" class="td_index" value="@index" />
+        <button class="btn btn-primary" data-toggle="modal" onclick="SetBkTransactionAttachmentRow(this.parentElement)" data-target="#attachments-view-@bkTransactionRowId"><i class="fa fa-paperclip"></i></button>
+        <button type="button" class="btn btn-danger delete_row" onclick="TrashBkTransactionRow(this.parentElement.parentElement, @bkTransactionRowId)"><i class="fa fa-trash"></i></button>
+    </td>
+</tr>
+
+@if (Model.Id > 0)
+{
+    <script>
+        $(document).ready(function () {
+            sumDebit(null);
+            sumCredit(null);
+        });
+    </script>
+}
+
+@if (isAddNew != null || selectedTaxRate == "isSelectedTaxRate")
+{
+    <script>
+
+        var minDate = new Date(Date.parse($("#closed-book-date").val()));
+        minDate.setDate(minDate.getDate() + 1);
+
+        $('.bk-single-dateandtime').daterangepicker({
+            singleDatePicker: true,
+            minDate: new Date(Date.parse(minDate)),
+            timePicker: true,
+            //autoApply: true,
+            showDropdowns: true,
+            autoUpdateInput: true,
+            cancelClass: "btn-danger",
+            opens: "left",
+            locale: {
+                cancelLabel: 'Clear',
+                format: $dateFormatByUser.toUpperCase() + ' HH:mm'
+            }
+        }).on('apply.daterangepicker',
+            function (e, picker) {
+                //var postedDate = picker.startDate.format('DD/MM/YYYY HH:mm');
+
+                VerifyJournalPostedDate(null, 2);
+                //alert('confirm trans date');
+                //var startDate = picker.startDate.format('DD/MM/YYYY HH:mm');
+                //$("#close-date-confirm").text(startDate);
+            }).on('cancel.daterangepicker', function (ev, picker) {
+                //$(this).val('');
+            });
+
+    </script>
+}
+
+<script>
+    $('tr select').not('.multi-select').select2();
+    $(document).ready(function () {
+        var inputSearch = '';
+        $(inputSearch).change(function (e) {
+            $.ajax({
+                type: 'post',
+                url: '/BKJournalEntries/GetTaxRates',
+                data: {
+                    q: $('span.select2-container--open .select2-search__field').val(),
+                },
+                contentType: false, // Not to set any content header
+                processData: false, // Not to process data
+                dataType: 'json',
+                success: function (response) {
+                    var markup = "<option value=\"0\">None</option>";
+                    for (var i = 0; i < response.length; i++) {
+                        markup += "<option value=\"" + response[i].Id + "\">" + response[i].Name + "</option>";
+                    }
+                    $(selectedTaxRate).empty();
+                    $(selectedTaxRate).append(markup);
+                },
+                error: function (er) {
+                    cleanBookNotification.error(_L("ERROR_MSG_EXCEPTION_SYSTEM"), "Qbicles");
+                }
+            });
+        });
+        $('span.select2-selection--single').click(function (ev) {
+            inputSearch = $(document).find('span.select2-container--open input.select2-search__field');
+            $(inputSearch[0]).trigger("change");
+            selectedTaxRate = $(this.parentElement.parentElement.parentElement).find('select')[0];
+        });
+    });
+
+    var $ajax = $(".js-example-data-ajax");
+
+    function formatRepo(repo) {
+
+        if (repo.loading) return repo.text;
+
+
+        var markup = "<div class='select2-result-repository clearfix'>" +
+            "<div class='select2-result-repository__avatar'><img src='" + repo.Id + "' /></div>" +
+            "<div class='select2-result-repository__meta'>" +
+            "<div class='select2-result-repository__title'>" + repo.Name + "</div>";
+
+        markup += "<div class='select2-result-repository__statistics'>" +
+            "<div class='select2-result-repository__forks'><i class='fa fa-flash'></i> " + repo.Name + " Forks</div>" +
+            "<div class='select2-result-repository__stargazers'><i class='fa fa-star'></i> " + repo.Name + " Stars</div>" +
+            "<div class='select2-result-repository__watchers'><i class='fa fa-eye'></i> " + repo.Name + " Watchers</div>" +
+            "</div>" +
+            "</div></div>";
+
+
+        return markup;
+    }
+
+    function formatRepoSelection(repo) {
+
+        return repo.Name || repo.text;
+    }
+
+    $ajax.select2({
+        ajax: {
+            url: "/BKJournalEntries/GetTaxRates",
+            dataType: 'json',
+            delay: 250,
+            type: 'post',
+            data: function (params) {
+                return {
+                    q: params.term, // search term
+                    page: params.page
+                };
+            },
+            processResults: function (data, params) {
+
+
+                params.page = params.page || 1;
+
+                return {
+                    results: data,
+                    pagination: {
+                        more: (params.page * 30) < data.length
+                    }
+                };
+            },
+            cache: true
+        },
+        escapeMarkup: function (markup) { return markup; },
+        minimumInputLength: 1,
+        templateResult: formatRepo,
+        templateSelection: formatRepoSelection,
+        theme: 'adwitt'
+    });
+</script>
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <link href="~/Content/dev/_transactionrowpartial.css" rel="stylesheet" />
+    }
+    else
+    {
+        <link href="~/Content/dev/_transactionrowpartial.min.css" rel="stylesheet" />
+    }
+}

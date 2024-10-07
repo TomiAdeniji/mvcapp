@@ -1,0 +1,324 @@
+﻿@using Qbicles.Models.Trader
+@using Qbicles.Models.Trader.ODS
+@using Qbicles.Models.Trader.SalesChannel;
+@using Qbicles.BusinessRules;
+@{
+    var lstLocations = (List<TraderLocation>)ViewBag.Locations;
+    var saleChannels = (List<string>)ViewBag.SaleChannels;
+    ViewBag.Title = "Order management";
+
+    //Export
+    var createdDate = DateTime.Now;
+    var timeZone = (string)ViewBag.CurrentTimeZone ?? "";
+    var user = (Qbicles.Models.ApplicationUser)ViewBag.CurrentUser;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+    var defaultLocation = (Qbicles.Models.Trader.TraderLocation)ViewBag.DefaultLocation;
+    string logoBase64 = (string)ViewBag.DomainLogoBase64;
+}
+
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail">
+
+    <!-- Main content -->
+    <section class="content">
+
+        <div class="alert_matches projects">
+            <p><span id="checked">0</span> orders selected</p>
+            <div class="btn-group options">
+                <button type="button" class="btn btn-info dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style="margin-bottom: 0;">
+                    <i class="fa fa-cog"></i> &nbsp; With selected... &nbsp; <i class="fa fa-angle-down"></i>
+                </button>
+                <ul class="dropdown-menu info">
+                    <li><a href="#" onclick="openUdpateStatusModal(null)">Change status</a></li>
+                    <li><a href="#" onclick="uncheck();">Clear selections</a></li>
+                </ul>
+            </div>
+        </div>
+
+        <br /><br />
+
+        <div class="mod_title">
+            <h5 style="padding-bottom: 8px;">RoadChef</h5>
+            <h4>Order management</h4>
+        </div>
+        <br />
+
+        <div class="dt-status">
+            <div class="label label-lg label-info animated fadeInUp" id="refreshing" style="display: none;">Refreshing table &nbsp; <i class="fa fa-circle-o-notch fa-spin"></i></div>
+            <div class="label label-lg label-success animated flipInY" id="refreshed" style="display: none;">Data updated &nbsp; <i class="fa fa-check green" style="position: relative; top: 1.5px;"></i></div>
+        </div>
+
+        <div class="row">
+            <div class="col-xs-12">
+
+                <div class="well custom" style="padding-bottom: 5px;">
+                    <div class="row">
+                        <div class="col-xs-12 col-md-3">
+                            <div class="form-group">
+                                <label for="location">Location</label>
+                                <select name="location" id="location-selector" class="form-control select2" style="width: 100%;">
+                                    @foreach (var locationItem in lstLocations)
+                                    {
+                                        <option value="@locationItem.Id">@locationItem.Name</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-md-3">
+                            <div class="form-group">
+                                <label for="channel">Sales channel</label>
+                                <select name="channel" id="channel-selector" class="form-control checkmulti hidden" style="width: 100%;" multiple>
+                                    <option selected value="@((int)SalesChannelEnum.POS)">POS</option>
+                                    <option selected value="@((int)SalesChannelEnum.B2C)">B2C</option>
+                                    <option selected value="@((int)SalesChannelEnum.B2B)">B2B</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-md-3">
+                            <label for="dr">Date range</label><br />
+                            <div class="input-group">
+                                <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                                <input type="text" name="daterange" id="daterange-input" class="form-control daterange">
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-md-3">
+                            <label>Refresh every</label><br />
+                            <div class="input-group" style="margin-bottom: 15px;">
+                                <input type="number" id="interval-time" class="form-control" value="10" min="0">
+                                <span class="input-group-addon">seconds</span>
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-md-3">
+                            <div class="form-group">
+                                <label for="search">Search by order ref</label>
+                                <input type="text" name="orderref" id="orderref-input" class="form-control">
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-md-3">
+                            <div class="form-group" id="filterColumn">
+                                <label for="search">Columns shown</label>
+                                <select name="cols" class="form-control checkmulti hidden" multiple>
+                                    <option value="2" selected>Location</option>
+                                    <option value="3" selected>Sales channel</option>
+                                    <option value="4" selected>Items</option>
+                                    <option value="5" selected>Total</option>
+                                    <option value="6" selected>Status</option>
+                                    <option value="7" selected>Queued</option>
+                                    <option value="8" selected>Pending</option>
+                                    <option value="9" selected>Preparing</option>
+                                    <option value="10" selected>Completion</option>
+                                    <option value="11" selected>Delivery status</option>
+                                    <option value="12" selected>Payment</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-md-6">
+                            <label>Options</label><br />
+                            <div class="btn-group options">
+                                <div class="checkbox toggle" style="margin: 0;">
+                                    <label>
+                                        <input data-toggle="toggle" id="completed-shown-input" name="completedshown" data-onstyle="success" type="checkbox" onchange="$('.completed').toggle();">
+                                        Show completed orders
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="activity-overview generic help-text animated bounce warning" style="display: none; margin-top: 30px; margin-bottom: 15px;">
+                    <i class="fa fa-info-circle"></i>
+                    <p>
+                        <strong>Important</strong><br /><br />Only <em>visible</em> orders will be included when you check all orders. Please change the orders
+                        per page count below to its maximum total if you want to select <em>all</em> orders.<br /><br /><a href="#" onclick="$(this).parent().parent().hide();">Dismiss</a>
+                    </p>
+                </div>
+
+                <br />
+
+                <!-- Options -->
+                <div class="col-sm-12" style="position: absolute;">
+                    <div style="margin-right: 15px;">
+                        <!-- Export -->
+                        <div class="btn-group options" style="float: right;">
+                            <button type="button" class="btn btn-warning dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                <i class="fa fa-download"></i> &nbsp; Export
+                            </button>
+                            <div class="dropdown-menu dropdown-menu-right" id="kt_datatable_example_export_menu" aria-labelledby="dropdownMenuButton" style="background-color: #a37a41;">
+                                <li>
+                                    <a class="dropdown-item data-qb-excel" href="javascript:void(0)" onclick="GetDataTableContentExport()">Excel</a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item data-qb-csv" href="javascript:void(0)" onclick="GetDataTableContentExport(2)">CSV</a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item data-qb-pdf" href="javascript:void(0)" onclick="GetDataTableContentExport(3)">PDF</a>
+                                </li>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!--begin::Hide default export buttons-->
+                <div id="kt_datatable_example_buttons" style="display: none;"></div>
+                <!--end::Hide default export buttons-->
+
+                <table class="datatable multiples table-striped table-hover orders" id="order-mngt-table" style="width: 100%;">
+                    <thead>
+                        <tr>
+                            <th data-priority="1" data-orderable="false"><input type="checkbox" name="bulk-check" onchange="bulkChecking()"></th>
+                            <th data-priority="1">Order #</th>
+                            <th data-priority="3">Location</th>
+                            <th data-priority="3">Sales channel</th>
+                            <th data-priority="2" data-orderable="false">Items</th>
+                            <th data-priority="1" data-orderable="false">Total</th>
+                            <th data-priority="2">Status</th>
+                            <th data-priority="3" data-orderable="false">Queued</th>
+                            <th data-priority="4" data-orderable="false" style="width: 120px;">Pending</th>
+                            <th data-priority="4" data-orderable="false" style="width: 120px;">Preparing</th>
+                            <th data-priority="4" data-orderable="false" style="width: 120px;">Completion</th>
+                            <th data-priority="4" data-orderable="false" style="width: 120px;">Delivery status</th>
+                            <th data-priority="1" data-orderable="false">Payment</th>
+                            <th data-priority="1" data-orderable="false">Options</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+    <!-- ./content -->
+</div>
+<!-- /.content-wrapper -->
+<div class="modal fade left" id="create-discussion-pos" role="dialog" aria-labelledby="create-discussion-pos"></div>
+<div class="modal fade left" id="pos-order-summary" role="dialog" aria-labelledby="pos-order-summary"></div>
+<!--Change status Modal-->
+<div class="modal fade" id="order-status-change-batch" role="dialog" aria-labelledby="order-status-change-batch">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Change the status of all selected orders</h5>
+            </div>
+            <div class="modal-body">
+
+                <div class="activity-overview generic help-text animated bounce" style="margin-bottom: 15px;">
+                    <i class="fa fa-info-circle"></i>
+                    <p>You're about to perform a batch operation that will affect <strong id="check-count">2</strong> total orders. Only <em>visible</em>, checked orders are included.</p>
+                </div>
+
+                <div class="well custom">
+                    <div class="form-group" style="margin: 0;">
+                        <label for="title">Order status of selected</label>
+                        <select name="order-status" class="form-control select2" style="width: 100%;" onchange="toggleShowingProblemDescription()">
+                            <option value="@((int)PrepQueueStatus.NotStarted)">Not started</option>
+                            <option value="@((int)PrepQueueStatus.Preparing)">Preparing</option>
+                            <option value="@((int)PrepQueueStatus.Completing)">Completing</option>
+                            <option value="@((int)PrepQueueStatus.Completed)">Completed</option>
+                            <option value="@((int)PrepQueueStatus.CompletedWithProblems)">Completed with problems</option>
+                        </select>
+                    </div>
+                    <br />
+                    <div class="form-group" id="problem-description-container" style="margin: 0; display:none">
+                        <label for="title">Briefly describe the problem(s)</label>
+                        <textarea class="form-control" id="problem-description" style="height: 90px;" placeholder="Problem(s) description"></textarea>
+                    </div>
+                </div>
+
+                <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                <button class="btn btn-success" name="change-status-confirm-btn">Confirm</button>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+<!--END Change status Modal-->
+
+<script src="~/Content/DesignStyle/js/bootstrap-multiselect.min.js"></script>
+<link rel="stylesheet" href="~/Content/DesignStyle/css/daterangepicker.css">
+<script src="~/Content/DesignStyle/js/daterangepicker.js"></script>
+<script src="~/Content/DesignStyle/js/jquery.timer.js"></script>
+<script src="~/Content/DesignStyle/js/html2canvas.js"></script>
+
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/order-management.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/order-management.js"></script>
+    }
+}
+
+<script>
+    var refreshIntervalId = 0;
+    $(document).ready(function () {
+        var refreshIntervalId = 0;
+        var timeToRefreshPage = Number($("#interval-time").val()) * 1000;
+        refreshIntervalId = window.setInterval(function () {
+            isDataUpdating = true;
+            $("#order-mngt-table").DataTable().ajax.reload();
+        }, timeToRefreshPage);
+
+        $("#interval-time").on('change', function (e) {
+            clearInterval(refreshIntervalId);
+            var timeToRefreshPage = Number($("#interval-time").val()) * 1000;
+            refreshIntervalId = window.setInterval(function () {
+                isDataUpdating = true;
+                $("#order-mngt-table").DataTable().ajax.reload();
+            }, timeToRefreshPage);
+            cleanBookNotification.success("Update refresh time successfully!", "Qbicles");
+        });
+
+        $("#order-status-change-batch").on('shown.bs.modal', function () {
+            clearInterval(refreshIntervalId);
+        })
+
+        $("#order-status-change-batch").on('hidden.bs.modal', function () {
+            clearInterval(refreshIntervalId);
+            var timeToRefreshPage = Number($("#interval-time").val()) * 1000;
+            refreshIntervalId = window.setInterval(function () {
+                isDataUpdating = true;
+                $("#order-mngt-table").DataTable().ajax.reload();
+            }, timeToRefreshPage);
+        })
+    });
+
+    // ----------------------------------------
+    //         EXPORT FUNCTIONALITY
+    // ----------------------------------------
+    function GetDataTableContentExport(exportType = 1) {
+        $.LoadingOverlay("show");
+
+        //Get table params
+        var params = $('#order-mngt-table').DataTable().ajax.params();
+        console.log(params, "params");
+
+        //init params
+        var _parameter = {
+            ...params,
+            "export": exportType
+        };
+
+        $.ajax({
+            type: 'POST',
+            url: '/Report/GetOrderTableContentExport',
+            dataType: 'json',
+            data: _parameter,
+            success: function (response) {
+                if (response.result == true) {
+                    console.log(response, 'response');
+                    window.location.href = response.Object;
+                    cleanBookNotification.success("Export downloaded successfully!", "Qbicles");
+                }
+                $.LoadingOverlay("hide");
+            },
+            error: function (err) {
+                console.log(err, 'error');
+                $.LoadingOverlay("hide");
+            }
+        });
+    }
+
+</script>

@@ -1,0 +1,146 @@
+﻿@using System.Diagnostics
+@using Qbicles.Models.Trader
+@using Qbicles.Models.Trader.DDS
+@{
+    ViewBag.Title = "Trader - Point of Sale";
+    var delivery = (DeliveryQueue)ViewBag.DeliveryQueue;
+}
+
+
+<!-- ODS -->
+<div class="channel channel_pos">
+
+    <div class="row">
+        <div class="col-xs-12 col-sm-4 col-md-3">
+
+            <div class="flex-grid qbicles-dash-grid theme-labels">
+
+
+                <article class="col">
+                    <div class="qbicle-opts">
+                    </div>
+                    <a href="#">
+                        <div class="avatar" style="background-image: url('../../Content/DesignStyle/img/icon_ipad.png');">&nbsp;</div>
+                        <h1 style="color: #333;">Delivery Display System</h1>
+                    </a>
+                    <br />
+                    <div class="well custom" style="margin: 0; padding: 10px;">
+
+                        @if (delivery.Id > 0)
+                        {
+                            <label>
+                                <i id="found-delivery" class="fa fa-check green" style="width: 12px;"></i>&nbsp; Delivery Queue is active
+                            </label>
+                        }
+                        else
+                        {
+                            <label>
+                                <i id="found-delivery" class="fa fa-check green" style="width: 12px; display: none;"></i>&nbsp; Delivery Queue is inactive
+                            </label>
+                        }
+
+                    </div>
+                    <ul class="nav nav-stacked nav-pills nav-marketing" style="margin-bottom: 0; margin-top: 20px;">
+                        <li class="active">
+                            <a href="#ddsgeneral" onclick="ShowDds('ddsgeneral')">General</a>
+                        </li>
+                        <li>
+                            <a href="#ddsdevice" onclick="ShowDds('ddsdevice')">Devices</a>
+                        </li>
+                        <li>
+                            <a href="#ddsdriver" onclick="ShowDds('ddsdriver')">My Drivers</a>
+                        </li>
+                    </ul>
+
+                </article>
+
+            </div>
+
+        </div>
+
+        <div class="col-xs-12 col-sm-8 col-lg-9">
+            <div id="dds-content" class="tab-content mdv2-col-dash">
+
+            </div>
+        </div>
+
+    </div>
+
+
+</div>
+<div class="modal fade left" id="app-trader-dds-device-add-edit" role="dialog" aria-labelledby="app-trader-dds-device-add-edit">
+</div>
+
+
+<div class="modal fade left" id="app-trader-dds-driver-add-edit" role="dialog" aria-labelledby="app-trader-dds-driver--add">
+
+</div>
+
+<div class="modal fade" style="z-index: 9999" id="confirm-delete" role="dialog" aria-labelledby="confirm-delete">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-body">
+
+                <div class="activity-overview generic help-text" style="margin: 0;">
+                    <i class="fa fa-info-circle"></i>
+                    <p>You are about to delete item <strong><span id="name-delete"></span></strong> permanently. This action cannot be undone. If you are sure you wish to proceed, please confirm below...</p>
+
+
+                    <button class="btn btn-danger" onclick="CancelDelete()">Cancel</button>
+                    <button class="btn btn-success" onclick="DeleteDds()">Confirm &amp; Delete</button>
+                </div>
+
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+
+@{
+
+    if (Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/trader.domain.js"></script>
+
+    }
+    else
+    {
+        <script src="~/Scripts/dev/trader.domain.min.js"></script>
+    }
+}
+
+<script>
+    $(function () {
+
+        $('.nav-marketing a').click(function () {
+            $(this).parent().addClass('active').siblings().removeClass('active');
+        });
+        var activeTab = getTabLevel(3);
+        switch (activeTab) {
+            case "ddsdevice":
+            case "ddsdriver":
+            case "ddsgeneral":
+                break;
+            default:
+                activeTab = "ddsgeneral";
+                break;
+        }
+        ShowDds(activeTab);
+    });
+    function ShowDds(activeTab) {
+        $('a[href="#' + activeTab + '"]').tab('show');
+        setTabLevel(3, activeTab);
+        var ajaxUri = '';
+        if (activeTab === "ddsdevice")
+            ajaxUri = '/DDS/DdsDevicesContent';
+        else if (activeTab === 'ddsgeneral')
+            ajaxUri = '/DDS/DdsGeneralContent';
+        else
+            ajaxUri = '/DDS/DdsDriversContent';
+        $('#dds-content').LoadingOverlay("show");
+        $('#dds-content').empty();
+        $('#dds-content').load(ajaxUri, function () {
+            $('#dds-content').LoadingOverlay("hide");
+        });
+    };
+</script>

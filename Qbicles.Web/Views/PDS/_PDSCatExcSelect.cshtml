@@ -1,0 +1,134 @@
+﻿@{
+    var categories = (List<Qbicles.BusinessRules.SimpleCategoryExclution>)ViewBag.ListCategories;
+}
+
+<div class="modal-dialog" role="document">
+    <div class="modal-content">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <h5 class="modal-title">Select exclusion categories</h5>
+        </div>
+        <div class="modal-body">
+
+            <div class="well custom">
+
+                <div class="form-group" style="margin: 0;">
+                    <label for="categories">Categories</label>
+                    <select id="categories-exclusion" name="categories" class="form-control checkmulti" multiple>
+                        @foreach (var category in categories)
+                        {
+                            if (category.IsSelected)
+                            {
+                                <option class="category-select" value="@category.Id" selected="selected">@category.Name</option>
+                            }
+                            else 
+                            { 
+                                <option class="category-select" value="@category.Id">@category.Name</option>
+                            }
+                        }
+                    </select>
+                </div>
+            </div>
+
+
+            <button class="btn btn-danger" data-dismiss="modal" onclick="resetSelect()">Cancel</button>
+            <button class="btn btn-success" data-dismiss="modal" onclick="confirmSelect()">Confirm</button>
+
+        </div>
+    </div><!-- /.modal-content -->
+</div><!-- /.modal-dialog -->
+
+<script>
+    $("#categories-exclusion").multiselect({
+        includeSelectAllOption: true,
+        selectAllJustVisible: true,
+        includeResetOption: true,
+        enableFiltering: false,
+        buttonWidth: '100%',
+        maxHeight: 400,
+        enableClickableOptGroups: true,
+        enableFiltering: true,
+        enableCaseInsensitiveFiltering: true,
+        selectedClass: 'active option-selected',
+        templates: {
+            resetButton: '<div class="multiselect-reset hide" id="reset-btn"><button type="button"><a>Reset</a></button></div>'
+        }
+    });
+
+    function resetSelect(){
+            $("#categories-exclusion").multiselect('refresh');
+    }
+    function confirmSelect(){
+        list = [];
+        $("#categories-exclusion option").removeAttr("selected");
+        $(".category-select.option-selected label[title]").each(function(){ 
+                list.push($(this).attr("title"));
+                currentOption = $(this).find("input").attr("value");
+                $("#categories-exclusion option[value=\'"+currentOption+"\']").prop('selected', true);
+            });
+        $("#categories-exclusion").multiselect('refresh');
+        initDataFromOption(list)
+    }
+
+    function initDataFromOption(list){
+        $("#exclution-categories-list tbody").html("");
+        $.each(list,function(index,value){
+            initTitleDataFromOption(value);
+        })
+    }
+    function initTitleDataFromOption(name){
+            string = '<tr><td class="option-selected-table" value=\''+name+'\'>'+name+'</td><td class="text-right"><button class="btn btn-danger" onclick="removeCategoryExclution(\''+name+'\')"><i class="fa fa-trash"></i></button></td></tr>';
+            $("#exclution-categories-list tbody").append(string);
+    }
+    function removeCategoryExclution(name){
+        if(confirm("Do you want to completely remove this category from the Exclusion set?")){
+            var element = $(".option-selected-table[value=\'"+name+"\']").parent("tr").remove();
+            var idValue = $(".category-select label[title=\'"+name+"'] input").attr("value");
+            $("#categories-exclusion option[value=\'"+idValue+"\']").removeAttr('selected').prop('selected', false);
+            $("#categories-exclusion").multiselect('refresh');
+        }
+    }
+
+    function createNewCategoryExclutionSet(){
+        var listSelect = [];
+        $(".option-selected-table").each(function(){
+            listSelect.push($(this).attr("value"));
+        })
+        var listPrepDevices = $("#assocdevices-list").val();
+        //validate
+        if(!validateCategoryExclutionSet(listSelect)) return 0;
+        $("#app-trader-pds-catexclusionset-add .modal-content").LoadingOverlay("show");
+
+        var url = "/PDS/CreateNewCategoryExclustionSet";
+        
+        $.ajax({
+        type: "POST",
+        url: url,
+        data: {
+            listCategories : listSelect,
+            name : $("#exclusion-name").val(),
+            listPrepDevices : listPrepDevices
+            },
+        dataType: 'JSON',
+        complete: function(){
+            $("#app-trader-pds-catexclusionset-add .modal-content").LoadingOverlay("hide");
+        },
+        success: function (response) {
+                if (response.result){
+                    cleanBookNotification.clearmessage();
+                    cleanBookNotification.success(response.msg, "Qbicles");
+                    reloadCategoryExclutionSet();
+                    $("#app-trader-pds-catexclusionset-add").modal("hide");
+                }
+                else{
+                    cleanBookNotification.clearmessage();
+                    cleanBookNotification.error(response.msg, "Qbicles");
+                }
+            }
+        });
+
+    }
+
+</script>
+<link href="~/Content/DesignStyle/css/bootstrap-multiselect.css" rel="stylesheet" />
+    <script src="~/Content/DesignStyle/js/bootstrap-multiselect.js"></script>

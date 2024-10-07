@@ -1,0 +1,273 @@
+﻿@using Qbicles.BusinessRules
+@using Qbicles.Models.Bookkeeping
+@using Qbicles.Models.Trader;
+@using Qbicles.Models.Trader.SalesChannel;
+@model TraderSale
+@{
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var locationId = Model.Location.Id;
+    var dimensions = (List<TransactionDimension>)ViewBag.Dimensions;
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+}
+<input id="api_url" value="@api" hidden="" />
+<input id="location-id" value="@locationId" hidden="" />
+<div class="activity-overview task" style="padding: 20px; max-width: 1000px;">
+    <input type="hidden" value="0" id="price_id" />
+    <input type="hidden" value="0" id="price_value" />
+    <form id="form_add_transaction">
+        <div class="row">
+            <div class="col-xs-12 col-sm-6">
+                <div class="form-group">
+                    <label for="item">Add item to order <span>*</span></label>
+                    <select name="traderitem" onchange="ChangeSelectedUnit()" class="form-control select2" style="width: 100%;" id="item-select-manage">
+                        <option value=""></option>
+
+                    </select>
+                </div>
+            </div>
+            <div class="col-xs-12 col-sm-2">
+                <div class="form-group" id="item_selected">
+                    @{Html.RenderAction("TraderSaleSelectUnit", "Trader", new { idLocation = locationId, issale = true });}
+                </div>
+            </div>
+            <div class="col-xs-12 col-sm-2">
+                <div class="form-group">
+                    <label for="cpu" id="label_cost">Cost per&lt;selected unit&gt;</label><label><span>*</span></label><br />
+                    <input type="text" name="cpu" id="cpu" disabled class="form-control" value="">
+                </div>
+            </div>
+            <div class="col-xs-12 col-sm-2">
+                <div class="form-group">
+                    <label for="price" id="label_price">Price per&lt;selected unit&gt;</label><label><span>*</span></label><br />
+                    <input maxlength='15' onkeypress="maxDecimalKeyPress(this, event, 5)" onpaste="maxDecimalOnPaste(this, event, 5)" type='text' class="form-control" name="price" id="priceSale" value="">
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-xs-12 col-sm-3">
+                <div class="form-group">
+                    <label for="form_item_quantity">Quantity <span>*</span></label><br />
+                    <input maxlength='15' onkeypress='decimalKeyPress(this, event)' onpaste='decimalOnPaste(this, event)' type='text' id="form_item_quantity" onchange="enableBtnAddRowTraderItem(this)" class="form-control" min="1">
+                </div>
+            </div>
+            <div class="col-xs-12 col-sm-3">
+                <div class="form-group">
+                    <label for="form_item_discount">Discount %</label>
+                    <input maxlength='6' oninput="maxDecimalOnInput(this, event,100)" onkeypress="decimalKeyPress(this, event)" onpaste="decimalOnPaste(this, event)" type='text' id="form_item_discount" min="0" name="discount" class="form-control">
+                </div>
+            </div>
+            <div class="col-xs-12 col-sm-6">
+                <div class="form-group">
+                    <label for="form_item_dimensions">Reporting Filters</label><br />
+                    <select name="dimensions" id="form_item_dimensions" class="form-control select2" style="width: 100%;" multiple>
+                        <option value=""></option>
+                        @foreach (var item in dimensions)
+                        {
+                            <option value="@item.Id">@item.Name</option>
+                        }
+                    </select>
+                </div>
+            </div>
+        </div>
+    </form>
+    <button id="btnAddRowItem" class="btn btn-success" disabled onclick="addRowItem()"><i class="fa fa-plus"></i> &nbsp; Add now</button>
+</div>
+<br />
+<br />
+<div class="activity-overview generic" style="padding: 20px;">
+    <table id="tb_form_item" class="datatable table-hover" style="width: 100%; background: #fff;" data-order='[[1, "asc"]]'>
+        <thead>
+            <tr>
+                <th data-orderable="false"></th>
+                <th>Name</th>
+                <th>Unit</th>
+                <th>Cost per unit <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                <th>Price per unit <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                <th>Quantity</th>
+                <th>Discount %</th>
+                <th>Tax rate <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                <th hidden="">Tax rate</th>
+                <th>Reporting Filters</th>
+                <th class="hidden">Cost</th>
+                <th>Price <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                <th data-orderable="false"></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model.SaleItems)
+            {
+                string taxrateName = "0";
+                decimal taxRate = 0;
+                decimal taxValue = 0;
+                decimal priceIncludeTax = 0;
+
+                decimal priceExcludeTax = 0;
+                if (item.Taxes != null)
+                {
+                    taxRate = item.SumTaxRatesPercent();
+                    taxrateName = item.StringTaxRates(currencySettings);
+
+                    switch (Model.SalesChannel)
+                    {
+                        case SalesChannelEnum.Trader:
+
+                            priceIncludeTax = item.SalePricePerUnit * item.Quantity * (1 - (item.Discount / 100)) * (1 + taxRate);
+                            priceExcludeTax = priceIncludeTax / (1 + taxRate);
+                            taxValue = priceIncludeTax - priceExcludeTax;
+                            break;
+                        case SalesChannelEnum.POS:
+                            taxValue = item.SalePricePerUnit - item.SalePricePerUnit / (1 + taxRate);
+                            break;
+                    }
+                }
+                <tr id="tr_id_@item.TraderItem.Id">
+                    <td class="row_image">
+                        <div class="table-avatar" style="background-image: url('@(api+item.TraderItem.ImageUri)&size=T');"></div>
+                    </td>
+                    <td class="row_name">@item.TraderItem.Name</td>
+                    <td class="row_unit">
+                        @{Html.RenderAction("TraderSaleSelectUnit", "Trader", new { idTraderItem = item.TraderItem.Id, idLocation = locationId, table = 1, itemSaleId = item.Id, valueUnit = item.Unit?.Id, isTraderItem = true });}
+                    </td>
+                    <td class="row_costperunit">
+                        <input type="text" onchange="UpdateCost('#tr_id_@item.TraderItem.Id')" disabled name="item-1-costperunit" class="form-control" style="width: 80px;" value="@item.CostPerUnit.ToDecimalPlace(currencySettings)">
+                    </td>
+                    <td class="row_costprice">
+                        <input maxlength='15' type='text' name="item-1-cpu" class="form-control" style="width: 80px;"
+                               onkeypress="maxDecimalKeyPress(this, event, 5)"
+                               onpaste="maxDecimalOnPaste(this, event, 5)" disabled
+                               value="@item.SalePricePerUnit.ToInputNumberFormat(currencySettings)">
+                    </td>
+                    <td class="row_quantity">
+                        <input maxlength='15' onkeypress='decimalKeyPress(this, event)' onpaste='decimalOnPaste(this, event)' type='text' name="item-1-qty" onchange="UpdateCost('#tr_id_@item.TraderItem.Id')" class="form-control" style="width: 80px;" value="@item.Quantity.ToInputNumberFormat(currencySettings)">
+                    </td>
+                    <td class="row_discount">
+                        <input maxlength='6' oninput="maxDecimalOnInput(this, event,100)" onkeypress="decimalKeyPress(this, event)" onpaste="decimalOnPaste(this, event)" type='text' onchange="UpdateCost('#tr_id_@item.TraderItem.Id')" min="0" name="item-1-discount" class="form-control" style="width: 80px;" value="@item.Discount.ToInputNumberFormat(currencySettings)">
+                    </td>
+                    <td class="row_taxname">
+                        @Html.Raw(taxrateName)
+                    </td>
+                    <td hidden="" class="row_taxrate">@taxRate</td>
+                    <td class="row_dimensions">
+                        <select name="dimensions" data-placeholder="Please select" class="form-control select2" style="width: 100%;" multiple>
+                            <option value=""></option>
+                            @foreach (var itemdimensions in dimensions)
+                            {
+                                var lstId = item.Dimensions.Select(q => q.Id).ToList();
+                                if (lstId.Contains(itemdimensions.Id))
+                                {
+                                    <option value="@itemdimensions.Id" selected>@itemdimensions.Name</option>
+                                }
+                                else
+                                {
+                                    <option value="@itemdimensions.Id">@itemdimensions.Name</option>
+                                }
+
+                            }
+                        </select>
+                    </td>
+                    <td class="row_cost hidden">@item.Cost.ToDecimalPlace(currencySettings)</td>
+                    <td class="row_price">
+                        @*@item.Price.ToDecimalPlace(currencySettings)*@
+                        <input maxlength="15" onkeypress="decimalKeyPress(this, event)"
+                               onpaste="decimalOnPaste(this, event)" onchange="UpdateSaleItemReviewedPrice(@item.TraderItem.Id)"
+                               min="0" name="item-price" class="form-control" style="width: 80px;" value="@item.Price.ToInputNumberFormat(currencySettings)">
+                    </td>
+                    <td class="row_button">
+                        <button class="btn btn-danger" onclick="removeRowItem('#tr_id_@item.TraderItem.Id')"><i class="fa fa-trash"></i></button>
+                        <input type="hidden" class="traderItem" value="@item.TraderItem.Id" />
+                        @*<input type="hidden" class="traderItem" value="@item.TraderItem.Id:@item.TraderItem.ImageUri:@taxrateName:@costUnit" />*@
+                        <input type="hidden" class="row_id" value="@item.Id" />
+                        @{
+                            var priceId = item.PriceBookPrice?.Id ?? 0;
+                            var priceValue = item.PriceBookPrice?.NetPrice ?? 0;
+                        }
+                        <input type="hidden" class="price_id" value="@priceId" />
+                        <input type="hidden" class="price_Value" value="@priceValue" />
+                    </td>
+                </tr>
+            }
+
+
+        </tbody>
+    </table>
+    <table id="tb_form_template" class="datatable table-hover hidden" style="width: 100%; background: #fff;">
+        <thead>
+            <tr>
+                <th></th>
+                <th>Name</th>
+                <th>Unit</th>
+                <th>Cost per unit</th>
+                <th>Price per unit</th>
+                <th>Quantity</th>
+                <th>Discount %</th>
+                <th>Tax rate</th>
+                <th>Reporting Filters</th>
+                <th class="hidden">Cost</th>
+                <th>Price</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td class="row_image">
+                    <div class="table-avatar" style="background-image: url('');"></div>
+                </td>
+                <td class="row_name"></td>
+                <td class="row_unit">
+                    @{Html.RenderAction("TraderSaleSelectUnit", "Trader", new { idLocation = locationId, table = 1 });}
+
+                </td>
+                <td class="row_costperunit">
+                    <input type="number" disabled onchange="UpdateCost(id)" min="0" name="item-1-costperunit" class="form-control" style="width: 80px;" value="0">
+                </td>
+                <td class="row_costprice">
+                    <input maxlength='15' disabled onkeypress="maxDecimalKeyPress(this, event, 5)" onpaste="maxDecimalOnPaste(this, event, 5)" type='text' name="item-1-cpu" onchange="UpdateCost(id)" class="form-control" style="width: 80px;" value="">
+                </td>
+                <td class="row_quantity">
+                    <input maxlength='15' onkeypress='decimalKeyPress(this, event)' onpaste='decimalOnPaste(this, event)' type='text' onchange="UpdateCost(id)" name="item-1-qty" class="form-control" style="width: 80px;" value="0">
+                </td>
+                <td class="row_discount">
+                    <input maxlength='6' oninput="maxDecimalOnInput(this, event,100)" onkeypress="decimalKeyPress(this, event)" onpaste="decimalOnPaste(this, event)" type='text' onchange="UpdateCost(id)" min="0" name="item-1-discount" class="form-control" style="width: 80px;" value="0">
+                </td>
+                <td class="row_taxname">
+                    <span></span>
+                    <br>
+                    <small></small>
+                </td>
+                <td hidden="" class="row_taxrate"></td>
+                <td class="row_dimensions">
+                    <select name="dimensions" data-placeholder="Please select" class="form-control select2" style="width: 100%;" multiple>
+                        @foreach (var itemdimensions in dimensions)
+                        {
+                            <option value="@itemdimensions.Id">@itemdimensions.Name</option>
+                        }
+                    </select>
+                </td>
+                <td class="row_cost hidden"></td>
+                <td class="row_price">
+                    <input maxlength="15" onkeypress="decimalKeyPress(this, event)"
+                           onpaste="decimalOnPaste(this, event)" onchange="UpdateSaleItemReviewedPrice(id)"
+                           min="0" name="item-price" class="form-control" style="width: 80px;" value="0">
+                </td>
+                <td class="row_button">
+                    <button class="btn btn-danger" onclick="removeRowItem(0)"><i class="fa fa-trash"></i></button>
+                    <input type="hidden" class="traderItem" value="" />
+                    <input type="hidden" class="row_id" value="0" />
+                    <input type="hidden" class="price_id" value="0" />
+                    <input type="hidden" class="price_Value" value="0" />
+                </td>
+            </tr>
+
+        </tbody>
+    </table>
+    <br />
+    <a onclick="UpdateItems()" class="btn btn-success"><i class="fa fa-save"></i> &nbsp; Update</a>
+    <a href="" data-dismiss="modal" class="btn btn-danger"><i class="fa fa-remove"></i> &nbsp; Cancel</a>
+</div>
+
+
+<script>
+    $('#tb_form_item select').not('.multi-select').select2();
+    $('#form_add_transaction select').not('.multi-select').select2();
+</script>

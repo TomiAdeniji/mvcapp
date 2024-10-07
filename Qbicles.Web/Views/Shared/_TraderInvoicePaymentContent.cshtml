@@ -1,0 +1,194 @@
+﻿@using Qbicles.BusinessRules
+@using Qbicles.Models.Trader
+@model List<CashAccountTransaction>
+@{
+
+    var invoiceId = ViewBag.InvoiceId;
+
+    var timeZone = (string)ViewBag.CurrentTimeZone ?? "";
+    var dateFormat = (string)ViewBag.CurrentDateFormat;
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+
+    //var paymentTotal = Model.Sum(e => e.Amount).ToCurrencySymbol(currencySettings);
+
+}
+<div class="well custom" style="padding-bottom: 5px;">
+    <input type="hidden" id="payment-total" value="@Model.Sum(e=>e.Amount)" />
+
+    <div class="row">
+        <div class="col-xs-12 col-sm-5">
+            <div class="form-group">
+                <label for="search_dt">Search for something</label>
+                <input type="text" name="search_dt_payment" id="search_dt_payment" class="form-control" placeholder="Search for something">
+            </div>
+        </div>
+        <div class="col-xs-12 col-sm-7">
+            <label>Options</label>
+            <br />
+
+            @if (!ViewBag.PaymentFull && (bool)ViewBag.IsBusiness)
+            {
+                <button class="btn btn-success" onclick="AddInvoicePayment(@invoiceId)"><i class="fa fa-plus"></i> &nbsp; Add a payment</button>
+            }
+
+
+            <div class="btn-group options">
+                <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    <i class="fa fa-sliders"></i> &nbsp; Manage display
+                </button>
+                <ul id="manage-columns-payment" class="dropdown-menu primary manage-columns">
+                    <li><label><input type="checkbox" data-column="1" checked> Reference</label></li>
+                    <li><label><input type="checkbox" data-column="2" checked> Information</label></li>
+                    <li><label><input type="checkbox" data-column="3" checked> Payment method</label></li>
+                    <li><label><input type="checkbox" data-column="4" checked> Date</label></li>
+                    <li><label><input type="checkbox" data-column="5" checked> Amount</label></li>
+                    <li><label><input type="checkbox" data-column="6" checked> Bank</label></li>
+                    <li><label><input type="checkbox" data-column="7" checked> Status</label></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    <div class="visible-xs" style="width: 100%; height: 15px;">&nbsp;</div>
+
+</div>
+
+<br />
+<br />
+
+<table class="datatable table-hover table-striped" width="100%" cellspacing="0" id="community-list_payment" data-searching="false">
+    <thead>
+        <tr>
+            <th data-priority="1">#</th>
+            <th data-priority="1">Reference</th>
+            <th data-priority="1">Information</th>
+            <th data-priority="1">Payment method</th>
+            <th data-priority="1">Date</th>
+            <th data-priority="1">Amount <strong>(@currencySettings.CurrencySymbol)</strong></th>
+            <th data-priority="1">Bank</th>
+            <th data-priority="1">Status</th>
+            <th data-priority="1" class="nosort">Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var p in Model)
+        {
+            var bank = "";
+            var status = "";
+            var appCss = "primary";
+            var info = "";
+            if (p.AssociatedInvoice.Sale != null)
+            {
+                bank = p.DestinationAccount?.Name;
+                info = "Sale";
+            }
+            else if (p.AssociatedInvoice.Purchase != null)
+            {
+                bank = p.OriginatingAccount?.Name;
+                info = "Purchase";
+            }
+            else if (p.AssociatedInvoice != null)
+            {
+                info = "Invoice";
+            }
+            switch (p.Status)
+            {
+                case TraderPaymentStatusEnum.Draft:
+                    status = "Draft";
+                    appCss = "label-info";
+                    break;
+                case TraderPaymentStatusEnum.PendingReview:
+                    status = "Pending Review";
+                    appCss = "label-warning";
+                    break;
+                case TraderPaymentStatusEnum.PendingApproval:
+                    status = "Pending Approval";
+                    appCss = "label-primary";
+                    break;
+                case TraderPaymentStatusEnum.PaymentDenied:
+                    status = "Denied";
+                    appCss = "label-danger";
+                    break;
+                case TraderPaymentStatusEnum.PaymentApproved:
+                    status = "Paid";
+                    appCss = "label-success";
+                    break;
+                case TraderPaymentStatusEnum.PaymentDiscarded:
+                    status = "Discarded";
+                    appCss = "label-danger";
+                    break;
+            }
+            <tr>
+                <td>@p.Id.ToString("D6")</td>
+                <td>@p.Reference</td>
+                <td>@info</td>
+                <td>
+                    @{
+                        var method = p.PaymentMethod?.Name ?? "";
+                    }
+                    @method
+                </td>
+                <td>@p.CreatedDate.ConvertTimeFromUtc(timeZone).ToString(dateFormat)</td>
+                <td>@p.Amount.ToDecimalPlace(currencySettings)</td>
+                <td>@bank</td>
+                <td><span class="label label-lg @appCss">@status</span></td>
+                @if (p.Status == TraderPaymentStatusEnum.Draft)
+                {
+                    <td>
+                        <button class="btn btn-info" onclick="EditInvoicePayment(@p.Id)"><i class="fa fa-pencil"></i> &nbsp; Continue</button>
+                    </td>
+                }
+                else
+                {
+                    <td>
+                        @{
+                            var paymentDomainId = 0;
+                            if (p.OriginatingAccount != null)
+                            {
+                                paymentDomainId = p.OriginatingAccount.Domain?.Id ?? 0;
+                            }
+                            else if (p.DestinationAccount != null)
+                            {
+                                paymentDomainId = p.DestinationAccount.Domain?.Id ?? 0;
+                            }
+                        }
+                        <button class="btn btn-primary" onclick="window.location.href = '/TraderPayments/PaymentManage?id=@p.Id';"><i class="fa fa-eye"></i> &nbsp; Manage</button>
+                    </td>
+                }
+            </tr>
+        }
+
+    </tbody>
+</table>
+
+<script>
+    $('#manage-columns-payment input[type="checkbox"]').on('change', function () {
+        var table = $('#community-list_payment').DataTable();
+        var column = table.column($(this).attr('data-column'));
+        column.visible(!column.visible());
+    });
+
+    $('#search_dt_payment').keyup(function () {
+        $('#community-list_payment').DataTable().search($(this).val()).draw();
+    });
+
+    $(document).ready(function () {
+        $("#community-list_payment").DataTable({
+            destroy: true,
+            responsive: true,
+            searchHighlight: true,
+            search: {
+                smart: false
+            },
+            "pageLength": 10,
+            "columnDefs": [{
+                "targets": 8,
+                "orderable": false
+            }],
+            "order": [[4, "desc"]]
+        });
+        
+    });
+
+
+</script>

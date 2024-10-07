@@ -1,0 +1,1861 @@
+﻿@using Qbicles.BusinessRules
+@using Qbicles.Models
+@using Qbicles.Models.Manufacturing
+@using Qbicles.BusinessRules.Model
+@using Qbicles.Models.Trader.Budgets
+@using Qbicles.Models.Trader.Inventory
+@using Qbicles.Models.SalesMkt
+@using Qbicles.Models.Trader.Movement
+@using Qbicles.Models.Trader.Returns
+@using Qbicles.Models.Highlight
+@using Qbicles.Models.Loyalty
+@model QbicleStreamModel
+@{
+    var currentUserId = (string)ViewBag.CurrentUserId;
+    string currentTimeZone = ViewBag.currentTimeZone;
+    var dateFormat = (string)ViewBag.CurrentDateFormat;
+    var dateStr = "";
+    var dateStart = "";
+    var classMyPostOrReply = "";
+    var today = (DateTime)ViewBag.Today;
+    var createByName = "";
+    var pinnedClass = "";
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var videoApi = ViewBag.VideoRetrievalUrl;
+
+}
+@if (Model.Dates != null && Model.Dates.Any())
+{
+    var count = 0;
+    foreach (var date in Model.Dates)
+    {
+        try
+        {
+            var itemdate = date.Date.ConvertTimeFromUtc(currentTimeZone);
+            dateStart = itemdate.DatetimeToOrdinal();
+            dateStr = itemdate.Date == today.Date ? "Today" : dateStart;
+            <div class="day-block" id="@(dateStr == " Today" ? "dashboard-date-today" : dateStr)">
+                <div class="day-date">
+                    <span class="date">@dateStr</span>
+                </div>
+                @foreach (var item in date.Activities)
+                {
+                    if (item is QbiclePost)
+                    {
+                        var activity = (QbiclePost)item;
+                        classMyPostOrReply = activity.CreatedBy.Id == currentUserId ? "me" : "";
+                        createByName = HelperClass.GetFullNameOfUser(activity.CreatedBy);
+                        //pinnedClass = Model.Pinneds != null && Model.Pinneds.Any(e => e.Id == activity.Id) ? "pinned" : "";
+                        <article id="post-@activity.Id" class="activity post @classMyPostOrReply">
+                            <div class="activity-avatar" style="background-image: url('@(api+activity.CreatedBy.ProfilePic)&size=T');"></div>
+                            <div class="activity-detail">
+                                <div class="activity-meta" style="position:relative">
+                                    <h4>@createByName</h4>
+                                    <small>@(date.Date == today.Date ? "Today, " + activity.StartedDate.ToString("hh:mmtt") : activity.StartedDate.ToString("dd MMM yyyy, hh:mmtt"))</small>
+                                    <br class="visible-xs">
+                                    @if (activity.Topic != null)
+                                    {
+
+                                        <a href='javascript:void(0);' onclick='ShowTopic(event, @activity.Topic.Id, this);' class="topic-label">
+                                            <span class="label label-info">@activity.Topic.Name</span>
+                                        </a>
+                                    }
+                                    <div class="btn-group optsnew defaulted dropdown" style="top: -8px; right: auto;">
+                                        <button class="btn btn-default dropdown-toggle" data-toggle="dropdown" style="background: #fff !important;" aria-expanded="false"><i class="fa fa-user-cog" style="font-size: 14px;"></i></button>
+                                        <ul class="dropdown-menu dropdown-menu-right">
+                                            <li><a href="#" onclick="addPostToDiscuss('@activity.Key')">Discuss</a></li>
+                                            <li class="op-forward"><a href="#" onclick="showForwardPostModal('@activity.Key')">Forward</a></li>
+                                            @if (activity.CreatedBy.Id == currentUserId)
+                                            {
+                                                <li><a href="#" onclick="loadEditPostModal('post-@activity.Id','@activity.Key')">Edit</a></li>
+                                                <li><a href="#" onclick="deletePost('post-@activity.Id','@activity.Key')">Delete</a></li>
+                                            }
+                                        </ul>
+                                    </div>
+                                </div>
+
+                                <div class="activity-overview">
+                                    <p>
+                                        @Html.Raw(activity.Message.Replace(Environment.NewLine, "<br />"))
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="clearfix"></div>
+                        </article>
+                        <div class="clearfix"></div>
+                    }
+                    if (item is QbicleActivity)
+                    {
+                        var activity = (QbicleActivity)item;
+                        classMyPostOrReply = activity.StartedBy.Id == currentUserId ? "me" : "";
+
+                        switch (activity.ActivityType)
+                        {
+                            case QbicleActivity.ActivityTypeEnum.ApprovalRequest:
+
+                                var appTrader = (ApprovalReq)activity;
+                                #region appTrader
+
+                                classMyPostOrReply = appTrader.StartedBy.Id == currentUserId ? "me" : "";
+                                var cssTrader = StatusLabelStyle.Pending;
+                                var statusTrader = appTrader.RequestStatus.GetDescription();
+
+                                if (appTrader.ReviewedBy.Count > 0)
+                                {
+                                    cssTrader = StatusLabelStyle.Reviewed;
+                                }
+                                switch (appTrader.RequestStatus)
+                                {
+                                    case ApprovalReq.RequestStatusEnum.Pending:
+                                        if (appTrader.ReviewedBy.Count == 0)
+                                        {
+                                            cssTrader = StatusLabelStyle.Pending;
+                                            if (appTrader.Transfer.Count > 0)
+                                            {
+                                                statusTrader = TransferStatus.PendingPickup.GetDescription();
+                                            }
+                                        }
+                                        break;
+                                    case ApprovalReq.RequestStatusEnum.Reviewed:
+                                        cssTrader = StatusLabelStyle.Reviewed;
+                                        if (appTrader.Transfer.Count > 0)
+                                        {
+                                            statusTrader = TransferStatus.PickedUp.GetDescription();
+                                        }
+                                        break;
+                                    case ApprovalReq.RequestStatusEnum.Approved:
+                                        cssTrader = StatusLabelStyle.Approved;
+                                        if (appTrader.Transfer.Count > 0)
+                                        {
+                                            statusTrader = TransferStatus.Delivered.GetDescription();
+                                        }
+                                        break;
+                                    case ApprovalReq.RequestStatusEnum.Denied:
+                                        cssTrader = StatusLabelStyle.Denied;
+                                        break;
+                                    case ApprovalReq.RequestStatusEnum.Discarded:
+                                        cssTrader = StatusLabelStyle.Discarded;
+                                        break;
+                                }
+
+                                var appTitle = "Approval Request";
+                                var appTitleMsg = appTrader.Name;
+                                var none = false;
+                                var appIcon = "";
+                                var traderName = "";
+                                var traderUri = "";
+                                var appName = "Trader";
+                                var classOverview = "approval-detail";
+                                var createdBy = appTrader.StartedBy;
+                                var consumeCountTask = "";
+                                //approval Transfer point to point
+
+                                if (appTrader.Transfer != null && appTrader.Transfer.Count > 0)
+                                {
+                                    var transfer = appTrader.Transfer.FirstOrDefault();
+                                    createdBy = transfer.CreatedBy;
+                                    appIcon = "/Content/DesignStyle/img/icon_delivery.png";
+                                    traderName = "Trader Transfer";
+                                    traderUri = "/TraderTransfers/TransferReview?key=" + transfer.Key;
+
+                                    var saleTransfer = transfer.Sale;
+                                    var purchaseTransfer = transfer.Purchase;
+
+                                    if (saleTransfer == null && purchaseTransfer == null)
+                                    {
+                                        appTitle = $"{transfer.OriginatingLocation?.Name} to {transfer.DestinationLocation?.Name}";
+                                    }
+                                    else if (saleTransfer != null)
+                                    {
+                                        appTitle = $"{transfer.OriginatingLocation?.Name} to {saleTransfer.Purchaser.Name}";
+                                    }
+                                    else if (purchaseTransfer != null)
+                                    {
+                                        appTitle = $"{purchaseTransfer.Vendor.Name} to {transfer.DestinationLocation?.Name}";
+                                    }
+                                }
+                                else
+                                //Audit or Purchase approval only
+                                if (appTrader.StockAudits != null && appTrader.StockAudits.Count > 0)
+                                {
+                                    appIcon = "/Content/DesignStyle/img/icon_audit.png";
+                                    var stockAudit = appTrader.StockAudits.FirstOrDefault();
+                                    traderName = "Shift Audit Request";
+                                    appTitle = "Approval Request";
+                                    appTitleMsg = stockAudit.Name;
+                                    traderUri = "/TraderStockAudits/ShiftAuditReview?id=" + stockAudit.Id;
+                                }
+                                else //Sale or Purchase approval only
+                                if (appTrader.Sale != null && appTrader.Sale.Count > 0)
+                                {
+                                    appIcon = "/Content/DesignStyle/img/icon_bookkeeping.png";
+                                    traderName = "Sale Approval Request";
+                                    var sale = appTrader.Sale.FirstOrDefault();
+                                    createdBy = sale.CreatedBy;
+                                    traderUri = "/TraderSales/SaleReview?key=" + sale.Key;
+                                }
+                                else if (appTrader.Purchase != null && appTrader.Purchase.Count > 0)
+                                {
+                                    appIcon = "/Content/DesignStyle/img/icon_bookkeeping.png";
+                                    traderName = "Purchase Approval Request";
+                                    var purchase = appTrader.Purchase.FirstOrDefault();
+                                    createdBy = purchase.CreatedBy;
+                                    traderUri = "/TraderPurchases/PurchaseReview?id=" + purchase.Id;
+                                }
+                                else
+                                //approval contact
+                                if (appTrader.TraderContact != null && appTrader.TraderContact.Count > 0)
+                                {
+                                    var contact = appTrader.TraderContact.FirstOrDefault();
+                                    appTitle = contact.Name;
+                                    appTitleMsg = contact.ContactGroup.Name + " Group";
+                                    appIcon = "/Content/DesignStyle/img/icon_contact.png";
+                                    traderName = "Contact Approval Request";
+                                    traderUri = "/TraderContact/ContactReview?id=" + contact.Id;
+                                }
+                                else
+                                // approval invoice
+                                if (appTrader.Invoice != null && appTrader.Invoice.Count > 0)
+                                {
+                                    var invoice = appTrader.Invoice.FirstOrDefault();
+                                    createdBy = invoice.CreatedBy;
+                                    appIcon = "/Content/DesignStyle/img/icon_invoice.png";
+
+                                    if (invoice.Purchase != null)
+                                    {
+                                        traderUri = "/TraderBill/BillReview?id=" + invoice.Id;
+                                        traderName = "Bill Approval Request";
+                                        appTitle = $"Bill #{invoice.Reference?.FullRef ?? invoice.Id.ToString()}";
+                                        appTitleMsg = $"For Purchase #{invoice.Purchase.Reference?.FullRef ?? ""}";
+                                    }
+
+                                    if (invoice.Sale != null)
+                                    {
+                                        traderUri = "/TraderInvoices/InvoiceReview?key=" + invoice.Key;
+                                        traderName = "Invoice Approval Request";
+                                        appTitle = $"Invoice #{invoice.Reference?.FullRef ?? invoice.Id.ToString()}";
+                                        appTitleMsg = $"For Sale #{invoice.Sale.Reference?.FullRef ?? ""}";
+                                    }
+                                }
+                                else
+                                // approval payment
+                                if (appTrader.Payments != null && appTrader.Payments.Count > 0)
+                                {
+                                    var payment = appTrader.Payments.FirstOrDefault();
+                                    createdBy = payment.CreatedBy;
+                                    appTitle = "Payment #" + (payment?.Reference ?? "");
+                                    appIcon = "/Content/DesignStyle/img/icon_payments.png";
+                                    traderName = "Payment Approval Request";
+                                    traderUri = "/TraderPayments/PaymentReview?id=" + payment.Id;
+
+                                    if (payment?.AssociatedInvoice != null && payment?.AssociatedInvoice?.Id != null && payment?.AssociatedInvoice?.Id > 0)
+                                    {
+                                        appTitleMsg = $"For Invoice #{payment?.AssociatedInvoice?.Reference?.FullRef ?? ""}";
+                                    }
+                                    else
+                                    {
+                                        var fromStr = "";
+                                        var toStr = "";
+                                        if (payment?.OriginatingAccount?.Name != null)
+                                        {
+                                            fromStr = $"From: {payment.OriginatingAccount.Name}";
+                                        }
+                                        if (payment?.DestinationAccount?.Name != null)
+                                        {
+                                            toStr = $"To: {payment.DestinationAccount.Name}";
+                                        }
+
+                                        appTitleMsg = $"{fromStr} {toStr}";
+
+                                        if (fromStr == "" && toStr == "")
+                                        {
+                                            appTitleMsg = "No account details available";
+                                        }
+                                    }
+
+                                }
+                                else
+                                // approval SpotCounts
+                                if (appTrader.SpotCounts != null && appTrader.SpotCounts.Count > 0)
+                                {
+                                    var spotCount = appTrader.SpotCounts.FirstOrDefault();
+                                    traderName = "Spot Count Request";
+                                    appTitle = "Approval Request";
+                                    appIcon = "/Content/DesignStyle/img/icon_spotcount.png";
+                                    appTitleMsg = appTitleMsg.Replace("Spot Count:", "");
+                                    traderUri = "/TraderSpotCount/SpotCountReview?id=" + spotCount.Id;
+                                    switch (spotCount.Status)
+                                    {
+                                        case SpotCountStatus.CountStarted:
+                                            statusTrader = StatusLabelName.CountStarted;
+                                            cssTrader = StatusLabelStyle.Pending;
+                                            break;
+                                        case SpotCountStatus.CountCompleted:
+                                            statusTrader = StatusLabelName.CountCompleted;
+                                            cssTrader = StatusLabelStyle.Reviewed;
+                                            break;
+                                        case SpotCountStatus.StockAdjusted:
+                                            statusTrader = StatusLabelName.StockAdjusted;
+                                            cssTrader = StatusLabelStyle.Approved;
+                                            break;
+                                        case SpotCountStatus.Denied:
+                                            statusTrader = StatusLabelName.Denied;
+                                            cssTrader = StatusLabelStyle.Denied;
+                                            break;
+                                        case SpotCountStatus.Discarded:
+                                            statusTrader = StatusLabelName.Discarded;
+                                            cssTrader = StatusLabelStyle.Discarded;
+                                            break;
+                                    }
+                                }
+                                else
+
+                                // approval SpotCounts
+                                if (appTrader.WasteReports != null && appTrader.WasteReports.Count > 0)
+                                {
+                                    traderName = "Waste Report Request";
+                                    var wasteReport = appTrader.WasteReports.FirstOrDefault();
+                                    appTitle = "Approval Request";
+                                    appIcon = "/Content/DesignStyle/img/icon_waste.png";
+                                    appTitleMsg = wasteReport.Name;
+                                    traderUri = "/TraderWasteReport/WasteReportReview?id=" + wasteReport.Id;
+                                    switch (wasteReport.Status)
+                                    {
+                                        case WasteReportStatus.Started:
+                                            statusTrader = StatusLabelName.Started;
+                                            cssTrader = StatusLabelStyle.Pending;
+                                            break;
+                                        case WasteReportStatus.Completed:
+                                            statusTrader = StatusLabelName.Completed;
+                                            cssTrader = StatusLabelStyle.Reviewed;
+                                            break;
+                                        case WasteReportStatus.StockAdjusted:
+                                            statusTrader = StatusLabelName.StockAdjusted;
+                                            cssTrader = StatusLabelStyle.Approved;
+                                            break;
+                                        case WasteReportStatus.Discarded:
+                                            statusTrader = StatusLabelName.Discarded;
+                                            cssTrader = StatusLabelStyle.Discarded;
+                                            break;
+                                    }
+                                }
+                                else
+                                // approval SpotCounts
+                                if (appTrader.Manufacturingjobs != null && appTrader.Manufacturingjobs.Count > 0)
+                                {
+                                    traderName = "Manufacturing Request";
+                                    var manufacturingJob = appTrader.Manufacturingjobs.FirstOrDefault();
+                                    createdBy = manufacturingJob.CreatedBy;
+                                    appTitle = "Compound Item Assembly";
+                                    appIcon = "/Content/DesignStyle/img/icon_manufacturing.png";
+                                    appTitleMsg = (manufacturingJob.Reference != null ? manufacturingJob.Reference.FullRef : "") + " " + (manufacturingJob.Product.Name); //$"Items {appTrader.Manufacturingjobs.FirstOrDefault().SelectedRecipe.Ingredients.Count} manufacturing";
+                                    traderUri = "/Manufacturing/ManuJobReview?id=" + manufacturingJob.Id;
+                                    switch (manufacturingJob.Status)
+                                    {
+                                        case ManuJobStatus.Pending:
+                                            statusTrader = StatusLabelName.Pending;
+                                            cssTrader = StatusLabelStyle.Pending;
+                                            break;
+                                        case ManuJobStatus.Reviewed:
+                                            statusTrader = StatusLabelName.Reviewed;
+                                            cssTrader = StatusLabelStyle.Reviewed;
+                                            break;
+                                        case ManuJobStatus.Approved:
+                                            statusTrader = StatusLabelName.Approved;
+                                            cssTrader = StatusLabelStyle.Approved;
+                                            break;
+                                        case ManuJobStatus.Denied:
+                                            statusTrader = StatusLabelName.Denied;
+                                            cssTrader = StatusLabelStyle.Denied;
+                                            break;
+                                        case ManuJobStatus.Discarded:
+                                            statusTrader = StatusLabelName.Discarded;
+                                            cssTrader = StatusLabelStyle.Discarded;
+                                            break;
+                                    }
+                                }
+                                else
+                                // approval Credit
+                                if (appTrader.CreditNotes != null && appTrader.CreditNotes.Count > 0)
+                                {
+                                    traderName = appTrader.Name;
+                                    var creditNote = appTrader.CreditNotes.FirstOrDefault();
+                                    createdBy = creditNote.CreatedBy;
+                                    appTitle = $"{HelperClass.GetFullNameOfUser(creditNote.CreatedBy)}";
+                                    appIcon = "/Content/DesignStyle/img/icon_manufacturing.png";
+                                    if (appTrader.CreditNotes[0].Reason == Qbicles.Models.Trader.Payments.CreditNoteReason.DebitNote
+                                    || appTrader.CreditNotes[0].Reason == Qbicles.Models.Trader.Payments.CreditNoteReason.PriceIncrease)
+                                    {
+                                        appTitleMsg = $"Debit note #" + appTrader.CreditNotes[0].Reference?.FullRef;
+                                    }
+                                    else
+                                    {
+                                        appTitleMsg = $"Credit note #" + appTrader.CreditNotes[0].Reference?.FullRef;
+                                    }
+                                    traderUri = "/TraderContact/CreditNoteReview?id=" + creditNote.Id;
+
+                                    switch (creditNote.Status)
+                                    {
+                                        case Qbicles.Models.Trader.Payments.CreditNoteStatus.PendingReview:
+                                            statusTrader = StatusLabelName.Pending;
+                                            cssTrader = StatusLabelStyle.Pending;
+                                            break;
+                                        case Qbicles.Models.Trader.Payments.CreditNoteStatus.Reviewed:
+                                            statusTrader = StatusLabelName.Reviewed;
+                                            cssTrader = StatusLabelStyle.Reviewed;
+                                            break;
+                                        case Qbicles.Models.Trader.Payments.CreditNoteStatus.Approved:
+                                            statusTrader = StatusLabelName.Approved;
+                                            cssTrader = StatusLabelStyle.Approved;
+                                            break;
+                                        case Qbicles.Models.Trader.Payments.CreditNoteStatus.Denied:
+                                            statusTrader = StatusLabelName.Denied;
+                                            cssTrader = StatusLabelStyle.Denied;
+                                            break;
+                                        case Qbicles.Models.Trader.Payments.CreditNoteStatus.Discarded:
+                                            statusTrader = StatusLabelName.Discarded;
+                                            cssTrader = StatusLabelStyle.Discarded;
+                                            break;
+                                    }
+                                }
+                                else
+                                // approval Budget group item
+                                if (appTrader.BudgetScenarioItemGroups != null && appTrader.BudgetScenarioItemGroups.Count > 0)
+                                {
+                                    traderName = "Budget Approval Request";
+                                    var budgetScenarioItemGroups = appTrader.BudgetScenarioItemGroups.FirstOrDefault();
+                                    createdBy = budgetScenarioItemGroups.CreatedBy;
+                                    appTitle = $"{HelperClass.GetFullNameOfUser(budgetScenarioItemGroups.CreatedBy)}";
+                                    appIcon = "/Content/DesignStyle/img/icon_bookkeeping.png";
+                                    appTitleMsg = $"Budget Scenario Items Group: {budgetScenarioItemGroups.BudgetScenario.Title}";
+                                    traderUri = "/TraderBudget/ProcessApproval?id=" + budgetScenarioItemGroups.Id + "&oView=A";
+                                    switch (budgetScenarioItemGroups.Status)
+                                    {
+                                        case BudgetScenarioItemGroupStatus.Pending:
+                                            statusTrader = StatusLabelName.Pending;
+                                            cssTrader = StatusLabelStyle.Pending;
+                                            break;
+                                        case BudgetScenarioItemGroupStatus.Reviewed:
+                                            statusTrader = StatusLabelName.Reviewed;
+                                            cssTrader = StatusLabelStyle.Reviewed;
+                                            break;
+                                        case BudgetScenarioItemGroupStatus.Approved:
+                                            statusTrader = StatusLabelName.Approved;
+                                            cssTrader = StatusLabelStyle.Approved;
+                                            break;
+                                        case BudgetScenarioItemGroupStatus.Draft:
+                                            statusTrader = "Draft";
+                                            cssTrader = StatusLabelStyle.Draft;
+                                            break;
+                                        case BudgetScenarioItemGroupStatus.Denied:
+                                            statusTrader = StatusLabelName.Denied;
+                                            cssTrader = StatusLabelStyle.Denied;
+                                            break;
+                                        case BudgetScenarioItemGroupStatus.Discarded:
+                                            statusTrader = StatusLabelName.Discarded;
+                                            cssTrader = StatusLabelStyle.Discarded;
+                                            break;
+                                    }
+                                }
+                                else
+                                // approval Sale return
+                                if (appTrader.TraderReturns != null && appTrader.TraderReturns.Count > 0)
+                                {
+                                    traderName = "Sales Return Approval Request";
+                                    var traderReturn = appTrader.TraderReturns.FirstOrDefault();
+                                    createdBy = traderReturn.CreatedBy;
+                                    appTitle = $"Approval Request";
+                                    appIcon = "/Content/DesignStyle/img/icon_return.png";
+                                    appTitleMsg = $"Reference #{traderReturn.Reference?.FullRef}";
+                                    traderUri = "/TraderSalesReturn/SaleReturnReview?id=" + traderReturn.Id;
+                                    switch (traderReturn.Status)
+                                    {
+                                        case TraderReturnStatusEnum.PendingReview:
+                                            statusTrader = StatusLabelName.Pending;
+                                            cssTrader = StatusLabelStyle.Pending;
+                                            break;
+                                        case TraderReturnStatusEnum.Reviewed:
+                                            statusTrader = StatusLabelName.Reviewed;
+                                            cssTrader = StatusLabelStyle.Reviewed;
+                                            break;
+                                        case TraderReturnStatusEnum.Approved:
+                                            statusTrader = StatusLabelName.Approved;
+                                            cssTrader = StatusLabelStyle.Approved;
+                                            break;
+                                        case TraderReturnStatusEnum.Draft:
+                                            statusTrader = "Draft";
+                                            cssTrader = StatusLabelStyle.Draft;
+                                            break;
+                                        case TraderReturnStatusEnum.Denied:
+                                            statusTrader = StatusLabelName.Denied;
+                                            cssTrader = StatusLabelStyle.Denied;
+                                            break;
+                                        case TraderReturnStatusEnum.Discarded:
+                                            statusTrader = StatusLabelName.Discarded;
+                                            cssTrader = StatusLabelStyle.Discarded;
+                                            break;
+                                    }
+                                }
+                                else
+                                // Consume report
+                                if (appTrader.ConsumptionReports != null && appTrader.ConsumptionReports.Count > 0)
+                                {
+                                    var consume = appTrader.ConsumptionReports.FirstOrDefault();
+                                    traderName = "Consumption Report";
+                                    appName = "Spannered";
+                                    appTitle = "Consumption Report";
+                                    appIcon = "/Content/DesignStyle/img/icon_spannered.png";
+                                    appTitleMsg = consume?.Name;
+                                    classOverview = "task";
+                                    traderUri = "/Spanneredfree/ConsumeReportReview?id=" + consume?.Id;
+                                    consumeCountTask = consume.AssociatedTask != null ? "<li><i class=\"fa fa-link\"></i> 1 Asset Tasks</li>" : "";
+                                }
+                                else
+                                // Till payment
+                                if (appTrader.TillPayment != null && appTrader.TillPayment.Count > 0)
+                                {
+                                    var tillPayment = appTrader.TillPayment.FirstOrDefault();
+                                    var directionName = tillPayment.Direction == Qbicles.Models.Trader.CashMgt.TillPayment.TillPaymentDirection.InToTill ? "Pay In" : "Pay Out";
+                                    traderName = $"Till {directionName} Approval Request";
+                                    appTitle = $"Approval Request";
+                                    appIcon = "/Content/DesignStyle/img/icon_cash.png";
+                                    if (tillPayment.Direction == Qbicles.Models.Trader.CashMgt.TillPayment.TillPaymentDirection.InToTill)
+                                    {
+                                        appTitleMsg = $"Till Payment from the Safe \"{tillPayment.AssociatedSafe.Name}\" to the Till \"{tillPayment.AssociatedTill.Name}\"";
+                                    }
+                                    else
+                                    {
+                                        appTitleMsg = $"Till Payment from the Till \"{tillPayment.AssociatedTill.Name}\" to the Safe \"{tillPayment.AssociatedSafe.Name}\"";
+                                    }
+
+                                    traderUri = "/CashManagement/TillPaymentReview?tillPaymentId=" + tillPayment.Id;
+                                }
+                                else
+                                {
+                                    createdBy = null;
+                                    none = true;
+                                    @*countActivity++;
+                                        if (countActivity == date.Activities.Count)
+                                        {
+                                        <script>
+                                                                                    $("#@(dateStr == "Today" ? "dashboard-date-today" : dateStr)").hide();
+                                        </script>
+                                        }*@
+                                }
+                                if (!none)
+                                {
+                                    if (!appTrader.Qbicle.Members.Any(u => u.Id == currentUserId))
+                                    {
+                                        traderUri = "javascript:void(0)";
+                                    }
+                                    <!-- Approval -->
+                                    <article class="activity approval_snippet @classMyPostOrReply">
+                                        <div class="activity-avatar" style="background-image: url('@appIcon');"></div>
+                                        <div class="activity-detail">
+                                            <div class="activity-meta">
+                                                <h4>@traderName</h4>
+                                                <small> @(date.Date == today.Date ? "Today, " + appTrader.TimeLineDate.ToString("hh:mm tt") : appTrader.TimeLineDate.ToString("dd MMM yyyy, hh:mm tt"))</small>
+                                                <br class="visible-xs">
+                                                @if (appTrader.Topic != null)
+                                                {
+                                                    <a href="javascript:void(0)" onclick="ShowTopic(event, '@appTrader.Topic.Id', this);" class="topic-label"><span class="label label-info">@appTrader.Topic.Name</span></a>
+                                                }
+                                                <span class="label @cssTrader">@statusTrader</span>
+                                                <span id="pinIcon-@appTrader.Id" class="label label-default pin-this @pinnedClass" onclick="PinnedActivity('@appTrader.Id', false, event)"><i class="fa fa-thumb-tack"></i></span>
+                                            </div>
+                                            <a href="@traderUri">
+                                                <div class="activity-overview @classOverview">
+                                                    <h5>
+                                                        <span>@appTitle</span> / @appName
+                                                    </h5>
+                                                    <p>
+                                                        @appTitleMsg
+                                                    </p>
+                                                </div>
+                                                @if (appTrader.StockAudits != null && appTrader.StockAudits.Count > 0)
+                                                {
+                                                    <div class="activity-specifics">
+                                                        <ul>
+                                                            <li>
+                                                                <i class="fa fa-calendar"></i> @appTrader.StockAudits.FirstOrDefault().StartedDate.ConvertTimeFromUtc(currentTimeZone).ToString(dateFormat + " hh:mmtt")
+                                                            </li>
+                                                        </ul>
+                                                    </div>
+                                                }
+                                                @if (createdBy != null)
+                                                {
+                                                    <div class="activity-specifics">
+                                                        <ul>
+                                                            <li><i class="fa fa-user"></i>@(HelperClass.GetFullNameOfUser(createdBy))</li>
+                                                            @Html.Raw(consumeCountTask)
+                                                        </ul>
+                                                    </div>
+                                                }
+
+                                            </a>
+                                        </div>
+                                        <div class="clearfix"></div>
+                                    </article>
+                                    <div class="clearfix"></div>
+                                }
+
+                                <!-- END Approval -->
+                                #endregion
+                                break;
+                            case QbicleActivity.ActivityTypeEnum.ApprovalRequestApp:
+                                var app = (ApprovalReq)activity;
+                                var appMember = app.Qbicle.Members.Any(u => u.Id == currentUserId);
+                                classMyPostOrReply = app.StartedBy.Id == currentUserId ? "me" : "";
+                                createByName = HelperClass.GetFullNameOfUser(app.StartedBy);
+                                pinnedClass = Model.Pinneds != null && Model.Pinneds.Any(e => e == app.Id) ? "pinned" : "";
+                                var jounralApproval = app.JournalEntries.Count > 0;
+
+                                var css = "";
+                                var status = "";
+                                if (app.ReviewedBy.Count > 0)
+                                {
+                                    css = "label-primary";
+                                    status = ApprovalReq.RequestStatusEnum.Reviewed.ToString();
+                                    if (jounralApproval)
+                                    {
+                                        status = "Awaiting Approval";
+                                    }
+                                }
+                                switch (app.RequestStatus)
+                                {
+                                    case ApprovalReq.RequestStatusEnum.Pending:
+                                        if (app.ReviewedBy.Count == 0)
+                                        {
+                                            css = "label-warning";
+                                            status = ApprovalReq.RequestStatusEnum.Pending.ToString();
+                                            if (jounralApproval)
+                                            {
+                                                status = "Awaiting Review";
+                                            }
+                                        }
+                                        break;
+                                    case ApprovalReq.RequestStatusEnum.Reviewed:
+                                        css = "label-primary";
+                                        if (jounralApproval || app.CampaigPostApproval.Count > 0)
+                                        {
+                                            css = "label-warning";
+                                            status = "Awaiting Approval";
+                                        }
+                                        break;
+                                    case ApprovalReq.RequestStatusEnum.Approved:
+                                        css = "label-success";
+                                        status = ApprovalReq.RequestStatusEnum.Approved.ToString();
+                                        break;
+                                    case ApprovalReq.RequestStatusEnum.Denied:
+                                        css = "label-danger";
+                                        status = ApprovalReq.RequestStatusEnum.Denied.ToString();
+                                        break;
+                                }
+                                if (jounralApproval)
+                                {
+                                    <!-- Approval -->
+                                    var jounralEntries = app.JournalEntries.FirstOrDefault();
+                                    <article id="activity-@app.Id" class="activity approval_snippet @classMyPostOrReply">
+                                        <div class="activity-avatar" style="background-image: url('@(api+app.StartedBy.ProfilePic)&size=T');"></div>
+                                        <div class="activity-detail">
+                                            <div class="activity-meta">
+                                                <h4>@createByName</h4>
+                                                <small> @(date.Date == today.Date ? "Today, " + app.TimeLineDate.ToString("hh:mmtt") : app.TimeLineDate.ToString("dd MMM yyyy, hh:mmtt"))</small>
+                                                <br class="visible-xs">
+                                                @if (app.Topic != null)
+                                                {
+                                                    <a href="javascript:void(0)" onclick="ShowTopic(event, '@app.Topic.Id', this);" class="topic-label">
+                                                        <span class="label label-info">@app.Topic.Name</span>
+                                                    </a>
+                                                }
+                                                <span class="label @css">@status </span>
+                                                <span id="pinIcon-@app.Id" class="label label-default pin-this @pinnedClass" onclick="PinnedActivity('@app.Id', false, event)">
+                                                    <i class="fa fa-thumb-tack"></i>
+                                                </span>
+                                            </div>
+                                            <a href="javascript:void(0)" onclick="ShowApprovalPage('@app.Key', false, 'journal');">
+                                                <div class="activity-overview approval-detail">
+                                                    <h5>
+                                                        <span>Approval Request /</span> Bookkeeping
+                                                    </h5>
+
+                                                    @{
+                                                        <p>
+                                                            Journal Entry #@jounralEntries.Number
+                                                        </p>
+                                                    }
+                                                </div>
+                                                <div class="activity-specifics">
+                                                    <ul>
+                                                        <li><i class="fa fa-user"></i> @(HelperClass.GetFullNameOfUser(jounralEntries.CreatedBy))</li>
+                                                    </ul>
+                                                </div>
+                                            </a>
+                                        </div>
+                                        <div class="clearfix"></div>
+                                    </article>
+                                    <div class="clearfix"></div>
+                                    <!-- END Approval -->
+                                }
+                                else if (app.CampaigPostApproval.Any())
+                                {
+                                    var isManualCampaign = app.CampaigPostApproval.Any(c => c.CampaignPost.AssociatedCampaign.CampaignType == Qbicles.Models.SalesMkt.CampaignType.Manual);
+                                    <article id="activity-@app.Id" class="activity media @classMyPostOrReply">
+                                        @if (!isManualCampaign)
+                                        {
+                                            <div class="activity-avatar" style="background-image: url('/Content/DesignStyle/img/icon_socialpost.png');"></div>
+                                        }
+                                        else
+                                        {
+                                            <div class="activity-avatar" style="background-image: url('/Content/DesignStyle/img/icon_socialpost_manual.png');"></div>
+                                        }
+
+                                        <div class="activity-detail">
+                                            <div class="activity-meta">
+                                                <h4>@(isManualCampaign ? "Manual Social Post Approval" : "Social Media Post Approval")</h4>
+                                                <small>@(date.Date == today.Date ? "Today, " + app.TimeLineDate.ToString("hh:mmtt") : app.TimeLineDate.ToString("dd MMM yyyy, hh:mmtt"))</small>
+                                                <br class="visible-xs">
+                                                @if (app.Topic != null)
+                                                {
+                                                    <a href="javascript:void(0)" onclick="ShowTopic(event, '@app.Topic.Id', this);" class="topic-label"><span class="label label-info">@app.Topic.Name</span></a>
+                                                }
+                                                <span class="label @css">@status </span>
+                                                <span id="pinIcon-@app.Id" class="label label-default pin-this @pinnedClass" onclick="PinnedActivity('@app.Id', false, event)">
+                                                    <i class="fa fa-thumb-tack"></i>
+                                                </span>
+                                            </div>
+                                            @{
+                                                var campaignApproval = app.CampaigPostApproval.FirstOrDefault();
+                                                var campaignPost = campaignApproval.CampaignPost;
+                                                var media = campaignPost.ImageOrVideo;
+                                            }
+                                            @if (media != null)
+                                            {
+                                                var mediaMember = media.Qbicle.Members.Any(u => u.Id == currentUserId);
+                                                var mediaLastupdateS = media.VersionedFiles.Where(e => !e.IsDeleted).OrderByDescending(x => x.UploadedDate).FirstOrDefault();
+                                                <div class="activity-overview media">
+                                                    <div class="row">
+                                                        <div class="col-xs-12">
+
+                                                            @if (media.FileType.Type.Equals("Image File", StringComparison.OrdinalIgnoreCase))
+                                                            {
+                                                                if (mediaMember)
+                                                                {
+                                                                    <a href="/SalesMarketing/@(isManualCampaign?"ManualSocialPostInApp": "SocialPostInApp" )?id=@campaignApproval.Id" id="media-uri" class="stream-img-preview" style="background-image: url('@(api+mediaLastupdateS.Uri)&size=M');">&nbsp;</a>
+
+                                                                }
+                                                                else
+                                                                {
+                                                                    <a href="#" id="media-uri" class="stream-img-preview" style="background-image: url('@(api+mediaLastupdateS.Uri)&size=M');">&nbsp;</a>
+
+                                                                }
+                                                            }
+                                                            else if (media.FileType.Type.Equals("Compressed File", StringComparison.OrdinalIgnoreCase))
+                                                            {
+                                                                if (mediaMember)
+                                                                {
+                                                                    <a href="/SalesMarketing/@(isManualCampaign? "ManualSocialPostInApp": "SocialPostInApp" )?id=@campaignApproval.Id" id="media-uri" class="stream-img-preview" style="background-image: url('@media.FileType.IconPath');">&nbsp;</a>
+
+                                                                }
+                                                                else
+                                                                {
+                                                                    <a href="#" id="media-uri" class="stream-img-preview" style="background-image: url('@media.FileType.IconPath');">&nbsp;</a>
+
+                                                                }
+                                                            }
+                                                            else if (media.FileType.Type.Equals("Video File", StringComparison.OrdinalIgnoreCase))
+                                                            {
+                                                                if (mediaMember)
+                                                                {
+                                                                    <a href="/SalesMarketing/@(isManualCampaign? "ManualSocialPostInApp": "SocialPostInApp" )?id=@campaignApproval.Id">
+                                                                        <video width="640" height="320" controls="" id="embed" style="display: inline-block;" class="fancybox-video">
+                                                                            <source src="@string.Format(videoApi,mediaLastupdateS.Uri," mp4")" type="video/mp4">
+                                                                            <source src="@string.Format(videoApi,mediaLastupdateS.Uri," webm")" type="video/webm">
+                                                                            <source src="@string.Format(videoApi,mediaLastupdateS.Uri," ogv")" type="video/ogv">
+                                                                        </video>
+                                                                    </a>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <a href="#">
+                                                                        <video width="640" height="320" controls="" id="embed" style="display: inline-block;" class="fancybox-video">
+                                                                            <source src="@string.Format(videoApi,mediaLastupdateS.Uri," mp4")" type="video/mp4">
+                                                                            <source src="@string.Format(videoApi,mediaLastupdateS.Uri," webm")" type="video/webm">
+                                                                            <source src="@string.Format(videoApi,mediaLastupdateS.Uri," ogv")" type="video/ogv">
+                                                                        </video>
+                                                                    </a>
+                                                                }
+
+                                                            }
+                                                            else
+                                                            {
+                                                                if (mediaMember)
+                                                                {
+                                                                    <a href="/SalesMarketing/@(isManualCampaign?"ManualSocialPostInApp": "SocialPostInApp" )?id=@campaignApproval.Id" class="stream-img-preview" style="background-image: url('@(media.FileType.IconPath)');">&nbsp;</a>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <a href="#" class="stream-img-preview" style="background-image: url('@(media.FileType.IconPath)');">&nbsp;</a>
+                                                                }
+                                                            }
+                                                        </div>
+                                                        <div class="col-xs-12 description">
+                                                            <h5 style="cursor:pointer" onclick="location.href='/SalesMarketing/@(isManualCampaign?"ManualSocialPostInApp":"SocialPostInApp")?id=@campaignApproval.Id'">@campaignPost.AssociatedCampaign.Name &nbsp; &gt; &nbsp; @campaignPost.Title</h5>
+                                                            <p>
+                                                                @campaignPost.Content
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="activity-specifics">
+                                                    <ul>
+                                                        <li><i class="fa fa-user"></i> @(HelperClass.GetFullNameOfUser(campaignPost.CreatedBy))</li>
+                                                    </ul>
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <a href="/SalesMarketing/@(isManualCampaign?"ManualSocialPostInApp":"SocialPostInApp")?id=@campaignApproval.Id">
+                                                    <div class="activity-overview task">
+                                                        <div class="row">
+                                                            <div class="col-xs-12 description">
+                                                                <h5>@campaignPost.AssociatedCampaign.Name &nbsp; &gt; &nbsp; @campaignPost.Title</h5>
+                                                                <p>@campaignPost.Content</p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="activity-specifics">
+                                                        <ul>
+                                                            <li><i class="fa fa-user"></i> @(HelperClass.GetFullNameOfUser(campaignPost.CreatedBy))</li>
+                                                        </ul>
+                                                    </div>
+                                                </a>
+                                            }
+                                        </div>
+                                        <div class="clearfix"></div>
+                                    </article>
+                                    <div class="clearfix"></div>
+                                }
+                                else if (app.EmailPostApproval.Any())
+                                {
+
+                                    var emailPostApproval = app.EmailPostApproval.FirstOrDefault();
+                                    var campaignEmail = emailPostApproval.CampaignEmail;
+                                    var featuredImageUri = campaignEmail.FeaturedImageUri;
+
+                                    <article id="activity-@app.Id" class="activity media @classMyPostOrReply">
+                                        <div class="activity-avatar" style="background-image: url('/Content/DesignStyle/img/icon_email.png');"></div>
+
+                                        <div class="activity-detail">
+                                            <div class="activity-meta">
+                                                <h4>Sales & Marketing Email Approval</h4>
+                                                <small>@(date.Date == today.Date ? "Today, " + app.TimeLineDate.ToString("hh:mmtt") : app.TimeLineDate.ToString("dd MMM yyyy, hh:mmtt"))</small>
+                                                <br class="visible-xs">
+                                                @if (app.Topic != null)
+                                                {
+                                                    <a href="javascript:void(0)" onclick="ShowTopic(event, '@app.Topic.Id', this);" class="topic-label"><span class="label label-info">@app.Topic.Name</span></a>
+                                                }
+                                                @switch (emailPostApproval.ApprovalStatus)
+                                                {
+                                                    case SalesMktApprovalStatusEnum.InReview:
+                                                        <span class="label label-warning">Awaiting approval</span>;
+                                                        break;
+                                                    case SalesMktApprovalStatusEnum.Approved:
+                                                        <span class="label label-success">Approved</span>;
+                                                        break;
+
+                                                    case SalesMktApprovalStatusEnum.Denied:
+                                                        <span class="label label-danger">Denied</span>;
+                                                        break;
+                                                    case SalesMktApprovalStatusEnum.Queued:
+                                                        <span class="label label-success">Queued</span>;
+                                                        break;
+                                                }
+                                                <span id="pinIcon-@app.Id" class="label label-default pin-this @pinnedClass" onclick="PinnedActivity('@app.Id', false, event)">
+                                                    <i class="fa fa-thumb-tack"></i>
+                                                </span>
+                                            </div>
+
+                                            <div class="activity-overview media">
+                                                <div class="row">
+                                                    <div class="col-xs-12">
+                                                        <a href="/SalesMarketing/EmailPostInApp?id=@emailPostApproval.Id" id="media-uri" class="stream-img-preview" style="background-image: url('@(api+featuredImageUri)&size=M');">&nbsp;</a>
+                                                    </div>
+                                                    <div class="col-xs-12 description">
+                                                        <h5 style="cursor:pointer" onclick="location.href='/SalesMarketing/EmailPostInApp?id=@emailPostApproval.Id'">@campaignEmail.Campaign.Name &nbsp; &gt; &nbsp; @campaignEmail.Title</h5>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="activity-specifics">
+                                                <ul>
+                                                    <li><i class="fa fa-user"></i> @(HelperClass.GetFullNameOfUser(campaignEmail.CreatedBy))</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                        <div class="clearfix"></div>
+                                    </article>
+                                    <div class="clearfix"></div>
+                                }
+                                else if (app.OperatorClockIn.Any())
+                                {
+                                    var clockedInApproval = app.OperatorClockIn.FirstOrDefault();
+                                    <article id="activity-@app.Id" class="activity event_snippet @classMyPostOrReply">
+                                        <div class="activity-avatar" style="background-image: url('@(api+clockedInApproval.People.ProfilePic)');"></div>
+                                        <div class="activity-detail">
+                                            <div class="activity-meta">
+                                                <h4>@app.Name</h4>
+                                                <small>@(date.Date == today.Date ? "Today, " + app.TimeLineDate.ToString("hh:mmtt") : app.TimeLineDate.ToString("dd MMM yyyy, hh:mmtt"))</small>
+                                                <br class="visible-xs">
+                                                @if (app.Topic != null)
+                                                {
+                                                    <a href="javascript:void(0)" onclick="ShowTopic(event, '@app.Topic.Id', this);" class="topic-label"><span class="label label-info">@app.Topic.Name</span></a>
+                                                }
+                                                <span id="pinIcon-@app.Id" class="label label-default pin-this @pinnedClass" onclick="PinnedActivity('@app.Id', false, event)">
+                                                    <i class="fa fa-thumb-tack"></i>
+                                                </span>
+                                            </div>
+
+                                            <a href="/Operator/Clocked?id=@clockedInApproval.Id&type=clockin">
+                                                <div class="activity-overview task">
+                                                    <h5><span>Clock in /</span> Operator</h5>
+                                                    <p>@clockedInApproval.Notes</p>
+                                                </div>
+                                                <div class="activity-specifics">
+                                                    <ul>
+                                                        <li><i class="fa fa-map-marker"></i> @clockedInApproval.WorkGroup.Location.Name</li>
+                                                        <li><i class="fa fa-calendar"></i> @clockedInApproval.Date.ConvertTimeFromUtc(currentTimeZone).ToString(dateFormat)</li>
+                                                        <li><i class="fa fa-clock"></i> @clockedInApproval.TimeIn.ConvertTimeFromUtc(currentTimeZone).ToString("hh:mmtt").ToLower()</li>
+                                                    </ul>
+                                                </div>
+                                            </a>
+                                        </div>
+                                        <div class="clearfix"></div>
+                                    </article>
+                                    <div class="clearfix"></div>
+                                }
+                                else if (app.OperatorClockOut.Any())
+                                {
+                                    var clockedOutApproval = app.OperatorClockOut.FirstOrDefault();
+                                    <article id="activity-@app.Id" class="activity event_snippet @classMyPostOrReply">
+                                        <div class="activity-avatar" style="background-image: url('@(api+clockedOutApproval.People.ProfilePic)');"></div>
+                                        <div class="activity-detail">
+                                            <div class="activity-meta">
+                                                <h4>@app.Name</h4>
+                                                <small>@(date.Date == today.Date ? "Today, " + app.TimeLineDate.ToString("hh:mmtt") : app.TimeLineDate.ToString("dd MMM yyyy, hh:mmtt"))</small>
+                                                <br class="visible-xs">
+                                                @if (app.Topic != null)
+                                                {
+                                                    <a href="javascript:void(0)" onclick="ShowTopic(event, '@app.Topic.Id', this);" class="topic-label"><span class="label label-info">@app.Topic.Name</span></a>
+                                                }
+                                                <span id="pinIcon-@app.Id" class="label label-default pin-this @pinnedClass" onclick="PinnedActivity('@app.Id', false, event)">
+                                                    <i class="fa fa-thumb-tack"></i>
+                                                </span>
+                                            </div>
+
+                                            <a href="/Operator/Clocked?id=@clockedOutApproval.Id&type=clockout">
+                                                <div class="activity-overview task">
+                                                    <h5><span>Clock out /</span> Operator</h5>
+                                                    <p>@clockedOutApproval.Notes</p>
+                                                </div>
+                                                <div class="activity-specifics">
+                                                    <ul>
+                                                        <li><i class="fa fa-map-marker"></i> @clockedOutApproval.WorkGroup.Location.Name</li>
+                                                        <li><i class="fa fa-calendar"></i> @clockedOutApproval.Date.ConvertTimeFromUtc(currentTimeZone).ToString(dateFormat)</li>
+                                                        <li><i class="fa fa-clock"></i> @(clockedOutApproval.TimeOut.HasValue ? clockedOutApproval.TimeOut.Value.ConvertTimeFromUtc(currentTimeZone).ToString("hh:mmtt").ToLower() : "")</li>
+                                                    </ul>
+                                                </div>
+                                            </a>
+                                        </div>
+                                        <div class="clearfix"></div>
+                                    </article>
+                                    <div class="clearfix"></div>
+                                }
+                                else
+                                {
+                                    <!-- Approval -->
+                                    <article id="activity-@app.Id" class="activity approval_snippet @classMyPostOrReply">
+                                        <div class="activity-avatar" style="background-image: url('@(api+app.StartedBy.ProfilePic)&size=T');"></div>
+                                        <div class="activity-detail">
+                                            <div class="activity-meta">
+                                                <h4>@createByName</h4>
+                                                <small> @(date.Date == today.Date ? "Today, " + app.TimeLineDate.ToString("hh:mmtt") : app.TimeLineDate.ToString("dd MMM yyyy, hh:mmtt"))</small>
+                                                <br class="visible-xs">
+                                                @if (app.Topic != null)
+                                                {
+                                                    <a href="javascript:void(0)" onclick="ShowTopic(event, '@app.Topic.Id', this);" class="topic-label">
+                                                        <span class="label label-info">@app.Topic.Name</span>
+                                                    </a>
+                                                }
+                                                <span class="label @css">@status </span>
+
+                                                <span id="pinIcon-@app.Id" class="label label-default pin-this @pinnedClass" onclick="PinnedActivity('@app.Id', false, event)">
+                                                    <i class="fa fa-thumb-tack"></i>
+                                                </span>
+                                            </div>
+                                            <a href="javascript:void(0)" onclick="ShowApprovalPage('@app.Key', false, 'approval');">
+                                                <div class="activity-overview approval-detail">
+                                                    <h5>
+                                                        <span>Approval Request /</span> @app.Name
+                                                    </h5>
+
+                                                    @{
+                                                        <p>
+                                                            @Html.Raw(app.Notes?.Replace(Environment.NewLine, "<br />"))
+                                                        </p>
+                                                    }
+
+                                                </div>
+                                            </a>
+                                        </div>
+                                        <div class="clearfix"></div>
+                                    </article>
+                                    <div class="clearfix"></div>
+                                    <!-- END Approval -->
+                                }
+
+                                break;
+                            //Task
+                            case QbicleActivity.ActivityTypeEnum.TaskActivity:
+                                var tk = (QbicleTask)activity;
+                                classMyPostOrReply = tk.StartedBy.Id == currentUserId ? "me" : "";
+                                createByName = HelperClass.GetFullNameOfUser(tk.StartedBy);
+                                pinnedClass = Model.Pinneds != null && Model.Pinneds.Any(e => e == tk.Id) ? "pinned" : "";
+                                var pic = tk.Asset != null ? tk.Asset.FeaturedImageUri : tk.StartedBy.ProfilePic;
+                                var _cbTask = tk.task;
+                                if (_cbTask != null)
+                                {
+                                    <article id="activity-@tk.Id" class="activity task_snippet @classMyPostOrReply">
+                                        <div class="activity-avatar" style="background-image: url('@(api+pic)&size=T');"></div>
+                                        <div class="activity-detail">
+                                            <div class="activity-meta">
+                                                <h4>@createByName</h4>
+                                                <small>@(date.Date == today.Date ? "Today, " + tk.TimeLineDate.ToString("hh:mmtt") : tk.TimeLineDate.ToString("dd MMM yyyy, hh:mmtt"))</small>
+                                                <br class="visible-xs">
+                                                @if (tk.Topic != null)
+                                                {
+                                                    <a href="javascript:void(0);" onclick="ShowTopic(event, '@tk.Topic.Id', this);" class="topic-label">
+                                                        <span class="label label-info">@tk.Topic.Name</span>
+                                                    </a>
+                                                }
+                                                <span class="label label-info @(tk.UpdateReason == QbicleActivity.ActivityUpdateReasonEnum.NoUpdates ? " update-reason-hide" : "" )">@tk.UpdateReason.GetDescription()</span>
+
+                                                <span class="label label-default pin-this @pinnedClass" id="pinIcon-@tk.Id" onclick="PinnedActivity('@tk.Id', false, event)">
+                                                    <i class="fa fa-thumb-tack"></i>
+                                                </span>
+                                            </div>
+                                            <a href="javascript:void(0);" title="Click here go to Task detail" onclick="ShowTaskPage('@tk.Key', false);">
+                                                <div class="activity-overview generic">
+                                                    <h5>
+                                                        <span>Cleanbooks Task /</span> @tk.Name
+                                                    </h5>
+                                                    <p>
+                                                        @Html.Raw(tk.Description != null ? tk.Description.Replace(Environment.NewLine, "<br />") : "")
+                                                    </p>
+                                                </div>
+
+                                            </a>
+                                            @{
+                                                var taskUrl = "";
+                                                if (tk.Qbicle.Members.Any(u => u.Id == currentUserId))
+                                                {
+                                                    taskUrl = $"/Apps/Tasks";
+                                                }
+                                            }
+                                            <a href="@taskUrl" title="Click here go to @_cbTask.tasktype.Name">
+                                                <div class="activity-specifics">
+                                                    <ul>
+                                                        <li>
+                                                            <i class="fa fa-briefcase"></i> @_cbTask.tasktype.Name
+                                                        </li>
+                                                        <li>
+                                                            <i class="fa fa-warning"></i> @tk.Priority
+                                                        </li>
+                                                    </ul>
+                                                </div>
+                                            </a>
+                                        </div>
+                                        <div class="clearfix"></div>
+                                    </article>
+
+                                    <div class="clearfix"></div>
+                                    <!-- END Task post (my post) -->
+                                }
+                                else if (tk.ComplianceTask != null)
+                                {
+                                    <article id="activity-@tk.Id" class="activity event_snippet @classMyPostOrReply">
+                                        <div class="activity-avatar" style="background-image: url('@(api+tk.StartedBy.ProfilePic)&size=T');"></div>
+                                        <div class="activity-detail">
+                                            <div class="activity-meta">
+                                                <h4>@tk.Name</h4>
+                                                <small>@(date.Date == today.Date ? "Today, " + tk.TimeLineDate.ToString("hh:mmtt") : tk.TimeLineDate.ToString("dd MMM yyyy, hh:mmtt"))</small>
+                                                <br class="visible-xs">
+                                                @if (tk.Topic != null)
+                                                {
+                                                    <a href="javascript:void(0);" onclick="ShowTopic(event, '@tk.Topic.Id', this);" class="topic-label">
+                                                        <span class="label label-info">@tk.Topic.Name</span>
+                                                    </a>
+                                                }
+                                                <span class="label label-info @(tk.UpdateReason == QbicleActivity.ActivityUpdateReasonEnum.NoUpdates ? " update-reason-hide" : "" )">@tk.UpdateReason.GetDescription()</span>
+                                                <span class="label label-default pin-this @pinnedClass" id="pinIcon-@tk.Id" onclick="PinnedActivity('@tk.Id', false, event)">
+                                                    <i class="fa fa-thumb-tack"></i>
+                                                </span>
+                                            </div>
+                                            @{
+                                                var complianceTaskUrl = "";
+                                                if (tk.Qbicle.Members.Any(u => u.Id == currentUserId))
+                                                {
+                                                    complianceTaskUrl = $"/Operator/ComplianceTask?id=" + tk.ComplianceTask.Id + "&tid=" + tk.Id;
+                                                }
+                                            }
+                                            <a href="@complianceTaskUrl">
+                                                <div class="activity-overview task">
+                                                    <h5><span>@(tk.ComplianceTask.Type == Qbicles.Models.Operator.Compliance.TaskType.Repeatable ? "Repeating" : "") Compliance Task /</span> Operator</h5>
+                                                    <p>@tk.ComplianceTask.WorkGroup.Name Workgroup</p>
+                                                </div>
+                                                <div class="activity-specifics">
+                                                    <ul>
+                                                        <li><i class="fa fa-wpforms"></i> @tk.ComplianceTask.OrderedForms.Count() Forms</li>
+                                                        <li>
+                                                            <i class="fa fa-clock-o"></i>
+                                                            @{
+                                                                var minutes = tk.ComplianceTask.OrderedForms.Sum(s => s.FormDefinition.EstimatedTime);
+                                                            }
+                                                            @(minutes > 60 ? $"{minutes / 60}h" : $"{minutes}m") total
+                                                        </li>
+                                                        <li><i class="fa fa-user"></i> @HelperClass.GetFullNameOfUser(tk.StartedBy)</li>
+                                                        @if (tk.isRecurs)
+                                                        {
+                                                            <li><i class="fa fa-recycle"></i> Recurring</li>
+                                                        }
+                                                    </ul>
+                                                </div>
+                                            </a>
+                                        </div>
+                                        <div class="clearfix"></div>
+                                    </article>
+                                    <div class="clearfix"></div>
+                                }
+                                else
+                                {
+                                    <article id="activity-@tk.Id" class="activity task_snippet @classMyPostOrReply">
+                                        <div class="activity-avatar" style="background-image: url('@(api+pic)&size=T');"></div>
+                                        <div class="activity-detail">
+                                            <div class="activity-meta">
+                                                <h4>@createByName</h4>
+                                                <small>@(date.Date == today.Date ? "Today, " + tk.TimeLineDate.ToString("hh:mmtt") : tk.TimeLineDate.ToString("dd MMM yyyy, hh:mmtt"))</small>
+                                                <br class="visible-xs">
+                                                @if (tk.Topic != null)
+                                                {
+                                                    <a href="javascript:void(0);" onclick="ShowTopic(event, '@tk.Topic.Id', this);" class="topic-label">
+                                                        <span class="label label-info">@tk.Topic.Name</span>
+                                                    </a>
+                                                }
+                                                <span class="label label-info @(tk.UpdateReason == QbicleActivity.ActivityUpdateReasonEnum.NoUpdates ? " update-reason-hide" : "" )">@tk.UpdateReason.GetDescription()</span>
+
+                                                <span class="label label-default pin-this @pinnedClass" id="pinIcon-@tk.Id" onclick="PinnedActivity('@tk.Id', false, event)">
+                                                    <i class="fa fa-thumb-tack"></i>
+                                                </span>
+                                            </div>
+                                            <a href="javascript:void(0);" title="Click here go to Task detail" onclick="ShowTaskPage('@tk.Key', false);">
+
+                                                <div class="activity-overview task">
+                                                    <h5>
+                                                        <span>Task /</span> @tk.Name
+                                                    </h5>
+                                                    <p>
+                                                        @Html.Raw(tk.Description != null ? tk.Description.Replace(Environment.NewLine, "<br />") : "")
+                                                    </p>
+                                                </div>
+
+                                            </a>
+
+                                            <div class="activity-specifics">
+                                                <ul>
+                                                    <li>
+                                                        <i class="fa fa-warning"></i> @tk.Priority
+                                                    </li>
+                                                    @if (tk.ProgrammedStart.HasValue && tk.ProgrammedEnd.HasValue)
+                                                    {
+                                                        if (tk.ProgrammedStart.Value.Date == tk.ProgrammedEnd.Value.Date)
+                                                        {
+                                                            <li>
+                                                                <i class="fa fa-calendar"></i> @tk.ProgrammedStart.Value.ToString(dateFormat)
+                                                            </li>
+                                                            <li>
+                                                                <i class="fa fa-clock-o"></i> @(tk.ProgrammedStart.Value.ToString("hh:mmtt") + " - " + tk.ProgrammedEnd.Value.ToString("hh:mmtt"))
+                                                            </li>
+                                                        }
+                                                        else
+                                                        {
+                                                            <li>
+                                                                <i class="fa fa-calendar"></i> @(tk.ProgrammedStart.Value.ToString(dateFormat + " hh:mmtt") + " - " + tk.ProgrammedEnd.Value.ToString(dateFormat + " hh:mmtt"))
+                                                            </li>
+                                                        }
+                                                    }
+                                                    @if (tk.isRecurs)
+                                                    {
+                                                        <li>
+                                                            <i class="fa fa-recycle"></i> Recurring
+                                                        </li>
+                                                    }
+                                                </ul>
+                                            </div>
+
+                                        </div>
+                                        <div class="clearfix"></div>
+                                    </article>
+
+                                    <div class="clearfix"></div>
+                                    <!-- END Task post (my post) -->
+                                }
+
+                                break;
+                            <!-- Alert (my post) -->
+                            case QbicleActivity.ActivityTypeEnum.AlertActivity:
+                                var al = (QbicleAlert)activity;
+                                classMyPostOrReply = al.StartedBy.Id == currentUserId ? "me" : "";
+                                createByName = HelperClass.GetFullNameOfUser(al.StartedBy);
+                                pinnedClass = Model.Pinneds != null && Model.Pinneds.Any(e => e == al.Id) ? "pinned" : "";
+                                <article id="activity-@al.Id" class="activity alert_snippet @classMyPostOrReply">
+                                    <div class="activity-avatar" style="background-image: url('@(api+al.StartedBy.ProfilePic)&size=T');"></div>
+                                    <div class="activity-detail">
+                                        <div class="activity-meta">
+                                            <h4>@createByName</h4>
+                                            <small>@(date.Date == today.Date ? "Today, " + al.TimeLineDate.ToString("hh:mmtt") : al.TimeLineDate.ToString("dd MMM yyyy, hh:mmtt"))</small>
+                                            <br class="visible-xs">
+                                            @if (al.Topic != null)
+                                            {
+                                                <a href="javascript:void(0);" onclick="ShowTopic(event, '@al.Topic.Id', this);" class="topic-label">
+                                                    <span class="label label-info">@al.Topic.Name</span>
+                                                </a>
+                                            }
+                                            <span class="label label-info @(al.UpdateReason == QbicleActivity.ActivityUpdateReasonEnum.NoUpdates ? " update-reason-hide" : "" )">@al.UpdateReason.GetDescription()</span>
+                                            <span id="pinIcon-@al.Id" class="label label-default pin-this @pinnedClass" onclick="PinnedActivity('@al.Id', false, event)">
+                                                <i class="fa fa-thumb-tack"></i>
+                                            </span>
+                                        </div>
+
+                                        <a href="javascript:void(0);" onclick="ShowAlertPage('@al.Key', false);">
+                                            <div class="activity-overview alert-detail">
+                                                <h5>
+                                                    <span>Alert /</span> @al.Name
+                                                </h5>
+                                                <p>
+                                                    @Html.Raw(al.Content.Replace(Environment.NewLine, "<br />"))
+                                                </p>
+                                            </div>
+                                        </a>
+                                    </div>
+                                    <div class="clearfix"></div>
+                                </article>
+
+                                <div class="clearfix"></div>
+                                <!-- END Alert (my post) -->
+                                break;
+                            case QbicleActivity.ActivityTypeEnum.EventActivity:
+                                var ev = (QbicleEvent)activity;
+                                classMyPostOrReply = ev.StartedBy.Id == currentUserId ? "me" : "";
+                                createByName = HelperClass.GetFullNameOfUser(ev.StartedBy);
+                                pinnedClass = Model.Pinneds != null && Model.Pinneds.Any(e => e == ev.Id) ? "pinned" : "";
+                                <!-- Event -->
+                                <article id="activity-@ev.Id" class="activity event_snippet @classMyPostOrReply">
+                                    <div class="activity-avatar" style="background-image: url('@(api+ev.StartedBy.ProfilePic)&size=T');"></div>
+                                    <div class="activity-detail">
+                                        <div class="activity-meta">
+                                            <h4>@createByName</h4>
+                                            <small>@(date.Date == today.Date ? "Today, " + ev.TimeLineDate.ToString("hh:mmtt") : ev.TimeLineDate.ToString("dd MMM yyyy, hh:mmtt"))</small>
+                                            <br class="visible-xs">
+                                            @if (ev.Topic != null)
+                                            {
+                                                <a href="javascript:void(0);" onclick="ShowTopic(event, '@ev.Topic.Id', this);" class="topic-label">
+                                                    <span class="label label-info">@ev.Topic.Name</span>
+                                                </a>
+                                            }
+                                            <span class="label label-info @(ev.UpdateReason == QbicleActivity.ActivityUpdateReasonEnum.NoUpdates ? " update-reason-hide" : "" )">@ev.UpdateReason.GetDescription()</span>
+                                            <span class="label label-default pin-this @pinnedClass" id="pinIcon-@ev.Id" onclick="PinnedActivity('@ev.Id', false, event)">
+                                                <i class="fa fa-thumb-tack"></i>
+                                            </span>
+                                            @*@if (ev.StartedBy.Id != currentUserId)
+                                                {
+                                                if (ev.ActivityMembers.Any(u => u.Id == currentUserId))
+                                                {
+                                                <span class="label label-trans"><i class="fa fa-check green"></i> &nbsp; I'm attending</span>
+                                                }
+                                                }*@
+                                        </div>
+
+                                        <a href="javascript:void(0);" onclick="ShowEventPage('@ev.Key', false);">
+                                            <div class="activity-overview event-detail">
+                                                <h5>
+                                                    <span>Event /</span> @ev.Name
+                                                </h5>
+                                                <p>
+                                                    @Html.Raw(ev.Description != null ? ev.Description.Replace(Environment.NewLine, "<br />") : "")
+                                                </p>
+                                            </div>
+                                            <div class="activity-specifics">
+                                                <ul>
+                                                    @if (ev.Start.Date == ev.End.Date)
+                                                    {
+                                                        <li>
+                                                            <i class="fa fa-calendar"></i> @ev.Start.FormatDateTimeByUser(dateFormat)
+                                                        </li>
+                                                        <li>
+                                                            <i class="fa fa-clock-o"></i> @(ev.Start.ToString("hh:mmtt") + " - " + ev.End.ToString("hh:mmtt"))
+                                                        </li>
+                                                    }
+                                                    else
+                                                    {
+                                                        <li>
+                                                            <i class="fa fa-calendar"></i> @(ev.Start.ToString(dateFormat + " hh:mmtt") + " - " + ev.End.ToString(dateFormat + " hh:mmtt"))
+                                                        </li>
+                                                    }
+                                                    @if (!string.IsNullOrEmpty(ev.Location))
+                                                    {
+                                                        <li>
+                                                            <i class="fa fa-map-marker"></i> @ev.Location
+                                                        </li>
+                                                    }
+                                                </ul>
+                                            </div>
+                                        </a>
+                                    </div>
+                                    <div class="clearfix"></div>
+                                </article>
+                                <div class="clearfix"></div>
+                                <!-- END Event -->
+                                break;
+                            case QbicleActivity.ActivityTypeEnum.MediaActivity:
+                                var me = (QbicleMedia)activity;
+
+                                classMyPostOrReply = me.StartedBy.Id == currentUserId ? "me" : "";
+                                createByName = HelperClass.GetFullNameOfUser(me.StartedBy);
+                                pinnedClass = Model.Pinneds != null && Model.Pinneds.Any(e => e == me.Id) ? "pinned" : "";
+                                var mediaLastupdate = me.VersionedFiles.Where(e => !e.IsDeleted).OrderByDescending(x => x.UploadedDate).FirstOrDefault();
+                                var _mediatype = me.FileType?.Type ?? "";
+                                <article id="activity-@me.Id" class="activity media @classMyPostOrReply">
+                                    <div class="activity-avatar" style="background-image: url('@(api+me.StartedBy.ProfilePic)&size=T');"></div>
+                                    <div class="activity-detail">
+                                        <div class="activity-meta">
+                                            <h4>@createByName</h4>
+                                            <small>@(date.Date == today.Date ? "Today, " + me.TimeLineDate.ToString("hh:mmtt") : me.TimeLineDate.ToString("dd MMM yyyy, hh:mmtt"))</small>
+                                            <br class="visible-xs">
+                                            @if (me.Topic != null)
+                                            {
+                                                <a href="javascript:void(0);" onclick="ShowTopic(event, '@me.Topic.Id', this);" class="topic-label">
+                                                    <span class="label label-info">@me.Topic.Name</span>
+                                                </a>
+                                            }
+                                            @*<span class="label label-warning">Awaiting approval</span>*@
+                                            <span class="label label-info @(me.UpdateReason == QbicleActivity.ActivityUpdateReasonEnum.NoUpdates ? " update-reason-hide" : "" )">@me.UpdateReason.GetDescription()</span>
+                                            <span class="label label-default pin-this @pinnedClass" id="pinIcon-@me.Id" onclick="PinnedActivity('@me.Id', false, event)">
+                                                <i class="fa fa-thumb-tack"></i>
+                                            </span>
+                                        </div>
+
+                                        <div class="activity-overview media">
+                                            <div class="row">
+                                                <div class="col-xs-12">
+
+                                                    @if (_mediatype.Equals("Image File", StringComparison.OrdinalIgnoreCase))
+                                                    {
+                                                        <a href="javascript:void(0);" class="stream-img-preview" style="background-image: url('@(api+mediaLastupdate.Uri)&size=M');" onclick="@(_mediatype.Equals(" Video File", StringComparison.OrdinalIgnoreCase)?"":"ShowMediaPage('"+me.Key+"', false);") ">
+                                                        </a>
+                                                    }
+                                                    else if (_mediatype.Equals("Video File", StringComparison.OrdinalIgnoreCase))
+                                                    {
+                                                        <a href="javascript:void(0);" onclick="@(_mediatype.Equals(" Video File", StringComparison.OrdinalIgnoreCase)?"":"ShowMediaPage('"+me.Key+"', false);") ">
+                                                            <video width="640" height="320" controls="" id="embed" style="display: inline-block;" class="fancybox-video">
+                                                                <source src="@string.Format(videoApi,mediaLastupdate.Uri," mp4")" type="video/mp4">
+                                                                <source src="@string.Format(videoApi,mediaLastupdate.Uri," webm")" type="video/webm">
+                                                                <source src="@string.Format(videoApi,mediaLastupdate.Uri," ogv")" type="video/ogv">
+                                                            </video>
+                                                        </a>
+                                                    }
+                                                    else
+                                                    {
+                                                        <a href="javascript:void(0);" onclick="@(_mediatype.Equals(" Video File", StringComparison.OrdinalIgnoreCase)?"":"ShowMediaPage('"+me.Key+"', false);") ">
+                                                            <img id="media-uri" src='@(me.FileType?.IconPath)' />
+                                                        </a>
+                                                    }
+
+                                                </div>
+                                                <a class="col-xs-12 description" href="javascript:void(0);" onclick="ShowMediaPage('@me.Key', false);">
+                                                    <h5>@me.Name</h5>
+                                                    <p>
+                                                        @Html.Raw(me.Description != null ? me.Description.Replace(Environment.NewLine, "<br />") : "")
+                                                    </p>
+                                                    <small>@Utility.GetFileTypeDescription(me.FileType?.Extension) | @(mediaLastupdate == null ? "" : mediaLastupdate.BusinessMapping(currentTimeZone).UploadedDate.ToString("d MMM yyyy, hh:mmtt"))</small>
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="clearfix"></div>
+                                </article>
+                                <div class="clearfix"></div>
+
+                                <!-- END Media post -->
+                                break;
+                            case QbicleActivity.ActivityTypeEnum.Link:
+                                var lk = (QbicleLink)activity;
+                                classMyPostOrReply = lk.StartedBy.Id == currentUserId ? "me" : "";
+                                createByName = HelperClass.GetFullNameOfUser(lk.StartedBy);
+                                pinnedClass = Model.Pinneds != null && Model.Pinneds.Any(e => e == lk.Id) ? "pinned" : "";
+                                var mediaLinkupdate = lk.FeaturedImage != null ? lk.FeaturedImage.VersionedFiles.Where(e => !e.IsDeleted).OrderByDescending(x => x.UploadedDate).FirstOrDefault() : null;
+                                <article id="activity-@lk.Id" class="activity media @classMyPostOrReply">
+                                    <div class="activity-avatar" style="background-image: url('@(api+lk.StartedBy.ProfilePic)&size=T');"></div>
+                                    <div class="activity-detail">
+                                        <div class="activity-meta">
+                                            <h4>@createByName</h4>
+                                            <small>@(date.Date == today.Date ? "Today, " + lk.TimeLineDate.ToString("hh:mmtt") : lk.TimeLineDate.ToString("dd MMM yyyy, hh:mmtt"))</small>
+                                            <br class="visible-xs">
+                                            @if (lk.Topic != null)
+                                            {
+                                                <a href="javascript:void(0);" onclick="ShowTopic(event, '@lk.Topic.Id', this);" class="topic-label">
+                                                    <span class="label label-info">@lk.Topic.Name</span>
+                                                </a>
+                                            }
+                                            <span class="label label-info @(lk.UpdateReason == QbicleActivity.ActivityUpdateReasonEnum.NoUpdates ? " update-reason-hide" : "" )">@lk.UpdateReason.GetDescription()</span>
+                                            <span class="label label-default pin-this @pinnedClass" id="pinIcon-@lk.Id" onclick="PinnedActivity('@lk.Id', false, event)">
+                                                <i class="fa fa-thumb-tack"></i>
+                                            </span>
+                                        </div>
+
+                                        <div class="activity-overview media">
+                                            <div class="row">
+                                                @if (mediaLinkupdate != null)
+                                                {
+                                                    <div class="col-xs-12">
+                                                        <a href="javascript:ShowLinkPage('@lk.Key', false)" class="stream-img-preview" style="background-image: url('@api@(mediaLinkupdate.Uri)&size=M');">&nbsp;</a>
+                                                    </div>
+                                                }
+                                                <div class="col-xs-12 description">
+                                                    <h5 style="cursor:pointer" onclick="javascript: ShowLinkPage('@lk.Key', false)">@lk.Name</h5>
+                                                    <p>@lk.Description</p>
+                                                    <p>
+                                                        <i class="fa fa-external-link-alt" style="color: rgba(0, 0, 0, 0.2);"></i> &nbsp;
+                                                        <a href="@lk.URL" target="_blank">
+                                                            @{
+                                                                Uri myUri = new Uri(lk.URL);
+                                                                string host = !string.IsNullOrEmpty(myUri.Host) ? myUri.Host : lk.URL;
+                                                            }
+                                                            @host
+                                                        </a>
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="clearfix"></div>
+                                </article>
+                                <div class="clearfix"></div>
+
+                                break;
+                            case QbicleActivity.ActivityTypeEnum.DiscussionActivity:
+                                var ds = (QbicleDiscussion)activity;
+                                classMyPostOrReply = ds.StartedBy.Id == currentUserId ? "me" : "";
+                                createByName = HelperClass.GetFullNameOfUser(ds.StartedBy);
+                                pinnedClass = Model.Pinneds != null && Model.Pinneds.Any(e => e == ds.Id) ? "pinned" : "";
+                                var urldisDetail = "javascript:void(0);";
+                                var breadcrumbDiscus = "";
+                                var destilte = "";
+                                var metatilte = "";
+                                var isMember = ds.Qbicle.Members.Any(u => u.Id == currentUserId);
+                                if (!Model.IsFilterDiscussionOrder)//Show all Discussion is Order and Discussion for Qbicle
+                                {
+                                    if (ds.DiscussionType == QbicleDiscussion.DiscussionTypeEnum.B2CProductMenu || ds.DiscussionType == QbicleDiscussion.DiscussionTypeEnum.B2COrder)
+                                    {
+                                        if (isMember) { urldisDetail = $"/B2C/DiscussionMenu?disKey={ds.Key}"; }
+
+                                        var iconFeatured = Qbicles.BusinessRules.HelperClass.ToDocumentUri(Qbicles.BusinessRules.Helper.ConfigManager.CommunityShop);
+                                        var buttonName = "View & manage";
+                                        if (ds.DiscussionType == QbicleDiscussion.DiscussionTypeEnum.B2COrder)
+                                        {
+                                            if (isMember) { urldisDetail = $"/B2C/DiscussionOrder?disKey={ds.Key}"; }
+
+                                            iconFeatured = Qbicles.BusinessRules.HelperClass.ToDocumentUri(Qbicles.BusinessRules.Helper.ConfigManager.Communitybuysell);
+                                            buttonName = "View order";
+                                        }
+                                        <article id="activity-@ds.Id" class="stream-shout gift animated fadeIn">
+
+                                            <img src="@iconFeatured" class="wow">
+
+                                            <div class="promoinfo">
+                                                <h5>@ds.Name</h5>
+                                                <p><em>"@ds.Summary"</em></p>
+                                                <br>
+                                                <div style="margin-bottom: 30px;">
+                                                    <a href="@urldisDetail" class="btn btn-info community-button w-auto">@buttonName</a>
+                                                </div>
+                                            </div>
+
+                                        </article>
+                                    }
+                                    else if (ds.DiscussionType == QbicleDiscussion.DiscussionTypeEnum.B2BOrder)
+                                    {
+                                        if (isMember) { urldisDetail = $"/Commerce/DiscussionOrder?disKey={ds.Key}"; }
+                                        <article id="activity-@ds.Id" class="stream-shout gift animated fadeIn">
+
+                                            <img src="@Qbicles.BusinessRules.HelperClass.ToDocumentUri(Qbicles.BusinessRules.Helper.ConfigManager.B2BBuySell)" class="wow">
+
+                                            <div class="promoinfo">
+                                                <h5>@ds.Name</h5>
+                                                <p>
+                                                    @ds.Summary
+                                                </p>
+
+                                                <br>
+                                                <a href="@urldisDetail" class="btn btn-info community-button w-auto">View &amp; manage</a>
+                                            </div>
+
+                                        </article>
+                                    }
+                                    else
+                                    {
+                                        <article id="activity-@ds.Id" class="activity media @classMyPostOrReply">
+                                            <div class="activity-avatar" style="background-image: url('@(api+ds.StartedBy.ProfilePic)&size=T');"></div>
+                                            <div class="activity-detail">
+                                                <div class="activity-meta">
+                                                    @if (ds.DiscussionType == QbicleDiscussion.DiscussionTypeEnum.IdeaDiscussion)
+                                                    {
+                                                        if (isMember) { urldisDetail = "/SalesMarketingIdea/DiscussionIdea?disId=" + ds.Id; }
+
+                                                        breadcrumbDiscus = "via Sales &amp; Marketing &gt; Ideas/Themes";
+                                                        destilte = "<h5><a style=\"color:#333\" href=\"" + urldisDetail + "\">" + ds.Name + "</a></h5>";
+                                                        metatilte = "<h4>Sales &amp; Marketing Theme Discussion</h4>";
+                                                    }
+                                                    else if (ds.DiscussionType == QbicleDiscussion.DiscussionTypeEnum.PlaceDiscussion)
+                                                    {
+                                                        if (isMember) { urldisDetail = "/SalesMarketingLocation/DiscussionPlace?disId=" + ds.Id; }
+
+                                                        breadcrumbDiscus = "via Sales &amp; Marketing &gt; Places";
+                                                        destilte = "<h5><a style=\"color:#333\" href=\"" + urldisDetail + "\">" + ds.Name + "</a></h5>";
+                                                        metatilte = "<h4>Sales & Marketing Place Discussion</h4>";
+                                                    }
+                                                    else if (ds.DiscussionType == QbicleDiscussion.DiscussionTypeEnum.GoalDiscussion)
+                                                    {
+                                                        if (isMember) { urldisDetail = "/Operator/DiscussionGoal?disId=" + ds.Id; }
+
+                                                        breadcrumbDiscus = "via Operator &gt; Goal";
+                                                        destilte = "<h5><a style=\"color:#333\" href=\"" + urldisDetail + "\">" + ds.Name + "</a></h5>";
+                                                        metatilte = "<h4>Operator Goal Discussion</h4>";
+                                                    }
+                                                    else if (ds.DiscussionType == QbicleDiscussion.DiscussionTypeEnum.ComplianceTaskDiscussion)
+                                                    {
+                                                        if (isMember) { urldisDetail = "/Operator/DiscussionComplianceTask?disId=" + ds.Id; }
+
+                                                        breadcrumbDiscus = "via Operator &gt; Compliance Task";
+                                                        destilte = "<h5><a style=\"color:#333\" href=\"" + urldisDetail + "\">" + ds.Name + "</a></h5>";
+                                                        metatilte = "<h4>Operator Compliance Task Discussion</h4>";
+                                                    }
+                                                    else if (ds.DiscussionType == QbicleDiscussion.DiscussionTypeEnum.CashManagement)
+                                                    {
+                                                        if (isMember) { urldisDetail = "/CashManagement/DiscussionCashManagementShow?disKey=" + ds.Key; }
+
+                                                        breadcrumbDiscus = "via Cash Management";
+                                                        destilte = "<h5><a style=\"color:#333\" href=\"" + urldisDetail + "\">" + ds.Name + "</a></h5>";
+                                                        metatilte = "<h4>Cash Management Discussion</h4>";
+                                                    }
+                                                    else
+                                                    {
+                                                        if (isMember) { urldisDetail = "/Qbicles/DiscussionQbicle?disKey=" + ds.Key; }
+
+                                                        destilte = "<h5><a style=\"color:#333\" href=\"" + urldisDetail + "\">" + ds.ActivityMembers.Count + " participants</a></h5>";
+                                                        metatilte = "<h4>" + ds.Name + "</h4>";
+                                                        breadcrumbDiscus = "";
+                                                    }
+                                                    @Html.Raw(metatilte)
+                                                    <small>@(date.Date == today.Date ? "Today, " + ds.TimeLineDate.ToString("hh:mmtt") : ds.TimeLineDate.ToString("dd MMM yyyy, hh:mmtt"))</small>
+
+                                                    <br class="visible-xs">
+                                                    @if (ds.Topic != null)
+                                                    {
+                                                        <a href="javascript:void(0);" onclick="ShowTopic(event, '@ds.Topic.Id', this);" class="topic-label">
+                                                            <span class="label label-info">@ds.Topic.Name</span>
+                                                        </a>
+                                                    }
+                                                    <span class="label label-default pin-this @pinnedClass" id="pinIcon-@ds.Id" onclick="PinnedActivity('@ds.Id', false, event)">
+                                                        <i class="fa fa-thumb-tack"></i>
+                                                    </span>
+                                                </div>
+                                                @{ var isImage = string.IsNullOrEmpty(ds.FeaturedImageUri);}
+                                                <div class="activity-overview @(isImage?" task":"media")">
+                                                    <div class="row">
+                                                        @if (!isImage)
+                                                        {
+                                                            <div class="col-xs-12">
+                                                                <a href="@urldisDetail" class="stream-img-preview" style="background-image: url('@(api+ds.FeaturedImageUri)&size=M');">&nbsp;</a>
+                                                            </div>
+                                                        }
+                                                        <div class="col-xs-12 description">
+                                                            @Html.Raw(destilte)
+                                                            <a href="@urldisDetail">
+                                                                <p>@ds.Summary</p>
+                                                                @if (!string.IsNullOrEmpty(breadcrumbDiscus))
+                                                                {
+                                                                    <small>@Html.Raw(breadcrumbDiscus)</small>
+                                                                }
+                                                            </a>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="clearfix"></div>
+                                        </article>
+                                    }
+                                    <div class="clearfix"></div>
+                                }
+                                else if (Model.IsFilterDiscussionOrder)//Show Only Discussion is Order
+                                {
+                                    var iconFeatured = Qbicles.BusinessRules.HelperClass.ToDocumentUri(Qbicles.BusinessRules.Helper.ConfigManager.CommunityShop);
+                                    var buttonName = "View & manage";
+                                    if (isMember && ds.DiscussionType == QbicleDiscussion.DiscussionTypeEnum.B2COrder)
+                                    {
+                                        urldisDetail = $"/B2C/DiscussionOrder?disKey={ds.Key}";
+                                        buttonName = "View order";
+                                    }
+                                    else if (isMember && ds.DiscussionType == QbicleDiscussion.DiscussionTypeEnum.B2BOrder)
+                                    {
+                                        urldisDetail = $"/Commerce/DiscussionOrder?disKey={ds.Key}";
+                                        iconFeatured = Qbicles.BusinessRules.HelperClass.ToDocumentUri(Qbicles.BusinessRules.Helper.ConfigManager.B2BBuySell);
+                                    }
+                                    <article id="activity-@ds.Id" class="stream-shout gift animated fadeIn">
+
+                                        <img src="@iconFeatured" class="wow">
+
+                                        <div class="promoinfo">
+                                            <h5>@ds.Name</h5>
+                                            <p><em>"@ds.Summary"</em></p>
+                                            <br>
+                                            <div style="margin-bottom: 30px;">
+                                                <a href="@urldisDetail" class="btn btn-info community-button w-auto">@buttonName</a>
+                                            </div>
+                                        </div>
+
+                                    </article>
+                                }
+                                break;
+                            case QbicleActivity.ActivityTypeEnum.SharedHLPost:
+                                var sharedObj = (HLSharedPost)item;
+                                var sharedClass = sharedObj.SharedBy.Id == currentUserId ? "me" : "";
+                                <article class="activity event_snippet @sharedClass" style="margin-bottom: 25px;">
+                                    <div class="activity-avatar" style="background-image: url('@((sharedObj.SharedBy.ProfilePic).ToDocumentUri())&size=T');"></div>
+                                    <div class="activity-detail">
+                                        <article class="promo-block">
+                                            <div class="what">
+                                                <div class="user-options" style="margin-left: 0;">
+                                                    <div style="display: flex; flex-direction: row;">
+                                                        <div class="user-metainfo">
+                                                            @if (sharedObj.SharedBy.Id == currentUserId)
+                                                            {
+                                                                <h5 style="padding-bottom: 5px;">You shared a Highlight with @(sharedObj.SharedWith.DisplayUserName ?? sharedObj.SharedWith.GetFullName())</h5><br />
+                                                            }
+                                                            else
+                                                            {
+                                                                <h5 style="padding-bottom: 5px;">@(sharedObj.SharedBy.DisplayUserName ?? sharedObj.SharedBy.GetFullName()) shared a Highlight with you</h5><br />
+                                                            }
+                                                            <smaller>@(sharedObj.ShareDate.ToString("dd MMM yyyy, hh:mmtt"))</smaller>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="post-body">
+                                                        <div class="labelling">
+                                                            @{
+                                                                var type = "";
+                                                                if (sharedObj.SharedPost.Type == HighlightPostType.Listings)
+                                                                {
+                                                                    type = (sharedObj.SharedPost as ListingHighlight).ListingHighlightType.GetDescription();
+                                                                }
+                                                                else
+                                                                {
+                                                                    type = sharedObj.SharedPost.Type.GetDescription();
+                                                                }
+                                                            }
+                                                            <label class="label label-lg label-primary">@(type)</label>
+                                                            @if (sharedObj.SharedPost.Type == HighlightPostType.Listings)
+                                                            {
+                                                                var eventCountry = "Available everywhere";
+                                                                var eventArea = "";
+                                                                var countryStr = (sharedObj.SharedPost as ListingHighlight).Country?.CommonName ?? "";
+                                                                if (!string.IsNullOrEmpty(countryStr))
+                                                                {
+                                                                    eventCountry = countryStr;
+                                                                    eventArea = (sharedObj.SharedPost as ListingHighlight).ListingLocation?.Name ?? "";
+                                                                    if (!string.IsNullOrEmpty(eventArea))
+                                                                    {
+                                                                        eventCountry = eventArea + ", " + eventCountry;
+                                                                    }
+                                                                }
+                                                                <label class="label label-lg label-info">@eventCountry</label>
+                                                            }
+                                                        </div>
+
+                                                        <a href="/HighlightPost/HighlightPostDetail?hlPostId=@sharedObj.SharedPost.Id">
+                                                            <div class="highlight-img ful" style="background-image: url('@sharedObj.SharedPost.ImgUri.ToDocumentUri().ToString()');">&nbsp;</div>
+                                                        </a>
+
+                                                        <div class="post-options">
+                                                            <div class="row">
+                                                                <div class="col-xs-7">
+                                                                    <div style="display: flex; flex-direction: row; position: absolute; top: -20px; left: 0;">
+                                                                        <div class="who mb"><div class="who-avatar mb" style="border: 0; background-image: url('@(sharedObj.SharedPost.Domain.LogoUri.ToDocumentUri().ToString())');"></div></div>
+
+                                                                        <div class="user-metainfo mb" style="padding-left: 15px;">
+                                                                            <h5 style="font-size: 12px;">@(sharedObj.SharedPost.Domain.Name)</h5>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="col-xs-5 text-right"><a href="#lovedby" data-toggle="modal" style="font-weight: 500; position: relative;">@(sharedObj.SharedPost.LikedBy?.Count ?? 0) people love this</a></div>
+                                                            </div>
+                                                        </div>
+
+
+                                                        <div class="user-post" style="padding-top: 45px;">
+                                                            <a href="/HighlightPost/HighlightPostDetail?hlPostId=@sharedObj.SharedPost.Id">
+                                                                <h1>@sharedObj.SharedPost.Title</h1>
+                                                            </a>
+
+                                                            <div class="tag-list">
+                                                                @foreach (var tagItem in sharedObj.SharedPost.Tags)
+                                                                {
+                                                                    <a href="#" class="label label-soft">#@tagItem.Name</a>
+                                                                }
+                                                            </div>
+
+                                                            <br /><br />
+                                                            <p>@sharedObj.SharedPost.Content</p>
+
+                                                            <br />
+
+                                                            @if (sharedObj.SharedPost is EventListingHighlight)
+                                                            {
+                                                                var eventHL = sharedObj.SharedPost as EventListingHighlight;
+                                                                <table class="table app_specific table-borderless highlinfo">
+                                                                    <tbody>
+                                                                        <tr>
+                                                                            <td><strong>When</strong></td>
+                                                                            <td>@(eventHL.StartDate.ConvertTimeFromUtc(currentTimeZone).ToString(dateFormat)) - @(eventHL.EndDate.ConvertTimeFromUtc(currentTimeZone).ToString(dateFormat))</td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <td><strong>Where</strong></td>
+                                                                            <td>@(eventHL.EventLocation ?? "")</td>
+                                                                        </tr>
+                                                                    </tbody>
+                                                                </table>
+
+                                                                <br />
+                                                            }
+
+                                                            <a href="/HighlightPost/HighlightPostDetail?hlPostId=@sharedObj.SharedPost.Id" class="btn btn-primary community-button w-auto">View Highlight</a>
+                                                        </div>
+
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </article>
+                                    </div>
+                                    <div class="clearfix"></div>
+                                </article>
+                                <div class="clearfix"></div>
+                                break;
+                            case QbicleActivity.ActivityTypeEnum.SharedPromotion:
+                                var sharedPromotionObj = (LoyaltySharedPromotion)item;
+                                sharedClass = sharedPromotionObj.SharedBy.Id == currentUserId ? "me" : "";
+                                <article class="activity event_snippet @sharedClass" style="margin-bottom: 25px;">
+                                    <div class="activity-avatar" style="background-image: url('@((sharedPromotionObj.SharedBy.ProfilePic).ToDocumentUri())&size=T');"></div>
+                                    <div class="activity-detail">
+                                        <article class="promo-block col">
+                                            <div class="what">
+                                                <div class="user-options" style="margin-left: 0;">
+
+                                                    <div style="display: flex; flex-direction: row;">
+
+
+                                                        <div class="user-metainfo">
+                                                            @if (sharedPromotionObj.SharedBy.Id == currentUserId)
+                                                            {
+                                                                <h5 style="padding-bottom: 5px;">You shared a Promotion with @(sharedPromotionObj.SharedWith.DisplayUserName ?? sharedPromotionObj.SharedWith.GetFullName())</h5><br>
+                                                            }
+                                                            else
+                                                            {
+                                                                <h5 style="padding-bottom: 5px;">@(sharedPromotionObj.SharedBy.DisplayUserName ?? sharedPromotionObj.SharedBy.GetFullName()) shared a Promotion with you</h5><br>
+                                                            }
+
+                                                            <smaller>@(sharedPromotionObj.ShareDate.ToString("dd MMM yyyy, hh:mmtt"))</smaller>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="post-body">
+                                                        <div class="labelling">
+
+
+                                                        </div>
+
+                                                        <a href="/Monibac/PromotionDetailView?promotionKey=@sharedPromotionObj.SharedPromotion.Key">
+                                                            <div class="highlight-img" style="background-image: url('@(sharedPromotionObj.SharedPromotion.FeaturedImageUri.ToDocumentUri().ToString())');">&nbsp;</div>
+                                                        </a>
+
+                                                        <div class="post-options">
+                                                            <div class="row">
+                                                                <div class="col-xs-7">
+                                                                    <div style="display: flex; flex-direction: row; position: absolute; top: -20px; left: 0;">
+                                                                        <div class="who mb"><div class="who-avatar mb" style="border: 0; background-image: url('@(sharedPromotionObj.SharedPromotion.Domain.LogoUri.ToDocumentUri().ToString())');"></div></div>
+
+                                                                        <div class="user-metainfo mb" style="padding-left: 15px;">
+                                                                            <h5 style="font-size: 12px;">@(sharedPromotionObj.SharedPromotion.Domain.Name)</h5>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="col-xs-5 text-right"><a href="#lovedby" data-toggle="modal" style="font-weight: 500; position: relative;">@(sharedPromotionObj.SharedPromotion.LikedBy?.Count ?? 0) people love this</a></div>
+                                                            </div>
+                                                        </div>
+
+
+                                                        <div class="user-post">
+                                                            <div>
+                                                                <h1>@(sharedPromotionObj.SharedPromotion.Name)</h1>
+                                                                @{
+                                                                    var remainHtmlStr = sharedPromotionObj.SharedPromotion.CalRemainPromotionInfo(currentTimeZone, dateFormat, DateTime.UtcNow);
+                                                                }
+
+                                                                @if (remainHtmlStr.Contains("Offer expired"))
+                                                                {
+                                                                    <span class="countdown2 label label-info label-lg" style="font-size: 12px; top: 0;">@Html.Raw(remainHtmlStr)</span>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <span class="countdown2 label label-warning label-lg" style="font-size: 12px; top: 0;">@Html.Raw(remainHtmlStr)</span>
+                                                                }
+
+                                                                <br><br><br>
+
+                                                                <p>@sharedPromotionObj.SharedPromotion.Description</p>
+                                                            </div>
+
+
+                                                            <br><br>
+                                                            <a href="/Monibac/PromotionDetailView?promotionKey=@sharedPromotionObj.SharedPromotion.Key" class="btn btn-primary community-button w-auto">View Promotion</a>
+
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </article>
+                                    </div>
+                                    <div class="clearfix"></div>
+                                </article>
+                                <div class="clearfix"></div>
+                                break;
+                        }
+                    }
+                }
+            </div>
+        }
+        catch (Exception ex)
+        {
+            throw ex;
+        }
+        count++;
+    }
+
+}

@@ -1,0 +1,172 @@
+﻿@using Qbicles.Models.TraderApi
+@using Qbicles.BusinessRules.Helper
+@using Qbicles.BusinessRules
+@using Qbicles.Models.B2C_C2C
+@using Qbicles.Models
+@model TradeOrder
+@{
+    var currencySetting = (CurrencySetting)ViewBag.CurrencySetting;
+    var businessProfile = Model.SellingDomain?.Id.BusinesProfile();
+    
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var _order = JsonHelper.ParseAs<Order>(Model.OrderJson);
+    if (_order == null)
+    {
+        _order = new Order();
+    }
+    decimal cartTotal = 0;
+    _order.Items.ForEach(it =>
+    {
+        cartTotal += it.Variant.AmountInclTax * it.Quantity;
+        it.Extras.ForEach(e =>
+        {
+            cartTotal += e.AmountInclTax * it.Quantity;
+        });
+    });
+}
+<div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+            <h5 class="modal-title">Order #@Model.OrderReference.FullRef</h5>
+        </div>
+        <div class="modal-body">
+
+            <div class="article-feature">
+                <div class="info">
+
+                    <ul class="avatar-listing team unstyled">
+                        <li>
+                            <a href="my-contact-profile.php" target="_blank">
+                                <div class="owner-avatar">
+                                    <div class="avatar-sm" style="background: url('@(api+businessProfile.LogoUri)&size=T');"></div>
+                                </div>
+                                <h5>@businessProfile.BusinessName<br><small>@Model.CreateDate.ToString("ddnn MMMM yyyy, hh:mmtt", true)</small></h5>
+                            </a>
+                        </li>
+                    </ul>
+
+                </div>
+            </div>
+
+            <label>Your items</label><br>
+            <table class="datatable table-striped table-hover theorder" style="width: 100%;">
+                <thead>
+                    <tr>
+                        <th>Item &amp; extras</th>
+                        <th>Quantity</th>
+                        <th data-orderable="false">Discount (%)</th>
+                        <th>Taxes (@currencySetting.CurrencySymbol)</th>
+                        <th data-orderable="false">Price (@currencySetting.CurrencySymbol)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (_order.Items == null || _order.Items.Count == 0)
+                    {
+                        <tr>
+                            <td colspan="5">Your items are currently empty</td>
+                        </tr>
+                    }
+                    else
+                    {
+                        foreach (var orderItem in _order.Items)
+                        {
+                            decimal discount = 0;
+                            var taxes = new List<Tax>();
+                        <tr>
+                            <td>
+                                @{
+                                    decimal subTotal = orderItem.Variant.AmountInclTax * orderItem.Quantity;
+                                    decimal subTotalWithoutDiscount = 0;
+
+                                    decimal variantPrice = orderItem.Variant.AmountInclTax;
+                                    discount += orderItem.Variant.Discount;
+                                    taxes.AddRange(orderItem.Variant.Taxes);
+                                    foreach (var itemExtras in orderItem.Extras)
+                                    {
+                                        subTotal += itemExtras.AmountInclTax * orderItem.Quantity;
+                                        discount += itemExtras.Discount;
+                                        taxes.AddRange(itemExtras.Taxes);
+                                    }
+
+                                    if (orderItem.Variant.Discount < 100)
+                                    {
+                                        subTotalWithoutDiscount = (subTotal / (1 - orderItem.Variant.Discount / 100));
+
+                                    }
+                                }
+
+                                @{
+                                    var subTotalWithoutDiscountStr = "";
+                                    if (subTotalWithoutDiscount > subTotal)
+                                    {
+                                        subTotalWithoutDiscountStr = currencySetting.CurrencySymbol + subTotalWithoutDiscount.ToDecimalPlace(currencySetting);
+                                    }
+
+                                    if (orderItem.Variant.Discount < 100)
+                                    {
+                                        variantPrice = (variantPrice / (1 - orderItem.Variant.Discount / 100));
+                                        foreach (var extraItem in orderItem.Extras)
+                                        {
+                                            extraItem.AmountInclTax = (extraItem.AmountInclTax / (1 - orderItem.Variant.Discount / 100));
+                                        }
+                                    }
+                                }
+                                @orderItem.Name
+
+                                <div class="row cartitemxtra" style="margin-top: 10px; padding: 0;">
+                                    <div class="col-xs-6">
+                                        <h6>@orderItem.Variant.Name</h6>
+                                    </div>
+                                    <div class="col-xs-6 text-right">
+                                        <h6>@variantPrice.ToCurrencySymbol(currencySetting)</h6>
+                                    </div>
+                                </div>
+                                @foreach (var itemExtra in orderItem.Extras)
+                                {
+                                    <div class="row cartitemxtra">
+                                        <div class="col-xs-6"><h6>+ @itemExtra.Name</h6></div>
+                                        <div class="col-xs-6 text-right"><h6>@itemExtra.AmountInclTax.ToCurrencySymbol(currencySetting)</h6></div>
+                                    </div>
+                                }
+                            </td>
+                            <td>@((int)orderItem.Quantity)</td>
+                            <td>@((int)discount)</td>
+                            <td>
+                                @{ 
+                                    var taxInfo = "";
+                                    if (taxes == null || taxes.Count <= 0)
+                                    {
+                                        taxInfo = "--";
+                                    }
+                                    else
+                                    {
+                                        taxInfo = taxes.Sum(s => s.AmountTax).ToDecimalPlace(currencySetting); ;
+                                    }
+                                }
+                                @taxInfo
+                            </td>
+                            <td>
+                            <span style="opacity: 0.6; text-decoration: line-through;" class="red">@subTotalWithoutDiscountStr</span> 
+                            @currencySetting.CurrencySymbol@subTotal.ToDecimalPlace(currencySetting)</td>
+                        </tr>
+                        }
+                    }
+
+                </tbody>
+            </table>
+
+            <div class="order-total">
+                <label>Total</label>
+                <h4>@cartTotal.ToCurrencySymbol(currencySetting)</h4>
+            </div>
+
+
+
+            <div class="order-options">
+                <a href="~/C2C/ContactStore?orderId=@Model.Id" class="btn btn-info community-button w-auto" target="_blank">Contact store</a>
+            </div>
+
+        </div>
+    </div><!-- /.modal-content -->
+</div><!-- /.modal-dialog -->

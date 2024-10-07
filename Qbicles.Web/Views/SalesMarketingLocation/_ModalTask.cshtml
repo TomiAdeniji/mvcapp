@@ -1,0 +1,601 @@
+﻿@using Qbicles.BusinessRules;
+@using Qbicles.Models;
+@model QbicleTask
+@{
+    var placeId = ViewBag.placeId;
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var taskId = ViewBag.taskId != null ? (int)ViewBag.taskId : 0;
+    var taskKey = (string)ViewBag.taskKey;
+    if (Model != null)
+    {
+        taskId = Model.Id;
+    }
+
+    var Recurrance = ((QbicleRecurrance)ViewBag.Recurrance) ?? new QbicleRecurrance();
+    var lstMonth = ((List<CustomDateModel>)ViewBag.lstMonth) ?? new List<CustomDateModel>();
+    var dbContext = new Qbicles.BusinessRules.Model.ApplicationDbContext();
+    var CurrentUserId = (string)ViewBag.CurrentUserId;
+
+    var setting = (Qbicles.Models.SalesMkt.Settings)ViewBag.MarketingSetting;
+    var currentQbicleId = setting?.SourceQbicle?.Id ?? 0;
+    var currentQbicle = setting?.SourceQbicle ?? new Qbicle();
+
+    var qbicleTopics = new TopicRules(dbContext).GetTopicByQbicle(currentQbicleId);
+    var taskPrioritys = HelperClass.EnumModel.GetEnumValuesAndDescriptions<QbicleTask.TaskPriorityEnum>();
+    var taskDurationUnit = HelperClass.EnumModel.GetEnumValuesAndDescriptions<QbicleTask.TaskDurationUnitEnum>();
+    var listFileType = new FileTypeRules(dbContext).GetExtension();
+    string fileAccept = listFileType.Count() > 0 ? ("." + string.Join(",.", listFileType)) : "";
+    var Peoble = Model != null && Model.AssociatedSet != null ? Model.AssociatedSet.Peoples : null;
+    var Relates = Model != null && Model.AssociatedSet != null ? Model.AssociatedSet.Relateds : null;
+    var count = 0;
+}
+<!--Create task modal-->
+<div class="modal fade left" id="create-task" role="dialog" aria-labelledby="create-task">
+    <div class="modal-dialog" role="document" style="width: 800px;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">@(taskId > 0 ? "Edit this task" : "Add a task")</h5>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-xs-12">
+                        <ul id="taskTabs" class="app_subnav flextabs" style="padding-top: 0;">
+                            <li class="active"><a href="#create-task-overview" data-toggle="tab">Overview</a></li>
+                            <li><a href="#create-task-people" data-toggle="tab">People</a></li>
+                            <li><a href="#create-task-checklist" data-toggle="tab">Steps</a></li>
+                            <li><a href="#create-task-recurrence" data-toggle="tab" onclick="update_recurrence()">Recurrence</a></li>
+                            <li><a href="#create-task-related" data-toggle="tab">Related</a></li>
+                        </ul>
+                    </div>
+                </div>
+                <br />
+                <form id="form_task_addedit" enctype="multipart/form-data">
+                    <div class="tab-content">
+                        <!-- Task Overview -->
+                        <div class="tab-pane fade in active" id="create-task-overview">
+                            <div class="well custom">
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label>Task name</label>
+                                            <input type="text" id="taskName" name="Name" value="@(Model!=null?Model.Name:"")" required class="form-control">
+                                            <input id="taskKey" type="hidden" name="Key" value="@taskKey" />
+                                            <input id="taskQbicleId" type="hidden" name="qbicleId" value="@currentQbicleId" />
+                                            <input id="taskRecurranceId" type="hidden" name="RecurranceId" value="@Recurrance.Id" />
+                                            <input id="placeId" type="hidden" name="placeId" value="@placeId" />
+                                            <input type="hidden" id="sm-place-task-object-key" name="mediaObjectKey" />
+                                            <input type="hidden" id="sm-place-task-object-name" name="mediaObjectName" />
+                                            <input type="hidden" id="sm-place-task-object-size" name="mediaObjectSize" />
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="topic">Choose a topic</label>
+                                            <select name="TopicId" id="taskTopicId" class="form-control select2" style="width: 100%;">
+                                                @foreach (var item in qbicleTopics)
+                                                {
+                                                    <option value="@item.Id" @(Model != null && item.Id == Model.Topic.Id ? "selected" : "")>@item.Name</option>
+                                                }
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="priority">Priority</label>
+                                            @*QBIC-3386: Set “Priority 2 (general)” as the default value instead of “Priority 1 (critical)”*@
+                                            @{
+                                                var selectedPriority = 0;
+                                                if (Model == null || Model.Priority <= 0)
+                                                {
+                                                    selectedPriority = (int)QbicleTask.TaskPriorityEnum.General;
+                                                }
+                                                else
+                                                {
+                                                    selectedPriority = (int)Model.Priority;
+                                                }
+                                            }
+                                            <select class="form-control select2" name="priority" id="selectTaskPriority" style="width: 100%;">
+                                                @foreach (var pri in taskPrioritys)
+                                                {
+                                                    <option value="@pri.Key" @(pri.Key == selectedPriority ? "selected" : "")>@pri.Value</option>
+                                                }
+                                            </select>
+                                            <div style="clear: both;"></div>
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="event-date">Start date &amp; time</label>
+                                            <input type="text" required name="ProgrammedStart" id="taskProgrammedStart" class="form-control single-date" value="@(Model!=null?Model.ProgrammedStart.Value.ToString("dd/MM/yyyy hh:mm"):"")" onchange="update_recurrence()" placeholder="Select a date and time">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <label for="task-duration">Duration</label><br />
+                                        <div class="form-flex" style="margin-bottom: 25px; width: 200px;">
+                                            <div class="col-input">
+                                                <input type="number" required class="form-control inline" name="Duration" id="taskDuration" value="@(Model!=null?Model.Duration:0)" min="1" onchange="update_recurrence();">
+                                                <label id="taskDuration-error" class="error hidden" for="taskDuration"></label>
+                                            </div>
+                                            <div class="col-fluid" style="margin-left: 10px;">
+                                                <select name="DurationUnit" class="form-control select2" id="taskDurationUnit" style="width: 100%;" onchange="update_recurrence();">
+                                                    @foreach (var item in taskDurationUnit)
+                                                    {
+                                                        <option value="@item.Key" @(Model != null && (int)Model.DurationUnit == item.Key ? "selected" : "")>@item.Value</option>
+                                                    }
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-xs-12">
+                                        <div class="form-group">
+                                            <label for="task-description">Task description</label>
+                                            <textarea id="taskDescription" name="Description" class="form-control" required style="min-height: 80px;">@(Model!=null?Model.Description:"")</textarea>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-xs-12">
+                                        <div class="form-group" style="margin: 0;">
+                                            <label for="task-attachments">Attach a file</label>
+                                            <input type="file" id="taskAttachments" name="taskAttachments" accept="@fileAccept" class="form-control">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <br />
+                            <a data-toggle="tab" class="btn btn-success" onclick="NextTab_Overview()">Next &nbsp; <i class="fa fa-angle-right"></i></a>
+                        </div>
+                        <!-- END Task Overview -->
+                        <!-- People -->
+                        <div class="tab-pane fade" id="create-task-people">
+                            <div class="well custom avatarpicker">
+                                <div class="form-group" style="margin: 0;">
+                                    <label for="assignee">Assignee</label>
+                                    <select name="Assignee" class="form-control select2avatartask" style="width: 100%;">
+                                        @foreach (var item in currentQbicle.Members)
+                                        {
+                                            <option avatarUrl="@(api+item.ProfilePic)" @(Peoble != null && Peoble.Any(s => s.User.Id == item.Id) ? "selected" : "") value="@item.Id">@HelperClass.GetFullNameOfUser(item, CurrentUserId)</option>
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+
+                            <br />
+
+                            <div class="well custom avatarpickermulti">
+                                <div class="form-group" style="margin: 0;">
+                                    <label for="Watchers">Watchers</label>
+                                    <select name="Watchers" class="form-control select2avatartask" data-placeholder="Optional" multiple style="width: 100%;">
+                                        @foreach (var item in currentQbicle.Members)
+                                        {
+                                            <option avatarUrl="@(api+item.ProfilePic)" @(Peoble != null && Peoble.Any(s => s.User.Id == item.Id) ? "selected" : "") value="@item.Id">@HelperClass.GetFullNameOfUser(item)</option>
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+
+                            <br />
+                            <a href="#create-task-overview" data-toggle="tab" class="btn btn-warning btnPrevious"><i class="fa fa-angle-left"></i> &nbsp; Previous</a>
+                            <a href="#create-task-checklist" data-toggle="tab" class="btn btn-success btnNext">Next &nbsp; <i class="fa fa-angle-right"></i></a>
+                        </div>
+                        <!-- END People -->
+                        <!-- Checklist steps -->
+                        <div class="tab-pane fade" id="create-task-checklist">
+                            <div class="well custom">
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-12 col-md-6 col-lg-6">
+                                        <label>Include a checklist of steps involved</label><br />
+                                        <div class="checkbox toggle">
+                                            <label>
+                                                <input data-toggle="toggle" name="isSteps" @(Model != null && Model.isSteps ? "checked" : "") data-onstyle="success" value="true" type="checkbox" onchange="$('.checklist').toggle();">
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="checklist" style="margin-top: 30px;display: @(Model!=null&&Model.isSteps?"block":"none");">
+                                    <div class="form-row sortable" id="sortable">
+                                        @if (Model == null || Model.QSteps.Count == 0)
+                                        {
+                                            <!-- Step -->
+                                            <div class="first-step">
+                                                <div class="row preview-area" onclick="$(this).next('.row-options').slideToggle();">
+                                                    <div class="col-xs-9">
+                                                        <h5><i id="q1title" class="stepTitle" style="font-size: 13px;">Click to configure this step</i></h5>
+                                                    </div>
+                                                    <div class="col-xs-3"><a href="#" class="remove" onclick="RemoveStep(this)"><i class="fa fa-remove"></i></a></div>
+                                                </div>
+                                                <div class="row-options">
+                                                    <input type="hidden" name="Steplst[0].Order" class="fieldOrder" value="0" />
+                                                    <input type="hidden" name="Steplst[0].Id" class="fieldId" value="0" />
+                                                    <div class="form-group">
+                                                        <label>Title</label>
+                                                        <input type="text" name="Steplst[0].Name" required class="form-control fieldName" onkeyup="$('#q1title').html($(this).val());">
+                                                        <label id="Steplst[0].Name-error" class="error lblErrorName" style="display:none" for="Steplst[0].Name"></label>
+                                                    </div>
+
+                                                    <div class="form-group">
+                                                        <label>Description</label>
+                                                        <textarea name="Steplst[0].Description" required class="form-control fieldDescription" style="height: 70px;"></textarea>
+                                                        <label id="Steplst[0].Description-error" class="error lblErrorDescription" style="display:none" for="Steplst[0].Description"></label>
+                                                    </div>
+
+                                                    <label for="weight">Step weight</label><br />
+                                                    <div class="input-group" style="max-width: 150px;">
+                                                        <input type="number" name="Steplst[0].Weight" required class="form-control fieldWeight" value="100" min="0" max="100">
+                                                        <label id="Steplst[0].Weight-error" class="error hidden lblErrorWeight" for="Steplst[0].Weight"></label>
+                                                        <span class="input-group-addon">%</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <!-- END Step -->
+                                        }
+                                        else
+                                        {
+                                            foreach (var item in Model.QSteps.OrderBy(s => s.Order))
+                                            {
+                                                count++;
+                                                <!-- Step -->
+                                                <div class="@(count==1?"first-step":"")">
+                                                    <div class="row preview-area" onclick="$(this).next('.row-options').slideToggle();">
+                                                        <div class="col-xs-9">
+                                                            <h5><i id="q@(count)title" class="stepTitle" style="font-size: 13px;">@item.Name</i></h5>
+                                                        </div>
+                                                        <div class="col-xs-3"><a href="#" class="remove" onclick="RemoveStep(this)"><i class="fa fa-remove"></i></a></div>
+                                                    </div>
+                                                    <div class="row-options">
+                                                        <input type="hidden" name="Order" class="fieldOrder" value="@item.Order" />
+                                                        <input type="hidden" name="Id" class="fieldId" value="@item.Id" />
+                                                        <div class="form-group">
+                                                            <label>Title</label>
+                                                            <input type="text" name="Name" required value="@item.Name" class="form-control fieldName" onkeyup="$('#q@(count)title').html($(this).val());">
+                                                            <label id="Steplst[@count].Name-error" class="error lblErrorName" style="display:none" for="Steplst[@count].Name"></label>
+                                                        </div>
+
+                                                        <div class="form-group">
+                                                            <label>Description</label>
+                                                            <textarea name="Description" required class="form-control fieldDescription" style="height: 70px;">@item.Description</textarea>
+                                                            <label id="Steplst[@count].Description-error" class="error lblErrorDescription" style="display:none" for="Steplst[@count].Description"></label>
+                                                        </div>
+
+                                                        <label for="weight">Step weight</label><br />
+                                                        <div class="input-group" style="max-width: 150px;">
+                                                            <input type="number" value="@item.Weight" required name="Weight" class="form-control fieldWeight" min="0" max="100">
+                                                            <label id="Steplst[@count].Weight-error" class="error hidden lblErrorWeight" for="Steplst[@count].Weight"></label>
+                                                            <span class="input-group-addon">%</span>
+                                                        </div>
+
+                                                    </div>
+                                                </div>
+                                                <!-- END Step -->
+                                            }
+
+                                        }
+                                        <button type="button" id="btnAddStep" onclick="AddStep()" class="btn btn-success" style="margin-top:10px"><i class="fa fa-plus"></i> &nbsp; Add a step</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <br />
+                            <a href="#create-task-people" data-toggle="tab" class="btn btn-warning btnPrevious"><i class="fa fa-angle-left"></i> &nbsp; Previous</a>
+                            <a onclick="NextTab_Task();" class="btn btn-success">Next &nbsp; <i class="fa fa-angle-right"></i></a>
+                        </div>
+                        <!-- END Checklist steps -->
+                        <!-- Recurrence -->
+                        <div class="tab-pane fade" style="min-height: 80vh;" id="create-task-recurrence">
+                            @if (Model == null || Model.Id == 0 || !Model.isRecurs)
+                            {
+                                <div class="well custom">
+                                    <div class="row">
+                                        <div class="col-xs-12 col-sm-12 col-md-6 col-lg-6">
+                                            <label>Allow this task to recur</label><br />
+                                            <div class="checkbox toggle">
+                                                <label>
+                                                    <input data-toggle="toggle" name="isRecurs" @(Model != null && Model.isRecurs ? "checked" : "") data-onstyle="success" value="true" type="checkbox" onchange="TaskRecursCheck(this)">
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div id="TaskRecurrence" class="recurrence" style="display: @(Model!=null&&Model.isRecurs?"block":"none"); margin-top: 30px;">
+                                        <div id="task-restricted" class="activity-overview generic restricted help-text animated bounce" style="display: none;">
+                                            <i class="fa fa-info-circle"></i>
+                                            <p>Your recurrence options are dictated by your Task Overview's duration (<span id="task-indicated-duration" class="indicated-duration" style="font-weight: 600;"></span>). Daily and weekly recurrence are not available for tasks that span over 24 hours and 7 days respectively, for example.</p>
+                                        </div>
+
+                                        <div class="row">
+                                            <div class="col-xs-12 col-sm-6">
+                                                <div class="form-group">
+                                                    <label for="recurring">What type of recurrence?</label>
+                                                    <select class="form-control" name="recurring" id="TaskRecurtype" onchange="show_recur($(this).val());">
+                                                        <option value="">Please select</option>
+                                                        <option value="daily" id="dailyopt">Daily</option>
+                                                        <option value="weekly" id="weeklyopt">Weekly</option>
+                                                        <option value="monthly" id="monthlyopt">Monthly</option>
+                                                    </select>
+                                                    <input type="hidden" id="hdTaskRecurrenceType" name="Type" value="@Recurrance.Type" />
+                                                    <input type="hidden" id="hdTaskDayOfWeek" name="dayofweek" value="" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <!-- Daily -->
+                                        <div id="TaskRecur" class="recur" style="display: none;">
+                                            <div class="row">
+                                                <div class="col-xs-6">
+                                                    <div class="form-group">
+                                                        <label for="start">Start date &amp; time</label>
+                                                        <input type="text" name="recur-start" class="form-control" value="@(Recurrance.FirstOccurrence!=null?Convert.ToDateTime(Recurrance.FirstOccurrence).ToString("dd/MM/yyyy HH:mm"):"")" disabled>
+                                                    </div>
+                                                </div>
+                                                <div class="col-xs-6">
+                                                    <div class="form-group">
+                                                        <label for="start">Duration</label>
+                                                        <input type="text" name="duration" class="form-control indicated-duration" value="..." disabled>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="row">
+                                                <div class="col-xs-6">
+                                                    <div class="form-group">
+                                                        <label for="start">Last occurence</label>
+                                                        <input type="text" name="recur-final" class="form-control singledate" value="@(Recurrance!=null && Recurrance.LastOccurrence!=null?Convert.ToDateTime(Recurrance.LastOccurrence).ToString("dd/MM/yyyy HH:mm"):"")">
+                                                        <input type="hidden" id="hdTaskLastOccurrence" name="LastOccurrence" value="@(Recurrance!=null && Recurrance.LastOccurrence!=null?Convert.ToDateTime(Recurrance.LastOccurrence).ToString("dd/MM/yyyy HH:mm"):"")" />
+                                                        @if ((int)Recurrance.Type == 0 || (int)Recurrance.Type == 1)
+                                                        {
+                                                            <input type="hidden" id="hdTaskDayOrMonth" name="DayOrMonth" value="@(Recurrance!=null && Recurrance.Days!=null?Recurrance.Days:"")" />
+                                                        }
+                                                        else
+                                                        {
+                                                            <input type="hidden" id="hdTaskDayOrMonth" name="DayOrMonth" value="@(Recurrance!=null && Recurrance.Months!=null?Recurrance.Months:"")" />
+                                                        }
+
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="recurtype task-recur-daily task-recurtype" style="display:none">
+                                                <div class="row">
+                                                    <div class="col-xs-12">
+
+                                                        <label>Included days</label><br />
+
+                                                        <label class="checkbox-inline">
+                                                            <input class="daily" type="checkbox" att-checked="1" value="Monday" checked onchange="ChangeTaskCheckItem(this)">Monday
+                                                        </label>
+                                                        <label class="checkbox-inline">
+                                                            <input class="daily" type="checkbox" att-checked="1" value="Tuesday" checked onchange="ChangeTaskCheckItem(this)">Tuesday
+                                                        </label>
+                                                        <label class="checkbox-inline">
+                                                            <input class="daily" type="checkbox" att-checked="1" value="Wednesday" checked onchange="ChangeTaskCheckItem(this)">Wednesday
+                                                        </label>
+                                                        <label class="checkbox-inline">
+                                                            <input class="daily" type="checkbox" att-checked="1" value="Thursday" checked onchange="ChangeTaskCheckItem(this)">Thursday
+                                                        </label>
+                                                        <label class="checkbox-inline">
+                                                            <input class="daily" type="checkbox" att-checked="1" value="Friday" checked onchange="ChangeTaskCheckItem(this)">Friday
+                                                        </label>
+                                                        <label class="checkbox-inline">
+                                                            <input class="daily" type="checkbox" att-checked="1" value="Saturday" checked onchange="ChangeTaskCheckItem(this)">Saturday
+                                                        </label>
+                                                        <label class="checkbox-inline">
+                                                            <input class="daily" type="checkbox" att-checked="1" value="Sunday" checked onchange="ChangeTaskCheckItem(this)">Sunday
+                                                        </label>
+
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="recurtype task-recur-weekly task-recurtype" style="display: none;">
+                                                <div class="row">
+                                                    <div class="col-xs-12">
+
+                                                        <label>Day</label><br />
+
+                                                        <label class="radio-inline">
+                                                            <input class="weekly" type="radio" att-checked="1" name="day[]" value="Monday" onchange="ChangeTaskCheckItem(this)" checked>Monday
+                                                        </label>
+                                                        <label class="radio-inline">
+                                                            <input class="weekly" type="radio" att-checked="0" name="day[]" value="Tuesday" onchange="ChangeTaskCheckItem(this)">Tuesday
+                                                        </label>
+                                                        <label class="radio-inline">
+                                                            <input class="weekly" type="radio" att-checked="0" name="day[]" value="Wednesday" onchange="ChangeTaskCheckItem(this)">Wednesday
+                                                        </label>
+                                                        <label class="radio-inline">
+                                                            <input class="weekly" type="radio" att-checked="0" name="day[]" value="Thursday" onchange="ChangeTaskCheckItem(this)">Thursday
+                                                        </label>
+                                                        <label class="radio-inline">
+                                                            <input class="weekly" type="radio" att-checked="0" name="day[]" value="Friday" onchange="ChangeTaskCheckItem(this)">Friday
+                                                        </label>
+                                                        <label class="radio-inline">
+                                                            <input class="weekly" type="radio" att-checked="0" name="day[]" value="Saturday" onchange="ChangeTaskCheckItem(this)">Saturday
+                                                        </label>
+                                                        <label class="radio-inline">
+                                                            <input class="weekly" type="radio" att-checked="0" name="day[]" value="Sunday" onchange="ChangeTaskCheckItem(this)">Sunday
+                                                        </label>
+
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="recurtype task-recur-monthly task-recurtype" style="display: none;">
+                                                <div class="row">
+                                                    <div class="col-xs-6">
+                                                        <div class="form-group">
+                                                            <label for="start">Pattern</label>
+                                                            <select id="pattern" name="pattern" class="form-control select2" style="width: 100%;" onchange="changePattern()">
+                                                                <option value=""></option>
+                                                                <option value="0" selected>First day of each month</option>
+                                                                <option value="1">Last day of each month</option>
+                                                                <option value="2">Custom date</option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                    <div id="customDate" class="col-xs-6 custom" style="display: none;">
+
+                                                        <div class="form-group">
+                                                            <label>&nbsp;</label><br />
+                                                            <div class="form-flex" style="width: 210px;">
+                                                                <div class="col">On the</div>
+                                                                <div class="col-input">
+                                                                    <input type="hidden" id="hdTaskcustomDate" name="customDate" value="2" />
+                                                                    <select id="month-dates" name="monthdates" class="form-control select2 inline" style="width: 100%;" onchange="changePattern()">
+                                                                        <option value="2">2nd</option>
+                                                                        <option value="3">3rd</option>
+                                                                        <option value="4">4th</option>
+                                                                        <option value="5">5th</option>
+                                                                        <option value="6">6th</option>
+                                                                        <option value="7">7th</option>
+                                                                        <option value="8">8th</option>
+                                                                        <option value="9">9th</option>
+                                                                        <option value="10">10th</option>
+                                                                        <option value="11">11th</option>
+                                                                        <option value="12">12th</option>
+                                                                        <option value="13">13th</option>
+                                                                        <option value="14">14th</option>
+                                                                        <option value="15">15th</option>
+                                                                        <option value="16">16th</option>
+                                                                        <option value="17">17th</option>
+                                                                        <option value="18">18th</option>
+                                                                        <option value="19">19th</option>
+                                                                        <option value="20">20th</option>
+                                                                        <option value="21">21st</option>
+                                                                        <option value="22">22nd</option>
+                                                                        <option value="23">23rd</option>
+                                                                        <option value="24">24th</option>
+                                                                        <option value="25">25th</option>
+                                                                        <option value="26">26th</option>
+                                                                        <option value="27">27th</option>
+                                                                        <option value="28">28th</option>
+                                                                        <option value="29">29th</option>
+                                                                        <option value="30">30th</option>
+                                                                    </select>
+                                                                </div>
+                                                                <div class="col">of each month</div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+
+                                                <div class="row">
+                                                    <div class="col-xs-12">
+
+                                                        <label>Included months</label><br />
+                                                        @if (lstMonth.Any())
+                                                        {
+                                                            foreach (var item in lstMonth)
+                                                            {
+                                                                <label class="checkbox-inline">
+                                                                    <input class="monthTask" type="checkbox" att-checked="1" value="@item.Name" checked onchange="ChangeTaskCheckItem(this)">@item.Name
+                                                                </label>
+                                                            }
+                                                        }
+                                                    </div>
+                                                </div>
+
+                                            </div>
+
+                                            <br />
+                                            <button type="button" class="btn btn-info" onclick="GenarateDateTable(true)">Generate list</button>
+
+
+                                            <div id="task-exclusion-list" class="exclusion-list" style="margin: 30px 0 0 0; display: none;">
+
+                                                <div class="scroll-basket" style="padding-right: 20px;">
+
+                                                    <table id="lstDate" class="table app_specific" style="background: #fff; margin: 0;">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>Date</th>
+                                                                <th>Included</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody></tbody>
+                                                    </table>
+
+                                                </div>
+
+
+                                            </div>
+
+                                        </div>
+                                        <!-- END Daily -->
+                                    </div>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="well custom">
+                                    <p>
+                                        This Task is part of a recurring set. You can optionally cancel and delete all future recurrences below. If you do so, any existing activities that have
+                                        been started early won't be deleted so you don't lose any work.
+                                    </p>
+
+                                    <br>
+                                    <button class="btn btn-danger" id="stop-recurring" type="button" onclick="CountCanTasksDelete(@Model.Id)"><i class="fa fa-calendar-times"></i> &nbsp; Stop recurring now</button>
+                                </div>
+                            }
+                            <br />
+                            <a href="#create-task-checklist" data-toggle="tab" class="btn btn-warning btnPrevious"><i class="fa fa-angle-left"></i> &nbsp; Previous</a>
+                            <a href="#create-task-related" data-toggle="tab" class="btn btn-success btnNext">Next &nbsp; <i class="fa fa-angle-right"></i></a>
+                        </div>
+                        <!-- END Recurrence -->
+                        <!-- Related -->
+                        <div class="tab-pane fade" id="create-task-related">
+                            <div class="well custom">
+                                <div class="form-group" style="margin: 0;">
+                                    <label for="Related">Associate the following activities</label>
+                                    <select name="ActivitiesRelate" class="form-control select2" multiple style="width: 100%;">
+                                        @if (Relates != null)
+                                        {
+                                            foreach (var item in Relates)
+                                            {
+                                                var activity = item.Activity;
+                                                <option value="@activity.Id" selected>@activity.Name</option>
+                                            }
+                                        }
+                                    </select>
+                                </div>
+                                <br />
+                                <table id="rlActivities" class="datatable table-striped table-hover" style="width: 100%;">
+                                    <thead>
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Type</th>
+                                            <th>Related</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                                <br /><br />
+                            </div>
+                            <br />
+                            <a href="#create-task-recurrence" data-toggle="tab" class="btn btn-warning btnPrevious"><i class="fa fa-angle-left"></i> &nbsp; Previous</a>
+                            <button class="btn btn-success" type="button" onclick="SaveTaskLocationPlace()">Confirm &amp; save</button>
+
+                        </div>
+                        <!-- END Related -->
+                    </div>
+                </form>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/qbicle.model-task.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/qbicle.model-task.js"></script>
+    }
+}
+<!--End modal create task-->
+<script>
+    $(document).ready(function (e) {
+        $("#selectTaskPriority").select2();
+    })
+</script>

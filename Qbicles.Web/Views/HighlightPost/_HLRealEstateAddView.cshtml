@@ -1,0 +1,284 @@
+﻿@using Qbicles.Models.Highlight
+@using Qbicles.Models.Qbicles
+@using Qbicles.BusinessRules
+@using Qbicles.BusinessRules.Model
+@model RealEstateListingHighlight
+@{
+    var timezone = (string)ViewBag.TimeZone;
+    var dateformat = (string)ViewBag.CurrentDateFormat;
+    var listCountries = (List<Country>)ViewBag.ListCountries;
+    var listLocations = (List<Select2Option>)ViewBag.ListLocations;
+    var propertyTypeList = (List<PropertyType>)ViewBag.PropTypeList;
+    var propertyList = (List<PropertyExtras>)ViewBag.PropertiesList;
+    var imgAcceptedFile = (string)ViewBag.ImageAcceptedExtensions;
+    var lstTags = (List<string>)ViewBag.ListTags;
+}
+<div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+            <h5 class="modal-title">@(Model == null ? "Add Real Estate" : "Edit Real Estate")</h5>
+        </div>
+        <div class="modal-body">
+            <form id="realestate-form">
+                <div class="well custom" style="padding-bottom: 5px;">
+                    <input type="hidden" id="listing-realestate-id" value="@(Model?.Id ?? 0)" />
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group">
+                                <label for="country">Country</label>
+                                <select name="country" id="listing-realestate-country" onchange="CheckShowingAreaSelection(this, 'area-realestate')" class="form-control select2" style="width: 100%;">
+                                    @{
+                                        var isAllListingCountriesSelected = (Model == null || Model.Country == null) ? "selected" : "";
+                                        var lstCountryCommonNames = listCountries.Select(p => p.CommonName).ToList();
+                                    }
+                                    <option value="" @isAllListingCountriesSelected>Available everywhere</option>
+                                    @foreach (var countryItem in lstCountryCommonNames)
+                                    {
+                                        var isCountrySelected = Model != null && Model.Country != null && Model.Country.CommonName == countryItem ? "selected" : "";
+                                        <option value="@countryItem" @isCountrySelected>@countryItem</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                        @if (listLocations.Count <= 1)
+                        {
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group" id="area-realestate" style="display: none;">
+                                    <label for="location">Area</label>
+                                    <select name="location" class="form-control select2" id="listing-realestate-location" style="width: 100%;"></select>
+                                </div>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group" id="area-realestate">
+                                    <label for="location">Area</label>
+                                    <select name="location" class="form-control select2" id="listing-realestate-location" style="width: 100%;">
+                                        @{ var chosenLocationId = Model?.ListingLocation?.Id ?? 0;}
+                                        @foreach (var locationItem in listLocations)
+                                        {
+                                            var isSelected = locationItem.id == chosenLocationId.ToString() ? "selected" : "";
+                                            <option @isSelected value="@locationItem.id">@locationItem.text</option>
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group">
+                                <label for="reference">Reference</label>
+                                <input type="text" name="reference" id="realestate-ref" class="form-control" value="@(Model?.Reference ?? "")">
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group">
+                                <label for="title">Title</label>
+                                <input type="text" name="title" id="realestate-title" value="@(Model?.Title ?? "")" class="form-control">
+                            </div>
+                        </div>
+                        <div class="col-xs-12">
+                            <div class="form-group">
+                                <label for="tags">Tags (optional)</label><br>
+                                <select name="tags" id="realestate-tag" class="form-control select2tag" style="width: 100%;" multiple placeholder="Type a tag and hit enter to add it">
+                                    @foreach (var tagItem in lstTags)
+                                    {
+                                        var isSelected = (Model != null && Model.Tags != null && Model.Tags.Select(t => t.Name).ToList().Contains(tagItem)) ? "selected" : "";
+                                        <option value="@tagItem" @isSelected>@tagItem</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group">
+                                <label for="image">Featured image</label>
+                                <br />
+                                @{
+                                    var attachmentsCount = "";
+                                    var btnCss = "fa fa-plus";
+                                    if (Model != null && Model.Id > 0 && Model.RealEstateListImgs != null && Model.RealEstateListImgs.Count > 0)
+                                    {
+                                        attachmentsCount = $" Attachments {Model.RealEstateListImgs?.Count.ToString()}";
+                                        btnCss = "fa fa-paperclip";
+                                    }
+                                }
+                                <button class="btn btn-info" id="add_attachment" data-toggle="modal" data-target="#attachments-view"><i id="attachment-icon" class="@btnCss"></i> @attachmentsCount</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-xs-12">
+                            <div class="form-group">
+                                <label for="summary">Property overview</label>
+                                <textarea name="summary" id="realestate-summary" class="form-control" style="max-width: 100%; height: 120px;">@(Model?.Content ?? "")</textarea>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group">
+                                <label for="summary">Property type</label>
+                                <select name="type" id="realestate-property-type" class="form-control select2" style="width: 100%;">
+                                    <option value=""></option>
+                                    @foreach (var typeItem in propertyTypeList)
+                                    {
+                                        var isSelected = (Model != null && Model.PropType?.Id == typeItem.Id) ? "selected" : "";
+                                        <option @isSelected value="@typeItem.Id">@typeItem.Name</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-sm-3">
+                            <div class="form-group">
+                                <label for="summary">Bedrooms</label>
+                                <input type="number" id="realestate-bedroom-number" class="form-control" value="@(Model?.BedRoomNum ?? 0)">
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-sm-3">
+                            <div class="form-group">
+                                <label for="summary">Bathrooms</label>
+                                <input type="number" id="realestate-bathroom-number" class="form-control" value="@(Model?.BathRoomNum ?? 0)">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group">
+                                <label for="price">Pricing info</label>
+                                <input type="text" id="realestate-pricing-info" value="@(Model?.PricingInfo ?? " ")" class="form-control" placeholder="e.g. 'Offers over £100,000'">
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group">
+                                <label for="options">Included with property</label>
+                                <select name="options" id="realestate-properties" class="form-control checkmulti" multiple>
+                                    @foreach (var propertyItem in propertyList)
+                                    {
+                                        var isSelected = (Model != null && Model.IncludedProperties.Any(pitem => pitem.Id == propertyItem.Id)) ? "selected" : "";
+                                        <option @isSelected value="@propertyItem.Id">@propertyItem.Name</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+
+                <br />
+                <button class="btn btn-danger" type="button" data-dismiss="modal">Cancel</button>
+                <button class="btn btn-success" type="submit">Confirm</button>
+            </form>
+        </div>
+    </div><!-- /.modal-content -->
+</div><!-- /.modal-dialog -->
+<div class="modal fade left" style="z-index: 99999" id="attachments-view" role="dialog" aria-labelledby="attachments-view">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" onclick="CloseModalAttachment()" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Manage Attachments Add</h5>
+            </div>
+            <div class="modal-body">
+
+                <div class="row">
+                    <div class="col-xs-12 col-md-6">
+
+                        <div class="activity-overview task" style="margin-bottom: 40px;">
+                            <form name="add_attachment" id="attachments">
+                                <div class="repeater_wrap">
+                                    @if (Model != null && Model.Id > 0 && Model.RealEstateListImgs != null && Model.RealEstateListImgs.Count > 0)
+                                    {
+                                        var index = 0;
+                                        foreach (var itemAttached in Model.RealEstateListImgs.OrderBy(x => x.Order))
+                                        {
+                                            index++;
+                                            <div class="row edit_attachment_row inputFile_@itemAttached.Id" imgkey="@itemAttached.Id">
+                                                <div class="col-xs-12">
+                                                    <div class="form-group">
+                                                        <label for="name">Name</label>
+                                                        <input id="file_id_@(index)" type="hidden" value="@itemAttached.Order" />
+                                                        <input id="inputiconpath_edit@(index)" type="hidden" value="@itemAttached.FileType.IconPath" />
+                                                        <input id="imgkey_edit@(index)" type="hidden" value="@itemAttached.Id" />
+                                                        <input type="text" name="name" id="inputfilename_edit@(index)" class="form-control" value="@itemAttached.Name">
+                                                    </div>
+                                                </div>
+                                                <div class="col-xs-12">
+                                                    <div class="form-group">
+                                                        <label for="file">File</label>
+                                                        <input type="file" name="file" accept="@imgAcceptedFile" class="form-control inputfile">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <div class="row add_attachment_row" imgkey="0">
+                                            <div class="col-xs-12">
+                                                <div class="form-group">
+                                                    <label for="name">Name</label>
+                                                    <input type="text" name="name" id="inputfilename1" class="form-control">
+                                                </div>
+                                            </div>
+                                            <div class="col-xs-12">
+                                                <div class="form-group">
+                                                    <label for="file">File</label>
+                                                    <input type="file" name="file" accept="@imgAcceptedFile" class="form-control inputfile">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+
+                                <button type="button" class="btn btn-info" id="app_attachment_trigger"><i class="fa fa-plus"></i> &nbsp; Add another</button>
+                                @if (Model != null && Model.Id > 0)
+                                {
+                                    <button type="button" class="btn btn-success" onclick="ConfirmAttachment(true)"><i class="fa fa-check"></i> &nbsp; Confirm add</button>
+                                }
+                                else
+                                {
+                                    <button type="button" class="btn btn-success" onclick="ConfirmAttachment(false)"><i class="fa fa-check"></i> &nbsp; Confirm add</button>
+                                }
+                                <button type="button" class="btn btn-danger" onclick="CloseModalAttachment()"><i class="fa fa-remove"></i> &nbsp; Cancel</button>
+                            </form>
+                        </div>
+
+                    </div>
+                    <div class="col-xs-12 col-md-6">
+
+                        <ul class="domain-change-list unstyled cap-height" style="margin-top: 0;">
+                            @if (Model != null && Model.Id > 0 && Model.RealEstateListImgs != null && Model.RealEstateListImgs.Count > 0)
+                            {
+                                foreach (var itemAttached in Model.RealEstateListImgs)
+                                {
+                                    <li>
+                                        <a onclick="RemoveReImage('@itemAttached.Id', @Model.Id, this)">
+                                            <img src="@itemAttached.FileType.IconPath" style="max-width: 80px; height: auto; padding-right: 10px;"> @(itemAttached.Name + "." + itemAttached.FileType.Extension)
+                                        </a>
+                                    </li>
+                                }
+                            }
+                        </ul>
+
+                    </div>
+                </div>
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+<script>
+    $(document).ready(function () {
+        $("#app_attachment_trigger").click(function () {
+            var inputFiles = $(".add_attachment_row input.inputfile");
+            var attInput = "<div class=\"row add_attachment_row inputFile_" + (inputFiles.length + 1) + "\"> <div class=\"col-xs-12\">";
+            attInput += "<div class=\"form-group\"> <label for=\"name\">Name</label> <input type=\"text\" id=\"inputfilename" + (inputFiles.length + 1) + "\" name=\"name\" class=\"form-control\">";
+            attInput += "</div> </div> <div class=\"col-xs-12\"> <div class=\"form-group\"> <label for=\"file\">File</label>";
+            attInput += "<input type=\"file\" name=\"file\" accept=" + '@imgAcceptedFile' + " class=\"form-control inputfile\">  </div>  </div> </div>";
+            $("#attachments div.repeater_wrap").append(attInput);
+        });
+    });
+</script>

@@ -1,0 +1,187 @@
+﻿@using Qbicles.Models;
+@{
+
+    var CurrentDomain = ViewBag.CurrentDomain;
+    ViewBag.Title = ViewBag.PageTitle;
+    var api = (string)ViewBag.DocRetrievalUrl;
+}
+
+<link href="~/Content/DesignStyle/css/checkbox3.min.css" rel="stylesheet" />
+
+<style>
+a.disabled {
+ pointer-events: none;
+ cursor: default;
+ opacity: 0.6;
+}
+</style>
+
+
+<div class="content-wrapper qbicle-detail" style="min-height: 465px;">
+    <div class="tabnav-spacer">&nbsp;</div>
+
+    <!-- Main content -->
+    <section class="content">
+        <div class="mod_title">
+            <h5>Task Forms</h5>
+            <h4>Manage Forms</h4>
+        </div>
+        <div class="app_topnav restyle">
+            <ul class="nav nav-pills app_main_nav hidden-xs hidden-sm">
+                <li role="presentation" class="active">
+                    <a href="/Administration/ManageTaskForms">
+                        <i class="fa fa-file-code-o"></i>
+                        Manage Forms
+                    </a>
+                </li>
+                <li role="presentation">
+                    <a href="/Administration/QueryTasksForm">
+                        <i class="fa fa-question"></i>
+                        Queries/Reports
+                    </a>
+                </li>
+                <li role="presentation">
+                    <a href="/Administration/ManageFormEditors">
+                        <i class="fa fa-lock"></i>
+                        Permissions
+                    </a>
+                </li>
+            </ul>
+
+            <select name="app_tab" class="form-control visible-xs visible-sm">
+                <option value="/Administration/ManageTaskForms" selected="">Manage Forms</option>
+                <option value="/Administration/QueryTasksForm">Queries/Reports</option>
+                <option value="/Administration/ManageFormEditors">Permissions</option>
+            </select>
+        </div>
+        <div class="row">
+            <div class="col-xs-12">
+                <div class="app_filter">
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-4 col-lg-4 button_options" style="padding-bottom: 0;">
+                            <a href="/Apps/AppManagement" class="btn btn-info"><i class="fa fa-th"></i> &nbsp; All apps</a>
+                            <a href="/Administration/CreateTaskForm" class="btn btn-success"><i class="fa fa-plus"></i> &nbsp; Add Form</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <br/>
+        <br />
+        <div class="domain_flash">
+            @if (CurrentDomain != null)
+            {
+                var currentDomain = (QbicleDomain)CurrentDomain;
+                <img id="media-@currentDomain.Id" src='@api@currentDomain.LogoUri' class="img-circle icon" />
+                <h5 ><input type="hidden" id="current-domain-taskform" name="id_domain" value="@currentDomain.Id">@currentDomain.Name</h5>
+            }
+        </div>
+        <div id="DataTables_Table_0_wrapper" class="dataTables_wrapper form-inline dt-bootstrap no-footer">
+            <div class="row">
+                <div class="col-sm-12">
+                    <table class="datatable table-hover table-striped dataTable no-footer dtr-inline" width="100%" cellspacing="0" id="DataTables_Table_0" role="grid" aria-describedby="DataTables_Table_0_info" style="width: 100%;">
+                        <thead>
+                            <tr role="row"><th data-priority="1" class="sorting_asc" tabindex="0" aria-controls="DataTables_Table_0" rowspan="1" colspan="1" style="width: 96px;" aria-sort="ascending" aria-label="Title: activate to sort column descending">Title</th><th data-priority="2" class="sorting" tabindex="0" aria-controls="DataTables_Table_0" rowspan="1" colspan="1" style="width: 602px;" aria-label="Description: activate to sort column ascending">Description</th><th data-priority="1" data-orderable="false" class="sorting_disabled" rowspan="1" colspan="1" style="width: 211px;" aria-label=""></th></tr>
+                        </thead>
+                        <tbody id="tbodyManageForm">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+
+
+<div class="modal fade" id="delete-taskform-confirm" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title" id="myModalLabel">Confirm Delete Task Form</h4>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-danger" style="background-color: #f2dede !important; color:#b94a48 !important">
+                    <p>You are about to delete: <strong id="task-form-name">record_being_deleted</strong></p>
+
+                    <br>
+                    <button class="btn btn-warning" data-dismiss="modal">Cancel</button>
+                    <button id="btn-delete-taskform" class="btn btn-danger">Confirm Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    var $cbcurrentDomain = $("#current-domain-taskform");
+    function showConfirmDeleteTaskForm(taskFormId, taskFormName){
+        $('#task-form-name').text(taskFormName);
+        $('#delete-taskform-confirm').modal('show');
+        $('#btn-delete-taskform').attr('onclick', 'deleteTaskForm('+taskFormId+')');
+    }
+
+    function deleteTaskForm(id){
+        $.ajax({
+            type: 'POST',
+            url: '/FormDefinition/DeleteFormDefinitionById',
+            datatype: 'json',
+            data: {id : id},
+            async: false,
+            success: function (refModel) {
+                if(refModel.result){
+                    $('#delete-taskform-confirm').modal('hide');
+                    $('#formDefinition-' + id).remove();
+                }else{
+                }
+            }
+        });
+    }
+
+    $(document).ready(function () {
+    generateDataFormDefinitionByDomainIdToTable($cbcurrentDomain.val());
+    });
+
+    function generateDataFormDefinitionByDomainIdToTable(domainId){
+        var dataForFormDefinitionByDomainId = getDataforFormDefinitionByDomainId(domainId);
+        var tbody = '';
+        $.each(dataForFormDefinitionByDomainId, function (index, item) {
+            var disable = item.IsDisable ? 'class="disabled"': '';
+            tbody += '<tr role="row" id="formDefinition-' + item.Id + '"><td>' + item.Name + '</td><td>' + item.Description + '</td><td><div class="btn-group options">' +
+                     '<button type=\"button\" class=\"btn btn-success dropdown-toggle\" data-toggle=\"dropdown\" aria-haspopup=\"true\" aria-expanded=\"false\">' +
+                     '<i class=\"fa fa-cog\"></i> &nbsp; Actions</button>' +
+                     '<ul class="dropdown-menu dropdown-menu-right" style="right: 0;">' +
+                            '<li><a ' + disable + ' href=\"/Administration/ViewTaskForm/' + item.Id + '\" data-toggle=\"modal\" >View</a></li>' +
+                            '<li><a ' + disable + ' href=\"#\" onclick=\"javascript:editTaskForm(' + item.Id + ')\" data-toggle=\"modal\" data-target=\"#app-forms-edit\">Edit</a></li>' +
+                            '<li><a ' + disable + ' href=\"#\" onclick=\"javascript:showConfirmDeleteTaskForm(' + item.Id + ',\'' + item.Name + '\')\">Delete</a></li>' +
+                      '</ul></div></td></tr>';
+        });
+        $('#tbodyManageForm').html(tbody);
+    }
+
+    function cbCurrentDomainTaskFormChange(){
+        generateDataFormDefinitionByDomainIdToTable($cbcurrentDomain.val());
+    }
+
+    function getDataforFormDefinitionByDomainId(domainId) {
+        var listFormTaskEditor = [];
+        $.ajax({
+            type: 'GET',
+            url: '/FormDefinition/GetDataforFormDefinitionByDomainId',
+            datatype: 'json',
+            async: false,
+            data: { domainId: domainId },
+            success: function (listFormTaskEditorRespones) {
+                listFormTaskEditor = listFormTaskEditorRespones;
+            }
+        });
+        return listFormTaskEditor;
+    }
+
+    function editTaskForm(id){
+        SetFormDefinitionSelected(id);
+        window.location.href = "/Administration/CreateTaskForm";
+    }
+
+
+</script>

@@ -1,0 +1,332 @@
+﻿@using Qbicles.Models.Qbicles
+@using Qbicles.Models.Trader
+@using Qbicles.BusinessRules
+@using Qbicles.Models;
+@{
+    ViewBag.Title = "Trader - Customer";
+    var workGroups = (List<WorkGroup>)ViewBag.WorkGroups;
+    var locations = (List<TraderLocation>)ViewBag.Locations;
+
+    var contactGroups = (List<TraderContactGroup>)ViewBag.ContactGroups;
+
+    var countries = (List<Country>)ViewBag.Countries;
+    var contactGroupFilter = (List<TraderContactGroup>)ViewBag.ContactGroupFilter;
+    var locationManage = (int)ViewBag.CurrentLocationManage;
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+
+    var currentDomainPlan = (DomainPlan)ViewBag.CurrentDomainPlan ?? null;
+    var currentDomainPlanLevel = currentDomainPlan?.Level?.Level ?? BusinessDomainLevelEnum.Starter;
+}
+
+@if (currentDomainPlanLevel >= BusinessDomainLevelEnum.Starter)
+{
+    <div class="well custom" style="padding-bottom: 5px;">
+        <div class="row">
+            <div class="col-xs-12 col-sm-6 col-lg-3">
+                <div class="form-group">
+                    <label for="search">Search</label>
+                    <input type="text" name="trader_search_contact" id="trader_search_contact" class="form-control" placeholder="Search for...">
+                </div>
+            </div>
+            <div class="col-xs-12 col-sm-6 col-lg-3">
+                <div class="form-group">
+                    <label for="workgroup">Workgroup</label>
+                    <select id="filter-group" name="workgroup" class="form-control select2" style="width: 100%;" data-placeholder="Display Workgroup">
+                        <option value="0" selected>Show all</option>
+                        @foreach (var wg in workGroups)
+                        {
+                            <option value="@wg.Id">@wg.Name</option>
+                        }
+                    </select>
+                </div>
+            </div>
+            <div class="col-xs-12 col-sm-6 col-lg-3">
+                <div class="form-group">
+                    <label for="group">Group</label>
+                    <select id="filter-contact-group" name="group" class="form-control select2" style="width: 100%;" data-placeholder="Display Workgroup">
+                        <option value="0" selected>Show all</option>
+                        @foreach (var wg in contactGroupFilter)
+                        {
+                            <option value="@wg.Id">@wg.Name</option>
+                        }
+                    </select>
+                </div>
+            </div>
+            <div class="col-xs-12 col-sm-6 col-lg-3">
+                <div class="form-group">
+                    <label for="search">Options</label><br />
+                    <button type="button" class="btn btn-success" onclick="clickAddNew('form_contact_add')" data-toggle="modal" data-target="#app-trader-modal-contact"><i class="fa fa-plus"></i> &nbsp; Add a contact</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <br />
+    <div class="tab-content app_general" id="trader-contact-content" style="min-height:150px">
+        <table class="datatable table-hover table-striped" width="100%" id="trader-contact-list" data-order='[[2, "asc"]]'>
+            <thead>
+                <tr>
+                    <th data-priority="1">Reference</th>
+                    <th data-priority="1" style="width: 100px;" data-orderable="false">Avatar</th>
+                    <th data-priority="1">Name</th>
+                    <th data-priority="2">Contact group</th>
+                    <th data-priority="2">Workgroup</th>
+                    <th data-priority="1">Cash Balance</th>
+                    <th data-priority="1">Purchase Invoice Balance</th>
+                    <th data-priority="1">Sale Invoice Balance</th>
+                    <th data-priority="1">Status</th>
+                    <th data-priority="2" data-orderable="false"></th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+    <div class="ct-modal-content">
+        <!-- /.modal -->
+        <div class="modal fade left" id="app-trader-modal-contact" role="dialog" aria-labelledby="app-trader-modal-contact" style="z-index:9998">
+            <div class="modal-dialog modal-lg" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                        <h5 class="modal-title">
+                            <span id="modal-title-contact">Add a contact</span>
+                        </h5>
+                    </div>
+                    <div class="modal-body">
+
+                        <form class="form-group" method="POST" id="form_contact_add" action="/TraderContact/SaveTraderContact" enctype="multipart/form-data" novalidate="novalidate">
+                            <div class="activity-overview task" style="padding: 20px;">
+                                <input id="contact-id" name="Id" hidden="" />
+                                <input id="contact-status" name="contactStatus" hidden="" />
+                                <div class="row">
+                                    <div class="col-xs-12">
+                                        <div class="form-group">
+                                            <label for="reference">Contact reference</label>
+                                            <div class="show-ref">
+                                                <p>
+                                                    <input type="hidden" name="ContactReferenceId" id="contactReferenceId" value="0" />
+                                                    <span id="numberRef"></span>&nbsp;
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                    </div>
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label id="contact-workgroup-label" for="workgroup">Assign to a Workgroup <span>*</span> </label>
+                                            <select id="group-workgroup-id" onchange="selectWorkGroupContact()" name="workgroupId" class="form-control select2" style="width: 100%;">
+                                                @foreach (var group in workGroups)
+                                                {
+                                                    <option value="@group.Id" domain="@group.Domain.Name.Replace(" ", "").Substring(0, 3).ToUpper()">@group.Name</option>
+                                                }
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            @*from profile*@
+                                            <label id="contact-group-label" for="group">Assign to a Contact group <span>*</span> </label>
+                                            <select id="group-contact-id" name="groupId" class="form-control select2" style="width: 100%;">
+                                                @foreach (var group in contactGroups)
+                                                {
+                                                    <option value="@group.Id">@group.Name</option>
+                                                }
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label id="label_contact_name" for="name">Name <span>*</span></label>
+                                            <input id="contact-name" type="text" name="Name" maxlength="50" required="" class="form-control">
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="avatar">Avatar <span>*</span></label>
+                                            <input type="hidden" id="trader-contact-object-key" name="mediaObjectKey" />
+                                            <input type="hidden" id="trader-contact-object-name" name="mediaObjectName" />
+                                            <input type="hidden" id="trader-contact-object-size" name="mediaObjectSize" />
+                                            <input id="trader-contact-avatar-upload" type="file" name="contactAvatar" class="form-control">
+
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="company">Company</label>
+                                            <input id="contact-company" type="text" name="CompanyName" class="form-control">
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="job">Job title </label>
+                                            <input id="contact-job" type="text" name="JobTitle" class="form-control">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="phone">Phone</label>
+                                            <input id="contact-phone" type="text" name="PhoneNumber" class="form-control">
+                                        </div>
+                                        <input id="contact-address-id" name="addressId" hidden="" />
+                                    </div>
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="email">Email <span>*</span></label>
+                                            <input id="contact-email" type="email" name="Email" required="" class="form-control">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="address1">Address line 1<span>*</span></label>
+                                            <input type="text" id="AddressLine1" name="AddressLine1" required="" class="form-control">
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="address2">Address line 2</label>
+                                            <input type="text" id="AddressLine2" name="AddressLine2" class="form-control">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="city">City</label>
+                                            <input type="text" id="City" name="City" class="form-control">
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="state">State</label>
+                                            <input type="text" id="State" name="State" class="form-control">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="country">Country</label>
+                                            <select id="CountryName" name="CountryName" class="form-control select2" style="width: 100%;">
+                                                @foreach (var c in countries)
+                                                {
+                                                    if (c.CommonName == "Nigeria")
+                                                    {
+                                                        <option value="@c.CommonName" selected>@c.CommonName</option>
+                                                    }
+                                                    else
+                                                    {
+                                                        <option value="@c.CommonName">@c.CommonName</option>
+                                                    }
+                                                }
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="postcode">Postcode</label>
+                                            <input type="text" id="PostCode" name="PostCode" class="form-control">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="Longitude">Longitude</label>
+                                            <input id="contact-longitude" type="number" name="Longitude" class="form-control">
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="Latitude">Latitude</label>
+                                            <input id="contact-Latitude" type="number" name="Latitude" class="form-control">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-xs-12">
+                                        <div class="form-group" style="margin: 0;">
+                                            <label for="customer-account">Select customer account</label><br />
+                                            <br />
+                                            <input id="hdfcontactaccountId" name="accountId" hidden="" />
+                                            <button class="btn btn-info addbtnaccount" onclick="LoadAccountTree()" data-toggle="modal" data-target="#app-bookkeeping-treeview"><i class="fa fa-plus"></i> &nbsp; Choose account</button>
+                                            <p class="accountInfo" style="display: inline-block; font-family: 'Roboto', Arial, sans-serif; font-size: 12px; padding: 0 10px 0 0;"></p>
+                                            <button class="btn btn-small btn-warning editbtnaccount" style="display: none;" data-toggle="modal" onclick="LoadAccountTree()" data-target="#app-bookkeeping-treeview">
+                                                <i class="fa fa-pencil"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </form>
+
+
+                        <br />
+
+                        <a href="javascript:void(0);" data-dismiss="modal" class="btn btn-danger">Cancel</a>
+                        <button class="btn btn-primary" onclick="SaveTraderContact('Draft')">Save draft</button>
+                        <button class="btn btn-success" onclick="SaveTraderContact('PendingReview')">Confirm</button>
+
+                    </div>
+                </div><!-- /.modal-content -->
+            </div><!-- /.modal-dialog -->
+        </div>
+        <!-- /.modal -->
+        <div class="modal fade" id="app-contact-confirm" role="dialog" aria-labelledby="app-contact-confirm">
+            <div class="modal-dialog modal-lg" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                        <h5 class="modal-title">Delete contact</h5>
+                    </div>
+                    <div class="modal-body">
+                        <div class="col-xs-12 col-sm-12" style="margin-bottom: 30px;">
+                            <span id="label-confirm-contact"></span>
+                            <input class="hidden" id="id-itemcontact-delete" />
+                        </div>
+
+                        <button class="btn btn-success" data-dismiss="modal" onclick="DeleteContact()"><i class="fa fa-check"></i> &nbsp; OK</button>
+                        <button class="btn btn-danger" data-dismiss="modal"><i class="fa fa-remove"></i> &nbsp; Cancel</button>
+
+                    </div>
+                </div> <!-- /.modal-content -->
+            </div> <!-- /.modal-dialog -->
+        </div>
+        @{
+            if (System.Diagnostics.Debugger.IsAttached)
+            {
+                <script src="~/Scripts/dev/trader.contact.js"></script>
+            }
+            else
+            {
+                <script src="~/Scripts/dev/trader.contact.js"></script>
+            }
+        }
+    </div>
+    <script>
+        $("#filter-group").select2();
+        $("#filter-contact-group").select2();
+        $("#trader_search_contact").keyup(delay(function () {
+            $('#trader-contact-list').DataTable().ajax.reload();
+        }, 1000));
+        //initJsTree();
+        selectWorkGroupContact();
+    </script>
+}
+

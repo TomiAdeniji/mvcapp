@@ -1,0 +1,601 @@
+﻿@using Qbicles.BusinessRules
+@using Qbicles.Models.Trader
+@using Qbicles.Models.Trader.ODS
+@using Qbicles.Models.Trader.PoS
+@using Qbicles.Models.Catalogs
+@using Qbicles.BusinessRules.Model
+@model PosDevice
+@{
+    ViewBag.Title = "Trader Config > PoS Devices > " + Model.Name;
+    var posMenu = (List<Catalog>)ViewBag.PosMenu;
+    var deviceTypes = (List<PosDeviceType>)(ViewBag.PosDeviceTypes);
+    var queue = (PrepQueue)ViewBag.PrepQueue;
+    if (Model.PreparationQueue == null)
+    {
+        Model.PreparationQueue = queue;
+    }
+
+    var posUsersList = (List<PosUserModel>)ViewBag.PosUsersList;
+
+    var posUsersModal = (List<PosUserModel>)ViewBag.PosUsersModal;
+
+    var posUserGroup = (List<string>)ViewBag.PosUsersGroupModal;
+
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var location = (TraderLocation)ViewBag.Location;
+    var userType = (ICollection<HelperClass.EnumModel>)ViewBag.UserType;
+
+    var accounts = (List<TraderCashAccount>)ViewBag.Accounts ?? new List<TraderCashAccount>();
+    var displayActiveCss = "none";
+    var displayInActiveCss = "none";
+    var disableCss = "";
+    switch (Model.Status)
+    {
+        case PosDeviceStatus.InActive:
+            displayActiveCss = "none";
+            displayInActiveCss = "inline";
+            break;
+        case PosDeviceStatus.Active:
+            displayActiveCss = "inline";
+            displayInActiveCss = "none";
+            disableCss = "disabled";
+            break;
+    }
+    var methods = (List<PaymentMethod>)ViewBag.PaymentMethods ?? new List<PaymentMethod>();
+    var isCashMethodUsed = Model.MethodAccount.Any(p => p.PaymentMethod.Name == PaymentMethodNameConst.Cash);
+    var paymentMethods = methods.Where(e => e.Name != PaymentMethodNameConst.Cash);
+    var paymentMethodCard = methods.FirstOrDefault(e => e.Name == PaymentMethodNameConst.Cash);
+    var safeAcc = (TraderCashAccount)ViewBag.Safe?.CashAndBankAccount;
+    var safeAccId = safeAcc?.Id ?? -1;
+}
+
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail mdv2-wrapper" style="position: relative;">
+
+
+    <!-- Main content -->
+    <section class="mdv2 dash" data-tooltip-color="teal" data-tooltip-delay="300" data-tooltip-animate-function="spin" style="border-top: 1px solid #f1f1f1;">
+
+        <input type="hidden" id="collectionAccountId" value="@(ViewBag.Safe?.CashAndBankAccount.Id??-1)" />
+        <input type="hidden" id="collectionAccountText" value="@(ViewBag.Safe?.CashAndBankAccount.Name)" />
+
+        <!-- App bar -->
+        <div class="mdv2-col-app" style="margin-bottom: 0;">
+            <input id="posDevice_id" value="@Model.Id" type="hidden" />
+            <input type="hidden" id="account-of-safe" value="@(ViewBag.Safe?.CashAndBankAccount.Id ?? -1)" />
+            <div data-spy="affix" class="contained-sidebar">
+
+                <div class="activity-overview plain company-overview welcome-info" style="text-align: left !important; flex: none; margin: 0; padding-top: 30px; padding-bottom: 0;">
+
+                    <div class="pull-left" style="margin-bottom: 15px;">
+                        <a href="/Trader/AppTrader" onclick="setTabTrader('pointofsale','subPOS')" class="btn btn-primary"><i class="fa fa-angle-left"></i> &nbsp; All Devices</a>
+                    </div>
+                    <div class="clearfix"></div>
+
+                    <br />
+
+                    <h1 style="line-height: 1.2;"><span id="device-name-label">@Model.Name</span></h1>
+                    <br />
+                    <span class="label label-lg label-success activate-label" style="display: @displayActiveCss;">Active</span>
+                    <span class="label label-lg label-warning deactivate-label" style="display: @displayInActiveCss;">Inactive</span>
+
+                    <br /><br /><br />
+                    <p style="color: rgba(0, 0, 0, 0.5);"><span id="device-summary-label" style="white-space: pre-wrap !important;">@Model.Summary</span></p>
+
+
+                    <br />
+
+                    <div class="activity-overview generic" style="padding: 20px;">
+                        <div class="form-group">
+                            <label for="location">Location</label>
+                            <input readonly="" class="form-control" value="@location.Name" />
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <label>Menu</label>
+                                <select id="pos-menu" onchange="UpdateDeviceMenu(@Model.Id)" class="form-control select2" style="width: 100%;" @disableCss>
+                                    <option value="0">None</option>
+                                    @{
+                                        foreach (var menu in posMenu)
+                                        {
+                                            if (menu.Id == Model.Menu?.Id)
+                                            {
+                                                <option selected="" value="@menu.Id">@menu.Name</option>
+                                            }
+                                            else
+                                            {
+                                                <option value="@menu.Id">@menu.Name</option>
+                                            }
+                                        }
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <label style="width: 100%;">Queue</label>
+                                <span style="padding-left: 10px;">@Model.PreparationQueue.Name</span>
+                                <input type="hidden" value="@Model.PreparationQueue.Id" id="pos-queue" />
+
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <br /><br />
+                    <button class="btn btn-danger deactivate community-button"
+                            onclick="DeactivateDevice(@Model.Id)" style="display: @displayActiveCss;">
+                        <i class="fa fa-ban"></i> &nbsp; Deactivate device
+                    </button>
+                    <button class="btn btn-success activate community-button"
+                            onclick="ActivateDevice(@Model.Id)" style="display: @displayInActiveCss;">
+                        <i class="fa fa-check"></i> &nbsp; Activate device
+                    </button>
+
+                </div>
+
+
+
+
+            </div>
+        </div>
+        <!-- END App bar -->
+        <!-- Main area -->
+        <div class="mdv2-col-dash">
+
+            <div class="subspacing" style="padding: 30px;">
+
+                <h5>Settings</h5>
+                <input id="device-domain-key" hidden="" value="@Model.Location.Domain.Key" />
+                <div class="well custom">
+                    <form id="device-form">
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-4">
+                                <div class="form-group validate-control">
+                                    <label for="name">Device name <span class="red">*</span></label>
+                                    <input @disableCss onkeyup="UpdateDevice(@Model.Id)" type="text" name="devicename" id="device-name" class="form-control" value="@Model.Name">
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-2">
+                                <div class="form-group validate-control">
+                                    <label for="name">Prefix <span class="red">*</span></label>
+                                    <input @disableCss onkeyup="UpdateDevice(@Model.Id)" type="text" name="prefix" id="device-prefix" maxlength="3" class="form-control" value="@Model.TabletPrefix">
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="serial">Serial number</label>
+                                    <input @disableCss onkeyup="UpdateDevice(@Model.Id)" type="text" id="device-serial" class="form-control" value="@Model.SerialNumber">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="status">Device type</label>
+                                    <select id="devicetype" @disableCss onchange="UpdateDevice(@Model.Id)" class="form-control select2" style="width: 100%;">
+                                        <option value=" "></option>
+                                        @foreach (var item in deviceTypes)
+                                        {
+                                            if (Model.PosDeviceType != null && item.Id == Model.PosDeviceType.Id)
+                                            {
+                                                <option value="@item.Id" selected>@item.Name</option>
+                                            }
+                                            else
+                                            {
+                                                <option value="@item.Id">@item.Name</option>
+                                            }
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group" style="margin: 0;">
+                                    <label for="name">Summary</label>
+                                    <textarea @disableCss onkeyup="UpdateDevice(@Model.Id)" id="device-summary" class="form-control" style="height: 80px;">@Model.Summary</textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <hr />
+
+
+            <div class="subspacing" style="padding: 30px;">
+
+                <h5>Payment accounts</h5>
+                <p>Choose your accepted methods of payment and associate collections accounts with them.</p>
+
+                <br />
+                <div id="table_methodAccount">
+                    <table class="datatable table_content table-striped table-hover" style="width: 100%;">
+                        <thead>
+                            <tr>
+                                <th>Payment type</th>
+                                <th>Display Name</th>
+                                <th>Collection account(s)</th>
+                                <th>Options</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in Model.MethodAccount)
+                            {
+                                <tr id="table_payment_tr_@item.Id">
+                                    <td data-order="0">
+                                        <select name="pay-0" id="table_paymentmethod_@item.Id" class="form-control select2" style="width: 100%;" onchange="PaymentAccountRowChanged('@item.Id')">
+
+                                            @if (isCashMethodUsed && paymentMethodCard.Id == item.PaymentMethod.Id)
+                                            {
+                                                <option value="@paymentMethodCard.Id" selected>@paymentMethodCard.Name</option>
+                                            }
+                                            else if (!isCashMethodUsed)
+                                            {
+                                                <option value="@paymentMethodCard.Id">@paymentMethodCard.Name</option>
+                                            }
+                                            @foreach (var pay in paymentMethods)
+                                            {
+                                                if (item.PaymentMethod != null && pay.Id == item.PaymentMethod.Id)
+                                                {
+                                                    <option value="@pay.Id" selected>@pay.Name</option>
+                                                }
+                                                else
+                                                {
+                                                    <option value="@pay.Id">@pay.Name</option>
+                                                }
+                                            }
+                                        </select>
+                                    </td>
+                                    <td>
+                                        @{var isReadOnly = item.PaymentMethod?.Name == PaymentMethodNameConst.Cash ? "readonly" : "";}
+                                        <input maxlength="25" name="dis-0" @isReadOnly class="form-control" id="table_displayname_@item.Id" value="@item.TabletDisplayName" onchange="PaymentAccountRowChanged('@item.Id')" />
+                                    </td>
+                                    <td>
+                                        @{var isDisabled = item.PaymentMethod?.Name == PaymentMethodNameConst.Cash ? "disabled" : "";}
+                                        <select name="cash-0" id="table_account_@item.Id" @isDisabled class="form-control select2" style="width: 100%;" onchange="PaymentAccountRowChanged('@item.Id')">
+                                            <option value="0"></option>
+                                            @if (item.PaymentMethod?.Name == PaymentMethodNameConst.Cash)
+                                            {
+                                                <option selected value="@(item.CollectionAccount?.Id ?? 0)">@(item.CollectionAccount?.Name ?? "")</option>
+                                            }
+
+                                            @foreach (var acc in accounts)
+                                            {
+                                                if (item.CollectionAccount != null && item.CollectionAccount.Id == acc.Id && acc.Id != safeAccId)
+                                                {
+                                                    <option value="@acc.Id" selected>@acc.Name</option>
+                                                }
+                                                else if (acc.Id != safeAccId)
+                                                {
+                                                    <option value="@acc.Id">@acc.Name</option>
+                                                }
+                                            }
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-danger" onclick="DeletePaymentAccount('@item.Id')"><i class="fa fa-trash"></i></button>
+                                    </td>
+                                </tr>
+                            }
+
+                        </tbody>
+                    </table>
+
+
+                    <table id="table_templage" style="width: 100%; display:none">
+                        <tbody>
+                            <tr class="row_template">
+                                <td class="row_select" data-order="1">
+                                    <select class="form-control select-in-payment" onchange="CheckPaymentTypeSelected(-1)" name="pay-0" id="table_paymentmethod_temp" style="width: 100%;">
+                                    @*<select class="form-control select2" name="pay-0" id="table_paymentmethod_temp" style="width: 100%;">*@
+                                        @if (!isCashMethodUsed)
+                                        {
+                                            <option value="@paymentMethodCard.Id">@paymentMethodCard.Name</option>
+                                        }
+                                        @foreach (var pay in paymentMethods)
+                                        {
+                                            <option value="@pay.Id">@pay.Name</option>
+                                        }
+                                    </select>
+                                </td>
+                                <td>
+                                    <input maxlength="25" name="dis-0" class="form-control" id="table_displayname_temp" />
+                                </td>
+                                <td class="row_select">
+                                    <select class="form-control" name="cash-0" id="table_account_temp" style="width: 100%;">
+                                        @foreach (var acc in accounts)
+                                        {
+                                            <option value="@acc.Id">@acc.Name</option>
+                                        }
+                                    </select>
+                                </td>
+                                <td class="row_button">
+                                    <button class="btn btn-danger" onclick="RemovePaymentMethodRowItem()"><i class="fa fa-trash"></i></button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="add-row" style="display: none;">
+                    <br />
+                    <button class="btn btn-danger" onclick="CancelAddPaymentMethod()">Cancel</button>
+                    <button class="btn btn-success" onclick="ConfirmAddPaymentMethod()">Confirm</button>
+                </div>
+
+
+                <br />
+                <button class="btn btn-success" onclick="AddPaymentMethodRow(this)" id="addpayment"><i class="fa fa-plus"></i> &nbsp; Add a payment method</button>
+
+
+            </div>
+
+
+            <br />
+            <hr />
+
+            <div class="subspacing no-search" style="padding: 0 30px;">
+
+                <h5>Users</h5>
+
+                <div class="well custom" style="padding-bottom: 10px;">
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-4">
+                            <div class="form-group">
+                                <label for="search">Search users</label>
+                                <input type="text" id="search-user-list" class="form-control">
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-sm-4">
+                            <div class="form-group">
+                                <label for="group">Limit by role</label>
+                                <select id="subfilter-group" class="form-control select2" style="width: 100%;">
+                                    <option value=" " selected>Show all</option>
+                                    <option value="user">Till User</option>
+                                    <option value="cashier">Till Cashier</option>
+                                    <option value="supervisor">Till Supervisor</option>
+                                    <option value="manager">Till Manager</option>
+                                    <option value="administrators">PoS administrators</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-sm-2">
+                            <label for="">Options</label><br />
+                            <button class="btn btn-success" data-toggle="modal" data-target="#app-trader-pos-user-add"><i class="fa fa-plus"></i> &nbsp; Add a User</button>
+                        </div>
+                    </div>
+                </div>
+
+                <br />
+
+                <table class="datatable table-hover table-striped" style="width: 100%; background: #fff;" id="user-device-list" data-order='[[ 1, "asc" ]]'>
+                    <thead>
+                        <tr>
+                            <th data-priority="3" data-orderable="false" style="width: 30px;"></th>
+                            <th data-priority="1">Name</th>
+                            <th data-priority="2">Email</th>
+                            <th data-priority="2" data-orderable="false">Business phone</th>
+                            <th data-priority="1">User Role</th>
+                            <th data-priority="1">PoS Administrator</th>
+                            <th class="hidden-column">PIN</th>
+                            <th data-priority="1" data-orderable="false"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @{
+                            foreach (var user in posUsersList)
+                            {
+                                var checkAdmin = "";
+                                                <tr id="user-tr-@user.PosUserId">
+                                                    <td>
+                                                        <div class="table-avatar mini" style="background-image: url('@api@user.Avatar');">&nbsp;</div>
+                                                    </td>
+                                                    <td>
+                                                        <a href="javascript:">@user.Name</a>
+                                                    </td>
+                                                    <td>
+                                                        <a href="mailto:@user.Email">@user.Email</a>
+                                                    </td>
+                                                    <td>@user.Phone</td>
+                                                    <td>
+                                                        <select autofocus id="user-roles-@user.PosUserId" class="form-control" onfocus="StorePreviousRole(this, @Model.Id, @user.PosUserId, '@user.UserId', '@user.ForenameGroup', '@user.Name', '@api@user.Avatar', '@user.Pin')" onchange="UpdateUsersRole(this, @Model.Id, @user.PosUserId, '@user.UserId', '@user.ForenameGroup', '@user.Name', '@api@user.Avatar','@user.Pin')">
+                                                            <option value="none" @(user.Types.Any(e => e == PosUserType.User || e == PosUserType.Cashier || e == PosUserType.Supervisor || e == PosUserType.Manager) ? "" : "selected")>None</option>
+                                                            <option value="user" @(user.Types.Any(e => e == PosUserType.User) ? "selected" : "")>Till User</option>
+                                                            <option value="cashier" @(user.Types.Any(e => e == PosUserType.Cashier) ? "selected" : "")>Till Cashier</option>
+                                                            <option value="supervisor" @(user.Types.Any(e => e == PosUserType.Supervisor) ? "selected" : "")>Till Supervisor</option>
+                                                            <option value="manager" @(user.Types.Any(e => e == PosUserType.Manager) ? "selected" : "")>Till Manager</option>
+                                                        </select>
+                                                    </td>
+
+
+                                                    <td>
+                                                        @{checkAdmin = "";
+                                                            if (user.Types.Any(e => e == PosUserType.Admin))
+                                                            {
+                                                                checkAdmin = "checked";
+                                                                <span hidden="">administrators</span>
+                                                            }
+                                                            <input objectId="@user.Id" type="checkbox" @checkAdmin class="user-admin-@user.PosUserId" onchange="UpdateUserAdmin(@Model.Id, @user.PosUserId, '@user.UserId','@user.ForenameGroup','@user.Name','@api@user.Avatar')">
+                                                        }
+                                                    </td>
+                                                    <td class="hidden-column">@user.Pin</td>
+                                                    <td>
+                                                        <button class="btn btn-danger" onclick="RemoveUser(@user.PosUserId, @Model.Id,'@user.UserId','@user.ForenameGroup','@user.Name','@api@user.Avatar')"><i class="fa fa-trash"></i></button>
+                                                    </td>
+                                                </tr>
+                            }
+                        }
+
+                    </tbody>
+                </table>
+
+           
+            </div>
+
+
+
+
+        </div>
+
+
+    </section>
+    <!-- ./content -->
+
+</div>
+<!-- /.content-wrapper -->
+
+<div class="modal fade left" id="app-trader-pos-user-add" role="dialog" aria-labelledby="app-trader-pos-user-add">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Add Pooled Users to Device</h5>
+            </div>
+            <div class="modal-body">
+
+                <div class="contact-list" style="margin: 0 15px;">
+
+                    <div class="well custom">
+
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <div class="form-group" style="margin: 0;">
+                                    <label for="search">Search for someone</label>
+                                    <input type="text" id="search-name" class="form-control" placeholder="Input user name to search (at least 3 characters)...">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="margin: 30px 0 0 0;">
+
+                        <div class="scroller-tall">
+                            <div id="pos-user-UL" class="widget-contacts">
+                                @{
+                                    foreach (var g in posUserGroup)
+                                    {
+                                        <article id="group-@g" class="letters group-@g" style="padding-top: 0;">@g</article>
+                                        foreach (var u in posUsersModal.Where(e => e.ForenameGroup == g))
+                                        {
+                                            <article>
+                                                <a href="javascript:">
+                                                    <div class="contact-avatar">
+                                                        <div style="background-image: url('@api@u.Avatar');">&nbsp;</div>
+                                                    </div>
+                                                    <div class="contact-info">
+                                                        <h5 class="@g">@u.Name</h5>
+                                                        <input class="user-id-hidden" hidden="" value="@u.UserId" />
+                                                        <select id="select-@u.UserId" class="form-control select2 add-user-pool" multiple="" style="width: 500px;">
+                                                            @foreach (var pri in userType.OrderBy(e => e.Key))
+                                                            {
+                                                                if (pri.Key == 1)
+                                                                {
+                                                                    <option class="@u.UserId#@pri.Key" value="@pri.Key" selected="">@pri.Value</option>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <option class="@u.UserId#@pri.Key" value="@pri.Key">@pri.Value</option>
+                                                                }
+                                                            }
+                                                        </select>
+                                                    </div>
+                                                </a>
+                                            </article>
+                                        }
+                                    }
+                                }
+
+                            </div>
+                        </div>
+
+
+                        <br /><br />
+                        <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                        <button class="btn btn-success" onclick="ConfirmAddUsers(@Model.Id)">Confirm</button>
+
+                    </div>
+
+                </div>
+
+
+
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+
+
+<script src="~/Content/DesignStyle/js/lodash/lodash.min.js"></script>
+
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/pos.devices.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/pos.devices.js"></script>
+    }
+    <script>
+
+        $("#order-device").select2();
+        $("#devicetype").not('.multi-select').select2({ placeholder: "Please select" });
+    </script>
+}
+
+<style>
+    .hidden-column {
+        display: none;
+    }
+    .widget-contacts article.letters {
+        font-size: 15px;
+        font-weight: 500;
+        color: #333;
+        padding: 15px 0 5px 0;
+        border-bottom: 1px solid #f1f1f1;
+        display: list-item;
+        text-align: -webkit-match-parent;
+    }
+
+    .widget-contacts article a .contact-info h5 {
+        font-size: 14px;
+        font-weight: 500;
+        margin: 0;
+        padding: 0 0 5px 0;
+    }
+
+    .widget-contacts article a h5 {
+        color: #333 !important;
+    }
+
+    .widget-contacts article a .contact-info {
+        align-self: center;
+        flex: 1;
+        padding-left: 20px;
+    }
+
+    .widget-contacts article a .contact-avatar {
+        flex: 0 1 60px;
+    }
+
+    .widget-contacts article a {
+        width: 100%;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        padding: 20px;
+    }
+
+        .widget-contacts article a:hover {
+            background: #f6f8f9;
+        }
+
+        .widget-contacts article a .contact-avatar div {
+            background-size: cover;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background-position: center center;
+        }
+</style>

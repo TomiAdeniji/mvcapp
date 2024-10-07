@@ -1,0 +1,223 @@
+﻿@using Qbicles.Models;
+@using Microsoft.AspNet.Identity.Owin;
+@using Qbicles.BusinessRules;
+@model  List<UserCustom>
+@{
+    var currentUserId = (string)ViewBag.CurrentUserId;
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var currentDomain = (QbicleDomain)ViewBag.CurrentDomain;
+    var cubeCurrentUserId = (string)ViewBag.CurrentUserId;
+    var currentQbicle = (Qbicle)ViewBag.currentQbicle;
+}
+
+<div class="modal fade left in" id="qbicle-members" role="dialog" aria-labelledby="qbicle-members">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close" onclick="ClosePopUpQbicMember()"><span aria-hidden="true">×</span></button>
+                <h5 class="modal-title">@(currentQbicle.Name) Members</h5>
+            </div>
+            <div class="modal-body">
+
+
+                <ul class="subapps-nav" role="navigation" data-tooltip-stickto="bottom">
+                    <li class="active">
+                        <a href="#" data-toggle="tab" data-target="#members-view" onclick="SetTabIndex(1)" data-tooltip="View all users">
+                            <i class="fa fa-users"></i>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" data-toggle="tab" data-target="#members-add" onclick="SetTabIndex(2)" data-tooltip="Invite someone to this Qbicle">
+                            <i class="fa fa-user-plus"></i>
+                        </a>
+                    </li>
+                </ul>
+
+
+                <div class="tab-content">
+
+                    <!-- Members view -->
+                    <div class="tab-pane fade in active" id="members-view">
+
+                        <div class="contact-list">
+
+                            <div class="well custom" style="margin-bottom: 30px;">
+
+                                <div class="form-group" style="margin: 0;">
+                                    <label for="search">Search existing Qbicle members</label>
+                                    <input id="txtSearchContact" type="text" name="search" class="form-control" placeholder="Search members..." onkeyup="loadUserContactData()">
+                                </div>
+
+                            </div>
+
+                            <ul id="lstDashboardContact" class="widget-contacts" style="margin-bottom: 30px;">
+                                @if (Model != null && Model.Any())
+                                {
+                                    var lsUser = Model.OrderBy(o => o.Surname).ToList();
+                                    var groupName = "";
+                                    var i = 0;
+                                    foreach (var item in lsUser)
+                                    {
+                                        if (string.IsNullOrEmpty(item.Surname))
+                                        {
+                                            item.Surname = string.IsNullOrEmpty(item.DisplayUserName) ? item.UserName : item.DisplayUserName;
+                                        }
+                                        if (string.IsNullOrEmpty(item.DisplayUserName))
+                                        {
+                                            item.DisplayUserName = (!string.IsNullOrEmpty(item.Forename) && !string.IsNullOrEmpty(item.Surname) ? (item.Forename + " " + item.Surname) : item.UserName);
+                                        }
+                                        if (groupName != item.Surname?.Substring(0, 1))
+                                        {
+                                            groupName = item.Surname.Substring(0, 1).ToUpper();
+                                            if (i == 0)
+                                            {
+                                                <li class="letters" style="padding-top: 0;">@groupName</li>
+                                            }
+                                            else
+                                            {
+                                                <li class="letters">@groupName</li>
+                                            }
+                                        }
+
+                                        <li>
+                                            <a href="#" onclick="UserDetail('@item.Id','@(item.DisplayUserName)') ">
+                                                <div class="contact-avatar">
+                                                    <div style="background-image: url('@(string.IsNullOrEmpty(item.ProfilePic)?"../Content/DesignStyle/img/icon_contact.png": api+item.ProfilePic+"&size=T")');">&nbsp;</div>
+                                                </div>
+                                                <div class="contact-info">
+                                                    <h5>@(item.DisplayUserName)</h5>
+
+                                                </div>
+                                            </a>
+                                        </li>
+                                        i++;
+                                    }
+                                }
+
+                            </ul>
+
+                        </div>
+
+                        <div class="contact" style="display: none;">
+
+                            <a id="contact-list-back" href="#" class="btn btn-info" onclick="$('.contact').hide(); $('.contact-list').fadeIn();"><i class="fa fa-angle-left"></i> &nbsp; Member List</a>
+
+                            <div class="activity-overview plain company-overview welcome-info" style="flex: none; margin: 0; padding-top: 15px;">
+                                <div id="lblProfile"></div>
+
+                                <br>
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <button style="padding: 12px 25px !important;" class="btn btn-primary community-button" onclick="window.location.href=$('#lnkUserProfile').attr('href');"><i class="fa fa-address-card"></i> &nbsp; View profile</button>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-6">
+                                        <button style="padding: 12px 25px !important;" class="btn btn-danger community-button" data-toggle="modal" data-target="#Qbic-member-remove"><i class="fa fa-remove"></i> &nbsp; Remove from Qbicle</button>
+                                    </div>
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+                    <!-- END Members view -->
+                    <!-- Invite -->
+                    <div class="tab-pane fade" id="members-add">
+
+                        <div class="well custom">
+                            <div class="form-group" style="margin: 0;">
+                                <label for="existing">Invite a domain user</label>
+                                <input id="txtSearchInviteContact" type="text" class="form-control" name="member-search" placeholder="Search by name..." onkeyup="loadInviteUserContactData()">
+                            </div>
+                        </div>
+
+                        <div class="existing-member" style="margin-top: 15px; display: none;">
+
+                            <div class="contact-list-found" style="margin-bottom: 30px;">
+
+                                <ul id="lstDashboardInviteContact" class="widget-contacts">
+                                    <li class="letters">S</li>
+                                    <li>
+                                        <a href="#" onclick="$('.contact-list-found').hide(); $('.contact-invite').hide(); $('.contact-add').hide(); $('.contact-add').fadeIn();">
+                                            <div class="contact-avatar">
+                                                <div style="background-image: url('dist/img/contact-2.jpg');">&nbsp;</div>
+                                            </div>
+                                            <div class="contact-info">
+                                                <h5>Luke Skywalker</h5>
+                                                <p>Friends &amp; Family</p>
+                                            </div>
+                                        </a>
+                                    </li>
+                                </ul>
+
+                            </div>
+
+                            <div class="contact-add" style="display: none;">
+
+                                <a href="#" class="btn btn-info" onclick="$('.contact-add').hide(); $('.contact-invite').fadeIn(); $('.contact-list-found').fadeIn();"><i class="fa fa-angle-left"></i> &nbsp; Back to search</a>
+
+                                <div class="activity-overview plain company-overview welcome-info" style="flex: none; margin: 0; padding-top: 15px;">
+                                    <div id="lblProfileInvite">
+                                    </div>
+
+                                    <br>
+                                    <div class="row">
+                                        @*<div class="col-xs-12 col-sm-6">
+                                                <button class="btn btn-primary community-button"><i class="fa fa-address-card"></i> &nbsp; View profile</button>
+                                            </div>*@
+                                        <div class="col-xs-12 col-sm-12 text-center">
+                                            <button id="btnInviteQbicMember" class="btn btn-success community-button" onclick="AddQbicMember()"><i class="fa fa-user-plus"></i> &nbsp; Add to Qbicle</button>
+                                            <button class="btn btn-success community-button added" style="display: none;"><i class="fa fa-check"></i></button>
+
+                                        </div>
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                        @*<div class="well custom contact-invite">
+                                <div class="form-group" style="margin: 0;">
+                                    <label for="member-new">Invite someone to domain</label>
+                                    <input type="email" class="form-control" name="new-member" placeholder="Enter their email address" onkeyup="$('.confirm-add').removeAttr('disabled');">
+                                </div>
+                                <br>
+                                <button class="btn btn-success community-button confirm-add" disabled=""><i class="fa fa-envelope"></i> &nbsp; Send invite</button>
+                            </div>*@
+
+                    </div>
+                    <!-- END Invite -->
+
+                </div>
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+
+<div class="modal in" id="Qbic-member-remove" role="dialog" aria-labelledby="Qbic-member-remove" style="display: none;z-index:99991;">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" aria-label="Close" onclick="ClosePopup('Qbic-member-remove')"><span aria-hidden="true">×</span></button>
+                <h5 class="modal-title">Confirm</h5>
+            </div>
+            <div class="modal-body">
+
+                <input type="hidden" id="hdQbicMemberId" />
+                <div class="activity-overview generic help-text animated bounce">
+                    <i class="fa fa-info-circle"></i>
+                    <p>Are you sure want delete <b id="lblQbicMemberName"></b> from @currentQbicle.Name?</p>
+                </div>
+                <br>
+
+                <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                <button class="btn btn-success" onclick="DeleteQbicMember()">Accept</button>
+
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>

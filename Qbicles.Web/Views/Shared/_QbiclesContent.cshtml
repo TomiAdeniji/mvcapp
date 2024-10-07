@@ -1,0 +1,224 @@
+﻿@using Qbicles.Models;
+@using Microsoft.AspNet.Identity.Owin;
+@using Qbicles.BusinessRules;
+@{
+    //var UserManager = Request.GetOwinContext().GetUserManager<ApplicationUserManager>();
+    //var currentUserId = (string)ViewBag.CurrentUserId;
+    //var currentTimeZone = (string)ViewBag.CurrentTimeZone;
+    //var currentDomain = (QbicleDomain)ViewBag.CurrentDomain;
+    var api = (string)ViewBag.DocRetrievalUrl;
+}
+
+@model List<Qbicle>
+
+<!-- Grid view -->
+<div class="tab-content" id="grid_view">
+
+    <div style="padding: 30px; background: rgba(255, 255, 255, 0.7); margin: 0 0 35px 0;">
+        <div class="row">
+            <div class="row">
+                <div class="col-xs-12 col-sm-6">
+                    <div class="form-group">
+                        <label for="ordering">Order by</label>
+                        <select id="qbicles-list-order" name="ordering" class="form-control chosen-select" style="width: 100%;">
+                            <option value="name_asc">Qbicle name A-Z</option>
+                            <option value="name_desc">Qbicle name Z-A</option>
+                            <option value="updated_desc" selected>Last updated (newest first)</option>
+                            <option value="updated_asc">Last updated (oldest first)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-xs-12 col-sm-2">
+                    <button onclick="AddnewQbicleClick()" class="btn btn-success" data-toggle="modal" data-target="#create-qbicle" style="margin-top: 24px;"><i class="fa fa-plus"></i> &nbsp; New Qbicle</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <div class="flex-grid-thirds-lg qbicles-dash-grid">
+        @foreach (var cube in Model)
+        {
+            <article class="col box" id="qbicle-@cube.Id">
+                @{ 
+                    var lastUpdate = cube.LastUpdated;
+                    if (lastUpdate.ToString("dd.MM.yyyy") == DateTime.MinValue.ToString("dd.MM.yyyy"))
+                    {
+                        lastUpdate = cube.StartedDate;
+                    }
+                }
+                <span class="last-updated">Updated @lastUpdate.ToString("dd.MM.yyyy")</span>
+                <span style="display:none;" class="cube-updated">@lastUpdate.ToString("MM.dd.yyyy")</span>
+            
+                <div class="dropdown btn-group cogs">
+                    <button class="transparent dropdown-toggle" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
+                        <i class="fa fa-cog"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-right">
+                        <li>
+                            <a href="javascript:void(0)" onclick="EditQbicle('@cube.Id')" data-toggle="modal" data-target="#create-qbicle">Edit this Qbicle</a>
+                        </li>
+                    </ul>
+                </div>
+                <a href="javascript:void(0)" onclick="QbicleSelected('@cube.Key','@Enums.QbicleModule.Dashboard')">
+                    <div class="avatar" style="background-image: url('@api@cube.LogoUri');">&nbsp;</div>
+                    @{
+                        var closedTitle = cube.ClosedDate == null ? "" :
+                "(Closed on " + HelperClass.DatetimeToOrdinal((DateTime)cube.ClosedDate) + ")";
+                    }
+                    <h1 class="cube-name">@cube.Name</h1>
+                </a>
+                <small>@closedTitle</small>
+
+                @if (!string.IsNullOrEmpty(closedTitle))
+                {
+                    <br />
+                }
+                <small>Created by <a href="javascript:void(0)">@HelperClass.GetFullNameOfUser(cube.StartedBy)</a></small>
+                <div class="domain-tags">
+                    <span class="label label-lg label-primary">@cube.Domain.Name</span>
+                </div>
+                <div class="divider"></div>
+                <p class="qbicle-detail">
+                    @Html.Raw(cube.Description.Replace(Environment.NewLine, "<br/>"))
+                </p>
+                <ul class="qbicle-users">
+                    @foreach (var user in cube.Members.Take(4))
+                {
+                        <li>
+                            <a href="javascript:void(0)" data-tooltip="@HelperClass.GetFullNameOfUser(user)" data-tooltip-color="slate">
+                                <div class="user" style="background-image: url('@api@user.ProfilePic');">&nbsp;</div>
+                            </a>
+                        </li>
+                    }
+                    <li>
+                        <a href="javascript:void(0)" data-toggle="modal" onclick="ShowCubeUsers(@cube.Id)">
+                            <div class="user trigger_load" style="background-image: url('/Content/DesignStyle/img/people-more.png');">&nbsp;</div>
+                        </a>
+                    </li>
+                </ul>
+            </article>
+                        }
+
+
+
+    </div> <!-- END flex grid -->
+
+
+    <br /><br /><br />
+</div>
+<!-- END Grid view -->
+<!-- /.content-wrapper -->
+<div class="modal fade" id="cube-users-modal" role="dialog" aria-labelledby="qbicle-users-modal">
+    <div class="modal-lg modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Qbicle users</h5>
+            </div>
+            <div id="cube-users-list" class="modal-body">
+
+                
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+<!-- /.modal -->
+
+<script>
+    jQuery(function ($) {
+        var $orderBy = $("#qbicles-list-order");
+        $('#total-cube').text(@Model.Count);
+        //init order
+        var nameAZ = [];
+        var nameZA = [];
+        var dateAZ = [];
+        var dateZA = [];
+
+        $('.box').each(function () {
+
+            var nameAZArr = [];
+            var nameZAArr = [];
+            var dateAZArr = [];
+            var dateZAArr = [];
+            //name a-z
+            nameAZArr.push($('.cube-name', this).text());
+            nameAZArr.push($(this));
+            nameAZ.push(nameAZArr);
+            nameAZ.sort();
+            //name z-a
+            nameZAArr.push($('.cube-name', this).text());
+            nameZAArr.push($(this));
+            nameZA.push(nameZAArr);
+            nameZA.sort();
+            nameZA.reverse();
+
+            //date a-z
+            dateAZArr.push($('.cube-updated', this).text());
+            dateAZArr.push($(this));
+            dateAZ.push(dateAZArr);
+            dateAZ.sort();
+            //date z-a
+            dateZAArr.push($('.cube-updated', this).text());
+            dateZAArr.push($(this));
+            dateZA.push(dateZAArr);
+            dateZA.sort();
+            dateZA.reverse();
+        });
+
+        $orderBy.change(function () {
+            $.LoadingOverlay("show");
+
+            switch ($orderBy.val()) {
+                case "name_asc":
+                    $('.box').remove();
+                    for (var i = 0; i < nameAZ.length; i++) {
+                        $('.qbicles-dash-grid').append(nameAZ[i][1]);
+                    }
+                    break;
+                case "name_desc":
+                    $('.box').remove();
+                    for (var i = 0; i < nameZA.length; i++) {
+                        $('.qbicles-dash-grid').append(nameZA[i][1]);
+                    }
+                    break;
+                case "updated_asc":
+                    $('.box').remove();
+                    for (var i = 0; i < dateAZ.length; i++) {
+                        $('.qbicles-dash-grid').append(dateAZ[i][1]);
+                    }
+                    break;
+                case "updated_desc":
+                    $('.box').remove();
+                    for (var i = 0; i < dateZA.length; i++) {
+                        $('.qbicles-dash-grid').append(dateZA[i][1]);
+                    }
+                    break;
+            }
+            $.LoadingOverlay("hide");
+        });
+    });
+
+    function ShowCubeUsers(id) {
+        $.ajax({
+            type: 'post',
+            url: '/Qbicles/GetCubeUsers',
+            data: {
+                id: id
+            },
+            dataType: 'html',
+            success: function (response) {
+                if (response != "") {
+                    $("#cube-users-list").empty();
+                    $("#cube-users-list").append(response);
+                    $("#cube-users-modal").modal("toggle");
+                }
+            },
+            error: function (er) {
+
+            }
+        });
+    };
+
+</script>

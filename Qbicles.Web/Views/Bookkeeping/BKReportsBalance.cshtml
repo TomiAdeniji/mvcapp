@@ -1,0 +1,227 @@
+﻿@using Qbicles.BusinessRules;
+@using Qbicles.Models.Bookkeeping;
+@using Qbicles.Models;
+@model List<TreeBalanceReportEntry>
+@{
+    var userRoleRights = (List<string>)ViewBag.UserRoleRights;
+    var rightShowJournalTab = (bool)ViewBag.rightShowJournalTab;
+    var rightShowAccountTab = (bool)ViewBag.rightShowAccountTab;
+    var rightShowReportsTab = (bool)ViewBag.rightShowReportsTab;
+    var rightShowConfigurationTab = userRoleRights.Any(r => r == RightPermissions.BKManageAppSettings);
+    var domain = (QbicleDomain)ViewBag.CurrentDomain;
+    string logoDomain = (string)ViewBag.DomainLogoBase64;
+    var reportconfig = (ReportBalanceConfig)ViewBag.reportConfig;
+    var treeConfig = (string)ViewBag.treeConfig;
+    var currencySettings = (CurrencySetting)ViewBag.CurrencySettings;
+}
+@helper ChildNodes(List<TreeBalanceReportEntry> lstNodes)
+{
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+    foreach (var item in lstNodes)
+    {
+        <li>
+            @item.text
+            @if (!item.isExpanded)
+            {
+                <div class="pull-right">@item.amount.ToCurrencySymbol(currencySettings)</div>
+            }
+            @if (item.isExpanded && item.children != null && item.children.Any())
+            {
+                <ul>
+                    @ChildNodes(item.children)
+                </ul>
+            }
+        </li>
+    }
+}
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail">
+    <!-- Main content -->
+    <section class="content">
+        <br /><br />
+        <div class="mod_title">
+            <h5>Bookkeeping</h5>
+            <h4>@domain.Name Balance Sheet</h4>
+        </div>
+        @Html.Partial("_BookkeepingNavigatePartial", new ViewDataDictionary
+        {
+            {"tabSelected", 3 },
+            { "rightShowJournalTab", rightShowJournalTab },
+            { "rightShowAccountTab", rightShowAccountTab },
+            { "rightShowReportsTab", rightShowReportsTab },
+            { "rightShowConfigurationTab", rightShowConfigurationTab }
+        })
+        <div class="row">
+            <div class="col-xs-12">
+                <div class="app_filter">
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-6 col-lg-9">
+                            @if (rightShowAccountTab)
+                            {
+                                <a href="/Bookkeeping/BKApps" class="btn btn-primary"><i class="fa fa-home"></i> &nbsp; App home</a>
+                            }
+                            <a href="/Bookkeeping/BKReports" class="btn btn-info"><i class="fa fa-chevron-up"></i> &nbsp; All reports</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <br />
+
+        <div class="row balance_sheet">
+            <div class="col-xs-12 col-sm-4 col-lg-3">
+
+                <div class="activity-overview generic" style="padding: 10px;">
+
+                    <div class="panel-group side-accordion" id="accordion" role="tablist" aria-multiselectable="true">
+
+                        <!-- General -->
+                        <div class="panel panel-default">
+                            <div class="panel-heading" role="tab" id="heading-general">
+                                <h4 class="panel-title">
+                                    <a role="button" data-toggle="collapse" data-parent="#accordion" href="#collapse-general" aria-expanded="true" aria-controls="collapse-general">
+                                        <i class="more-less fa fa-minus"></i>
+                                        General Settings
+                                    </a>
+                                </h4>
+                            </div>
+                            <div id="collapse-general" class="panel-collapse collapse in" role="tabpanel" aria-labelledby="heading-general">
+                                <div class="panel-body">
+                                    <div class="form-group">
+                                        <label for="period">Report date</label>
+                                        <input id="report-start_date" type="text" fm="@reportconfig.date_format" name="start_date" value="@reportconfig.start_date" class="form-control singledate">
+                                        <input id="report-treevalue" name="balanceReportEntry" value="@treeConfig" type="hidden" />
+                                        <input id="report-lstANodes" name="allNodeIds" value="@(new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(reportconfig.allNodeIds))" type="hidden" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- END General -->
+                        <!-- Header -->
+                        <div class="panel panel-default">
+                            <div class="panel-heading" role="tab" id="heading-hader">
+                                <h4 class="panel-title">
+                                    <a role="button" data-toggle="collapse" data-parent="#accordion" href="#collapse-header" aria-expanded="false" aria-controls="collapse-header">
+                                        <i class="more-less fa fa-plus"></i>
+                                        Display
+                                    </a>
+                                </h4>
+                            </div>
+                            <div id="collapse-header" class="panel-collapse collapse" role="tabpanel" aria-labelledby="heading-header">
+                                <div class="panel-body">
+
+                                    <div class="checkbox toggle" style="padding: 0 0 10px 0;">
+                                        <label>
+                                            <input data-toggle="toggle" data-onstyle="success" class="report_toggle" type="checkbox" data-target="#report-logo" checked>
+                                            Show logo
+                                        </label>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="start_date">Company name</label>
+                                        <input type="text" name="company_name" class="form-control report_value" data-target="#report_company" value="@domain.Name">
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="start_date">Report title</label>
+                                        <input type="text" name="report_title" class="form-control report_value" data-target="#report_title" value="Balance Sheet">
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+                        <!-- END Header -->
+
+                    </div> <!-- ./panel-group -->
+                </div>
+
+                <br />
+                <a href="javascript:printPDF();" class="btn btn-info"><i class="fa fa-print"></i> &nbsp; Print</a>
+                <a href="javascript:exportPDF();" class="btn btn-warning"><i class="fa fa-file-text-o"></i> &nbsp; Export as PDF</a>
+
+            </div>
+
+            <div class="col-xs-12 col-sm-8 col-lg-9">
+
+                <div id="balance-report-capture" class="bookkeeping-report-income">
+                    <div class="container-fluid">
+
+
+                        <div class="row">
+                            <div class="col-xs-12 text-center">
+                                <img src="data:application/png;base64,@(logoDomain)" id="report-logo" style="max-width: 250px; height: auto; margin-bottom: 5px;">
+                                <h1 id="report_company">@domain.Name</h1>
+                                <h2 id="report_title">Balance Sheet</h2>
+                                <p class="dates reporting_period"></p>
+                            </div>
+
+                            <br />
+                        </div>
+
+
+                        <br /><br />
+                        <div id="report-content" class="row">
+                            @foreach (var item in Model)
+                            {
+                                <div class="col-xs-12">
+                                    <div class="coa-report-grouping">
+                                        <h4>@item.text</h4>
+                                        <hr /><br />
+                                        @foreach (var subgroup in item.children)
+                                        {
+                                            <div class="panel-group accordion-statement" style="margin-top: 0;">
+                                                <div class="panel panel-default">
+                                                    <div class="panel-heading">
+                                                        <h4 class="panel-title">
+                                                            <a class="account">
+                                                                @subgroup.text
+                                                            </a>
+                                                        </h4>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="account-statement-breakdown" style="padding: 0 20px 20px 20px;">
+                                                <ul>
+                                                    @if (subgroup.isExpanded&&subgroup.children != null && subgroup.children.Any())
+                                                    {
+                                                        @Html.Raw(ChildNodes(subgroup.children));
+                                                    }
+                                                </ul>
+                                            </div>
+                                            <div class="subtotal-new text-right">
+                                                <h4 style="margin: 0; padding: 0 0 3px 0;">Total @subgroup.text</h4>
+                                                <h1 style="margin: 0; padding: 0 0 20px 0;">@subgroup.amount.ToCurrencySymbol(currencySettings)</h1>
+                                            </div>
+                                        }
+                                        <div class="total-new">
+                                            <h4 style="margin: 0; padding: 0 0 3px 0;">Total @item.text</h4>
+                                            <h1 style="margin: 0; padding: 0 0 20px 0;">@item.amount.ToCurrencySymbol(currencySettings)</h1>
+                                        </div>
+                                    </div>
+                                </div>
+                                <br />
+                            }
+                        </div>
+                    </div> <!-- ./container -->
+                </div>
+            </div>
+        </div>
+    </section>
+    <!-- ./content -->
+</div>
+<!-- /.content-wrapper -->
+<script src="~/Content/DesignStyle/js/html2canvas.js"></script>
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/bookkeeping-reports-balance.js"></script>
+        <script src="~/Scripts/dev/trader.domain.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/bookkeeping-reports-balance.min.js"></script>
+        <script src="~/Scripts/dev/trader.domain.min.js"></script>
+    }
+}

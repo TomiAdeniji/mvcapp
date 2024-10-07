@@ -1,0 +1,49 @@
+﻿@using Qbicles.BusinessRules;
+@using Qbicles.Models;
+@model List<QbicleActivity>
+@{
+    var currentTimeZone = (string)ViewBag.CurrentTimeZone;
+    var currentUserId = (string)ViewBag.CurrentUserId;
+    var api = (string)ViewBag.DocRetrievalUrl;
+}
+@foreach (var meac in Model)
+{
+    var lastUpdateFile = "";
+    var me = (QbicleMedia)meac;
+    var mediaLastupdate = me.VersionedFiles.Where(e => !e.IsDeleted).OrderByDescending(x => x.UploadedDate).FirstOrDefault();
+    if (mediaLastupdate != null)
+    {
+        lastUpdateFile = mediaLastupdate.UploadedDate.Date == DateTime.UtcNow.Date ? "Today, " + mediaLastupdate.UploadedDate.ToString("hh:mmtt").ToLower() : mediaLastupdate.UploadedDate.ToString("dd/MM/yyyy hh:mmtt").ToLower();
+    }
+    <article class="activity media">
+        <div class="activity-detail">
+            <div class="activity-overview media">
+                <div class="row">
+                    <div class="col-xs-12 col-sm-5 col-md-6 col-lg-5">
+                        <a href="javascript:void(0);" onclick="ShowMediaPage('@me.Key',false);">
+                            @if (me.FileType.Type == "Image File")
+                            {
+                                <img id="media-@mediaLastupdate.Id" class="img-responsive" src="@api@(mediaLastupdate.Uri)&size=M" />
+                            }
+                            else
+                            {
+                                <img src="@(me.FileType.ImgPath)" class="img-responsive">
+                            }
+                        </a>
+                    </div>
+                    <div class="col-xs-12 col-sm-7 col-md-6 col-lg-7 description">
+                        <h5>@me.Name</h5>
+                        <p>
+                            @if (!string.IsNullOrEmpty(me.Description))
+                            {
+                                Html.Raw(me.Description.Replace(Environment.NewLine, "<br/>"));
+                            }
+                        </p>
+                        <small>@me.FileType.Extension | @(mediaLastupdate == null ? "" : mediaLastupdate.BusinessMapping(currentTimeZone).UploadedDate.ToString("d MMM yyyy, H:mmtt"))</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="clearfix"></div>
+    </article>
+}

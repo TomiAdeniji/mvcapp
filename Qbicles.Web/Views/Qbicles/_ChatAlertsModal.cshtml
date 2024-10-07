@@ -1,0 +1,235 @@
+﻿<div class="modal fade right" id="chatalerts" role="dialog" aria-labelledby="chatalerts">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Chat alerts</h5>
+            </div>
+            <div id="alert-modal-body" class="modal-body">
+
+                <div class="well custom rounded alet-option" style="padding-bottom: 5px;display:none;">
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-4">
+                            <div id="div-aler-business" class="checkbox toggle">
+                                <label>
+                                    <input id="isShowAlertBusiness" data-toggle="toggle" data-onstyle="success" type="checkbox" data-on="On" data-off="Off" onchange="UpdateAlertFilter(false);"> Business alerts
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-sm-4">
+                            <div id="div-aler-customer" class="checkbox toggle">
+                                <label>
+                                    <input id="isShowAlertCustomer" data-toggle="toggle" data-onstyle="success" type="checkbox" onchange="UpdateAlertFilter(false);">User alerts
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-sm-4 text-right">
+                            <button id="clear-alert-all" class="btn btn-danger" onclick="$('.chatuser').remove(); $('.chatbusiness').remove(); $(this).attr('disabled', true);UpdateAlertFilter(true)"><i class="fa fa-trash"></i> &nbsp; Clear all</button>
+                        </div>
+                    </div>
+                </div>
+                <br />
+                <div class="col-xs-12">
+                    <div id="data-container-aler-notifications" style="min-height:106px"></div>
+                    <br />
+                    <div id="pagiation-aler-notifications" class="pagination pull-right" style="position: relative;right: -4px;"></div>
+                </div>
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+
+
+<script>
+
+    var closeButtonClicked = false;
+
+    $(document).ready(function () {
+        $('#chatalert').bind('click', function (e) {
+            if (closeButtonClicked) {
+                closeButtonClicked = false;
+                return;
+            }
+            $(this).removeClass().addClass('animated fadeOutRight');
+            ShowChatAlertsModal();
+        });
+    });
+
+    function closeAlert(e) {
+        closeButtonClicked = true;
+        $('#chatalert').removeClass().addClass('animated fadeOutRight');
+    }
+
+    function NewAlertNotification(id, isQuiet) {
+        $.ajax({
+            type: "post",
+            cache: false,
+            url: "/Notifications/NewAlertNotification?id=" + id,
+            beforeSend: function (xhr) {
+
+            },
+            success: function (response) {                
+                if (response.data.length == 0)
+                    return;
+
+                $("#notify-circle-web").css("display", "none");
+                $('#chatalert').hide();
+
+
+                $('#chat-alert-content-table tbody').empty().append(response.data);
+
+                $('#chat-alert-content-table').addClass('animated lightSpeedIn');
+                //$("#chatalerts").modal('toggle');
+                var refreshIntervalId = 0;
+                setTimeout(function () {
+                    //$('#chatalert').show();
+                    
+                    $('#chatalert').show();
+                    $('#chatalert').removeClass().addClass('animated fade in');
+                    $("#notify-circle-web").css("display", "");
+
+                    //$('#chatalert').removeClass();
+                    //refreshIntervalId = setTimeout(function () {
+                    //     $('#chatalert').addClass('quiet');
+                    // }, 10000);
+
+                    //if (isQuiet) {
+                    //    refreshIntervalId = window.setInterval(function () {
+                    //        $('#chatalert').addClass('quiet');
+                    //    }, 10000);
+                    //}
+                    //else {
+                    //    $('#chatalert').removeClass();
+                    //    clearInterval(refreshIntervalId);
+                    //}
+
+                    //refreshIntervalId = window.setInterval(function () {
+                    //    $('#chatalert').addClass('quiet');
+                    //    clearInterval(refreshIntervalId);
+                    //}, 10000);
+
+                    setTimeout(function () {
+                        //$('#notification-id-' + id).addClass('quiet');
+                        $('#alertnotificationid').addClass('quiet');
+                    }, 5000);
+
+                }, 500);
+
+
+                //$("#notify-circle-web").removeClass().addClass('notifycircle-web info animated bounce');
+
+                $("#notify-circle-web").removeClass().addClass('notifycircle-web animated bounce ' + response.styleClass);
+
+
+            },
+            error: function (data) {
+                cleanBookNotification.error(_L("ERROR_MSG_EXCEPTION_SYSTEM"), "Qbicles");
+            }
+
+        }).always(function () { });
+    }
+
+
+    function UpdateAlertFilter(isClear) {
+        var isShowAlertBusiness = $("#isShowAlertBusiness").is(':checked') ? true : false;
+        var isShowAlertCustomer = $("#isShowAlertCustomer").is(':checked') ? true : false;
+
+        $.ajax({
+            type: "post",
+            cache: false,
+            url: "/Notifications/UpdateAlertFilter?isShowAlertBusiness=" + isShowAlertBusiness + "&isShowAlertCustomer=" + isShowAlertCustomer + "&isClear=" + isClear,
+            beforeSend: function (xhr) {
+
+            },
+            success: function (response) {
+                if (!isClear)
+                    ShowChatAlertsModal();
+            },
+            error: function (data) {
+
+            }
+
+        }).always(function () {
+
+        });
+
+    }
+
+
+    function ShowChatAlertsModal() {
+        
+        $(".alet-option").hide();
+        $("#chatalerts").modal("toggle");
+
+        var $isShowAlertBusiness = "";
+        var $isShowAlertCustomer = "";
+        //$('#notifications').modal('show');
+        var $data_container_notification = $('#data-container-aler-notifications');
+        var $pagination_container = $('#pagiation-aler-notifications');
+
+        $pagination_container.pagination({
+            dataSource: '/Notifications/GetListAlertNotification',
+            locator: 'items',
+            totalNumberLocator: function (response) {
+                $data_container_notification.LoadingOverlay('hide');
+
+                if (response.IsShowAlertBusiness == true) {
+                    $isShowAlertBusiness = "checked";
+                }
+                if (response.IsShowAlertCustomer == true) {
+                    $isShowAlertCustomer = "checked";
+                }
+                // you can return totalNumber by analyzing response content
+                return response.totalNumber;
+            },
+            pageSize: 10,
+            autoHidePrevious: true,
+            autoHideNext: true,
+            prevText: "Previous",
+            nextText: "Next",
+            ajax: {
+                data: {},
+                beforeSend: function () {
+                    $data_container_notification.LoadingOverlay('show');
+                }
+            },
+            callback: function (data, pagination) {
+
+                $data_container_notification.empty();
+                var tbl = '<table class="datatable table-hover" data-orderable="false" style="width: 100%;"><tbody></tbody></table>';
+                $data_container_notification.html(tbl);
+                if (data.length > 0)
+                    data.forEach(function (item) {
+                        $('#data-container-aler-notifications tbody').append(item);
+                    });
+
+                if (data.length == 0)
+                    $('#clear-alert-all').prop("disabled", true);
+                else
+                    $('#clear-alert-all').prop("disabled", false);
+
+                $("#div-aler-business").html("<label><input " + $isShowAlertBusiness + " id='isShowAlertBusiness' data-toggle='toggle' data-onstyle='success' type='checkbox' data-on='Yes' data-off='No' onchange='UpdateAlertFilter(false);'> Business alerts</label>");
+                $("#div-aler-customer").html("<label><input " + $isShowAlertCustomer + "  id='isShowAlertCustomer' data-toggle='toggle' data-onstyle='success' type='checkbox' data-on='Yes' data-off='No' onchange='UpdateAlertFilter(false);'>User alerts</label>");
+                $('#isShowAlertBusiness,#isShowAlertCustomer').bootstrapToggle();
+
+                $(".alet-option").show();
+            }
+        });
+    }
+</script>
+
+<style>
+    #alert-table-data_length, #alert-table-data_filter {
+        display: none !important;
+    }
+
+    #alertnotificationid.quiet {
+        opacity: 0.5;
+    }
+
+    #alertnotificationid:hover {
+        opacity: 1;
+        cursor: pointer;
+    }
+</style>

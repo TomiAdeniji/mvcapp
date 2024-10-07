@@ -1,0 +1,110 @@
+﻿@using Qbicles.BusinessRules;
+@using Qbicles.Models.Trader
+@using Qbicles.Models.Trader.Resources
+@using Qbicles.BusinessRules.Helper;
+@model TraderItem
+
+@{
+    var additionalInfos = (List<AdditionalInfo>)(ViewBag.AdditionalInfos ?? new List<AdditionalInfo>());
+    var itemTags = Model.AdditionalInfos.Where(q => q.Type == AdditionalInfoType.ProductTag).Select(p => p.Name).ToList();
+
+    var itemTagNames = string.Join(",", itemTags);
+    var tags = additionalInfos.Where(q => q.Type == AdditionalInfoType.ProductTag).Select(p => p.Name).ToList();
+    var lstProductTagNames = Html.Raw(tags.ToJson());
+
+    var isAvailable = Model.AdditionalInfos.Any() && Model.AdditionalInfos.Any(q => q.Type == AdditionalInfoType.Brand) && Model.AdditionalInfos.Any(q => q.Type == AdditionalInfoType.ProductTag);
+}
+
+@if (!isAvailable)
+{
+    <div class="shoutout">
+
+        <p class="formhelp">Your product's brand, and associated tags will be used during user searches. Please ensure you have completed this information, or your items may not appear as intended!</p>
+        <br />
+
+        <div class="form-group">
+            <label for="brand">Brand</label>
+            <select name="brand" id="item_brand" class="form-control select2-modal" style="width: 100%;">
+                <option value="" selected>N/A</option>
+                @foreach (var additionalInfo in additionalInfos.Where(q => q.Type == AdditionalInfoType.Brand))
+                {
+                    if (Model.AdditionalInfos.Any(e => e.Id == additionalInfo.Id))
+                    {
+                        <option selected value="@additionalInfo.Id">@additionalInfo.Name</option>
+                    }
+                    else
+                    {
+                        <option value="@additionalInfo.Id">@additionalInfo.Name</option>
+                    }
+                }
+            </select>
+        </div>
+
+        <br />
+
+        <div class="form-group" style="margin: 0;">
+            <label for="tags">Product tags</label>
+            <p class="formhelp">
+                Choose one or more tags to help classify your item, and improve its visibility when users browse/search.
+                A maximum of 10 may be selected.
+            </p>
+            <textarea class="form-control input-lg" name="extratags" id="item_protags" placeholder='Additional tags...'>@itemTagNames</textarea>
+        </div>
+    </div>
+    
+
+}
+else
+{
+<div style="display: none;">
+    <textarea id="item_protags"></textarea>
+    <select id="item_brand"></select>
+</div>
+
+}
+
+
+<link href="~/Content/DesignStyle/css/tagify.css" rel="stylesheet" />
+<script src="~/Content/DesignStyle/js/tagify.js"></script>
+<script>
+    $(".select2-modal").select2();
+    $(document).ready(function () {
+            if ('@isAvailable' != 'True') {
+                var input = document.querySelector('textarea[name="extratags"]'),
+            // init Tagify script on the above inputs
+            tagify = new Tagify(input, {
+                whitelist: @(lstProductTagNames),
+                maxTags: 10,
+                contenteditable: false,
+                editTags: false,
+                enforceWhitelist: true,
+                dropdown: {
+                    maxItems:10,// <- mixumum allowed rendered suggestions
+                    classname: "tags-look", // <- custom classname for this dropdown, so it could be targeted
+                    enabled: 0, // <- show suggestions on focus
+                    closeOnSelect: false // <- do not hide the suggestions dropdown once an item has been selected
+                },
+                callbacks: {
+                    "change": (e) => {
+                        //$("#item_protags").val(e.detail.value);
+                        //$("#item_protags").text(e.detail.value);
+                        //if (e.detail.value != "")
+                        //    $("#item_protags-error").hide();
+                        //else
+                        //    $("#item_protags-error").show();
+                    }//,
+                    //"dropdown:show": (e) => console.log(e.detail)
+                }
+            });
+            }
+
+    });
+</script>
+
+<style>
+    .tagify {
+        height: auto;
+        width: 100%;
+        /*max-width: 700px;*/
+    }
+</style>

@@ -1,0 +1,123 @@
+﻿@using Qbicles.BusinessRules
+@using Qbicles.Models.Trader.ODS
+@using Qbicles.Models
+
+@model QueueOrder
+@{
+    var currencySetting = (CurrencySetting)ViewBag.CurrencySettings;
+
+    var timezone = (string)ViewBag.CurrentTimeZone;
+    var datetimeFormat = (string)ViewBag.CurrentDateTimeFormat;
+    var customerAdd = Model.Customer == null ? "" : Model.Customer.CustomerName
+            + Environment.NewLine + Model.Customer.PhoneNumber
+            + Environment.NewLine + Model.Customer.Address;
+    var customer = new
+    {
+        Model.Id,
+        Model.Key,
+        Title = customerAdd,
+        Latitude = Model.Customer?.FullAddress.Latitude ?? 0,
+        Longitude = Model.Customer?.FullAddress.Longitude ?? 0
+    };
+
+}
+
+<button class="btn btn-danger pull-right" onclick="CloseManagementInfo(true)">Close</button>
+<div class="clearfix"></div>
+<br />
+<br />
+<h1 style="line-height: 1.2;">Order @ViewBag.OrderRef</h1>
+<span class="label label-lg label-@Model.Status.GetClass()">@Model.Status.GetDescription()</span>
+<br />
+<br />
+<br />
+
+<div class="row">
+    <div class="col-xs-6">
+        <label>Queued</label><br />
+        <p>@(Model.QueuedDate?.ConvertTimeFromUtc(timezone).ToString(datetimeFormat))</p>
+    </div>
+    <div class="col-xs-6">
+        @{ 
+            var label = "";var value = "";
+            if(Model.PrepStartedDate != null)
+            {
+                label = "Prep started";
+                value = Model.PrepStartedDate?.ConvertTimeFromUtc(timezone).ToString(datetimeFormat);
+            }
+            if(Model.PreparedDate != null)
+            {
+
+                label = "Prep completed";
+                value = Model.PreparedDate?.ConvertTimeFromUtc(timezone).ToString(datetimeFormat);
+            }
+            if(Model.CompletedDate != null)
+            {
+
+                label = "Completed / Completed with problems";
+                value = Model.CompletedDate?.ConvertTimeFromUtc(timezone).ToString(datetimeFormat);
+            }
+
+        }
+        <label>@label</label>
+        <p>@value</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-xs-6">
+        <label>Distance</label><br />
+        <p id="order-info-distance-@Model.Id"></p>
+    </div>
+    <div class="col-xs-6">
+        <label>Duration</label><br />
+        <p id="order-info-duration-@Model.Id"></p>
+    </div>
+
+</div>
+
+<br />
+<br />
+<label>Order info</label>
+<div style="padding: 0 1px;">
+    <table class="table table-condensed table-borderless" style="margin: 0 0 15px 0; color: #828da0; font-size: 12px; font-family: 'Roboto';">
+        <tbody>
+            @foreach (var item in Model.OrderItems)
+            {
+                <tr>
+                    <td>@item.Variant.Name</td>
+                    <td>@item.Quantity</td>
+                    <td>@item.Variant.Unit.Name</td>
+                    <td>@((item.Variant.Price?.NetPrice??0).ToCurrencySymbol(currencySetting))</td>
+                </tr>
+                foreach (var ex in item.Extras)
+                {
+                    <tr>
+                        <td>@ex.Extra.Name</td>
+                        <td>@item.Quantity</td>
+                        <td>@ex.Extra.Unit.Name</td>
+                        <td>@((ex.Extra.Price?.NetPrice??0).ToCurrencySymbol(currencySetting))</td>
+                    </tr>
+                }
+
+            }
+        </tbody>
+    </table>
+</div>
+
+<script>
+
+    $customer = @Html.Raw(Json.Encode(customer));
+    $(document).ready(function () {
+        if ($customer.Latitude == 0) {
+            goToPosition($depot, icons.depot);
+            return;
+        }
+
+        var routeTo ={ Title: $customer.Title, Latitude: $customer.Latitude, Longitude: $customer.Longitude};
+
+        routeMapsFromDepot(routeTo, icons.customer);
+        
+        getSetDistance($customer.Latitude, $customer.Longitude, 'order-info-distance-' + @Model.Id, 'order-info-duration-' + @Model.Id, $customer);
+    });
+</script>

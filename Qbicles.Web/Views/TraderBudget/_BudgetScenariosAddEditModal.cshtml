@@ -1,0 +1,197 @@
+﻿@using Qbicles.BusinessRules
+@using Qbicles.Models.Qbicles
+@using Qbicles.Models.Trader.Budgets
+@using Qbicles.Models.Trader;
+@model BudgetScenario
+@{
+    List<BudgetGroup> budgetGroups = (List<BudgetGroup>)ViewBag.BudgetGroups ?? (new List<BudgetGroup>());
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var types = Enum.GetNames(typeof(ReportingPeriodEnum)).ToList();
+
+}
+<style>
+    #datepickers-container {
+        z-index: 999999999;
+    }
+
+    .datepicker--cells-months {
+        height: 200px;
+    }
+</style>
+<div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+        <div class="modal-header">
+            <input value="@Model.Id" id="budget_scenarios_id" type="hidden" />
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            @if (Model.Id > 0)
+            {
+                <h5 class="modal-title">Edit a Budget Scenario</h5>
+            }
+            else
+            {
+                <h5 class="modal-title">Add a Budget Scenario</h5>
+            }
+
+        </div>
+        <div class="modal-body">
+
+            <div class="row">
+
+                <div class="col-xs-12">
+
+                    <div class="well custom">
+                        <form id="budgetScenario_addedit" name="qbicle-creation">
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label for="media-title">Title</label>
+                                        <input type="text" id="budgetscenario_title" value="@Model.Title" name="scenario_title" class="form-control">
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label for="groups">Included Budget Groups</label>
+                                        <select name="groups" id="budgetscenario_budgetgroup" class="form-control checkmulti" multiple style="display:none;">
+                                            @foreach (var item in budgetGroups)
+                                            {
+                                                if (Model.BudgetGroups.Any() && Model.BudgetGroups.Select(q => q.Id).Contains(item.Id))
+                                                {
+                                                    <option selected value="@item.Id">@item.Title</option>
+                                                }
+                                                else
+                                                {
+                                                    <option value="@item.Id">@item.Title</option>
+                                                }
+                                            }
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-6">
+                                    <label for="account_number">Fiscal period start</label>
+                                    <div class="input-group" style="margin-bottom: 15px;">
+                                        <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                                        @if (Model.FiscalStartPeriod != DateTime.MinValue)
+                                        {
+                                            <input type="text" data-language='en' name="budgetscenario_fiscalstart" id="budgetscenario_fiscalstart" onchange="onPeriodChange(this)" data-view="months" value="@Model.FiscalStartPeriod.ToString("MMMM dd yyyy")" data-date-format="MM dd yyyy" data-min-view="months" class="datepicker-here form-control">
+                                        }
+                                        else
+                                        {
+                                            <input type="text" data-language='en' name="budgetscenario_fiscalstart" id="budgetscenario_fiscalstart" onchange="onPeriodChange(this)" data-view="months" value="" data-date-format="MM dd yyyy" data-min-view="months" class="datepicker-here form-control">
+                                        }
+
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-6">
+                                    <label for="account_number">Fiscal period end</label>
+                                    <div class="input-group" style="margin-bottom: 15px;">
+                                        <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                                        @if (Model.FiscalEndPeriod != DateTime.MinValue)
+                                        {
+                                            <input type="text" data-language='en' name="budgetscenario_fiscalend" id="budgetscenario_fiscalend" onchange="onPeriodChange(this)" data-view="months" value="@Model.FiscalEndPeriod.ToString("MMMM dd yyyy")" data-date-format="MM dd yyyy" data-min-view="months" class="datepicker-here form-control">
+                                        }
+                                        else
+                                        {
+                                            <input type="text" data-language='en' name="budgetscenario_fiscalend" id="budgetscenario_fiscalend" onchange="onPeriodChange(this)" data-view="months" value="" data-date-format="MM dd yyyy" data-min-view="months" class="datepicker-here form-control">
+                                        }
+
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-6" id="smallest_reporting">
+                                    <div class="form-group">
+                                        <label for="account_number">Smallest reporting period</label>
+                                        <select name="smallest" onchange="smalllestClick()" id="budgetscenario_reportingperiod" class="form-control select2" style="width: 100%;">
+                                            @foreach (var item in types)
+                                            {
+                                                if (Model.ReportingPeriod.ToString() == item)
+                                                {
+                                                    <option value="@item" selected>@item</option>
+                                                }
+                                                else
+                                                {
+                                                    <option value="@item">@item</option>
+                                                }
+                                            }
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label for="account_number">Featured image</label>
+                                        <input type="hidden" value="@Model.FeaturedImage" id="budgetscenario_featuredimage_value" />
+                                        <input type="file" class="form-control previewimg" onchange="ChangeImageItem(this)" value="@Model.FeaturedImage" id="budgetscenario_featuredimage" name="featuredimg" data-target='#preview'>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-xs-12">
+                                    <img id="preview" src="@api@Model.FeaturedImage" alt="Your image" style="display: none; width: 100%; height: auto; margin-bottom: 30px;" />
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-xs-12">
+                                    <div class="form-group">
+                                        <label for="media-description">Add a description</label>
+                                        <textarea name="qbicle-description" id="budgetscenario_description" class="form-control" style="height: 80px;">@Model.Description</textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+
+
+                    <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                    <button class="btn btn-success" onclick="saveBudgetScenario()">Confirm</button>
+
+                </div>
+            </div>
+
+
+        </div>
+    </div><!-- /.modal-content -->
+</div><!-- /.modal-dialog -->
+
+<script>
+    var endDateSelect = $('#budgetscenario_fiscalend').datepicker({
+        dateFormat: "MM dd yyyy",
+        language: 'en',
+        onSelect: function onSelect(fd, date) {
+            onPeriodChange('budgetscenario_fiscalend');
+        }
+    }).data('datepicker');
+    var startDateSelect = $('#budgetscenario_fiscalstart').datepicker({
+        dateFormat: "MM dd yyyy",
+        language: 'en',
+        onSelect: function onSelect(fd, dateSelected) {
+            if ($('#budgetscenario_fiscalend').val() == '') {
+                endDateSelect.date = dateSelected;
+            }
+            onPeriodChange('budgetscenario_fiscalstart');
+        }
+    }).data('datepicker');
+    
+    $("#budgetscenario_budgetgroup").multiselect({
+        includeSelectAllOption: false,
+        enableFiltering: false,
+        buttonWidth: '100%',
+        maxHeight: 200,
+        enableClickableOptGroups: true
+    });
+    $('#budgetscenario_reportingperiod').select2();
+</script>
+@if (Model.Id > 0)
+{
+    <script>
+        startDateSelect.date = new Date($('#budgetscenario_fiscalstart').val());
+        endDateSelect.date = new Date($('#budgetscenario_fiscalend').val());
+        smalllestClick();
+        var valueSmall = @Html.Raw(Json.Encode(Model.ReportingPeriod.ToString()));
+        $("#budgetscenario_reportingperiod").val(valueSmall);
+        $('#budgetscenario_reportingperiod').select2();
+    </script>       
+}

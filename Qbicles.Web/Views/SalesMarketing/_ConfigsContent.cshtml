@@ -1,0 +1,341 @@
+﻿@using Qbicles.Models.SalesMkt;
+@using Qbicles.Models;
+@using Qbicles.BusinessRules.Model
+@{
+    var qbicles = (List<Qbicle>)ViewBag.qbicles;
+    var setting = (Settings)ViewBag.Setting;
+    var topics = (List<Topic>)ViewBag.topics;
+    var listAccountSocialNetwork = (List<AccountSocialNetwork>)ViewBag.ListAccountSocialNetwork;
+}
+
+<div class="row">
+    <div class="col-xs-12">
+        <ul id="tab-configs" class="app_subnav admintabs" style="padding-top: 0; margin-top: -20px;">
+            <li class="active"><a href="#smconfig-0" data-toggle="tab" id="settings" onclick="saveTabActive('Configs.Settings')">Settings &amp; Accounts</a></li>
+            <li><a href="#smconfig-2" data-toggle="tab" id="social">Social pages</a></li>
+            <li><a href="#smconfig-emails" data-toggle="tab" onclick="saveTabActive('Configs.EmailVerification');">Email verification</a></li>
+            @*<li> <a href="#smconfig-3" data-toggle="tab" id="contactopts">Sync with Trader</a></li>
+                <li><a href="#smconfig-4" data-toggle="tab" onclick="LoadContacts();">Contacts</a></li>*@
+            <li><a href="#smconfig-templates" data-toggle="tab" onclick="saveTabActive('Configs.EmailTemplates')">Custom Email Templates</a></li>
+            <li><a href="#smconfig-1" id="workgroups" onclick="LoadTableWorkgroup(); saveTabActive('Configs.Workgroups');" data-toggle="tab">Workgroups</a></li>
+        </ul>
+    </div>
+</div>
+<br />
+<br />
+<div class="tab-content">
+    <!-- Settings -->
+    <div class="tab-pane fade in active" id="smconfig-0">
+
+        <div class="well custom" style="padding-bottom: 5px;">
+            <div class="row">
+                <div class="col-xs-12 col-sm-6">
+                    <div class="form-group">
+                        <label for="source">Source Qbicle</label>
+                        <select id="setting_qbicle" name="Qbicle" onchange="ReloadTopics();" class="form-control select2" style="width: 100%;">
+                            <option value=""></option>
+                            @foreach (var item in qbicles)
+                            {
+                                <option value="@item.Id" @(setting != null && setting.SourceQbicle != null && setting.SourceQbicle.Id == item.Id ? "selected" : "")>@item.Name</option>
+                            }
+                        </select>
+                        <input id="settingId" type="hidden" value="@(setting!=null?setting.Id:0)" name="Id" />
+                        <p class="formhelp below">
+                            The source Qbicle is the Qbicle that supports this app. It'll store Campaign Resources and be the place where people collaborate
+                            on and approve content. It can be managed just like any other Qbicle with all functionality available.
+                        </p>
+                    </div>
+                </div>
+                <div class="col-xs-12 col-sm-6">
+                    <div class="form-group">
+                        <label for="source">Default Topic</label>
+                        <select id="setting_topic" name="Topic" onchange="updateSetting();" class="form-control select2" style="width: 100%;">
+                            @if (topics != null && topics.Count > 0)
+                            {
+                                foreach (var item in topics)
+                                {
+                                    <option value="@item.Id" @(setting.DefaultTopic != null && setting.DefaultTopic.Id == item.Id ? "selected" : "")>@item.Name</option>
+                                }
+                            }
+                        </select>
+                        <p class="formhelp below">
+                            When things like Social Media Posts are added to a Qbicle they're assigned Topics for ease-of-access. You can change the Topic
+                            for specific items by using the Topic Management portion of your source Qbicle once they're created.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <br />
+
+        <div class="row">
+            <div class="col-xs-12">
+
+                <h5>Social Accounts</h5>
+                <hr />
+                <table class="datatable table-striped table-hover" style="width: 100%;">
+                    <thead>
+                        <tr>
+                            <th>Account</th>
+                            <th>Network</th>
+                            <th>Status</th>
+                            <th data-orderable="false">Options</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (listAccountSocialNetwork != null)
+                        {
+                            foreach (var item in listAccountSocialNetwork)
+                            {
+                                <tr>
+                                    <td>
+                                        <div class="table-avatar mini pull-left" style="background-image: url('@(item.AvatarUrl + "&size=T")');">
+                                            @if (item.NetworkType.ToUpper() == "Facebook".ToUpper())
+                                            {
+                                                <div class="network facebook">
+                                                    <i class="fa fa-facebook"></i>
+                                                </div>
+                                            }
+                                            else if (item.NetworkType.ToUpper() == "Twitter".ToUpper())
+                                            {
+                                                <div class="network twitter">
+                                                    <i class="fa fa-twitter"></i>
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <div class="network instagram">
+                                                    <i class="fa fa-instagram"></i>
+                                                </div>
+                                            }
+
+
+                                        </div>
+                                        <div class="avatar-name pull-left" style="color: #333; line-height: 4; padding-left: 12px;">@item.AccountName</div>
+                                        <div class="clearfix"></div>
+                                    </td>
+                                    <td>@item.NetworkType</td>
+                                    <td>
+                                        @if (item.IsDisabled.Value)
+                                        {
+                                            <label class="label label-lg label-danger">Disabled</label>
+                                        }
+                                        else
+                                        {
+                                            <label class="label label-lg label-success">Connected</label>
+                                        }
+
+                                    </td>
+                                    <td>
+                                        <div class="btn-group options">
+                                            <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                                <i class="fa fa-cog"></i>
+                                            </button>
+                                            <ul class="dropdown-menu dropdown-menu-right" style="right: 0;">
+                                                <li>
+                                                    @if (item.NetworkType.ToUpper() == "Facebook".ToUpper())
+                                                    {
+                                                        <a href="#" data-toggle="modal" data-target="#app-marketing-social-facebook-page-add" onclick="LoadModalSocialNetworkFacebook('@item.NetworkId');">Edit</a>
+                                                    }
+                                                    else if (item.NetworkType.ToUpper() == "Twitter".ToUpper())
+                                                    {
+                                                        <a href="#" data-toggle="modal" data-target="#app-marketing-social-twitter-add" onclick="LoadModalSocialNetworkTwitter('@item.NetworkId');">Edit</a>
+                                                    }
+                                                    else
+                                                    {
+                                                        @*<a href="#" data-toggle="modal" data-target="#app-marketing-social-instagram-add" onclick="LoadModalSocialNetworkInstagram('@item.NetworkId');">Edit</a>*@
+                                                    }
+
+                                                </li>
+                                                <li>
+                                                    @if (item.IsDisabled.Value)
+                                                    {
+                                                        <a href="#" onclick="SetDisableSocialNetwork('@item.NetworkId')">Enable</a>
+                                                    }
+                                                    else
+                                                    {
+                                                        <a href="#" onclick="SetDisableSocialNetwork('@item.NetworkId')">Disable</a>
+                                                    }
+
+                                                </li>
+                                                <li><a href="#" data-toggle="modal" data-target="#app-marketing-delete-socialnetwork" onclick="$('#sn-delete-id').val('@item.NetworkId');">Remove</a></li>
+                                            </ul>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+
+            </div>
+        </div>
+
+
+
+    </div>
+    <!-- END Settings -->
+    <!-- Sync -->
+    <div class="tab-pane fade" id="smconfig-3">
+
+        <div class="activity-overview generic help-text animated bounce">
+            <i class="fa fa-info-circle"></i>
+            <p>Sync your Contacts with Trader to merge both sets without duplication, and manage any other high-level Contact configuration...</p>
+            <button class="btn btn-primary community-button" style="max-width: 200px; margin-top: 5px;" onclick="$('.affected').show(); SyncTrader();">Sync with Trader</button>
+        </div>
+
+
+        <div class="affected" style="display: none;">
+            <div id="sync-trader-table"></div>
+        </div>
+
+    </div>
+    <!-- END Sync -->
+    <!-- Contacts -->
+    <div class="tab-pane fade" id="smconfig-4">
+
+        <div class="row">
+            <div class="col-xs-12">
+                <div class="form-group">
+                    <label for="ageranges">Age ranges</label>
+                    <div id="id-age-ranges-table"></div>
+
+                </div>
+            </div>
+        </div>
+
+    </div>
+    <!-- END Contacts -->
+    <!-- Workgroups -->
+    <div class="tab-pane fade" id="smconfig-1">
+        <div class="activity-overview generic help-text animated bounce">
+            <i class="fa fa-info-circle"></i>
+            <p>
+                Workgroups allow you to assign roles to specific people for management of processes like creating and approving posts. Defaults have been provided
+                to cover the important bits. Use the Edit button beside each to assign people and get started.
+        </div>
+        <div id="content-workgroup-table"></div>
+    </div>
+    <!-- END Workgroups -->
+    <!-- Custom Email Templates -->
+    <div class="tab-pane fade" id="smconfig-templates">
+
+        <div class="activity-overview generic help-text animated bounce">
+            <i class="fa fa-info-circle"></i>
+            <p>
+                When creating Email Marketing Campaign Posts you'll have the option of assigning a customised template you may have created.
+                This allows you to tailor the basic template to your brand, including custom colours, fonts, blocks and social media links.
+            </p>
+        </div>
+
+
+        <a href="~/SalesMarketing/EmailBuilder" class="btn btn-success community-button" style="width: auto;"><i class="fa fa-plus"></i> &nbsp; New Template</a>
+        <br /><br /><br />
+
+
+        <table id="tblEmailTemplates" class="datatable table-hover table-striped" style="width: 100%;">
+            <thead>
+                <tr>
+                    <th data-priority="1">Name</th>
+                    <th data-priority="1">Description</th>
+                    <th data-priority="3">Created</th>
+                    <th data-priority="1" data-orderable="false">Options</th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+
+    </div>
+    <!-- END Custom Email Templates -->
+    <!-- Social pages -->
+    <div class="tab-pane fade" id="smconfig-2">
+
+        <div class="activity-overview generic help-text animated bounce">
+            <i class="fa fa-info-circle"></i>
+            <p>
+                Emails created using Sales &amp; Marketing allow you to include links to your social network pages. Providing links here will set
+                defaults - you can optionally override these when creating specific Emails, and choose to not include some if you prefer.
+            </p>
+        </div>
+
+        <div class="well custom" style="padding-bottom: 5px;">
+            <div class="row">
+                <div class="col-xs-12 col-sm-6">
+                    <div class="form-group">
+                        <label for="defaultfb">Facebook</label>
+                        <input type="text" name="defaultfb" class="form-control">
+                    </div>
+                </div>
+                <div class="col-xs-12 col-sm-6">
+                    <div class="form-group">
+                        <label for="defaultig">Instagram</label>
+                        <input type="text" name="defaultig" class="form-control">
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-xs-12 col-sm-6">
+                    <div class="form-group">
+                        <label for="defaultfb">LinkedIn</label>
+                        <input type="text" name="defaultfb" class="form-control">
+                    </div>
+                </div>
+                <div class="col-xs-12 col-sm-6">
+                    <div class="form-group">
+                        <label for="defaultig">Pinterest</label>
+                        <input type="text" name="defaultig" class="form-control">
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-xs-12 col-sm-6">
+                    <div class="form-group">
+                        <label for="defaultfb">Twitter</label>
+                        <input type="text" name="defaultfb" class="form-control">
+                    </div>
+                </div>
+                <div class="col-xs-12 col-sm-6">
+                    <div class="form-group">
+                        <label for="defaultig">Youtube</label>
+                        <input type="text" name="defaultig" class="form-control">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- END Social pages -->
+    <!-- Email verification -->
+    <div class="tab-pane fade" id="smconfig-emails">
+
+        <div class="activity-overview generic help-text animated bounce">
+            <i class="fa fa-info-circle"></i>
+            <p>
+                Before you can send emails using our Email Marketing tool, you must first verify one (or more) of your email addresses for security purposes.
+                We'll update the address status below and notify you when verification is complete.
+            </p>
+        </div>
+
+        <a href="#sm-verify-email" data-toggle="modal" class="btn btn-success community-button" style="width: auto;"><i class="fa fa-plus"></i> &nbsp; Add email address</a>
+        <a href="javascript:void(0)" onclick="UpdateIdentityStatus()" data-toggle="modal" class="btn btn-primary community-button" style="width: auto;"><i class="fa fa-sync"></i> &nbsp; Update identity status</a>
+        <br /><br /><br />
+
+
+        <table class="datatable table-hover table-striped" id="ses-identites-table" style="width: 100%;">
+            <thead>
+                <tr>
+                    <th data-priority="1">Address</th>
+                    <th data-priority="1">Added</th>
+                    <th data-priority="3">Status</th>
+                    <th data-priority="1" data-orderable="false">Options</th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+
+    </div>
+    <!-- END Email verification -->
+</div>

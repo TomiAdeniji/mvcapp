@@ -1,0 +1,67 @@
+﻿@using Qbicles.BusinessRules
+@model Qbicles.Models.Trader.TraderSale
+@{
+    ViewBag.Title = "Sale manage #" + (Model.Reference?.FullRef ?? "");
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+}
+
+<table id="table-sale-items" class="datatable table-hover table-striped" data-order='[[ 1, "asc" ]]' style="background: #fff; width: 100%;">
+    <thead>
+        <tr>
+            <th data-priority="5" data-orderable="false" style="width: 40px;"></th>
+            <th data-priority="1">Item</th>
+            <th data-priority="1">Unit</th>
+            <th data-priority="2">Sale Qty</th>
+            <th data-priority="2">Unit price <strong>(@currencySettings.CurrencySymbol)</strong></th>
+            <th data-priority="3">Discount</th>
+            <th data-priority="2">Tax <strong>(@currencySettings.CurrencySymbol)</strong></th>
+            <th data-priority="3">Total <strong>(@currencySettings.CurrencySymbol)</strong></th>
+            <th data-priority="2" data-orderable="false">Include for Return</th>
+        </tr>
+    </thead>
+    <tbody>
+        @if (Model != null && Model.SaleItems.Count > 0)
+        {
+            foreach (var item in Model.SaleItems)
+            {
+                string taxrateName = "(Tax free)";
+
+                if (item.Taxes != null)
+                {
+                    taxrateName = item.StringTaxRates(currencySettings);
+                }
+
+                <tr id="tr-sale-item-@item.Id">
+                    <td class="item-row-image">
+                        <input hidden="" value="@api@(item.TraderItem.ImageUri)&size=T" />
+                        <div class="table-avatar" style="background-image: url('@api@item.TraderItem.ImageUri&size=T');">&nbsp;</div>
+                    </td>
+                    <td class="item-row-name">@item.TraderItem.Name</td>
+                    <td class="item-row-unit">@(item.Unit?.Name)</td>
+                    <td class="item-row-quantity">@item.Quantity.ToDecimalPlace(currencySettings)</td>
+                    <td class="item-row-price">@item.SalePricePerUnit.ToDecimalPlace(currencySettings)</td>
+                    <td class="item-row-discount">@item.Discount.ToDecimalPlace(currencySettings)%</td>
+                    <td class="item-row-tax">
+                        @Html.Raw(taxrateName)
+                    </td>
+                    <td class="item-row-total">@item.Price.ToDecimalPlace(currencySettings)</td>
+                    <td>
+                        <div class="checkbox toggle">
+                            <label>
+                                <input id="sale-item-transaction-selected-@item.Id" onchange="SaleItemRowChose(this.checked, @item.Id)" class="sale-item-row-select-2" data-toggle="toggle" data-size="small" data-onstyle="success" type="checkbox">
+                            </label>
+                        </div>
+                    </td>
+                </tr>
+            }
+        }
+
+    </tbody>
+</table>
+
+<script>
+    $('.sale-item-row-select-2').bootstrapToggle();
+    $("#table-sale-items").DataTable();
+</script>

@@ -1,0 +1,313 @@
+﻿@using Qbicles.Models.Trader;
+@using Qbicles.Models.Trader.Inventory;
+@model TraderItem
+@{
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var idSelect = (int)(ViewBag.IdSelected ?? 0);
+    var traderItemSKU = (string)ViewBag.SKU;
+    var traderItemGroup = (string)ViewBag.ProductGroup;
+    var traderLastestCost = (float)ViewBag.LastestCost;
+    var lstInventoryBatchs = new List<Batch>();
+    var currentOnHandUnit = (decimal)ViewBag.CurrentUnit;
+    var dateAndTime = (string)ViewBag.DateAndTime;
+    var currency = (string)ViewBag.CurrentCurrency;
+    if (Model.InventoryDetails.Count > 0)
+    {
+        foreach (var item in Model.InventoryDetails)
+        {
+            lstInventoryBatchs.AddRange(item.InventoryBatches);
+        }
+    }
+    var lstItemViewTrend = lstInventoryBatchs.GroupBy(x => x.CreatedDate.Date).Select(c => c.ToList()).ToList();
+    // for char
+    var dataDateLabel = new List<string>();
+    var dataQuantityIn = new List<decimal>();
+    var dataQuantityOut = new List<decimal>();
+    var dataQuantityDeff = new List<decimal>();
+    var dataQuantityInValue = new List<decimal>();
+    var dataQuantityOutValue = new List<decimal>();
+    var dataQuantityDeffValue = new List<decimal>();
+}
+
+<div class="modal-xl modal-dialog" role="document">
+    <div class="modal-content">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <h5 class="modal-title">@Model.Name - Item Movement</h5>
+        </div>
+        <div class="modal-body">
+
+            <dl class="breakitdown inamodal cx-25">
+                <dt>Date time range</dt>
+                <dd>@dateAndTime</dd>
+                <dt>Item name</dt>
+                <dd>@Model.Name</dd>
+                <dt>Product group</dt>
+                <dd>@traderItemGroup</dd>
+                <dt>SKU</dt>
+                <dd>@traderItemSKU</dd>
+                <dt>Latest cost (@currency)</dt>
+                <dd>@traderLastestCost</dd>
+                <dt>On-hand inventory</dt>
+                <dd id="onHandInventory">@currentOnHandUnit</dd>
+            </dl>
+
+            <div class="row">
+                <div class="col-xs-12">
+                    <ul class="app_subnav">
+                        <li id="overview_tab" class="active"><a href="#movement-viewtrend-table" data-toggle="tab">Overview</a></li>
+                        <li id="graph_tab"><a href="#movement-viewtrend-graph" data-toggle="tab">View graphs</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <br /><br />
+
+            <div class="well custom rounded" style="min-width: 300px; padding: 20px 20px 5px 20px;">
+                <div class="row">
+                    <div class="col-xs-12 col-sm-4 col-lg-3">
+                        <div class="form-group">
+                            <label for="unit">Change display unit</label>
+                            <select name="unit" id="viewtrend_product" onchange="selectedChangeUnitViewTrend()" class="form-control select2" style="width: 100%;">
+                                @foreach (var unit in Model.Units)
+                                {
+                                    if (unit.Id == idSelect)
+                                    {
+                                        <option value="@unit.Id" selected>@unit.Name</option>
+                                    }
+                                    else
+                                    {
+                                        <option value="@unit.Id">@unit.Name</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+                    </div>
+                    <div id="value-quantity-select" class="col-xs-12 col-sm-4 col-lg-3">
+                        <div class="form-group">
+                            <label>Display format</label>
+                            <select name="format" class="form-control select2" style="width: 100%;" id="format" onchange="isHideValue($('#format').val())">
+                                <option value="0" selected>Quantity</option>
+                                <option value="1">Value</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-xs-12 col-sm-4 col-lg-3">
+                        <label>Display system generated movements</label>
+                        <div class="checkbox toggle">
+                            <label>
+                                <div id="systemgen" class="toggle btn off" data-toggle="toggle" style="width: 0px; height: 0px;">
+                                    <div class="toggle-group">
+                                        <label class="btn btn-success toggle-on toggle-display-sysgem">On</label>
+                                        <label class="btn btn-default active toggle-off toggle-display-sysgem">Off</label>
+                                        <span class="toggle-handle btn btn-default"></span>
+                                    </div>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <br /><br />
+
+
+
+
+
+            <div class="tab-content">
+                <!-- Overview -->
+                <div class="tab-pane fade in active" id="movement-viewtrend-table">
+
+                    
+
+                </div>
+                <!-- END Overview -->
+                <!-- Graph -->
+                <div class="tab-pane fade" id="movement-viewtrend-graph">
+
+                    <div class="row">
+                        <div class="col-xs-12 col-lg-6">
+
+                            <div class="graph1" style="margin-bottom: 30px;">
+                                <canvas id="myChart" width="400" height="200"></canvas>
+                            </div>
+
+                        </div>
+                        <div class="col-xs-12 col-lg-6">
+
+                            <div class="graph2">
+                                <canvas id="myChart2" width="400" height="200"></canvas>
+                            </div>
+
+                        </div>
+                    </div>
+
+                </div>
+                <!-- END Graph -->
+
+            </div>
+        </div>
+    </div><!-- /.modal-content -->
+</div><!-- /.modal-dialog -->
+
+<script>
+    $('#batchchangeunit').not('.multi-select').select2();
+    $('#viewtrend_product').not('.multi-select').select2();
+    $('#format').not('.multi-select').select2();
+     
+    Chart.plugins.register({
+        id: 'paddingBelowLegends' + UniqueId(),
+        beforeInit: function (chart, options) {
+            chart.legend.afterFit = function () {
+                this.height = this.height + 50;
+            };
+        }
+    });
+
+    var mychart = new Chart(document.getElementById("myChart"), {
+        type: 'line',
+        data: {
+            labels: viewTrendData.Chart.Label,
+            datasets: [{
+                data: viewTrendData.Chart.QuantityIn,
+                label: "Quantity in",
+                borderColor: '#a47720',
+                fill: false
+            }, {
+                data: viewTrendData.Chart.QuantityOut,
+                label: "Quantity out",
+                borderColor: '#ffc000',
+                fill: false
+            }, {
+                data: viewTrendData.Chart.QuantityDeff,
+                label: "Absolute quantity difference",
+                borderColor: '#76b14f',
+                fill: false
+            }
+            ]
+        },
+        options: {
+            title: {
+                display: true,
+                text: 'Quantity Trend'
+            }
+        }
+    });
+    var mychart2 = new Chart(document.getElementById("myChart2"), {
+        type: 'line',
+        data: {
+            labels: viewTrendData.ChartValue.LabelValue,
+            datasets: [{
+                data: viewTrendData.ChartValue.QuantityInValue,
+                label: "Value in",
+                borderColor: '#70a8ba',
+                fill: false
+            }, {
+                data: viewTrendData.ChartValue.QuantityOutValue,
+                label: "Value out",
+                borderColor: '#609ed6',
+                fill: false
+            }, {
+                data: viewTrendData.ChartValue.QuantityDeffValue,
+                label: "Absolute value difference",
+                borderColor: '#264478',
+                fill: false
+            }]
+        },
+        options: {
+            title: {
+                display: true,
+                text: 'Value Trend'
+            }
+        }
+    }); 
+
+
+    function loadContentViewTrend() {
+        var unitId = $('#viewtrend_product').val();
+        var itemId = @Model.Id; 
+        
+        $('#movement-viewtrend-table').load('/Trader/ShowTableViewTrend', function () {
+            setTimeout(() => {
+            viewtrendTest(itemId,unitId);
+            }, 1);
+        });
+
+    }
+    function selectedChangeUnitViewTrend() {
+        $.LoadingOverlay("show")
+        var currentTable = $('#app-trader-item-movement #movement-viewtrend-table #viewtrend-table');
+        //ajax reload(callback, isResetPaging)
+        changeValueOnHandInventoryDetails(@Model.Id,$('#local-manage-select').val(),$('#viewtrend_product').val())
+        loadingChartViewTrend(@Model.Id);
+        currentTable.DataTable().ajax.reload(null,false);
+        LoadingOverlayEnd();
+    }
+
+
+    loadContentViewTrend();
+
+    $(".toggle-display-sysgem").click(delay(function(){
+        toggleDisplaySystemGen();
+    },100))
+
+    function toggleDisplaySystemGen(){
+        $.LoadingOverlay("show")
+        var currentTable = $('#app-trader-item-movement #movement-viewtrend-table #viewtrend-table');
+        if($("#systemgen").hasClass("off")) {
+            $("#systemgen").val(true);
+            $("#systemgen").addClass("btn-success").removeClass("off");
+        }else{
+            $("#systemgen").val(false);
+            $("#systemgen").addClass("off").removeClass("btn-success");
+        };
+        changeValueOnHandInventoryDetails(@Model.Id,$('#local-manage-select').val(),$('#viewtrend_product').val());
+        currentTable.DataTable().ajax.reload(null,true);
+        loadingChartViewTrend(@Model.Id);
+        LoadingOverlayEnd();
+    }
+
+    $('#graph_tab').click(function(){
+        $("#value-quantity-select").fadeOut();
+    })
+    $("#overview_tab").click(function(){
+        $("#value-quantity-select").fadeIn();
+    })
+
+    
+</script>
+<style>
+    #viewtrend-table_filter {
+        display: none;
+    }
+    .breakitdown {
+        display: grid;
+        align-items: center;
+        grid-gap: 10px;
+        grid-template-columns: 200px auto;
+        font-family: "Roboto", sans-serif;
+        font-size: 12px;
+    }
+                
+    .breakitdown dt {
+        font-weight: 800;
+        margin-bottom: 20px;
+    }
+    
+    .breakitdown dd:last-child {
+        margin-bottom: 20px !important;
+    }
+    
+    .breakitdown.inamodal {
+        background: #f4f8f9;
+        border-radius: 10px;
+        padding: 40px 20px 20px 20px;
+    }
+    
+    @@media all and (min-width: 1024px) {                
+        .cx-25 {
+            max-width: 28%;
+        }
+    }
+</style>

@@ -1,0 +1,268 @@
+﻿@using Qbicles.BusinessRules
+@using Qbicles.Models.Qbicles
+@using Qbicles.Models.Trader.Budgets
+@using Qbicles.Models.Trader;
+@model BudgetGroup
+@{
+    var workGroups = (List<WorkGroup>)ViewBag.WorkGroups ?? (new List<WorkGroup>());
+    var paymentTerms = (List<PaymentTerms>)ViewBag.PaymentTerms ?? (new List<PaymentTerms>());
+    var traderGroups = (List<TraderGroup>)ViewBag.TraderGroups ?? (new List<TraderGroup>());
+    var types = Enum.GetNames(typeof(BudgetGroupType)).ToList();
+    var showExpenditure = "hidden";
+    var showRevenue = "";
+    if (Model.Id == 0)
+    {
+        Model.Type = BudgetGroupType.Expenditure;
+    }
+    var api = (string)ViewBag.DocRetrievalUrl;
+    if (Model.Type == BudgetGroupType.Expenditure)
+    {
+        showExpenditure = "";
+        showRevenue = "hidden";
+    }
+}
+<style>
+    .required {
+        color: red;
+    }
+</style>
+<div class="modal-dialog modal-xl" role="document" id="formbudget_addedit">
+    <div class="modal-content">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            @if (Model.Id > 0)
+            {
+                <h5 class="modal-title">Edit a Budget Group</h5>
+            }
+            else
+            {
+                <h5 class="modal-title">Add a Budget Group</h5>
+            }
+            <input type="hidden" value="@Model.Id" id="budget_id" />
+        </div>
+        <div class="modal-body">
+            <div class="row">
+                <div class="col-xs-12 col-md-12 col-lg-12">
+                    <div class="row" style="margin-top: -15px;">
+                        <div class="col-xs-12">
+                            <ul class="app_subnav admintabs" style="padding-top: 0;">
+                                <li class="active"><a href="#budget-group" data-toggle="tab">Group</a></li>
+                                <li><a href="#budget-group-items" style="pointer-events:none;" data-toggle="tab">Items &amp; Products</a></li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <br />
+
+
+                    <div class="tab-content">
+
+
+                        <!-- Group -->
+                        <div class="tab-pane fade in active" id="budget-group">
+
+                            <div class="well custom">
+                                <form name="qbicle-creation" id="form_addedit_budget">
+                                    <div class="row">
+                                        <div class="col-xs-12 col-sm-6">
+                                            <div class="form-group">
+                                                <label for="media-title">Title <span class="required">*</span></label>
+                                                <input type="text" id="budget_title" value="@Model.Title" name="budget_title" class="form-control">
+                                            </div>
+                                        </div>
+                                        <div class="col-xs-12 col-sm-6">
+                                            <div class="form-group">
+                                                <label for="terms">Payment terms <span class="required">*</span></label>
+                                                <select name="terms" id="budget_payment" class="form-control select2" style="width: 100%;">
+                                                    @foreach (var item in paymentTerms)
+                                                    {
+                                                        if (Model.PaymentTerms != null && Model.PaymentTerms.Id == item.Id)
+                                                        {
+                                                            <option value="@item.Id" selected>@item.Name</option>
+                                                        }
+                                                        else
+                                                        {
+                                                            <option value="@item.Id">@item.Name</option>
+                                                        }
+                                                    }
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-xs-12 col-sm-6">
+                                            <div class="form-group">
+                                                <label for="type">Budget type <span class="required">*</span></label>
+                                                <select id="budget_type" name="budget_type" class="form-control select2" onchange="onBudgetTypeChange(this)" style="width: 100%;">
+                                                    @foreach (var item in types)
+                                                    {
+                                                        if (item == Model.Type.ToString())
+                                                        {
+                                                            <option selected value="@item">@item</option>
+                                                        }
+                                                        else
+                                                        {
+                                                            <option value="@item">@item</option>
+                                                        }
+                                                    }
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <div id="budget_productgroup_Ex" class="col-xs-12 col-sm-6 @showExpenditure">
+                                            <div class="form-group">
+                                                <label for="media-description">Included Product Group(s)</label>
+                                                <select name="prodgroups1" class="form-control checkmulti" multiple style="display:none;">
+                                                    @foreach (var item in traderGroups.Where(q => q.ExpenditureBudgetGroup == null || (Model.ExpenditureGroups.Any() && Model.ExpenditureGroups.Select(x=>x.Id).Contains(q.Id))).ToList())
+                                                    {
+                                                        if (Model.ExpenditureGroups != null && Model.ExpenditureGroups.Any(e => e.Id == item.Id))
+                                                        {
+                                                            <option value="@item.Id" selected>@item.Name (@item.Items.Count Items)</option>
+                                                        }
+                                                        else
+                                                        {
+                                                            <option value="@item.Id">@item.Name (@item.Items.Count Items)</option>
+                                                        }
+                                                    }
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div id="budget_productgroup_Re" class="col-xs-12 col-sm-6  @showRevenue">
+                                            <div class="form-group">
+                                                <label for="media-description">Included Product Group(s)</label>
+                                                <select name="prodgroups2" class="form-control checkmulti" multiple style="display:none;">
+                                                    @foreach (var item in traderGroups.Where(q => q.RevenueBudgetGroup == null || (Model.RevenueGroups.Any() && Model.RevenueGroups.Select(x=>x.Id).Contains(q.Id))).ToList())
+                                                    {
+                                                        if (Model.RevenueGroups != null && Model.RevenueGroups.Any(e => e.Id == item.Id))
+                                                        {
+                                                            <option value="@item.Id" selected>@item.Name (@item.Items.Count Items)</option>
+                                                        }
+                                                        else
+                                                        {
+                                                            <option value="@item.Id">@item.Name (@item.Items.Count Items)</option>
+                                                        }
+                                                    }
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+
+
+                                    <div class="row">
+                                        <div class="col-xs-12 col-sm-6">
+                                            <div class="form-group">
+                                                <label for="media-description">Add a description</label>
+                                                <textarea name="qbicle-description" id="budget_description" class="form-control" style="height: 80px;">@Model.Description</textarea>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+
+                            <br />
+                            <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                            <a href="#budget-group-items" data-toggle="tab" class="btn btn-success btnNext hidden">Proceed &nbsp; <i class="fa fa-angle-right"></i></a>
+                            <button class="btn btn-success" onclick="addEditNextTab()">Proceed &nbsp;</button>
+                        </div>
+                        <!-- END Group -->
+                        <!-- Items -->
+                        <div class="tab-pane fade" id="budget-group-items">
+
+                            <div class="well custom">
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-4">
+                                        <div class="form-group" style="margin: 0;">
+                                            <label for="search">Search</label>
+                                            <input type="text" name="search" id="search_traderitem" onkeyup="searchTableTraderItem()" class="form-control" placeholder="Search by name or SKU">
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-3">
+                                        <div class="form-group" style="margin: 0;">
+                                            <label for="catfilter">Filter by Product Group</label>
+                                            <select name="catfilter" id="search_traderItem_byGroup" onchange="searchTableTraderItem()" class="form-control select2" style="width: 100%;">
+                                                <option value="">Show all</option>
+                                                @foreach (var gr in traderGroups)
+                                                {
+                                                    <option value="@gr.Name">@gr.Name</option>
+                                                }
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <br />
+
+                            <table class="datatable table-striped table-hover" id="list-traderitem" style="width: 100%;" data-order='[[1, "asc"]]'>
+                                <thead>
+                                    <tr>
+                                        <th data-priority="3" data-orderable="false" style="width: 40px;"></th>
+                                        <th data-priority="1">Name</th>
+                                        <th data-priority="2">SKU</th>
+                                        <th data-priority="3">Product Group</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                </tbody>
+                            </table>
+
+
+                            <br />
+
+                            <br />
+                            <a href="#budget-config" data-toggle="tab" class="btn btn-warning btnPrevious"><i class="fa fa-angle-left"></i> &nbsp; Previous</a>
+                            <button class="btn btn-primary hidden" onclick="saveBudgetGroup('Draft')">Save as Draft</button>
+                            <button class="btn btn-success" onclick="saveBudget()">Confirm</button>
+
+                        </div>
+
+
+                    </div>
+                </div>
+            </div>
+
+
+        </div>
+    </div><!-- /.modal-content -->
+</div>
+<script>
+    $('.btnNext').click(function () {
+        $('.modal .app_subnav > .active').next('li').find('a').trigger('click');
+    });
+
+    $('.btnPrevious').click(function () {
+        $('.modal .app_subnav > .active').prev('li').find('a').trigger('click');
+    });
+    $('#formbudget_addedit .select2').select2({
+    });
+    $("#budget_productgroup_Ex select, #budget_productgroup_Re select").multiselect({
+        includeSelectAllOption: false,
+        enableFiltering: false,
+        buttonWidth: '100%',
+        maxHeight: 200,
+        enableClickableOptGroups: true
+    });
+    // Group
+    @{
+        var groupItems = traderGroups.Select(q => new
+        {
+            Id = q.Id,
+            Name = q.Name,
+            Items = q.Items.Any() ? q.Items.Select(i => new
+            {
+                Id = i.Id,
+                IsBought = i.IsBought,
+                IsSold = i.IsSold,
+                Name = i.Name,
+                ImageUri = api + i.ImageUri,
+                SKU = i.SKU,
+                GroupName = i.Group.Name
+            }).ToList()
+                    : null,
+            ExpenditureBudgetGroup = q.ExpenditureBudgetGroup == null ? null : new {},
+            RevenueBudgetGroup = q.RevenueBudgetGroup == null ? null : new {}
+        }).ToList();
+    }
+    traderGroups = @Html.Raw(Json.Encode(groupItems));
+</script>

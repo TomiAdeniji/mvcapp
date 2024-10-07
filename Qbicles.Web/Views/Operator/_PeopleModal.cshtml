@@ -1,0 +1,109 @@
+﻿@using Qbicles.BusinessRules;
+@using Qbicles.Models;
+@using System.Linq;
+@using Qbicles.Models.Operator;
+@model OperatorWorkGroup
+@{
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var members = (List<ApplicationUser>)ViewBag.members;
+    var wgTaskMembers = Model != null && Model.TaskMembers != null ? Model.TaskMembers : new List<WorkGroupTaskMember>();
+    var wgTeamMembers = Model != null && Model.TeamMembers != null ? Model.TeamMembers : new List<WorkGroupTeamMember>();
+}
+<div class="modal-lg modal-dialog" role="document">
+    <div class="modal-content">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <h5 class="modal-title">Add people to your Workgroup</h5>
+        </div>
+        <div class="modal-body">
+
+            <div class="contact-list" style="margin: 0 15px;">
+
+                <div class="well custom">
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-8">
+                            <div class="form-group" style="margin: 0;">
+                                <label for="search">Search Domain users</label>
+                                <input type="text" id="opkeyword" name="search" onkeyup="filterMembers();" class="form-control">
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-sm-4">
+                            <div class="form-group" style="margin: 0;">
+                                <label for="search">Show</label>
+                                <select name="show" id="slShow" onchange="filterMembers();" class="form-control select2" style="width: 100%;">
+                                    <option value="0" selected>All Domain users</option>
+                                    <option value="1">Workgroup members</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="margin: 25px 0 60px 0;">
+
+                    <div>
+                        <ul id="wgMembers" class="widget-contacts">
+                            @{
+                                members = members.OrderBy(o => o.Surname).ToList();
+                                var i = 0;
+                                foreach (var item in members)
+                                {
+                                    var isMember = false;
+                                    if (Model != null)
+                                    {
+                                        if (Model.Type == WorkGroupTypeEnum.Team)
+                                        {
+                                            isMember = (wgTeamMembers != null && wgTeamMembers.Any(s => s.Member.Id == item.Id) ? true : false);
+                                        }
+                                        else
+                                        {
+                                            isMember = (wgTaskMembers != null && wgTaskMembers.Any(s => s.Member.Id == item.Id) ? true : false);
+                                        }
+                                    }
+
+                                    var fullname = HelperClass.GetFullNameOfUser(item);
+                                    if (i == 0)
+                                    {
+                                        <li fullname="@fullname" class="letters @(isMember?"ismember":"")" style="padding-top: 0;">@(item.Surname != null ? item.Surname[0].ToString().ToUpper() : fullname?.Substring(0, 1).ToUpper())</li>
+                                    }
+                                    else
+                                    {
+                                        <li fullname="@fullname" class="letters @(isMember?"ismember":"")">@(item.Surname != null ? item.Surname[0].ToString().ToUpper() : fullname?.Substring(0, 1).ToUpper())</li>
+                                    }
+                                    <li fullname="@fullname" class="@(isMember?"ismember":"")">
+                                        <a href="#">
+                                            <div class="contact-avatar">
+                                                <div style="background-image: url('@(api+item.ProfilePic)');">&nbsp;</div>
+                                            </div>
+                                            <div class="contact-info">
+                                                <h5>@(fullname)</h5>
+                                            </div>
+
+                                            <div class="contact-sideoptions">
+                                                <button type="button" class="btn btn-success contact@(item.Id)-add"  data-avatar="@(api+item.ProfilePic)" data-name="@fullname" data-id="@item.Id" style="margin-top: 12px;@(isMember?"display: none;":"")" onclick="addMembers(this);"><i class="fa fa-plus"></i> &nbsp; Add to Workgroup</button>
+                                                <div class="contact@(item.Id)-remove" style="@(isMember?"":"display: none;");">
+                                                    <button type="button" class="btn btn-danger pull-right" style="margin-top: 3px;" onclick="removeMembers('@item.Id');"><i class="fa fa-trash"></i> &nbsp; Remove</button>
+                                                    <div class="clearfix"></div>
+                                                </div>
+                                            </div>
+                                        </a>
+                                    </li>
+                                    i++;
+                                }
+                            }
+                        </ul>
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <br />
+            <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+            <button class="btn btn-success" data-dismiss="modal">Confirm</button>
+
+
+        </div>
+    </div><!-- /.modal-content -->
+</div><!-- /.modal-dialog -->

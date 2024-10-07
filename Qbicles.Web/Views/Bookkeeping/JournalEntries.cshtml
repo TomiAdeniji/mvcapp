@@ -1,0 +1,148 @@
+﻿@using Qbicles.BusinessRules;
+@using Qbicles.Models.Bookkeeping;
+
+@{
+    ViewBag.Title = "Chart of Accounts - Journal Entries";
+    var journalGroups = (List<JournalGroup>)ViewBag.JournalGroup;
+    var journalStatus = ViewBag.JournalStatus;
+    var bKAccount = (List<BKAccountGroupModel>)ViewBag.BkAccounts;
+
+    var userRoleRights = (List<string>)ViewBag.UserRoleRights;
+    var rightShowJournalTab = (bool)ViewBag.rightShowJournalTab;
+    var rightShowAccountTab = (bool)ViewBag.rightShowAccountTab;
+    var rightShowReportsTab = (bool)ViewBag.rightShowReportsTab;
+    var rightShowConfigurationTab = userRoleRights.Any(r => r == RightPermissions.BKManageAppSettings);
+    var rightCreateJournalEntry = (bool)ViewBag.rightCreateJournalEntry;
+}
+
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail">
+
+    <!-- Main content -->
+    <section class="content">
+
+        <br />
+        <br />
+        <div class="mod_title">
+            <h5>Bookkeeping</h5>
+            <h4>Journal Entries</h4>
+        </div>
+
+        @Html.Partial("_BookkeepingNavigatePartial", new ViewDataDictionary
+        {
+            {"tabSelected", 2 },
+            { "rightShowJournalTab", rightShowJournalTab },
+            { "rightShowAccountTab", rightShowAccountTab },
+            { "rightShowReportsTab", rightShowReportsTab },
+            { "rightShowConfigurationTab", rightShowConfigurationTab }
+        })
+        <div class="row">
+            <div class="col-xs-12">
+                <div class="app_filter">
+                    <div class="row">
+                        <div class="col-xs-12">
+                            <a href="/Apps/AppManagement" class="btn btn-info"><i class="fa fa-th"></i> &nbsp; All apps</a>
+                            @if (rightShowAccountTab)
+                            {
+                                <a href="/Bookkeeping/BKApps" class="btn btn-info"><i class="fa fa-home"></i> &nbsp; App home</a>
+                            }
+                            @if (rightCreateJournalEntry)
+                            {
+                                <a href="/Bookkeeping/CreateJournalEntry" class="btn btn-success"><i class="fa fa-plus"></i> &nbsp; New journal entry</a>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <br />
+
+        <div class="activity-overview generic" style="padding: 15px 15px 0 15px;">
+            <div class="row">
+                <div class="col-xs-12 col-sm-6 col-lg-3">
+                    <div class="form-group">
+                        <select id="filter-group" name="groups" class="form-control chosen-select" style="width: 100%;" multiple data-placeholder="Limit to group(s)">
+                            @foreach (var item in journalGroups)
+                            {
+                                <option value="@item.Id">@item.Name</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+                <div class="col-xs-12 col-sm-6 col-lg-3">
+                    <div class="form-group">
+                        <select id="filter-account" name="account" class="form-control chosen-select" style="width: 100%;" data-placeholder="Limit to account(s)" multiple>
+                            @foreach (var item in bKAccount)
+                            {
+                                <optgroup label="@item.Name">
+                                    @foreach (var acc in item.Accounts)
+                                    {
+                                        <option value="@acc.Id">@acc.Name</option>
+                                    }
+                                </optgroup>
+                            }
+                        </select>
+                    </div>
+                </div>
+                <div class="col-xs-12 col-sm-6 col-lg-3">
+                    <div class="form-group">
+                        <input id="filter-date" type="text" class="form-control daterange-journal" placeholder="Limit to a date range">
+                    </div>
+                </div>
+                <div class="col-xs-12 col-sm-6 col-lg-3">
+                    <div class="form-group">
+                        <select id="filter-status" name="groups" class="form-control chosen-select" style="width: 100%;" multiple data-placeholder="Limit by status">
+                            @foreach (var item in journalStatus)
+                            {
+                                <option value="@item">@item</option>
+                            }
+
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <br />
+
+        <div class="activity-overview alert-detail" style="padding: 22px; display: inline-block;">
+            <p style="margin: 0 0 8px 0;">Showing <strong><span id="total-journals">0</span> journal entries</strong> based on your filter criteria</p>
+            <a href="javascript:void(0)" onclick="ClearFilterJournalEntries()" class="btn btn-warning btn-small"><i class="fa fa-trash"></i> &nbsp; Clear filters</a>
+        </div>
+
+        <br /><br /><br />
+
+        <div class="tab-content app_general" id="content">
+            <table id="tb_journal_entries" class="datatable table-striped table-hover app_specific no-search" style="width: 100%;">
+                <thead>
+                    <tr>
+                        <th data-priority="1">Number</th>
+                        <th data-priority="1">Group</th>
+                        <th data-priority="2">Date</th>
+                        <th data-priority="3">Description</th>
+                        <th data-priority="1">Approval status</th>
+                        <th data-priority="1">Options</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+    </section>
+    <!-- ./content -->
+
+</div>
+<!-- /.content-wrapper -->
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/bookkepping.journalentries.js"></script>
+        <script src="~/Scripts/dev/trader.domain.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/bookkepping.journalentries.min.js"></script>
+        <script src="~/Scripts/dev/trader.domain.min.js"></script>
+    }
+}

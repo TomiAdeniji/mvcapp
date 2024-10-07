@@ -1,0 +1,144 @@
+﻿@using Qbicles.Models.Trader
+@using Qbicles.Models.Trader.ODS
+@using Qbicles.Models.Trader.PoS
+@model List<PosDevice>
+@{
+    var location = (TraderLocation)ViewBag.Location;
+    var status = "";
+    var statusCss = "";
+    var queue = (PrepQueue)ViewBag.PrepQueue;
+}
+
+<!-- Devices -->
+<div class="tab-pane fade in active" id="tab-devices">
+
+    <div class="well custom" style="padding-bottom: 10px;">
+        <div class="row">
+            <div class="col-xs-12 col-sm-3">
+                <div class="form-group">
+                    <label for="search">Search devices</label>
+                    <input type="text" id="search-device" class="form-control">
+                </div>
+            </div>
+            <div class="col-xs-12 col-sm-3">
+                <div class="form-group">
+                    <label for="status">Limit by status</label>
+                    <select id="order-device" class="form-control select2" style="width: 100%;">
+                        <option value="0">Show all</option>
+                        @*<option value="1">Disabled</option>*@
+                        <option value="1">Not Activated</option>
+                        <option value="2">Activated</option>
+                    </select>
+                </div>
+            </div>
+            <div class="col-xs-12 col-sm-2">
+                <label for="">Options</label><br />
+                <button class="btn btn-success" data-toggle="modal" onclick="addEditPosDevice(0)" data-target="#app-trader-pos-device-add"><i class="fa fa-plus"></i> &nbsp; Add a Device</button>
+            </div>
+        </div>
+    </div>
+
+    <br />
+
+    <div id="pos-devices-list" class="flex-grid-thirds-lg qbicles-dash-grid pos-devices">
+
+
+        @{
+            foreach (var device in Model)
+            {
+                switch (device.Status)
+                {
+                    case PosDeviceStatus.InActive:
+                        status = "Inactive";
+                        statusCss = "label-warning";
+                        break;
+                    case PosDeviceStatus.Active:
+                        status = "Activated";
+                        statusCss = "label-success";
+                        break;
+                }
+                <article class="col" id="pos-device-@device.Id">
+                    @{
+                        var styleTop = "top: 8px !important";
+                    }
+                    @if (device.Menu != null)
+                    {
+                        styleTop = "top: 35px !important";
+                        <span class="last-updated"> Using menu: @device.Menu.Name</span>
+                    }
+                    @if (device.PreparationQueue != null)
+                    {
+                        <span class="last-updated" style="@styleTop"> Using Queue: @device.PreparationQueue.Name</span>
+                    }
+                    @if (device.Status == PosDeviceStatus.InActive)
+                    {
+                        <div class="qbicle-opts dropdown">
+                            <a href="javascript:" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                <i class="fa fa-cog"></i>
+                            </a>
+                            <ul class="dropdown-menu primary dropdown-menu-right" style="right: 0;">
+
+                                <li>
+                                    <a href="javascript:" onclick="$deviceIdDelete = '@device.Id', ConfirmDeleteDevice(@device.Id, '@device.Name.Replace('\'', '|')')" data-toggle="modal" data-target="#confirm-delete">Delete</a>
+                                </li>
+                            </ul>
+                        </div>
+                    }
+                    <a href="/PointOfSale/PoSDevice?id=@device.Id">
+                        <div class="avatar" style="background-image: url('/Content/DesignStyle/img/icon_ipad.png');">&nbsp;</div>
+                        <h1 style="color: #333;">@device.Name</h1>
+                    </a>
+
+                    <p class="qbicle-detail" style="white-space: pre-wrap !important;">@device.Summary</p>
+                    <br/>
+
+                    <span class="label label-lg @statusCss">@status</span>
+                    <br/><br/>
+
+                </article>
+            }
+        }
+
+    </div>
+
+</div>
+<!-- END Devices -->
+
+
+<div class="modal fade left" id="app-trader-pos-device-add" role="dialog" aria-labelledby="app-trader-pos-device-add">
+    
+</div><!-- /.modal -->
+
+<div class="modal fade" id="confirm-delete" role="dialog" aria-labelledby="confirm-delete">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-body">
+
+                <div class="activity-overview generic help-text" style="margin: 0;">
+                    <i class="fa fa-info-circle"></i>
+                    <p>You are about to delete this <strong><span id="name-delete"></span></strong> permanently. This action cannot be undone. If you are sure you wish to proceed, please confirm below...</p>
+
+
+                    <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                    <button class="btn btn-success" onclick="DeleteDevice()">Confirm &amp; Delete</button>
+                </div>
+
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/pos.devices.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/pos.devices.min.js"></script>
+    }
+    <script>
+        $("#order-device").select2();
+    </script>
+}

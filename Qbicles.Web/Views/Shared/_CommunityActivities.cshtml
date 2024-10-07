@@ -1,0 +1,330 @@
+﻿@using Qbicles.BusinessRules;
+@using Qbicles.Models;
+@using Qbicles.Models.Community
+@model Qbicle
+@{
+    var currentUserId = (string)ViewBag.CurrentUserId;
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var postClass = "";
+    var eventClass = "";
+    var alertClass = "";
+    var fileClass = "";
+    var commPage = (CommunityPage)ViewBag.page;
+    if (commPage != null)
+    {
+
+        postClass = commPage.PostsDisplayStatus == CommunityPageActivityVisibilityEnum.Disabled ? "a-btn-disabled" : "";
+        eventClass = commPage.EventsDisplayStatus == CommunityPageActivityVisibilityEnum.Disabled ? "a-btn-disabled" : "";
+        alertClass = commPage.AlertsDisplayStatus == CommunityPageActivityVisibilityEnum.Disabled ? "a-btn-disabled" : "";
+        fileClass = commPage.FilesDisplayStatus == CommunityPageActivityVisibilityEnum.Disabled ? "a-btn-disabled" : "";
+        if (string.IsNullOrEmpty(alertClass))
+        {
+            alertClass = "active";
+        }
+        else if (string.IsNullOrEmpty(postClass))
+        {
+            postClass = "active";
+        }
+        else if (string.IsNullOrEmpty(fileClass))
+        {
+            fileClass = "active";
+        }
+        else if (string.IsNullOrEmpty(eventClass))
+        {
+            eventClass = "active";
+        }
+    }
+    else
+    {
+        alertClass = "active";
+    }
+    var currentTimeZone = (string)ViewBag.CurrentTimeZone;
+    var allPosts = new PostsRules().GetPosts(Model.Id).ToList();
+    var allAlerts = Model.Activities.Where(a => a.ActivityType == QbicleActivity.ActivityTypeEnum.AlertActivity).ToList();
+    var allEvents = Model.Activities.Where(a => a.ActivityType == QbicleActivity.ActivityTypeEnum.EventActivity).ToList();
+    var allMedias = Model.Activities.Where(a => a.ActivityType == QbicleActivity.ActivityTypeEnum.MediaActivity).ToList();
+
+    var posts = allPosts.OrderByDescending(d => d.TimeLineDate).Take(5).ToList();
+    var alerts = allAlerts.OrderByDescending(d => d.TimeLineDate).Take(5).ToList();
+    var events = allEvents.OrderByDescending(d => d.TimeLineDate).Take(5).ToList();
+    var medias = allMedias.OrderByDescending(d => d.TimeLineDate).Take(5).ToList();
+
+    var postToday = allPosts.Count(tp => tp.StartedDate.ConvertTimeToUtc(currentTimeZone).Date == DateTime.UtcNow.Date);
+    var alertToday = allAlerts.Count(a => a.TimeLineDate.ConvertTimeToUtc(currentTimeZone).Date == DateTime.UtcNow.Date);
+    var eventToday = allEvents.Count(a => a.TimeLineDate.ConvertTimeToUtc(currentTimeZone).Date == DateTime.UtcNow.Date);
+    var mediaToday = allMedias.Count(a => a.TimeLineDate.ConvertTimeToUtc(currentTimeZone).Date == DateTime.UtcNow.Date);
+
+    var hidenCss = ViewBag.hidenCss;
+}
+
+<div class="app_topnav entity_adds previewPage @hidenCss" style="background: #fff; padding: 0;">
+    <ul class="nav nav-pills app_main_nav">
+        <li id="app_main_nav_alerts" role="presentation" class="@alertClass">
+            <a href="#alerts" data-toggle="tab">
+                <i class="fa fa-bell"></i>
+                Alerts
+                @if (alertToday > 0)
+                {
+                    <span class="counter">@alertToday</span>
+                }
+
+            </a>
+        </li>
+        <li id="app_main_nav_post" role="presentation" class="@postClass">
+            <a href="#posts" data-toggle="tab">
+                <i class="fa fa-comments"></i>
+                Posts
+                @if (postToday > 0)
+                {
+                    <span class="counter">@postToday</span>
+                }
+            </a>
+        </li>
+        <li id="app_main_nav_files" role="presentation" class="@fileClass">
+            <a href="#files" data-toggle="tab">
+                <i class="fa fa-folder-open"></i>
+                Files
+                @if (mediaToday > 0)
+                {
+                    <span class="counter">@mediaToday</span>
+                }
+            </a>
+        </li>
+        <li id="app_main_nav_events" role="presentation" class="@eventClass">
+            <a href="#events" data-toggle="tab">
+                <i class="fa fa-calendar"></i>
+                Events
+                @if (eventToday > 0)
+                {
+                    <span class="counter">@eventToday</span>
+                }
+            </a>
+        </li>
+    </ul>
+</div>
+
+<br class="previewPage @hidenCss" />
+<br class="previewPage @hidenCss" />
+
+<div class="row previewPage @hidenCss">
+    <div class="col-xs-12">
+
+        <div class="tab-content">
+            <!-- Post -->
+            <div class="tab-pane fade" id="posts">
+                @foreach (var pt in posts)
+                {
+                    <article id="post-@pt.Id" class="activity post">
+                        <div class="activity-detail">
+                            <div class="activity-meta">
+                                <h4>@HelperClass.GetFullNameOfUser(pt.CreatedBy, currentUserId)</h4>
+                                <small>@pt.TimeLineDate.ToString("dd MMM yyyy, htt")</small>
+                                @if (pt.Topic != null)
+                                {
+                                    <a href='javascript:void(0);' class="topic-label">
+                                        <span class="label label-info">@pt.Topic.Name</span>
+                                    </a>
+                                }
+                            </div>
+
+                            <div class="activity-overview media-comment">
+                                <p>
+                                    @Html.Raw(pt.Message.Replace(Environment.NewLine, "<br/>"))
+                                </p>
+                            </div>
+                        </div>
+                        <div class="clearfix"></div>
+                    </article>
+                }
+                <div id="previousPosts">
+                </div>
+                @if (allPosts.Count() > 5)
+                {
+                    <button id="btnLoadPosts" onclick="LoadMorePosts('@Model.Key')" class="loading-button btn btn-info @hidenCss">
+                        <div class="loading-state hidden">
+                            <i class="fa fa-spinner fa-spin"></i> &nbsp; Loading...
+                        </div>
+                        <div class="general-state">
+                            Load more results
+                        </div>
+                    </button>
+                }
+                <button id="btnLoadPosts" onclick="LoadMorePosts('@Model.Key')" class="loading-button btn btn-info">
+                    <div class="loading-state hidden">
+                        <i class="fa fa-spinner fa-spin"></i> &nbsp; Loading...
+                    </div>
+                    <div class="general-state">
+                        Load more results
+                    </div>
+                </button>
+            </div>
+            <!-- End post -->
+            <!-- Media -->
+            <div class="tab-pane fade" id="files">
+                @foreach (var meac in medias)
+                {
+                    var lastUpdateFile = "";
+                    var me = (QbicleMedia)meac;
+                    var mediaLastupdate = me.VersionedFiles.Where(e => !e.IsDeleted).OrderByDescending(x => x.UploadedDate).FirstOrDefault();
+                    if (mediaLastupdate != null)
+                    {
+                        lastUpdateFile = mediaLastupdate.UploadedDate.Date == DateTime.UtcNow.Date ? "Today, " + mediaLastupdate.UploadedDate.ToString("hh:mmtt").ToLower() : mediaLastupdate.UploadedDate.ToString("dd/MM/yyyy hh:mmtt").ToLower();
+                    }
+                    <article class="activity media">
+                        <div class="activity-detail">
+                            <div class="activity-overview media">
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-5 col-md-6 col-lg-5">
+                                        <a href="javascript:void(0);" onclick="ShowMediaPage('@me.Key',false);">
+                                            @if (me.FileType.Type == "Image File")
+                                            {
+                                                <img id="media-@mediaLastupdate.Id" class="img-responsive" src="@api@mediaLastupdate.Uri" />
+                                            }
+                                            else
+                                            {
+                                                <img src="@(me.FileType.ImgPath)" class="img-responsive">
+                                            }
+                                        </a>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-7 col-md-6 col-lg-7 description">
+                                        <h5>@me.Name</h5>
+                                        <p>
+                                            @if (!string.IsNullOrEmpty(me.Description))
+                                            {
+                                                Html.Raw(me.Description.Replace(Environment.NewLine, "<br/>"));
+                                            }
+                                        </p>
+                                        <small>@me.FileType.Extension | @(mediaLastupdate == null ? "" : lastUpdateFile)</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="clearfix"></div>
+                    </article>
+                }
+                <div id="previousMedias">
+                </div>
+                @if (allMedias.Count() > 5)
+                {
+                    <button id="btnLoadMedias" onclick="LoadMoreMedias(@Model.Id)" class="btn btn-info loading-button @hidenCss">
+                        <div class="loading-state hidden">
+                            <i class="fa fa-spinner fa-spin"></i> &nbsp; Loading...
+                        </div>
+                        <div class="general-state">
+                            Load more results
+                        </div>
+                    </button>
+                }
+            </div>
+            <!-- End media-->
+            <!-- Alert -->
+            <div class="tab-pane fade in active" id="alerts">
+                @foreach (var alac in alerts)
+                {
+                    var al = (QbicleAlert)alac;
+                    <article id="activity-@al.Id" class="activity alert_snippet">
+                        <div class="activity-detail">
+                            <div class="activity-meta">
+                                <a href="javascript:void(0);" onclick="ShowAlertPage('@al.Key', false);">
+                                    <h4>@al.Name</h4>
+                                </a>
+                                <br>
+                                @if (al.Topic != null)
+                                {
+                                    <a href="javascript:void(0);" class="topic-label">
+                                        <span class="label label-info">@al.Topic.Name</span>
+                                    </a>
+                                }
+
+                                <small>@al.TimeLineDate.ToString("dd MMM yyyy, hh:mmtt")</small>
+                            </div>
+                        </div>
+                        <div class="clearfix"></div>
+                    </article>
+                }
+                <div id="previousAlerts">
+                </div>
+                @if (allAlerts.Count() > 5)
+                {
+                    <button id="btnLoadAlerts" onclick="LoadMoreAlerts(@Model.Id)" class="btn btn-info loading-button @hidenCss">
+                        <div class="loading-state hidden">
+                            <i class="fa fa-spinner fa-spin"></i> &nbsp; Loading...
+                        </div>
+                        <div class="general-state">
+                            Load more results
+                        </div>
+                    </button>
+                }
+            </div>
+            <!-- END Alert -->
+            <!-- Event -->
+            <div class="tab-pane fade" id="events">
+                @foreach (var evac in events)
+                {
+                    var ev = (QbicleEvent)evac;
+                    <article class="activity event_snippet">
+                        <div class="activity-detail">
+                            <a href="javascript:void(0);" onclick="ShowEventPage('@ev.Key',false);">
+                                <div class="activity-overview event-detail">
+                                    <h5><span>Event /</span> @ev.Name</h5>
+                                    <p>
+                                        @Html.Raw(ev.Description.Replace(Environment.NewLine, "<br/>"))
+                                    </p>
+                                </div>
+                                <div class="activity-specifics">
+                                    <ul>
+                                        @if (@ev.Start.Date == @ev.End.Date)
+                                        {
+                                            <li><i class="fa fa-calendar"></i> @ev.Start.ToString("dd/MM/yyyy")</li>
+                                            <li><i class="fa fa-clock-o"></i> @(ev.Start.ToString("hh:mmtt") + " - " + ev.End.ToString("hh:mmtt"))</li>
+                                        }
+                                        else
+                                        {
+                                            <li><i class="fa fa-calendar"></i> @(ev.Start.ToString("dd/MM/yyyy") + " - " + ev.End.ToString("dd/MM/yyyy"))</li>
+                                            <li><i class="fa fa-clock-o"></i> @(ev.Start.ToString("dd/MM/yyyy hh:mmtt") + " - " + ev.End.ToString("dd/MM/yyyy hh:mmtt"))</li>
+                                        }
+                                        @if (!string.IsNullOrEmpty(ev.Location))
+                                        {
+                                            <li><i class="fa fa-map-marker"></i> @ev.Location</li>
+                                        }
+                                    </ul>
+                                </div>
+                            </a>
+                        </div>
+                        <div class="clearfix"></div>
+                    </article>
+                }
+                <div id="previousEvents">
+                </div>
+                @if (allEvents.Count() > 5)
+                {
+                    <button id="btnLoadEvents" onclick="LoadMoreEvents(@Model.Id)" class="loading-button btn btn-info @hidenCss">
+                        <div class="loading-state hidden">
+                            <i class="fa fa-spinner fa-spin"></i> &nbsp; Loading...
+                        </div>
+                        <div class="general-state">
+                            Load more results
+                        </div>
+                    </button>
+
+                }
+            </div>
+            <!-- END Event -->
+
+        </div>
+
+
+    </div>
+</div>
+
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/community.page.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/community.page.min.js"></script>
+
+    }
+}

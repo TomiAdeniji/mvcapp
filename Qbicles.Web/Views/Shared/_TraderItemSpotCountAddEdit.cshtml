@@ -1,0 +1,332 @@
+﻿@using Qbicles.Models.Trader;
+@using Qbicles.Models.Trader.Inventory;
+@using Qbicles.Models;
+@model SpotCount
+@{
+    var workGroups = (List<WorkGroup>)ViewBag.WorkgroupSpotCount;
+    var locationManage = (TraderLocation)ViewBag.Location;
+    var itemGroups = (List<TraderGroup>)ViewBag.ItemGroups;
+    var lstTraderItems = new List<TraderItem>();
+    if (Model.ProductList == null)
+    {
+        Model.ProductList = new List<SpotCountItem>();
+    }
+    var api = (string)ViewBag.DocRetrievalUrl;
+
+}
+
+
+<div class="modal-dialog modal-xl" role="document">
+    <div class="modal-content">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            @if (Model.Id > 0)
+            {
+                <h5 class="modal-title">Edit a Spot Count</h5>
+            }
+            else
+            {
+                <h5 class="modal-title">Add a Spot Count</h5>
+            }
+
+            <input type="hidden" id="spotcount_id" value="@Model.Id" />
+        </div>
+        <div class="modal-body">
+
+
+            <div class="row">
+                <div class="col-xs-12">
+                    <ul class="app_subnav admintabs" style="padding-top: 0;">
+                        <li class="active"><a href="#spot-tab1" id="tab1_li" data-toggle="tab">Specifics</a></li>
+                        <li><a href="#spot-tab2" onclick="btnSpotCountNext()" data-toggle="tab">Items</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <br />
+
+
+            <div class="tab-content">
+
+
+
+                <!-- Specifics -->
+                <div class="tab-pane fade in active" id="spot-tab1">
+                    <form id="form_tabspec">
+                        <div class="row">
+
+                            <div class="col-xs-12 col-md-4">
+
+                                <div class="activity-overview generic" style="padding: 20px; margin-bottom: 30px;">
+                                    <div class="form-group" style="margin: 0;">
+                                        <label for="workgroup">Assign a Workgroup</label>
+                                        <select id="transfer-workgroup-select" name="workgroup" class="form-control select-modal" style="width: 100%;" onchange="WorkGroupSelectedChange()">
+                                            <option value=""></option>
+                                            @foreach (var wg in workGroups)
+                                            {
+                                                if (Model.Workgroup != null && Model.Workgroup.Id == wg.Id)
+                                                {
+                                                    <option value="@wg.Id" selected>@wg.Name</option>
+                                                }
+                                                else
+                                                {
+                                                    <option value="@wg.Id">@wg.Name</option>
+                                                }
+                                            }
+                                        </select>
+                                    </div>
+
+                                    <div class="preview-workgroup" style="display: none;">
+                                        <br />
+                                        <table class="table app_specific" style="margin: 0;">
+                                            <tr>
+                                                <td><h5>Location</h5></td>
+                                                <td class="location_name">Location name</td>
+                                            </tr>
+                                            <tr>
+                                                <td><h5>Process</h5></td>
+                                                <td class="workgroup_process">Transfers</td>
+                                            </tr>
+                                            <tr>
+                                                <td><h5>Qbicle</h5></td>
+                                                <td class="workgroup_qbicle">Qblicle Name</td>
+                                            </tr>
+                                            <tr>
+                                                <td><h5>Members</h5></td>
+                                                <td class="workgroup_member"><button class="btn btn-info" onclick="ShowGroupMember()" data-toggle="modal" data-target="#app-trader-workgroup-preview"><i class="fa fa-user"></i> &nbsp; <span></span></button></td>
+                                            </tr>
+                                        </table>
+                                    </div>
+                                </div>
+
+                            </div>
+                            <div class="col-xs-12 col-md-8">
+
+                                <div class="activity-overview task" style="padding: 20px 20px 10px 20px;">
+                                    <div class="row">
+                                        <div class="col-xs-12 col-sm-6">
+                                            <div class="form-group">
+                                                <label for="name">Task name <span class="red">*</span></label>
+                                                <input type="text" id="spotCount_name" value="@Model.Name" name="spot_name" class="form-control">
+                                            </div>
+                                        </div>
+                                        <div class="col-xs-12 col-sm-6">
+                                            <div class="form-group">
+                                                <label for="description">Description <span class="red">*</span></label>
+                                                <input type="text" name="spot_description" id="spotCount_Description" value="@Model.Description" class="form-control">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+
+
+                            </div>
+
+                        </div>
+
+                        <a onclick="btnSpotCountNext()" class="btn btn-success">Next &nbsp; <i class="fa fa-angle-right"></i></a>
+                        <a href="#spot-tab2" id="a_btn_next" data-toggle="tab" class="btn btn-success btnNext hidden">Next &nbsp; <i class="fa fa-angle-right"></i></a>
+                    </form>
+
+
+                </div>
+                <!-- END Specifics -->
+                <!-- Items & Alterations -->
+                <div class="tab-pane fade" id="spot-tab2">
+                    <div class="row">
+
+                        <div class="col-xs-12 col-md-4">
+
+                            <div class="activity-overview task" style="padding: 20px;">
+
+                                <div class="row">
+                                    <div class="col-xs-12">
+                                        <div class="form-group">
+                                            <label for="item">Choose an item to add to the list</label>
+                                            <select name="item" onchange="ChangeSelectedUnit()" class="form-control select-modal group-item-select" style="width: 100%;" id="item">
+                                                <option value=""></option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <button class="btn btn-success" disabled id="addrowitem" onclick="addRowItemSpot(this)"><i class="fa fa-plus"></i> &nbsp; Add to list</button>
+                            </div>
+
+                            <br /><br />
+
+                            <div class="activity-overview generic help-text animated bounce">
+                                <i class="fa fa-info-circle"></i>
+                                <h5 style="margin: 0 0 5px 0;">Spot counts</h5>
+                                <p>Select items to be included in your spot check, which allows you to perform on-the-fly analysis of stock.</p>
+                            </div>
+
+                        </div>
+                        <div class="col-xs-12 col-md-8">
+
+                            <table id="tb_form_item" class="datatable table-striped table-hover app_specific no-search" style="width: 100%;">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>SKU</th>
+                                        <th>Unit</th>
+                                        <th style="width: 90px;">System inventory</th>
+                                        <th style="width: 30%;">Notes</th>
+                                        <th data-orderable="false"></th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                            <table id="tb_form_template" class="datatable table-striped table-hover hidden" style="width: 100%;">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>SKU</th>
+                                        <th>Unit</th>
+                                        <th style="width: 90px;">System inventory</th>
+                                        <th style="width: 30%;">Notes</th>
+                                        <th data-orderable="false"></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+
+                                    <tr class="">
+                                        <td class="td_spot_name">
+                                            <span></span>
+                                            <input type="hidden" class="spot_id" />
+                                        </td>
+                                        <td class="td_spot_sku">
+                                            <span></span>
+                                            <input type="hidden" class="spot_item_id" />
+                                        </td>
+                                        <td class="td_spot_unit"></td>
+                                        <td class="td_spot_invoice">
+
+                                            <span class="demo"></span>
+
+                                        </td>
+                                        <td class="td_spot_note"><input type="text" class="form-control" style="width: 100%;"></td>
+                                        <td class="td_spot_button"><button class="btn btn-danger"><i class="fa fa-trash"></i></button></td>
+                                    </tr>
+
+                                </tbody>
+                            </table>
+
+
+                            <br /><br />
+                            <a href="spot-tab2" data-toggle="tab" class="btn btn-warning btnPrevious"><i class="fa fa-angle-left"></i> &nbsp; Previous</a>
+                            <a href="javascript:void(0)" class="btn btn-primary" onclick="saveSpot('Draft')"><i class="fa fa-save"></i> &nbsp; Save draft</a>
+                            <a href="javascript:void(0)" class="btn btn-success" onclick="saveSpot('CountStarted')"><i class="fa fa-check"></i> &nbsp; Send to review</a>
+
+                        </div>
+                    </div>
+                </div>
+                <!-- END Items & Alterations-->
+
+
+            </div>
+        </div>
+
+    </div><!-- /.modal-content -->
+</div><!-- /.modal-dialog -->
+
+<script>
+    $(document).ready(function () {
+        if ($("#spotcount_id").val() > 0)
+            InitSpotCountEdit();
+    });
+
+    function InitSpotCountEdit() {
+        $("#tb_form_item").on('processing.dt', function (e, settings, processing) {
+            $('#processingIndicator').css('display', 'none');
+            if (processing) {
+                $('#tb_form_item').LoadingOverlay("show");
+            } else {
+                $('#tb_form_item').LoadingOverlay("hide", true);
+            }
+        }).DataTable({
+            "destroy": true,
+            "serverSide": true,
+            "paging": true,
+            "searching": false,
+            "responsive": true,
+            "lengthMenu": [[10, 20, 50, 100], [10, 20, 50, 100]],
+            "pageLength": 10,
+            "ajax": {
+                "url": '/TraderSpotCount/GetSpotCountItem',
+                "type": 'POST',
+                "data": function (d) {
+                    return $.extend({}, d, {
+                        "spotCountId": $("#spotcount_id").val()
+                    });
+                }
+            },
+            "columns": [
+                {
+                    name: "Name",
+                    data: "Name",
+                    className: "td_spot_name",
+                    orderable: true,
+                },
+                {
+                    name: "SKU",
+                    data: "SKU",
+                    className: "td_spot_sku",
+                    orderable: true
+                },
+                {
+                    name: "Unit",
+                    data: "Unit",
+                    className: "td_spot_unit",
+                    orderable: false
+                },
+                {
+                    name: "CurrentStock",
+                    data: "CurrentStock",
+                    className: "td_spot_invoice",
+                    orderable: false
+                },
+                {
+                    name: "Notes",
+                    data: "Notes",
+                    className: "td_spot_note",
+                    orderable: true
+                },
+                {
+                    data: "Button",
+                    orderable: false,
+                    width: "150px",
+                    className: "td_spot_button",
+                },
+            ],
+            rowCallback: function (row, data) {
+                $(row).addClass('tr_spot_item_' + data.ProductId);
+            },
+            "order": [[0, "asc"]]
+        });
+    };
+
+    var workgroupId = $("#transfer-workgroup-select").val();
+    var locationId = $("#local-manage-select").val();
+    ResetSpotCountItemSelected('tb_form_item', 'item', workgroupId, locationId, false);
+    $('.btnNext').click(function () {
+        $('.modal .app_subnav > .active').next('li').find('a').trigger('click');
+    });
+
+    $('.btnPrevious').click(function () {
+        $('.modal .app_subnav > .active').prev('li').find('a').trigger('click');
+    });
+    $('#transfer-workgroup-select').select2({
+        placeholder: 'Please select'
+    });
+    $('#item').select2({
+        placeholder: 'Please select'
+    });
+    WorkGroupSelectedChange();
+</script>
+<style>
+    #tb_form_item_filter {
+        display: block !important;
+    }
+</style>

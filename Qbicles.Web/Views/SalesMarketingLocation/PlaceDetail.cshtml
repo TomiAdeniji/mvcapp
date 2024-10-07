@@ -1,0 +1,250 @@
+﻿@using Qbicles.Models.SalesMkt;
+@model Place
+@{
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var strArea = "";
+    foreach (Area area in Model.Areas)
+    {
+        strArea = area.Name;
+        break;
+    }
+    strArea = strArea.TrimStart(',');
+}
+<!-- Content Wrapper. Contains page content -->
+<input type="hidden" id="id" value="@Model.Id" />
+<div class="content-wrapper qbicle-detail mdv2-wrapper" style="position: relative;">
+
+    <!-- Main content -->
+    <section class="mdv2 dash" data-tooltip-color="teal" data-tooltip-delay="300" data-tooltip-animate-function="spin" style="border-top: 1px solid #f1f1f1;">
+
+
+        <!-- App bar -->
+        <div class="mdv2-col-app" style="margin-bottom: 0;">
+
+            <div data-spy="affix" class="contained-sidebar">
+
+                <div class="activity-overview plain company-overview welcome-info" style="text-align: left !important; flex: none; margin: 0; padding-top: 30px; padding-bottom: 0;">
+
+                    <div class="pull-left" style="margin-bottom: 15px;">
+                        <a href="/SalesMarketing/SMApps" class="btn btn-info"><i class="fa fa-angle-left"></i> &nbsp; Places</a>
+                        <a href="#app-marketing-place-add" data-toggle="modal" onclick="LoadModalPlace(@Model.Id)" class="btn btn-warning"><i class="fa fa-pencil"></i> &nbsp; Edit</a>
+                    </div>
+                    <div class="clearfix"></div>
+
+                    <br />
+
+                    <img src="@(api + Model.FeaturedImageUri + "&size=M")" class="img-responsive" style="margin-bottom: 30px;">
+
+                    <h1 style="line-height: 1.2;">@Model.Name</h1>
+                    <span class="label label-lg label-primary">@strArea</span>
+
+                    <div class="clearfix"></div>
+                    <br /><br />
+
+                    <p style="color: rgba(0, 0, 0, 0.5);">@Model.Summary.</p>
+
+                    <br />
+
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-6">
+                            <label>Prospects</label>
+                            <p>@(String.Format("{0:n0}", Model.Prospects))</p>
+                        </div>
+                        <div class="col-xs-12 col-sm-6">
+                            <label>Visits (total)</label>
+                            <p>@(String.Format("{0:n0}", Model.Visits == null ? 0 : Model.Visits.Count()))</p>
+                        </div>
+                    </div>
+
+
+                    <br /><br />
+                    @if (Model.Discussion == null)
+                    {
+                        <a href="#" data-toggle="modal" data-target="#create-discussion" class="btn btn-info community-button new-discuss" style="margin-bottom: 5px;"><i class="fa fa-comments"></i> &nbsp; Open Discussion</a>
+                    }
+                    <a href="/SalesMarketingLocation/DiscussionPlace@(Model.Discussion!=null?"?disId="+Model.Discussion.Id:"")" id="btnJoinDiscussion" class="btn btn-primary community-button view-discuss" style="display: @(Model.Discussion!=null?"block":"none");margin-bottom:5px;"><i class="fa fa-comments"></i> &nbsp; Join Discussion</a>
+
+                    @*@if (Model.Discussion != null)
+                    {
+                        <a href="#" data-toggle="modal" data-target="#create-discussion" class="btn btn-info community-button new-discuss" onclick="$(this).hide(); $('.view-discuss').show();"
+                           style="margin-bottom: 5px;">
+                            <i class="fa fa-comments"></i> &nbsp; Open Discussion
+                        </a>
+                    }
+                    else
+                    {
+                        <a id="btnJoinDiscussion" href="/SalesMarketingLocation/DiscussionPlace@(Model.Discussion!=null?"?disId="+Model.Discussion.Id:"")" class="btn btn-primary community-button view-discuss" style="margin-bottom: 5px;">
+                            <i class="fa fa-comments"></i> &nbsp; Join Discussion
+                        </a>
+                    }*@
+
+                    <div class="btn-group options" style="width: 100%; margin: 0 0 30px 0;">
+                        <button class="btn btn-success community-button dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            <i class="fa fa-plus"></i>
+                            &nbsp; Visits and Tracking
+                        </button>
+                        <ul class="dropdown-menu" style="min-width: 100%; top: 47px;">
+                            <li>
+                                <a href="#" data-toggle="modal" data-target="#create-task">Task people with visit(s)</a>
+                                <a href="#" data-toggle="modal" data-target="#app-marketing-visit-add" onclick="LoadModalVisit(@Model.Id)">Record your visit</a>
+                                <a href="#" data-toggle="modal" data-target="#app-marketing-activity-add" onclick="LoadModalActivity(@Model.Id)">Record site activity</a>
+                            </li>
+                        </ul>
+                    </div>
+
+                </div>
+
+
+                <div class="spacing" style="padding-top: 0;">
+
+                </div>
+
+
+            </div>
+        </div>
+        <!-- END App bar -->
+        <!-- Main area -->
+        <div class="mdv2-col-dash">
+
+            <div class="spacing">
+
+
+                <div class="row" style="margin-top: -20px;">
+                    <div class="col-xs-12">
+                        <ul class="app_subnav admintabs" style="padding-top: 0;">
+                            <li class="active"><a href="#" id="scheduledVisits" data-toggle="tab" data-target="#loc-0" onclick="$('#tblScheduledVisits').DataTable().ajax.reload();">Scheduled visits</a></li>
+                            <li><a href="#" data-toggle="tab" id="visitLogs" data-target="#loc-1" onclick="$('#tblVisitLogs').DataTable().ajax.reload();">Visit logs</a></li>
+                            <li><a href="#" data-toggle="tab" id="activityLogs" data-target="#loc-2" onclick="$('#tblActivityLogs').DataTable().ajax.reload();">Activity logs</a></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <br /><br />
+
+
+                <div class="tab-content">
+
+                    <!-- Scheduled -->
+                    <div class="tab-pane fade in active" id="loc-0">
+
+                        <table class="datatable table-striped table-hover" id="tblScheduledVisits" style="width: 100%;">
+                            <thead>
+                                <tr>
+                                    <th>Date of visit</th>
+                                    <th style="max-width: 200px;">Expected duration</th>
+                                    <th>Agent</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+
+                    </div>
+                    <!-- END Scheduled -->
+                    <!-- Visit logs -->
+                    <div class="tab-pane fade" id="loc-1">
+
+                        <table class="datatable table-striped table-hover" id="tblVisitLogs" style="width: 100%; background: #fff;">
+                            <thead>
+                                <tr>
+                                    <th>Date/time</th>
+                                    <th>Agent</th>
+                                    <th>Reason</th>
+                                    <th>Leads</th>
+                                    <th data-orderable="false">Notes</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+
+                    </div>
+                    <!-- END Visit logs -->
+                    <!-- Activity logs -->
+                    <div class="tab-pane fade" id="loc-2">
+
+                        <table class="datatable table-striped table-hover" id="tblActivityLogs" style="width: 100%; background: #fff;">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Timeframe</th>
+                                    <th>Agent</th>
+                                    <th>Recorded</th>
+                                    <th data-orderable="false">Notes</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+
+                    </div>
+                    <!-- END Activity logs -->
+                </div>
+            </div>
+            <!-- END Main area -->
+        </div>
+        <!-- /.content-wrapper -->
+
+    </section>
+</div>
+@if (Model.Discussion == null)
+{
+    <div class="modal fade left" id="create-discussion" role="dialog" aria-labelledby="create-discussion">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h5 class="modal-title">Start Discussing this Activity</h5>
+                </div>
+                <div class="modal-body">
+                    <form id="frm-create-discussion" method="post" action="/Discussions/SaveDiscussionForPlace">
+                        <div class="well custom">
+                            <div class="row">
+                                <div class="col-xs-12">
+                                    <div class="form-group">
+                                        <label for="event-title">Opening comment</label>
+                                        <textarea id="ds_openingmessage" name="openingmessage" class="form-control"></textarea>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12">
+                                    <label>Set an expiry date</label><br />
+                                    <div class="checkbox toggle" onclick="$('.setexpiry').toggle();">
+                                        <label>
+                                            <input data-toggle="toggle" data-onstyle="success" name="isexpiry" id="ds_isexpiry" type="checkbox">
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 setexpiry" style="display: none;">
+                                    <div class="form-group" style="margin: 0;">
+                                        <label>Choose a date and time for expiration</label>
+                                        <input type="text" name="expirydate" id="ds_expirydate" class="form-control singledateandtime">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <a href="#" class="btn btn-danger" data-dismiss="modal">Cancel</a>
+                        <button type="submit" class="btn btn-success">Confirm</button>
+                    </form>
+
+                </div>
+            </div><!-- /.modal-content -->
+        </div><!-- /.modal-dialog -->
+    </div><!-- /.modal -->
+}
+<!-- ./content -->
+@{Html.RenderAction("GenerateModalTask", "SalesMarketingLocation", new { taskKey = "", placeId = Model.Id }); }
+<div class="modal fade left" id="app-marketing-place-add" role="dialog" aria-labelledby="app-marketing-place-add"></div>
+<div class="modal fade left" id="app-marketing-activity-add" role="dialog" aria-labelledby="app-marketing-activity-add"></div>
+<div class="modal fade left" id="app-marketing-visit-add" role="dialog" aria-labelledby="app-marketing-visit-add"></div>
+
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Content/DesignStyle/js/bootstrap-multiselect.js"></script>
+        <script src="~/Scripts/dev/salesmarketing.location.app.js"></script>
+    }
+    else
+    {
+        <script src="~/Content/DesignStyle/js/bootstrap-multiselect.min.js"></script>
+        <script src="~/Scripts/dev/salesmarketing.location.app.js"></script>
+    }
+}

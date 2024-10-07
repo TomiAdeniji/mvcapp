@@ -1,0 +1,182 @@
+﻿@using Qbicles.Models.Trader.DDS
+@using Qbicles.BusinessRules
+@using Qbicles.BusinessRules
+@using Qbicles.Models
+@using Qbicles.Models.Trader.ODS
+@model Delivery
+@{
+    var canUpdateDelivery = Model.Status == DeliveryStatus.New;
+    var canSortable = (Model.Status != DeliveryStatus.Completed && Model.Status != DeliveryStatus.Completed);
+
+    var currencySetting = (CurrencySetting)ViewBag.CurrencySettings;
+    var timeZone = (string)ViewBag.CurrentTimeZone;
+    var datetimeFormat = (string)ViewBag.CurrentDateTimeFormat;
+
+    var deliveryQueue = Model.DeliveryQueue == null ? Model.DeliveryQueueArchive.ParentDeliveryQueue : Model.DeliveryQueue;
+    var depotPosition = new { deliveryQueue.Location.Id, Title = deliveryQueue.Location.Name, deliveryQueue.Location.Address.Latitude, deliveryQueue.Location.Address.Longitude };
+    var customerPosition = new List<object>();
+    foreach (var o in Model.Orders.OrderBy(e => e.DeliverySequence))
+    {
+        if (o.Customer == null) { continue; };
+        var title = o.Customer.CustomerName;
+        if (!string.IsNullOrEmpty(o.Customer.PhoneNumber))
+        { title += Environment.NewLine + o.Customer.PhoneNumber; }
+        customerPosition.Add(new
+        {
+            o.Id,
+            TraderId = o.Id,
+            Title = title,
+            o.DeliverySequence,
+            o.Status,
+            o.Customer.FullAddress.Latitude,
+            o.Customer.FullAddress.Longitude
+        });
+    }
+
+    var delivery = new
+    {
+        Model.Id,
+        TraderId = Model.Id,
+        DriverId = Model.Driver?.Id ?? 0,
+        DeliveryStatus = Model.Status.GetId(),// Status of the delivery
+        Status = Model.Driver?.DeliveryStatus.GetId() ?? 0,//status of the driver
+        Model.EstimateDistance,
+        Model.EstimateTime,
+        Routes = Model.Routes,
+        Orders = customerPosition,
+        CompleteOrderId = 0
+    };
+
+    var driverPosition = new { Id = 0, Title = "", Latitude = 0M, Longitude = 0M };
+
+    var dDriver = (Driver)ViewBag.Driver;
+
+    if (dDriver != null)
+    {
+        driverPosition = new { dDriver.Id, Title = dDriver.User.User.GetFullName(), Latitude = dDriver.Latitude, Longitude = dDriver.Longitude };
+    }
+
+
+    var deliveryKey = Model.Key;
+
+    var completed = Model.Orders.Count(e => e.Status == Qbicles.Models.Trader.ODS.PrepQueueStatus.Completed || e.Status == Qbicles.Models.Trader.ODS.PrepQueueStatus.CompletedWithProblems);
+    var oComplete = $"{completed}/{Model.Orders.Count} complete";
+
+    var time = TimeSpan.FromSeconds(Model.EstimateTime ?? 0);
+    var deliveryInfo = new
+    {
+        orderInfo = $"{Model.Orders.Count()} stops {oComplete}",
+        orderTotal = Model.Total.ToCurrencySymbol(currencySetting),
+        driverInfo = dDriver?.User.User.GetFullName() ?? "Unassigned",
+        driverStatus = dDriver?.DeliveryStatus.GetDescription(),
+        driverStatusCss = dDriver?.DeliveryStatus.GetClass(),
+        duration = $"{time.Hours} hours {time.Minutes} minutes",
+        distance = $"{((decimal)(Model.EstimateDistance ?? 0) / 1000).ToDecimalPlace(currencySetting)} km"
+    };
+}
+
+@{
+    var cssCompleted = "";
+    var actived = "";
+    foreach (var o in Model.Orders.OrderBy(s => s.DeliverySequence))
+    {
+        switch (o.Status)
+        {
+            case Qbicles.Models.Trader.ODS.PrepQueueStatus.Completed:
+            case Qbicles.Models.Trader.ODS.PrepQueueStatus.CompletedWithProblems:
+                cssCompleted = "completed";
+                break;
+            default:
+                cssCompleted = "";
+                break;
+        }
+
+        var orderAcvied = Model.ActiveOrder?.Id ?? 0;
+
+        if (orderAcvied == o.Id)
+        {
+            actived = "Active";
+        }
+        else if (orderAcvied == 0 && o.DeliverySequence == 1)
+        {
+            actived = "Active";
+        }
+        else
+        {
+            actived = "";
+        }
+        <div id="order-id-@o.Id" data-id="@o.Id">
+
+            <div class="portlet rework dds @cssCompleted" order-id="@o.Id">
+
+                <label class="label label-@o.Status.GetClass() label-lg" style="font-size: 11px !important; position: absolute; top: 5px; left: 5px;">@o.Status.GetDescription()</label>
+                <label id="active-@o.Id" class="label label-success label-lg" style="font-size: 11px !important; position: absolute; top: 5px; left: 85px;">@actived</label>
+                @if (canUpdateDelivery)
+                {
+                    <div class="qbicle-opts">
+                        <a href="javascript:" onclick="ConfirmRemoveOrder(@o.Id, '@o.Key')">
+                            <i class="fa fa-trash"></i>
+                        </a>
+                    </div>
+                }
+
+                <div class="portlet-side">
+                    <span id="order-sequence-@o.Id">@o.DeliverySequence</span>
+                </div>
+
+                <div class="portlet-content">
+                    <div class="row">
+                        <div class="col-xs-12">
+                            <br />
+                            <p class="font-size: 14px; font-weight: 600;" id="order-ref-@o.Id">Order @(o.OrderRef)</p>
+
+                            @if (o.Customer != null)
+                            {
+                                <p>
+                                    @o.Customer.CustomerRef<br />
+                                    @o.Customer.CustomerName<br />
+                                    @o.Customer.PhoneNumber<br />
+                                    @Html.Raw(o.Customer.FullAddress.ToAddressHtml())
+                                </p>
+                            }
+                        </div>
+                        <div class="col-xs-12">
+                            <br />
+                            <a href="#" class="btn btn-sm btn-info" style="color: #fff;" onclick="ShowOrderInfo('@o.Key')">Details</a>
+                            @if (Model.Status == DeliveryStatus.Started && o.Status != PrepQueueStatus.Completed && o.Status != PrepQueueStatus.CompletedWithProblems)
+                            {
+                                <a href="#" class="btn btn-sm btn-primary" style="color: #fff;" onclick="ShowMessageCustomer(@o.Id)">Message customer</a>
+                                <a href="#" class="btn btn-sm btn-success" style="color: #fff;" onclick="CompleteOrder(@o.Id)">Complete</a>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    }
+}
+
+<script>
+
+    if ('@canUpdateDelivery' == 'True') {
+        $('.delivery-orders-list').sortable({
+            group: 'list',
+            animation: 200,
+            ghostClass: 'ghost',
+            onSort: orderChangeSequence,
+        });
+    }
+    $delivery = @Html.Raw(Json.Encode(delivery));
+    $depot = @Html.Raw(Json.Encode(depotPosition));
+    //$orders = @Html.Raw(Json.Encode(customerPosition));
+    $driver = @Html.Raw(Json.Encode(driverPosition));
+
+    var $deliveryInfo=@Html.Raw(Json.Encode(deliveryInfo));
+
+    $(document).ready(function () {
+        updateDeliveryInfoUI($deliveryInfo);
+        initMap(false,false);
+    });
+
+</script>

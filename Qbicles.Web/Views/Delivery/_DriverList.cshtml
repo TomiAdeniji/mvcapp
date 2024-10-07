@@ -1,0 +1,189 @@
+﻿@using Qbicles.Models
+
+@{
+    var deliveryKey = ViewBag.DeliveryKey;
+    var deliveryId = ((string)ViewBag.DeliveryKey).Decrypt();
+}
+
+<div class="form-group unchosen">
+    <input id="driver-item-search-text" type="text" class="form-control" placeholder="Search drivers">
+</div>
+
+<div id="drivers-container" class="flex-grid-thirds-lg gridfix mydeskmarket mdogrid mydeskmarketitems" style="width: 100%; padding: 0;">
+
+</div>
+<div id="pagiation-drivers" style="float: right;"></div>
+
+<script>
+    var $deliveryDriver = {
+        DeliveryId: '@deliveryId',
+        DriverId: 0,
+        IsDelete: true,
+        Latitude: 0,
+        Longitude: 0,
+        Title: ''
+    }
+
+    $(document).ready(function () {
+
+        GetDriverDelivery();
+
+        $('#driver-item-search-text').keyup(delay(function () {
+            GetDriverDelivery();
+        }, 500));
+    });
+
+    
+
+    function driverTemplate(data) {
+        if (data.DeliveryId > 0) {
+            $("#delivery-driver-info").text(data.Name);
+            $("#delivery-driver-status").text(data.DriverDeliveryStatusName);
+            $("#delivery-driver-status").removeClass().addClass('label label-lg label-' + data.DriverDeliveryStatusLable);
+        }
+        else {
+            $("#delivery-driver-info").text('Unassigned');
+            $("#delivery-driver-status").removeClass();
+            $("#delivery-driver-status").text('');
+        }
+
+
+
+        var indelivery = data.DeliveryId > 0 ? 'Activer' : '';
+        var _html = "<li id='driver-delivery-" + data.Id + "' class='" + indelivery + "' onclick=\"ShowDriverInfo(" + data.Id + ",'" + data.Key + "'," + (data.DeliveryId > 0) + ",'" + data.AvatarUrl + "')\">";
+        _html += "<a href='#'>";
+        _html += "<div style='display: flex;' >";
+        _html += "<div class='contact-avatar'>";
+        _html += '<div style="background-image: url(\'' + data.AvatarUrl + '\');"></div>';;
+        _html += "</div>";
+        _html += "<div class='contact-info'>";
+        _html += "<h5>" + data.Name + "</h5>";
+
+        _html += "<div class='row'>";
+
+        _html += "<div class='col-xs-6'>";
+        _html += "<label>Distance</label>";
+        _html += "<p id='driver-distance-list-" + data.Id + "'></p>";
+        _html += "</div>";
+
+        _html += "<div class='col-xs-6'>";
+        _html += "<label>Duration</label>";
+        _html += "<p id='driver-duration-list-" + data.Id + "'></p>";
+        _html += "</div>";
+
+        _html += "</div></br>";
+
+        _html += "<span class='label label-lg label-" + data.DriverStatusLable + "'>" + data.DriverStatusName + "</span>";
+        _html += "</div>";
+        _html += "</div>";
+        _html += "<div class='contact-opts'>";
+
+        if (data.DeliveryId > 0 && data.CanChangeDriver) {
+            _html += "<button class='btn btn-sm btn-warning change' style='margin-top: 12px;'";
+            _html += "onclick='ChangeDriver(" + data.Id + ")'>";
+            _html += "Change";
+            _html += "</button>";
+        }
+        else if (data.DeliveryId == 0){
+            _html += "<button class='btn btn-sm btn-success assign' style='margin-top: 12px;'";
+            _html += "onclick=\"AssignDriver(" + data.Id + "," + data.Latitude + "," + data.Longitude + ",'" + data.Name + "'" + ",'" + data.AvatarUrl + "')\">";
+            _html += "Assign";
+            _html += "</button>";
+        }
+        _html += "</div>";
+        _html += "</a>";
+        _html += "</li>";
+        return _html;
+    }
+
+
+
+
+    function ShowDriverInfo(id, driverKey, inDelivery = false, avatar) {
+        icons.driver = avatar;
+        //$("#driver-avata").val(avatar);
+
+        var ajaxUri = "/Delivery/GetDriverInfo?key=" + driverKey + "&inDelivery=" + inDelivery;
+
+        ShowDetail(ajaxUri);
+        removeActiveClass();
+        //add to current selected
+        $("#driver-delivery-" + id).addClass('delivery-element-active');
+
+    }
+
+
+
+
+
+
+
+
+
+
+    function ChangeDriver(id) {
+        $deliveryDriver.DriverId = id;
+        $deliveryDriver.IsDelete = true;
+        $("#driver-avata").val();
+        DeliveryDriverChange();
+    }
+
+    function AssignDriver(id, latitude, longitude, title,avatar) {
+        $deliveryDriver.DriverId = id;
+        $deliveryDriver.IsDelete = false;
+        $deliveryDriver.Latitude = latitude;
+        $deliveryDriver.Longitude = longitude;
+        $deliveryDriver.Title = title;
+        icons.driver = avatar;
+        $("#driver-avata").val(avatar);
+        DeliveryDriverChange();
+    }
+
+    function DeliveryDriverChange() {
+        $('#delivery-driver').LoadingOverlay("show");
+        $("#driver-accept-reject-delivery").empty();
+        var url = "/Delivery/DeliveryDriverChange";
+        $.ajax({
+            type: "POST",
+            url: url,
+            data: { delivery: $deliveryDriver },
+            dataType: "json",
+            success: function (response) {
+                if (response.Status == 0) {
+                    if ($deliveryDriver.IsDelete) {
+                        $driver = { Title: "", Latitude: 0, Longitude: 0 };
+                        $delivery.DriverId = 0;
+                        $('.unchosen').show();
+                        $('.change').hide();
+                        $('.assign').show();
+                    }
+                    else {
+
+                        $driver = { Title: $deliveryDriver.Title, Latitude: $deliveryDriver.Latitude, Longitude: $deliveryDriver.Longitude };
+                        $delivery.DriverId = $deliveryDriver.DriverId;
+                        var html = '';
+                        html += "<a href=\"#\" class=\"btn btn-sm btn-warning\" style=\"color: #fff;\" onclick=\"DriverReject()\">Reject</a>"
+                        html += "<a href=\"#\" class=\"btn btn-sm btn-primary\" style=\"color: #fff;\" onclick=\"DriverAccept()\">Accept</a>"
+
+                        $("#driver-accept-reject-delivery").html(html);
+                        $('.unchosen').hide();
+                        $('.assign').hide();
+                        $('.change').show();
+                    }
+                    //initMap(false, false);
+                    GetDriverDelivery();
+                    CloseManagementInfo(false);
+                }
+                else {
+                    cleanBookNotification.error("Have an error update driver, detail: " + response.Message, "Qbicles");
+                }
+
+            },
+            error: function (er) {
+                cleanBookNotification.error("Have an error update driver, detail: " + er.error, "Qbicles");
+            }
+        }).always(function () {
+            $('#delivery-driver').LoadingOverlay("hide", true);
+        });
+    }
+</script>

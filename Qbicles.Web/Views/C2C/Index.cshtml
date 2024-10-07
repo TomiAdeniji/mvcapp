@@ -1,0 +1,730 @@
+﻿@using Qbicles.Models
+@using Qbicles.BusinessRules.Model
+@using Qbicles.BusinessRules
+@using Qbicles.Models.MicroQbicleStream
+@using Qbicles.BusinessRules.C2C
+@using Qbicles.Models.Trader.Resources
+
+@{
+    ViewBag.Title = "Qbicle Social";
+    //var currentUser = (ApplicationUser)ViewBag.CurrentUser;
+    var timezone = (string)ViewBag.CurrentTimeZone;
+    var datetimeFormat = (string)ViewBag.CurrentDateTimeFormat;
+    var lstUiSetting = (List<UiSetting>)ViewBag.UiSetting ?? new List<UiSetting>();
+    var sOrderby = lstUiSetting.FirstOrDefault(s => s.Key == C2CStoreUiSettingsConst.ORDERBY)?.Value ?? "0";
+    var sContactType = lstUiSetting.FirstOrDefault(s => s.Key == C2CStoreUiSettingsConst.CONTACTTYPE)?.Value ?? "0";
+    var sIncludeBlocked = lstUiSetting.FirstOrDefault(s => s.Key == C2CStoreUiSettingsConst.INCLUDEBLOCKED)?.Value ?? "true";
+    var sOnlyShowFavourites = lstUiSetting.FirstOrDefault(s => s.Key == C2CStoreUiSettingsConst.ONLYSHOWFAVOURITES)?.Value ?? "false";
+
+    var allTalkNum = (int)ViewBag.AllTalkNum;
+    var favouriteNum = (int)ViewBag.FavouriteNum;
+    var requestNum = (int)ViewBag.RequestNum;
+    var sentNum = (int)ViewBag.SentNum;
+    var blockedNum = (int)ViewBag.BlockedNum;
+
+
+    var shopCategories = (List<BaseModel>)ViewBag.ShopCategories;
+    var areaOfOperations = (List<string>)ViewBag.AreaOfOperations;
+    var featureProductsList = (List<CommunityFeturedProductModel>)ViewBag.FeaturedProduct;
+    var ProductList = (List<Qbicles.Models.ProductSearch.Product>)ViewBag.FeatureProductListProduct;
+    var ImageList = (List<Qbicles.Models.ProductSearch.FeaturedProductImage>)ViewBag.FeatureProductImageList;
+    var CustomObject = (List<Qbicles.Models.ProductSearch.FeaturedProduct>)ViewBag.FillterObject;
+
+    var featureStoresList = (List<Qbicles.Models.ProductSearch.FeaturedStore>)ViewBag.FeatureStore;
+    var lstBrandMaster = (List<AdditionalInfo>)ViewBag.BrandsMaster;
+    var listProductTag = (List<AdditionalInfo>)ViewBag.ProductTags;
+}
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail mdv2-wrapper" style="position: relative; min-height: 0; height: auto;">
+    <!-- Main content -->
+    <section class="mdv2 dash" data-tooltip-color="teal" data-tooltip-delay="300" data-tooltip-animate-function="spin">
+        <!-- App bar -->
+        <div class="mdv2-col-app">
+            <div data-spy="affix" class="contained-sidebar" style="overscroll-behavior: contain;">
+                <ul class="subapps-nav" role="navigation" data-tooltip-stickto="bottom" style="margin-bottom: 0;">
+                    <li class="active tab-activities">
+                        <a href="#" data-toggle="tab" data-target="#c2c-comms" data-tooltip="Talk"
+                           onclick="$('.options').hide(); $('.options-contacts').fadeIn();$('#business-catalogues').empty();" id="talk">
+                            <i class="fa fa-comments"></i>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" data-toggle="tab" data-target="#all-contacts" data-tooltip="Find people"
+                           onclick="$('.options').hide(); $('.options-contactlist').fadeIn();$('#business-catalogues').empty();">
+                            <i class="fa fa-search"></i>
+                        </a>
+                    </li>
+
+                    <li class="shopping-li">
+                        <a href="#" data-toggle="tab" data-target="#shopping" data-tooltip="Shopping"
+                           onclick="$('.options').hide(); initFindBusinessStores();$('.options-shopping').fadeIn();$('#business-catalogues').empty();$('a[href=#stores]').click();" aria-expanded="true">
+                            <i class="fa fa-shopping-cart"></i>
+                        </a>
+                    </li>
+
+                </ul>
+                <!-- Contacts options -->
+                <div class="options options-contacts">
+                    <div class="contact-list">
+
+
+                        <div id="filters-contacts" class="well custom" style="background: #f7f7f8; padding: 25px 25px 0 25px; margin-bottom: 0;">
+
+                            <div class="form-group" style="margin-bottom: 5px;">
+                                <input type="text" name="search" class="form-control" placeholder="Search contacts...">
+                            </div>
+                            <div class="form-group" style="margin-bottom: 5px;">
+                                <select name="orderBy" class="form-control select2" style="width: 100%;">
+                                    <option value="0" @(sOrderby == "0" ? "selected" : "")>Order by latest activity</option>
+                                    <option value="1" @(sOrderby == "1" ? "selected" : "")>Order by forename A-Z</option>
+                                    <option value="2" @(sOrderby == "2" ? "selected" : "")>Order by forename Z-A</option>
+                                    <option value="3" @(sOrderby == "3" ? "selected" : "")>Order by surname A-Z</option>
+                                    <option value="4" @(sOrderby == "4" ? "selected" : "")>Order by surname Z-A</option>
+                                    <option value="5" @(sOrderby == "5" ? "selected" : "")>Order by date added</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <select name="contactType" class="form-control select2" style="width: 100%;">
+                                    <option value="0" @(sContactType == "0" ? "selected" : "")>Show all contact types</option>
+                                    <option value="1" @(sContactType == "1" ? "selected" : "")>Only businesses</option>
+                                    <option value="2" @(sContactType == "2" ? "selected" : "")>Only individuals</option>
+                                    <option value="3" @(sContactType == "3" ? "selected" : "")>Only pending</option>
+                                </select>
+                            </div>
+                            @*<div class="row">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label>Only show favourites</label>
+                                            <div class="checkbox toggle">
+                                                <label>
+                                                    <input name="onlyShowFavourites" @(sOnlyShowFavourites == "true" ? "checked" : "") data-toggle="toggle" data-onstyle="success" type="checkbox">
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label>Include blocked users</label>
+                                            <div class="checkbox toggle">
+                                                <label>
+                                                    <input name="includeBlocked" @(sIncludeBlocked == "true" ? "checked" : "") data-toggle="toggle" data-onstyle="success" type="checkbox" onchange="$('#blocked').fadeToggle();">
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>*@
+
+                            <ul class="nav nav-pills commsnav" id="connection-shown-type" role="navigation">
+                                <li class="active" connectiontype="1"><a href="#all" name="all" data-toggle="tab">All (@allTalkNum)</a></li>
+                                <li connectiontype="1"><a href="#fav" name="favourite" data-toggle="tab">Favourites (@favouriteNum)</a></li>
+                                <li connectiontype="2">
+                                    <a href="#new" name="request" data-toggle="tab">
+                                        Requests
+                                        <span class="labels" style="padding-left:5px !important;">
+                                            <label class="label label-danger"><span id="count" style="color: #fff; position: initial;">@requestNum</span></label>
+                                        </span>
+                                    </a>
+                                </li>
+                                <li connectiontype="3"><a href="#sent" name="sent" data-toggle="tab">Sent (@sentNum)</a></li>
+                                <li connectiontype="3"><a href="#blocked" name="blocked" data-toggle="tab">Blocked (@blockedNum)</a></li>
+                            </ul>
+
+                            <!--<button class="btn btn-success community-button" data-toggle="modal" data-target="#send-invite"><i class="fa fa-plus"></i> &nbsp; Invite people</button>-->
+                        </div>
+
+
+                        <ul class="widget-contacts lbordered commsv2" style="margin-bottom: 30px; min-height: 100px;">
+                            <div id="contact-tab-previous"></div>
+                        </ul>
+
+                    </div>
+                </div>
+                <!-- END Contacts options -->
+                <!-- Shopping -->
+                <div class="options options-shopping" style="display: none;">
+
+                    <div class="activity-overview plain company-overview welcome-info" style="flex: none; margin: 30px 0 15px 0; padding: 20px 20px 5px 20px; text-align: left;">
+
+                        <div class="section-detail intro-home">
+                            <h2 style="font-weight: 500;">Shopping</h2>
+                            <p style="color: rgba(0, 0, 0, 0.5);">Shop direct from your favourite retailers in Qbicles.</p>
+                        </div>
+
+                        <br />
+                        <ul class="nav nav-stacked nav-pills traderv2">
+                            <li class="active"><a href="#stores" data-toggle="tab">Stores</a></li>
+                            <li><a href="#products" data-toggle="tab">Products</a></li>
+                        </ul>
+
+                        <br />
+
+                        <br />
+
+
+                        <br />
+
+                    </div>
+                </div>
+                <!-- END Shopping -->
+                <div class="options options-contactlist" style="display: none;">
+
+                    <div class="activity-overview plain company-overview welcome-info" style="flex: none; margin: 30px 0 15px 0; padding: 20px 20px 5px 20px; text-align: left;">
+
+                        <div class="section-detail intro-home">
+                            <h2 style="font-weight: 500;">Find people & businesses</h2>
+                            <p style="color: rgba(0, 0, 0, 0.5);">Quickly find and connect with businesses and people. You can limit display to only those you're affiliated with (you share a Qbicle, for example) or browse the full public list.</p>
+                        </div>
+                        <br>
+
+                        <div class="well custom" style="background: #f7f7f8; padding: 25px; margin-bottom: 0;">
+
+                            <div class="form-group" style="margin-bottom: 5px;">
+                                <input id="txtFilterPeopleKeyword" type="text" name="search" class="form-control" placeholder="Search for a business or individual">
+                            </div>
+                            <div class="form-group" style="margin-bottom: 5px;">
+                                <select id="slFilterType" name="type" class="form-control select2" style="width: 100%;">
+                                    <option value="0" selected>Show all types</option>
+                                    <option value="1">Only businesses</option>
+                                    <option value="2">Only individuals</option>
+                                </select>
+                            </div>
+                            <div class="form-group" style="margin: 0;">
+                                <select id="slFilterPeopleType" name="type" class="form-control select2" style="width: 100%;">
+                                    <option value="1" selected>Show full public list</option>
+                                    <option value="0">Limit to my affiliates</option>
+                                </select>
+                            </div>
+                        </div>
+
+                    </div>
+
+                </div>
+                <!-- END Contacts options -->
+
+            </div>
+        </div>
+        <!-- END App bar -->
+        <!-- Main area -->
+        <div class="mdv2-col-dash">
+            <div class="spacing">
+                <div class="tab-content">
+                <!-- Comms -->
+                <div class="tab-pane fade in active" id="c2c-comms">
+                    <div class="tab-content">
+                        <div class="tab-pane fade" id="comms-activities">
+                            <div class="row commstab">
+                                <div class="col-xs-12">
+                                    <div class="" style="padding-left: 0;">
+
+                                        <div class="row">
+
+                                            <!-- Main block -->
+                                            <div class="col-xs-12">
+
+
+                                                <!-- Article main -->
+                                                <article class="v2-full b2bcommsmain" style="padding-bottom: 0; overflow: none; padding-left: 0">
+
+                                                    <div class="mobile-space c2c-not-blocked post-group">
+                                                        <div class="interact activity-overview generic comment-post b2bcomms hub" style="margin-top: 0; margin-bottom: 30px; padding: 20px !important;">
+                                                            <div class="input-group">
+                                                                @Html.Partial("_ChatPartial", new ViewDataDictionary { { "qbicleTopics", null }, { "chatType", ChatType.C2C }, { "OrderCreation", null }, { "OrderChatTo", OrderChatTo.None } })
+                                                            </div>
+                                                            <div class="clearfix"></div>
+                                                        </div>
+                                                    </div>
+                                                    <input type="hidden" value="0" id="hdfCurrentQbicleId" />
+                                                    <div id="dashboard-page-display" class="block-container" style="padding: 10px 0 0 0;">
+                                                        <div id="previous"></div>
+                                                    </div>
+                                                    <div id="first-load-icon" class="vertical-center">
+                                                        <div class="text-center" style=""><img src="~/Content/DesignStyle/img/loading-new.gif" style="width: 180px; height: auto;"></div><br />
+                                                    </div>
+
+
+                                                    <div class="order-context-flyout-div btn-group dropup info" style="position: fixed; bottom: 250px; right: 20px; z-index: 2000;"
+                                                         data-step="4" data-intro="View this customer's orders" data-position='right' data-tooltip="Orders">
+                                                        <button class="btn btn-warning fab" onclick="OpenOrderContextFlyout('c2c')">
+                                                            <i class="fa fa-list"></i>
+                                                        </button>
+                                                    </div>
+
+
+                                                    <div class="customer-action btn-group dropup options options-contacts" style="position: fixed; bottom: 175px; right: 20px; z-index: 2000;">
+                                                        <button class="btn btn-success fab dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                                            <i class="fa fa-plus"></i>
+                                                        </button>
+                                                        <ul class="dropdown-menu dropdown-menu-right" style="min-width: 150px;">
+                                                            <li><a href="#create-discussion-qb" data-toggle="modal">Discussion</a></li>
+                                                            <li><a href="#create-media" data-toggle="modal">File</a></li>
+                                                            <li><a href="#create-task" data-toggle="modal">Task</a></li>
+                                                        </ul>
+                                                    </div>
+
+                                                    <div class="business-action btn-group dropup options options-contacts" style="position: fixed; bottom: 175px; right: 20px; z-index: 2000;" data-tooltip-stickto="left">
+
+                                                    </div>
+
+                                                    <div class="btn-group dropup infooptions options options-contacts" style="position: fixed; bottom: 100px; right: 20px; z-index: 2000;">
+
+                                                        <button class="btn btn-info fab" data-toggle="modal" data-target="#filter-b2b-stream">
+                                                            <i class="fa fa-filter"></i>
+                                                        </button>
+
+                                                    </div>
+
+                                                    <div class="btn-group dropup primary plainmenu options options-contacts" style="position: fixed; bottom: 25px; right: 20px; z-index: 2000;">
+                                                        <button class="btn btn-primary fab dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style="background-size: cover; border: 0; background-position: center center;">
+                                                        </button>
+                                                        <ul class="lbordered dropdown-menu dropdown-menu-right primary" style="min-width: 150px;">
+                                                            <li><a style="color: #333 !important;" href="#" >View profile</a></li>
+                                                            <li><a style="color: #333 !important;" href="#" name="favourite-option" onclick="$('.widget-contacts li.active a[name=fav-option]').click()">Remove from Favourites</a></li>
+                                                            <li><a style="color: #333 !important;" href="#" name="block-option" onclick="$('.widget-contacts li.active a[name=block-option]').click()">Block</a></li>
+                                                            <li><a style="color: #333 !important;" href="#" name="remove-option" onclick="$('.widget-contacts li.active a[name=remove-option]').click()">Remove</a></li>
+
+                                                            <li><a style="color: #333 !important;" href="javascript:void(0)" name="req-accept-option" onclick="$('.widget-contacts li.active a[name=req-accept-option]').click()">Accept</a></li>
+                                                            <li><a style="color: #333 !important;" href="javascript:void(0)" name="req-decline-option" onclick="$('.widget-contacts li.active a[name=req-decline-option]').click()">Decline</a></li>
+                                                            <li><a style="color: #333 !important;" href="javascript:void(0)" name="sent-cancel-option" onclick="$('.widget-contacts li.active a[name=sent-cancel-option]').click()">Cancel request</a></li>
+                                                        </ul>
+                                                    </div>
+
+                                                </article>
+                                                <!-- END Article main -->
+
+                                            </div>
+                                            <!-- END Main block -->
+
+
+                                        </div>
+
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+                        <div class="tab-pane fade" id="comms-waiting-approve">
+                            <div class="row commstab">
+                                <div class="col-xs-12">
+                                    <div class="" style="padding-left: 0;">
+                                        <div class="row">
+                                            <!-- Main block -->
+                                            <div class="col-xs-12">
+                                                <article class="v2-full b2bcommsmain" style="background: transparent; padding-bottom: 0; overflow: none;">
+
+                                                    <div class="block-container" style="padding: 0;">
+                                                        <div id="block-content-approve" class="day-block" style="padding: 0 0 20px 0; margin-bottom: 0; border-top: 0;">
+
+                                                        </div>
+                                                    </div>
+
+                                                </article>
+
+
+                                            </div>
+                                            <!-- END Main block -->
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- END Comms -->
+                <!-- All Contacts -->
+                <div class="tab-pane fade" id="all-contacts">
+                    <div class="row">
+                        <div class="col-xs-12">
+                            <!-- Article main -->
+                            <article class="v2-full b2bcommsmain" style="background: transparent; padding-bottom: 0; margin-top: 0; overflow: none; padding-left: 0;">
+                                <div id="data-container-people" class="flex-grid-quarters-lg gridfix qbicles-dash-grid">
+                                </div>
+                            </article>
+                            <!-- END Article main -->
+                            <div id="pagiation-people" style="float: left;padding-left: 29px;margin-bottom:40px"></div>
+                        </div>
+                    </div>
+
+                </div>
+                <!-- END Comms -->
+                <div class="tab-pane fade" id="shopping">
+
+                    <div class="row">
+                        <div>
+                            <div class="listings-options consumer" style="display: none;">
+
+                                <button class="btn btn-success community-button" data-toggle="modal" data-target="#c2c-listing-add" style="margin-bottom: 30px;"><i class="fa fa-plus"></i> &nbsp; Add a listing</button>
+
+                                <div class="well custom" style="padding-bottom: 5px;">
+                                    <div class="form-group">
+                                        <label>Search listings</label>
+                                        <input type="text" name="search" class="form-control" placeholder="...">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="types">Listing types</label>
+                                        <select name="types" class="form-control select2" style="width: 100%;">
+                                            <option value="0" selected>Show all types</option>
+                                            <option value="1">Selling only</option>
+                                            <option value="2">Buying only</option>
+                                            <option value="4">Only my contacts' listings</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="locations">Locations</label>
+                                        <select name="locations" class="form-control " multiple>
+                                            <option value="1" selected>Nigeria</option>
+                                            <option value="2" selected>United Kingdom</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group" style="margin: 0;">
+                                        <div class="checkbox toggle">
+                                            <label>
+                                                <input data-toggle="toggle" data-onstyle="success" type="checkbox">
+                                                Only show my favourites
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="form-group" style="margin: 0;">
+                                        <div class="checkbox toggle">
+                                            <label>
+                                                <input data-toggle="toggle" data-onstyle="success" type="checkbox">
+                                                Only show my posts
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-xs-12">
+                            <!-- Article main -->
+                            <article class="v2-full b2bcommsmain" style="background: transparent; padding-bottom: 0; margin-top: 0; overflow: none;">
+                                <a id="linkshop" href="#business-catalogues" data-toggle="tab" style="display:none">use show shop</a>
+                                <div class="tab-content" id="shopping-container">
+                                    <!--Stores -->
+                                    <div class="tab-pane fade in active" id="stores">
+                                        <div style="max-width: 100%; width: 800px; margin: 0 auto 90px auto;">
+                                            <div class="profile-pageblock modify nvpmasonry" style="margin: 0; padding: 40px 0 0 0;">
+                                                <h1>Stores</h1>
+                                                <span class="title-decor nvp1"></span>
+                                            </div>
+                                            <div>
+                                                @* <div class="listings-options business"> *@
+                                                <div class="well custom rounded filter-stores">
+                                                    <div class="input-group" style="max-width: 100%; width: 800px; margin: 0 auto;">
+                                                        <input type="text" name="search" class="form-control input-lg" placeholder="What are you looking for?">
+                                                        <span class="input-group-btn">
+                                                            <select id="country-search" name="locations" class="form-control input-lg" style="width: 200px;">
+                                                                <option value="0" selected>All countries</option>
+                                                                @foreach (var item in areaOfOperations)
+                                                                {
+                                                                    <option value="@item" @(sOrderby == item ? "selected" : "")>@item</option>
+                                                                }
+                                                            </select>
+                                                        </span>
+                                                    </div>
+                                                    <div style="display: none; padding-top: 15px;" id="stores-subfilter">
+                                                        <button id="add-filter" class="btn btn-primary community-button w-auto"
+                                                                data-toggle="modal" data-target="#community-stores-filter">
+                                                            Filters &nbsp; <span class="label label-info" id="filter-store-info">0</span>
+                                                        </button>
+                                                        <button id="clear-filter" class="btn btn-danger community-button w-auto" disabled>Remove filters</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div id="stores-results"></div>
+                                        <div id="stores-splash" class="text-center">
+                                            <div id="data-container-businesses" class="flex-grid-quarters-lg gridfix qbicles-dash-grid"></div>
+                                            <div id="pagiation-businesses"></div>
+                                            <br /><br /><br /><br />
+                                            <button class="btn btn-info community-button w-auto" id="show-all-store-btn" onclick="$(this).hide(); initFindBusinessStores();"><i class="fa fa-list"></i> &nbsp; Show all stores</button>
+                                        </div>
+                                        <br />
+                                        <br />
+
+                                    </div>
+                                    <!-- END Stores -->
+                                    <!-- Products -->
+                                    <div class="tab-pane fade" id="products">
+
+                                        <div style="max-width: 100%; width: 800px; margin: 0 auto 90px auto;">
+
+                                            <div class="profile-pageblock modify nvpmasonry" style="margin: 0; padding: 40px 0 0 0;">
+                                                <h1>Product search</h1>
+                                                <span class="title-decor nvp1"></span>
+                                            </div>
+
+                                            <div class="well custom rounded">
+                                                <div class="input-group">
+                                                    <input type="text" class="form-control input-lg" placeholder="What are you looking for?" id="psearching">
+                                                    <span class="input-group-btn">
+                                                        <select name="loc" class="form-control input-lg" id="pcountry-selector" style="width: 200px;">
+                                                            <option value="0" selected>All countries</option>
+                                                            @foreach (var item in areaOfOperations)
+                                                            {
+                                                                <option value="@item" @(sOrderby == item ? "selected" : "")>@item</option>
+                                                            }
+                                                        </select>
+                                                    </span>
+                                                </div>
+
+                                                <div style="display: none; padding-top: 15px;" id="products-subfilter">
+                                                    <button id="add-filter-products" class="btn btn-primary community-button w-auto"
+                                                            data-toggle="modal" data-target="#community-products-filter">
+                                                        Filters &nbsp; <span class="label label-info" id="filter-product-info">0</span>
+                                                    </button>
+                                                    <button id="clear-filter-products" class="btn btn-danger community-button w-auto" disabled>Remove filters</button>
+                                                </div>
+                                            </div>
+
+                                        </div>
+
+                                        <div id="products-splash" class="text-center">
+
+                                            <div class="flex-grid-thirds-lg gridfix" id="products-splash-content">
+
+
+                                            </div>
+                                        </div>
+
+                                        <div id="products-results" style="display: none; padding-top: 30px;">
+
+
+                                            <div class="text-left dtproductscontainer">
+
+                                                <table class="datatable dtproducts table-striped table-hover" id="products-results-dttable" data-searchable="false" style="width: 100%;" data-order='[[1, "asc"]]'>
+                                                    <thead>
+                                                        <tr>
+                                                            <th data-priority="3" style="width: 170px !important;" data-orderable="false">&nbsp;</th>
+                                                            <th data-priority="1">Product</th>
+                                                            <th data-priority="2">Provider</th>
+                                                            <th data-priority="1">Price</th>
+                                                            <th data-priority="1" data-orderable="false">&nbsp;</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                    </tbody>
+                                                </table>
+
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <!-- END Products -->
+                                    <!-- Catalogues -->
+                                    <div class="tab-pane fade" id="business-catalogues"></div>
+                                    <!-- END Catalogues -->
+                                    <!-- Catalog detail -->
+                                    <div class="tab-pane fade" id="business-catalog-detail"></div>
+                                    <!-- END Catalog detail -->
+                                </div> <!-- ./tab-content -->
+
+                            </article>
+                            <!-- END Article main -->
+
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+            </div>
+            
+        </div>
+
+    </section>
+    <!-- ./content -->
+</div>
+<!-- /.content-wrapper -->
+<div class="modal fade right" id="filter-b2b-stream" role="dialog" aria-labelledby="filter-b2b-stream" style="display: none;">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+                <h5 class="modal-title">Filters</h5>
+            </div>
+            <div class="modal-body">
+
+                <div class="well custom" style="padding-bottom: 5px;">
+                    <div class="row">
+                        <div class="col-xs-12">
+                            <label>Activities</label>
+                            <div class="form-group">
+                                <select name="types" id="select-activity" class="form-control select2" style="width: 100%;">
+                                    <option value="0" selected="">Show all</option>
+                                    <option value="@Enums.QbicleModule.Discussions">Discussions</option>
+                                    <option value="@Enums.QbicleModule.Media">Media</option>
+                                    <option value="@Enums.QbicleModule.Post">Posts</option>
+                                    <option value="@Enums.QbicleModule.Tasks">Tasks</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-xs-12">
+                            <label>Date range</label><br>
+                            <div class="input-group" style="margin-bottom: 15px;">
+                                <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                                <input type="text" id="txtFilterDaterange" data-maxdate="@DateTime.UtcNow.ConvertTimeFromUtc(timezone).ToString(datetimeFormat)" class="form-control daterange" placeholder="Date range">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <button class="btn btn-info" data-dismiss="modal" onclick="$('.removefilters').fadeIn();loadDataDashboardC2C(true)">Apply</button>
+                <button class="btn btn-danger" data-dismiss="modal" onclick="resetFilters()">Reset</button>
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+
+<div class="modal fade right" id="community-stores-filter" role="dialog" aria-labelledby="community-stores-filter">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Refine your results</h5>
+            </div>
+            <div class="modal-body">
+
+                <div class="well custom" style="padding-bottom: 5px;">
+                    <div class="row">
+                        <div class="col-xs-12">
+
+                            <div class="row">
+                                <div class="col-xs-12">
+                                    <div class="form-group">
+                                        <label for="categories">Categories</label>
+                                        <select id="categories-search" name="categories" class="form-control checkmulti" multiple>
+                                            @foreach (var item in shopCategories)
+                                            {
+                                                <option value="@item.Id" selected>@item.Name</option>
+                                            }
+                                        </select>
+                                    </div>
+                                </div>
+                                <br />
+                                <div class="col-xs-12">
+
+                                    <div class="form-group" style="margin: 0;">
+                                        <div class="checkbox toggle" id="litmitMyConnections">
+                                            <label>
+                                                <input name="LimitMyConnections" data-toggle="toggle" data-onstyle="success" type="checkbox">
+                                                Limit to my connections
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+
+                <br />
+                <button class="btn btn-success" onclick="initFindBusinessStores()" data-dismiss="modal">Apply</button>
+                <button class="btn btn-danger" id="reset-filter-store" disabled>Reset</button>
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+
+<div class="modal fade right tagifymodal" id="community-products-filter" role="dialog" aria-labelledby="community-products-filter">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Refine your results</h5>
+            </div>
+            <div class="modal-body">
+
+                <div class="well custom" style="padding-bottom: 5px;">
+                    <div class="row">
+                        <div class="col-xs-12">
+
+                            <div class="row">
+                                <div class="col-xs-12">
+                                    <div class="form-group">
+                                        <label for="keywords">Filter by keyword(s)</label>
+                                        @*<input type="text" class="form-control" name="input-custom-dropdown">*@
+                                        <select id="productTag" class="hidden" multiple>
+                                            @foreach (var item in listProductTag)
+                                            {
+                                                <option value="@item.Id" selected>@item.Name</option>
+                                            }
+                                        </select>
+                                        <textarea class="form-control input-lg" name="input-custom-dropdown"></textarea>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12">
+                                    <div class="form-group">
+                                        <label for="keywords">Filter by brand(s)</label>
+                                        <select id="listBrands" class="form-control checkmulti" multiple>
+                                            @foreach (var item in lstBrandMaster)
+                                            {
+                                                <option value="@item.Id" selected>@item.Name</option>
+                                            }
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+
+                <br />
+                <button class="btn btn-success" data-dismiss="modal" onclick="initFindProducts()">Apply</button>
+                <button class="btn btn-danger" id="reset-filter-products" disabled>Reset</button>
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+
+<div id="modal-activities"></div>
+<div class="modal fade in" id="edit-post" role="dialog" aria-labelledby="edit-post"></div>
+<div class="modal fade left" id="product-more-menu" role="dialog" aria-labelledby="product-more-menu" style="display: none; padding-right: 17px;">
+
+</div>
+<div class="modal fade right" id="b2c-catalogues" role="dialog" aria-labelledby="b2c-catalogues">
+
+</div><!-- /.modal -->
+
+<script>
+    var qbiclePageSize =@HelperClass.qbiclePageSize;
+</script>
+@{
+    <link href="~/Content/DesignStyle/css/bootstrap-multiselect.css" rel="stylesheet" />
+    <link href="~/Content/DesignStyle/css/tagify.css" rel="stylesheet" />
+    <link href="~/Content/DesignStyle/css/tagify-yaireo.css" rel="stylesheet" />
+    <script src="~/Content/DesignStyle/js/bootstrap-multiselect.min.js"></script>
+    <script src="~/Content/DesignStyle/js/tagify.js"></script>
+    <script src="~/Content/DesignStyle/js/tagify.polyfills.min.js"></script>
+    @*<link href="~/Content/DesignStyle/css/pagination.css" rel="stylesheet" />*@
+    @*<script src="~/Content/DesignStyle/js/pagination.min.js"></script>*@
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/c2c.comms.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/c2c.comms.js"></script>
+    }
+    <script src="~/Scripts/dev/order.context.flyout.js"></script>
+}
+<style>
+    .tagify {
+        width: 100%;
+        height: auto;
+        /*max-width: 700px;*/
+    }
+
+</style>
+
+<script>
+    $(document).ready(function () {
+        InitSplashTab();
+    });
+</script>

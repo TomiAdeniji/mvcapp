@@ -1,0 +1,125 @@
+﻿@using Qbicles.BusinessRules;
+@using Qbicles.Models;
+@model QbicleTask
+
+@{
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var recurrance = Model.AssociatedSet!=null&& Model.AssociatedSet.Recurrance!=null? Model.AssociatedSet.Recurrance:null;
+    var taskStatus = 0;
+    if (!Model.isComplete && Model.ActualStart == null && Model.ProgrammedEnd >= DateTime.UtcNow)
+    { taskStatus = 0; }
+    else if (!Model.isComplete && Model.ActualStart != null && Model.ProgrammedEnd >= DateTime.UtcNow)
+    { taskStatus = 1; }
+    else if (!Model.isComplete && Model.ProgrammedEnd < DateTime.UtcNow)
+    { taskStatus = 2; }
+    else if (Model.isComplete)
+    { taskStatus = 3; }
+    var dateFormat = (string)ViewBag.CurrentDateFormat;
+}
+<div class="modal-dialog" role="document">
+    <div class="modal-content">
+        <div class="modal-body">
+
+            <div class="newlabels activity-overview plain company-overview welcome-info" style="text-align: left !important; flex: none; margin: 0 !important; padding: 0 !important;">
+
+                <ul class="breadcrumb unintrusive" style="margin-top: 0;">
+                    <li><a href="#">@Model.Qbicle.Domain.Name</a></li>
+                    <li><a href="#">@Model.Qbicle.Name</a></li>
+                </ul>
+
+                <h1 style="line-height: 1.2;">@Model.Name</h1>
+                @if (taskStatus == 0)
+                {
+                    <span class="label label-lg label-warning">Pending</span>
+                }
+                else if (taskStatus == 1)
+                {
+                    <span class="label label-lg label-success">In progress</span>
+                }
+                else if (taskStatus == 2)
+                {
+                    <span class="label label-lg label-danger">Overdue</span>
+                }
+                else
+                {
+                    <span class="label label-lg label-soft">Complete</span>
+                }
+
+                @if (Model.Folders != null)
+                {
+                    foreach (var tag in Model.Folders)
+                    {
+                        <span class="label label-lg label-info tag_@tag.Id">#@tag.Name</span>
+                    }
+                }
+
+
+                <div class="clearfix"></div>
+                <br /><br />
+                @if (Model.ActivityMembers.Any())
+                {
+                    var member = Model.ActivityMembers.FirstOrDefault();
+                    <ul class="avatar-listing unstyled" style="background: #fff; margin: 0 0 30px 0;">
+                        <li>
+                            <a href="/Community/UserProfilePage?uId=@member.Id" style="padding: 0; background: #fff !important;">
+                                <div class="owner-avatar">
+                                    <div class="avatar-sm" style="background: url('@(api + member.ProfilePic + "&size=S")');"></div>
+                                </div>
+                                <h5>@HelperClass.GetFullNameOfUser(member)<br><small>Assignee</small></h5>
+                            </a>
+                        </li>
+                    </ul>
+                }
+
+
+                <p style="color: rgba(0, 0, 0, 0.6); font-weight: 400;">@Model.Description</p>
+
+                <br /><br />
+
+                <div class="row">
+                    <div class="col-xs-6">
+                        <label>Deadline</label>
+                        <p>@(Model.ProgrammedEnd.HasValue?Model.ProgrammedEnd.Value.ToString(dateFormat+" hh:mmtt").ToLower():"")</p>
+                    </div>
+                    <div class="col-xs-6">
+                        <label>Recurring</label>
+                        @if (Model.isRecurs)
+                        {
+                            <p>@Utility.ShowRecurring(recurrance, Model.ProgrammedStart.HasValue ? Model.ProgrammedStart.Value.ToString("\"at\" h:mmtt").Replace(":00", "").ToLower() : "")</p>
+                        }
+                        else
+                        {
+                            <p>No</p>
+                        }
+                    </div>
+                </div>
+                @if (!(Model.ActualStart == null && !Model.isComplete) && Model.isSteps)
+                {
+                    var StepInstance = Model.QStepinstances;
+                    var Percent = 0;
+                    if (StepInstance.Count > 0)
+                    {
+                        foreach (var item in StepInstance)
+                        {
+                            Percent += item.Step.Weight;
+                        }
+                    }
+                    <div class="completion well custom" style="margin: 30px 0 0 0;">
+                        <h5>Completion</h5>
+                        <div class="mdv2-progress" style="margin-bottom: 0;">
+                            <div class="progress">
+                                <div class="progress-bar" role="progressbar" style="width: @Percent%" aria-valuenow="@Percent" aria-valuemin="0" aria-valuemax="100"></div>
+                            </div>
+                            <small class="pull-left">@Percent % complete</small>
+                            <p class="pull-right" style="position: relative; top: 3px;">@Model.QSteps.Count() to-dos</p>
+                            <div class="clearfix"></div>
+                        </div>
+                    </div>
+                }
+            </div>
+                    <a class="btn btn-info" style="margin-top: 30px" href="javascript:void(0);" onclick="ShowTaskPage('@Model.Key',false)"><i class="fa fa-eye"></i> &nbsp; Manage in Qbicle</a>
+                    <button class="btn btn-primary" style="margin-top: 30px" data-dismiss="modal">Close</button>
+
+                </div>
+    </div><!-- /.modal-content -->
+</div><!-- /.modal-dialog -->

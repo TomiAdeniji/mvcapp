@@ -1,0 +1,106 @@
+﻿@using Qbicles.Models.Bookkeeping;
+@using Qbicles.BusinessRules;
+@using System.Globalization;
+@{
+    var breadcrumb = ViewBag.Breadcrumb;
+    var dateFormat = (string)ViewBag.CurrentDateFormat;
+    var breadcrumbName = ViewBag.BreadcrumbName;
+    var accountAmount = (AccountAmount)ViewBag.AccountAmount;
+    var accountNode = (BKAccount)ViewBag.AccountNode;
+    var isAccount = ViewBag.IsAccount;
+}
+
+@{
+    if (!isAccount)
+    {
+        <div class="activity-overview generic help-text animated bounce">
+            <i class="fa fa-info-circle"></i>
+            <p>Select an account from your Chart of Accounts tree and its information will display here...</p>
+        </div>
+    }
+    else
+    {
+
+        <br />
+        <div class="mod_title">
+            <h5>@breadcrumb</h5>
+            <h4 id="account-link-name">@breadcrumbName</h4>
+            <input hidden="" id="account-link-id" value="@accountNode.Id">
+        </div>
+
+        <div class="app_upper_dash text-center">
+            <div class="row">
+                <div class="col-xs-12 col-sm-4">
+                    <div class="stat_label">
+                        <span>Balance</span>
+                        <h3>@accountAmount.Balance.ToString("#,##0.00", CultureInfo.InvariantCulture.NumberFormat)</h3>
+                    </div>
+                </div>
+                <div class="col-xs-12 col-sm-4">
+                    <div class="stat_label">
+                        <span>Debits</span>
+                        <h3>@accountAmount.Debit.ToString("#,##0.00", CultureInfo.InvariantCulture.NumberFormat)</h3>
+                    </div>
+                </div>
+                <div class="col-xs-12 col-sm-4">
+                    <div class="stat_label">
+                        <span>Credits</span>
+                        <h3>@accountAmount.Credit.ToString("#,##0.00", CultureInfo.InvariantCulture.NumberFormat)</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <br />
+
+
+        <h5>Transactions</h5>
+
+        <table id="account-table" class="datatable app_specific table-hover" style="width: 100%;">
+            <thead>
+                <tr>
+                    <th data-priority="2">Date</th>
+                    <th data-priority="2">Reference</th>
+                    <th data-priority="1">Debit</th>
+                    <th data-priority="1">Credit</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var t in accountNode.Transactions)
+                {
+                    <tr>
+                        <td>@t.PostedDate.FormatDateTimeByUser(dateFormat)</td>
+                        <td>@t.Reference</td>
+                        <td>@t.Debit</td>
+                        <td>@t.Credit</td>
+                    </tr>
+                }
+
+
+            </tbody>
+        </table>
+
+        <br />
+        <br />
+        <button class="btn btn-success community-button" style="margin-bottom: 30px; max-width: 240px;"
+                onclick="SelectedLinkAccount();">
+            <i class="fa fa-link"></i>
+            &nbsp; Link this account
+        </button>
+
+        <script>
+            $(document).ready(function () {
+                
+                $('#account-table').DataTable({
+                    "dom": '<"top"fl<"clear">>rt<"bottomtable"ip<"clear">>',
+                    responsive: true,
+                    "lengthChange": true,
+                    "pageLength": 10,
+                    "order": [[0, "asc"]]
+                });
+
+                $('#account-table').show();
+            });
+        </script>
+    }
+}

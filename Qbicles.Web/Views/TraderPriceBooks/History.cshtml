@@ -1,0 +1,232 @@
+﻿@using Qbicles.BusinessRules
+@using Qbicles.Models.Trader.Pricing;
+@model PriceBookInstance
+@{
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+}
+
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail">
+
+
+    <!-- Main content -->
+    <section class="content">
+
+        <br /><br />
+
+        <div class="mod_title">
+            <h5>Version history</h5>
+            <h4>@Model.ParentPriceBookVersion.VersionName</h4>
+        </div>
+
+
+
+        <div class="row">
+            <div class="col-xs-12">
+                <div class="app_filter">
+                    <div class="row">
+                        <div class="col-xs-12">
+                            <a href="/TraderPriceBooks/PriceBook?id=@Model.ParentPriceBookVersion.ParentPriceBook.Id" class="btn btn-info"><i class="fa fa-angle-left"></i> &nbsp; Back to Pricebook</a>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+
+        <br /><br />
+
+
+        <div class="app_upper_dash text-center">
+            <div class="row">
+                <div class="col-xs-12 col-sm-6 col-lg-3">
+                    <div class="stat_label">
+                        <span>Revision</span>
+                        <h3>@Model.InstanceVersion</h3>
+                    </div>
+                </div>
+                <div class="col-xs-12 col-sm-6 col-lg-3">
+                    <div class="stat_label">
+                        <span>Applied</span>
+                        <h3>@Model.CreatedDate.ToString("dd MMM yyyy")</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <br />
+
+
+
+        <ul class="nav nav-pills group-selector">
+            @{
+                var i = 0;
+                var activeTab = "";
+                foreach (var productGroupInfo in Model.ProductGroupInfo)
+                {
+                    activeTab = i == 0 ? "active" : "";
+                    <li class="@activeTab">
+                        <a href="#group-@productGroupInfo.ProductGroup.Id" data-toggle="tab" onclick="GroupTabClick(@productGroupInfo.ProductGroup.Id)">@productGroupInfo.ProductGroup.Name</a>
+                    </li>
+                    i++;
+                }
+            }
+        </ul>
+
+        <br />
+
+
+        <div class="tab-content">
+
+            @{
+                var j = 0;
+                var active = "";
+                foreach (var info in Model.ProductGroupInfo)
+                {
+                    active = j == 0 ? "active" : "";
+                    var groupId = info.ProductGroup.Id;
+                    string markupPercentage = currencySettings.CurrencySymbol+" markup", discountPercentage = currencySettings.CurrencySymbol + " discount";
+                    if (info.IsMarkupPercentage)
+                    {
+                        markupPercentage = "markup %";
+                    }
+                    if (info.IsDiscountPercentage)
+                    {
+                        discountPercentage = "discount %";
+                    }
+                    <!-- Group 1 -->
+                    <div class="tab-pane fade in @active" id="group-@info.ProductGroup.Id">
+
+                        <div class="app_upper_dash text-center">
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-6 col-lg-4">
+                                    <div class="stat_label">
+                                        <span>Default markup</span>
+                                        <h3>
+                                            <span id="defaul-markup-info-@info.Id">
+                                                @markupPercentage.Replace("markup", info.MarkUp.ToDecimalPlace(currencySettings))
+                                            </span>
+                                        </h3>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-6 col-lg-4">
+                                    <div class="stat_label">
+                                        <span>Default discount</span>
+                                        <h3>
+                                            <span id="defaul-discount-info-@info.Id">
+                                                @discountPercentage.Replace("discount", info.Discount.ToDecimalPlace(currencySettings))
+                                            </span>
+                                        </h3>
+                                    </div>
+                                </div>
+                                
+                            </div>
+                        </div>
+
+                        <div class="activity-overview task" style="padding: 20px 20px 10px 20px;">
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-4">
+                                    <div class="form-group">
+                                        <label for="search">Search for items</label>
+                                        <input id="input-search-table-info-@info.ProductGroup.Id" onkeyup="SearchItemOnTable(@info.ProductGroup.Id)" type="text" name="search" class="form-control">
+                                    </div>
+                                </div>
+                                
+                            </div>
+
+                        </div>
+
+                        <br /><br />
+                        <div class="row no-search activity-overview task" id="table-price-book-prices-@info.Id">
+                            <table class="datatable table-striped table-hover price-book-prices-table" id="table-info-@groupId" style="width: 100%;">
+                                <thead>
+                                    <tr>
+                                        <th data-priority="1">Item</th>
+                                        <th id="th-avg-cost" data-priority="2">Avg cost <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                        <th id="th-latest-cost" data-priority="2">Latest cost <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                        <th data-priority="1" data-orderable="false">Markup</th>
+                                        <th data-priority="1" data-orderable="false">Discount</th>
+                                        <th data-priority="3">Calculated price <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                        <th data-priority="1">Pricebook price <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                        <th data-priority="2">Tax <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                        <th data-priority="1">Price inc tax <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+
+                                    @foreach (var pbPrice in info.ParentInstance.PriceBookPrices.Where(g => g.Item.Group.Id == groupId))
+                                    {
+                                        <tr>
+                                            <td>@pbPrice.Item.Name</td>
+                                            <td>@pbPrice.AverageCost.ToDecimalPlace(currencySettings)</td>
+                                            <td>@pbPrice.LatestCost.ToDecimalPlace(currencySettings)</td>
+                                            <td>
+                                                @{
+                                                    var mPercentage = "Markup "+currencySettings.CurrencySymbol;
+                                                    if (pbPrice.IsMarkupPercentage)
+                                                    {
+                                                        mPercentage = "% Markup";
+                                                    }
+                                                }
+                                                @mPercentage.Replace("Markup", pbPrice.MarkUp.ToDecimalPlace(currencySettings))
+                                                
+                                            </td>
+                                            <td>
+                                                @{
+                                                    var dPercentage = "Markup " + currencySettings.CurrencySymbol;
+                                                    if (pbPrice.IsDiscountPercentage)
+                                                    {
+                                                        dPercentage = "% Markup";
+                                                    }
+                                                }
+                                                @dPercentage.Replace("Markup", pbPrice.Discount.ToDecimalPlace(currencySettings))
+                                            </td>
+                                            <td>@pbPrice.CalculatedPrice.ToDecimalPlace(currencySettings)</td>
+                                            <td>
+                                                @{
+                                                    decimal price = 0;
+                                                    if (pbPrice.IsPriceManuallyUpdated)
+                                                    {
+                                                        price = pbPrice.Price;
+                                                    }
+                                                }
+                                                @price.ToDecimalPlace(currencySettings)
+                                            </td>
+                                            <td>
+                                                @{
+                                                    @pbPrice.TaxValue.ToDecimalPlace(currencySettings)
+                                                }
+                                            </td>
+                                            <td>@pbPrice.FullPrice.ToDecimalPlace(currencySettings)</td>
+                                        </tr>
+                                    }
+
+                                </tbody>
+                            </table>
+                        </div>
+
+
+                    </div>
+                    <!-- END Group 1 -->
+                    j++;
+                }}
+
+        </div> <!-- ./tab-content -->
+
+    </section>
+    <!-- ./content -->
+
+</div>
+<!-- /.content-wrapper -->
+
+<script src="~/Scripts/dev/trader.domain.js"></script>
+<script>
+
+    SearchItemOnTable = function (groupId) {
+        var searchText = $("#input-search-table-info-" + groupId).val();
+        $("#table-info-" + groupId).DataTable().search(searchText).draw();
+    };
+
+</script>

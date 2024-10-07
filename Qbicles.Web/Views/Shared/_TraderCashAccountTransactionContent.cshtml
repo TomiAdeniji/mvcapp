@@ -1,0 +1,200 @@
+﻿@using Qbicles.Models.Trader
+@using Qbicles.BusinessRules;
+@model List<CashAccountTransaction>
+@{
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var traderCashAccountId = (int)ViewBag.TraderCashAccountId;
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+}
+
+<table class="datatable table-hover table-striped" width="100%" data-order='[[0, "desc"]]' cellspacing="0" id="community-list">
+    <thead>
+        <tr>
+            <th data-priority="1">#</th>
+            <th data-priority="2">Date</th>
+            <th data-priority="2">Reference</th>
+            <th data-priority="2">Source</th>
+            <th data-priority="2">Payment Method</th>
+            <th data-priority="2">Destination</th>
+            <th data-priority="1">Type</th>
+            <th data-priority="1">In/Out</th>
+            <th data-priority="2">For</th>
+            <th data-priority="1">Amount <strong>(@currencySettings.CurrencySymbol)</strong></th>
+            <th data-priority="3">Status</th>
+            <th data-priority="1" class="nosort">Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@string.Format("{0:000000}", item.Id)</td>
+                <td>@item.CreatedDate.ToString("dd/MM/yyyy")</td>
+                <td>@(item.Reference ?? "")</td>
+
+                @if (item.OriginatingAccount != null)
+                {
+                    <td>@item.OriginatingAccount.Name</td>
+                }
+                else
+                {
+                    <td>Not chosen</td>
+                }
+
+                <td>@(item.PaymentMethod?.Name ?? "")</td>
+
+                @if (item.DestinationAccount != null)
+                {
+                    <td>@item.DestinationAccount.Name</td>
+                }
+                else
+                {
+                    <td>Not chosen</td>
+                }
+
+                <td>
+                    @if (item.Type == CashAccountTransactionTypeEnum.Transfer)
+                    {
+                        <span class="label label-lg label-primary">Transfer</span>
+                    }
+                    else
+                    {
+                        <span class="label label-lg label-primary">Payment</span>
+                    }
+                </td>
+                @if (item.Type == CashAccountTransactionTypeEnum.Transfer)
+                {
+                    if (item.DestinationAccount != null && item.OriginatingAccount != null && item.DestinationAccount.Id == item.OriginatingAccount.Id)
+                    {
+                        <td>In</td>
+                    }
+                    else
+                    {
+                        <td>Out</td>
+                    }
+                }
+                else if (item.Type != CashAccountTransactionTypeEnum.Transfer)
+                {
+                    if (item.Type == CashAccountTransactionTypeEnum.PaymentIn)
+                    {
+                        <td>In</td>
+                    }
+                    else
+                    {
+                        <td>Out</td>
+                    }
+                }
+                else
+                {
+                    <td></td>
+                }
+            <td>
+                @if (item.Type != CashAccountTransactionTypeEnum.Transfer)
+                {
+                    if (item.AssociatedInvoice == null && item.Contact != null)
+                    {
+                        <a href="app_trader_invoice.php">Payment on account</a>
+                    }
+                    else if (item.AssociatedInvoice != null)
+                    {
+                        <a href="app_trader_invoice.php">Invoice #@item.AssociatedInvoice.Id</a>
+                    }
+                }
+                else
+                {
+                    <a href="javascript:">Transfer funds</a>
+                }
+            </td>
+                <td>@item.Amount.ToDecimalPlace(currencySettings)</td>
+                <td>
+                    @switch (item.Status)
+                    {
+                        case TraderPaymentStatusEnum.PendingReview:
+                            <span class="label label-lg label-info">Pending Review</span>
+                            break;
+                        case TraderPaymentStatusEnum.PendingApproval:
+                            <span class="label label-lg label-primary">Pending Approval</span>
+                            break;
+                        case TraderPaymentStatusEnum.PaymentApproved:
+                            <span class="label label-lg label-success">Approved</span>
+                            break;
+                        case TraderPaymentStatusEnum.PaymentDenied:
+                            <span class="label label-lg label-danger">Denied</span>
+                            break;
+                        case TraderPaymentStatusEnum.Draft:
+                            <span class="label label-lg label-primary">Draft</span>
+                            break;
+                        case TraderPaymentStatusEnum.PaymentDiscarded:
+                            <span class="label label-lg label-danger">Discarded</span>
+                            break;
+                    }
+                </td>
+                <td>
+                    @if (item.Type != CashAccountTransactionTypeEnum.Transfer)
+                    {
+                        if (item.Status == TraderPaymentStatusEnum.Draft)
+                        {
+                            <button class="btn btn-info" onclick="EditPayment(@traderCashAccountId, @item.Id)"><i class="fa fa-pencil"></i> &nbsp; Continue</button>
+                        }
+                        else
+                        {
+                            <button class="btn btn-primary" onclick="window.location.href='/TraderPayments/PaymentManage?id=@item.Id';"><i class="fa fa-eye"></i> &nbsp; Manage</button>
+                        }
+                    }
+                    else if (item.Type == CashAccountTransactionTypeEnum.Transfer)
+                    {
+                        if (item.Status == TraderPaymentStatusEnum.Draft)
+                        {
+                            <button class="btn btn-info" onclick="EditTranfer(@traderCashAccountId, @item.Id)"><i class="fa fa-pencil"></i> &nbsp; Continue</button>
+                        }
+                        else
+                        {
+                            <button class="btn btn-primary" onclick="window.location.href='/TraderPayments/PaymentManage?id=@item.Id';"><i class="fa fa-eye"></i> &nbsp; Manage</button>
+                        }
+                    }
+                </td>
+            </tr>
+        }
+
+    </tbody>
+</table>
+<script>
+    $("#community-list").DataTable({
+        responsive: true,
+        "lengthChange": true,
+        "pageLength": 10,
+        "columnDefs": [
+            {
+                "targets": 3,
+                "orderable": false
+            }
+        ],
+        "order": []
+    });
+
+    $("#community-list").show();
+    $.fn.dataTable.ext.search.push(
+        function (settings, data, dataIndex) {
+            if ($('#date_range').val().toString().trim() === '') return true;
+            var min = moment(($('#date_range').val().split('-')[0] + '').trim(), "DD/MM/YYYY");;
+            var max = moment(($('#date_range').val().split('-')[1] + '').trim(), "DD/MM/YYYY");;
+            var startDate = moment((data[1] + '').trim(), "DD/MM/YYYY");
+            if (min == null && max == null) { return true; }
+            if (min == null && startDate <= max) { return true; }
+            if (max == null && startDate >= min) { return true; }
+            if (startDate <= max && startDate >= min) { return true; }
+            return false;
+        }
+    );
+    $('.daterange').on('apply.daterangepicker', function (ev, picker) {
+        $(this).val(picker.startDate.format('DD/MM/YYYY') + ' - ' + picker.endDate.format('DD/MM/YYYY'));
+        $('#date_range').html(picker.startDate.format('DD/MM/YYYY') + ' - ' + picker.endDate.format('DD/MM/YYYY'));
+        $('#community-list').DataTable().draw();
+    });
+    $('.daterange').on('cancel.daterangepicker', function (ev, picker) {
+        $(this).val(null);
+        $('#date_range').html('full history');
+        $('#community-list').DataTable().draw();
+    });
+</script>

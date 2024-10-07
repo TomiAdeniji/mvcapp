@@ -1,0 +1,350 @@
+﻿@using Qbicles.BusinessRules
+@using Qbicles.Models.Trader.Pricing;
+@model PriceBookInstance
+@{
+    var groupIds = string.Join(";", Model.ProductGroupInfo.Select(e => e.ProductGroup.Id));
+
+    var isPriceCalWithAvgCost = Model.IsPriceCalWithAvgCost;
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+}
+<div id="version-1">
+
+    <h1 style="margin: 0; padding: 0 0 15px 0;">@Model.ParentPriceBookVersion.VersionName</h1>
+    <br />
+    <div class="activity-overview task" style="padding: 20px 20px 10px 20px;display: none;">
+        <div class="row">
+            <div class="col-xs-12 col-sm-4">
+                <div class="form-group">
+                    <label>Version name <span>*</span></label>
+                    <input id="input-version-name-edit" value="@Model.ParentPriceBookVersion.VersionName" type="text" class="form-control" onkeyup="EditVersonNameKeyUp('@Model.ParentPriceBookVersion.VersionName')">
+                </div>
+            </div>
+            <div class="col-xs-12 col-sm-8">
+
+            </div>
+        </div>
+
+    </div>
+
+    <input type="hidden" id="group-ids" value="@groupIds" />
+
+    <ul class="nav nav-pills group-selector">
+        @{
+            var i = 0;
+            var activeTab = "";
+            foreach (var productGroupInfo in Model.ProductGroupInfo)
+            {
+                activeTab = i == 0 ? "active" : "";
+                <li class="@activeTab">
+                    <a href="#group-@productGroupInfo.ProductGroup.Id" data-toggle="tab" onclick="GroupTabClick(@productGroupInfo.ProductGroup.Id)">@productGroupInfo.ProductGroup.Name</a>
+                </li>
+                i++;
+            }
+        }
+    </ul>
+    <br /><br />
+
+    <div class="tab-content">
+
+        @{
+            var j = 0;
+            var active = "";
+            foreach (var info in Model.ProductGroupInfo)
+            {
+                active = j == 0 ? "active" : "";
+                var groupId = info.ProductGroup.Id;
+                string markupPercentage = currencySettings.CurrencySymbol + " markup", discountPercentage = currencySettings.CurrencySymbol + " discount";
+                if (info.IsMarkupPercentage)
+                {
+                    markupPercentage = "markup %";
+                }
+                if (info.IsDiscountPercentage)
+                {
+                    discountPercentage = "discount %";
+                }
+                <!-- Group 1 -->
+                <div class="tab-pane fade in @active" id="group-@info.ProductGroup.Id">
+
+                    <div class="app_upper_dash text-center">
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-6 col-lg-4">
+                                <div class="stat_label">
+                                    <span>Default markup</span>
+                                    <h3>
+                                        <span id="defaul-markup-info-@info.Id">
+                                            @markupPercentage.Replace("markup", info.MarkUp.ToDecimalPlace(currencySettings))
+                                        </span>
+                                    </h3>
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-6 col-lg-4">
+                                <div class="stat_label">
+                                    <span>Default discount</span>
+                                    <h3>
+                                        <span id="defaul-discount-info-@info.Id">
+                                            @discountPercentage.Replace("discount", info.Discount.ToDecimalPlace(currencySettings))
+                                        </span>
+                                    </h3>
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-6 col-lg-4">
+                                <div class="stat_label">
+                                    <span>Manage values</span>
+                                    <button onclick="ProductGroupsDefault(@info.Id, '@info.ProductGroup.Name',@info.ProductGroup.Id, @info.ParentInstance.Id)"
+                                            type="button" class="btn btn-success" data-toggle="modal" data-target="#app-trader-pricebook-modifiers">
+                                        <i class="fa fa-tags"></i> &nbsp; Group markup/discount
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="activity-overview task" style="padding: 20px 20px 10px 20px;">
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-4">
+                                <div class="form-group">
+                                    <label for="search">Search for items</label>
+                                    <input id="input-search-table-info-@info.ProductGroup.Id" onkeyup="SearchItemOnTable(@info.ProductGroup.Id)" type="text" name="search" class="form-control">
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-8">
+                                <label>Group options</label><br />
+
+                                <div class="btn-group info">
+                                    <button type="button" class="btn btn-info dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                        <i class="fa fa-calculator"></i> &nbsp; Recalculate prices &nbsp; <i class="fa fa-angle-down"></i>
+                                    </button>
+                                    <ul class="dropdown-menu info">
+                                        <li>
+                                            <a href="javascript:void(0)" onclick="RecalculatePrices(@info.Id, @info.ProductGroup.Id, @info.ParentInstance.Id,'@RecalculatePricesType.AverageCost')">Use average cost of inventory</a>
+                                        </li>
+                                        <li>
+                                            <a href="javascript:void(0)" onclick="RecalculatePrices(@info.Id, @info.ProductGroup.Id, @info.ParentInstance.Id,'@RecalculatePricesType.LatestCost')">Use latest cost</a>
+                                        </li>
+                                    </ul>
+                                </div>
+
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <br /><br />
+                    <div id="table-price-book-prices-@info.Id">
+                        <table class="datatable table-striped table-hover price-book-prices-table" id="table-info-@groupId" style="width: 100%;">
+                            <thead>
+                                <tr>
+                                    <th data-priority="1">Item</th>
+                                    <th id="th-avg-cost" data-priority="2">Avg cost <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                    <th id="th-latest-cost" data-priority="2">Latest cost <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                    <th data-priority="1" data-orderable="false">Markup</th>
+                                    <th data-priority="1" data-orderable="false">Discount</th>
+                                    <th data-priority="3">Calculated price <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                    <th data-priority="1">Pricebook price <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                    <th data-priority="2">Tax <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                    <th data-priority="1">Price inc tax <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+
+                                @foreach (var pbPrice in info.ParentInstance.PriceBookPrices.Where(g => g.Item.Group.Id == groupId))
+                                {
+                                    <tr>
+                                        <td>@pbPrice.Item.Name</td>
+                                        <td>@pbPrice.AverageCost.ToDecimalPlace(currencySettings)</td>
+                                        <td>@pbPrice.LatestCost.ToDecimalPlace(currencySettings)</td>
+                                        <td>
+                                            <div class="input-group" style="width: 100%;">
+                                                <input type="hidden" class="price-book-price-id" value="@pbPrice.Id" />
+                                                <input id="markup-value-@pbPrice.Id" type="number" class="form-control markup-value" name="markup" value="@pbPrice.MarkUp" onchange="ReCalculatePriceRow('@pbPrice.Id')">
+                                                <div class="input-group-btn">
+                                                    <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                                        <span id="info-markup-item-@pbPrice.Id" class="markup-percentage">
+                                                            @{
+                                                                markupPercentage = currencySettings.CurrencySymbol;
+                                                                if (pbPrice.IsMarkupPercentage)
+                                                                {
+                                                                    markupPercentage = "%";
+                                                                }
+                                                            }
+                                                            @markupPercentage
+                                                        </span> &nbsp; <i class="fa fa-angle-down"></i>
+                                                    </button>
+                                                    <ul class="dropdown-menu primary dropdown-menu-right">
+                                                        <li><a href="javascript:void(0)" onclick="MarkUpTableChange('%',@pbPrice.Id)">%</a></li>
+                                                        <li><a href="javascript:void(0)" onclick="MarkUpTableChange('@currencySettings.CurrencySymbol',@pbPrice.Id)">@currencySettings.CurrencySymbol</a></li>
+                                                    </ul>
+                                                </div>
+                                                <!-- /btn-group -->
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="input-group" style="width: 100%;">
+                                                <input id="discount-value-@pbPrice.Id" type="number" class="form-control user-edited discount-value" name="discount" value="@pbPrice.Discount" onchange="ReCalculatePriceRow('@pbPrice.Id')">
+                                                <div class="input-group-btn">
+                                                    <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                                        <span id="info-discount-item-@pbPrice.Id" class="discount-percentage">
+                                                            @{
+                                                                discountPercentage = currencySettings.CurrencySymbol;
+                                                                if (pbPrice.IsDiscountPercentage)
+                                                                {
+                                                                    discountPercentage = "%";
+                                                                }
+                                                            }
+                                                            @discountPercentage
+                                                        </span> &nbsp; <i class="fa fa-angle-down"></i>
+                                                    </button>
+                                                    <ul class="dropdown-menu primary dropdown-menu-right">
+                                                        <li><a href="javascript:void(0)" onclick="DiscountTableChange('%',@pbPrice.Id)">%</a></li>
+                                                        <li><a href="javascript:void(0)" onclick="DiscountTableChange('@currencySettings.CurrencySymbol',@pbPrice.Id)">@currencySettings.CurrencySymbol</a></li>
+                                                    </ul>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td><span id="calculated-price-@pbPrice.Id">@pbPrice.CalculatedPrice.ToDecimalPlace(currencySettings)</span></td>
+                                        <td>
+                                            @{
+                                                decimal price = 0;
+                                                if (pbPrice.IsPriceManuallyUpdated)
+                                                {
+                                                    price = pbPrice.Price;
+                                                }
+                                            }
+                                            <div class="input-group" style="width: 100%;">
+                                                <span class="input-group-addon">@currencySettings.CurrencySymbol</span>
+                                                <input onchange="ReCalculatePriceRow('@pbPrice.Id')" id="price-value-@pbPrice.Id" type="number" name="fixed" class="form-control price-value" value="@price.ToInputNumberFormat(currencySettings)">
+                                            </div>
+                                        </td>
+                                        <td>
+                                            @{
+                                                <span id="price-tax-@pbPrice.Id">@pbPrice.TaxValue.ToDecimalPlace(currencySettings)</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            <div class="input-group" style="width: 100%;">
+                                                <span class="input-group-addon">@currencySettings.CurrencySymbol</span>
+                                                <input id="full-price-@pbPrice.Id" onchange="ReCalculatePriceRow('@pbPrice.Id',true)" type="number" name="fixed" class="form-control price-inc-value" value="@pbPrice.FullPrice.ToInputNumberFormat(currencySettings)">
+                                            </div>
+                                            @*<span id="full-price-@pbPrice.Id">@pbPrice.FullPrice.ToDecimalPlace(currencySettings)</span>*@
+                                        </td>
+                                    </tr>
+                                }
+
+                            </tbody>
+                        </table>
+                    </div>
+
+
+                </div>
+                <!-- END Group 1 -->
+                j++;
+            }}
+
+    </div> <!-- ./tab-content -->
+
+
+    <br /><br />
+    <button onclick="EditVersionManagement()" class="btn btn-info"><i class="fa fa-angle-left"></i> &nbsp; Versions</button>
+    <button class="btn btn-success" onclick="ApplyPriceBookPrices(@Model.Id)">Apply now</button>
+</div>
+
+<div class="modal fade" id="app-trader-pricebook-modifiers" role="dialog" aria-labelledby="app-trader-pricebook-modifiers">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title"><span id="group-name-info"></span> Markup &amp; Discount</h5>
+            </div>
+            <div class="modal-body">
+
+                <div class="activity-overview generic help-text animated bounce">
+                    <i class="fa fa-info-circle"></i>
+                    <h5 style="margin: 0 0 5px 0;">Group markup/discount</h5>
+                    <p>
+                        Applying a markup or discount here will apply them to all items in this Product Group. You have the option of preserving any information you've manually
+                        associated with an item, or overwriting everything.
+                    </p>
+                </div>
+
+                <div class="activity-overview task" style="padding: 20px 20px 10px 20px;">
+
+                    <form id="form-pricebook-info" class="row">
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group">
+                                <label>Group markup</label>
+                                <div class="input-group" style="width: 100%;">
+                                    <input id="info-markup" type="number" class="form-control" name="markup" value="0" required="">
+                                    <div class="input-group-btn">
+                                        <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                            <span id="info-markup-type" class="markup-type-1">
+
+                                            </span> &nbsp; <i class="fa fa-angle-down"></i>
+                                        </button>
+                                        <ul class="dropdown-menu primary dropdown-menu-right">
+                                            <li><a href="javascript:void(0)" onclick="$('#info-markup-type').html('%');">%</a></li>
+                                            <li><a href="javascript:void(0)" onclick="$('#info-markup-type').html('@currencySettings.CurrencySymbol');">@currencySettings.CurrencySymbol</a></li>
+                                        </ul>
+                                    </div>
+                                    <!-- /btn-group -->
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group">
+                                <label>Group discount</label>
+                                <div class="input-group" style="width: 100%;">
+                                    <input id="info-discount" type="number" class="form-control" name="discount" value="0" required="">
+                                    <div class="input-group-btn">
+                                        <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                            <span id="info-discount-type" class="markup-type-1">
+
+                                            </span> &nbsp; <i class="fa fa-angle-down"></i>
+                                        </button>
+                                        <ul class="dropdown-menu primary dropdown-menu-right">
+                                            <li><a href="javascript:void(0)" onclick="$('#info-discount-type').html('%');">%</a></li>
+                                            <li><a href="javascript:void(0)" onclick="$('#info-discount-type').html('@currencySettings.CurrencySymbol');">@currencySettings.CurrencySymbol</a></li>
+                                        </ul>
+                                    </div>
+                                    <!-- /btn-group -->
+                                </div>
+                            </div>
+                        </div>
+
+                    </form>
+                </div>
+
+
+                <br /><br />
+                <button onclick="ApplyMarkupDiscount('Apply')" class="btn btn-success">Apply</button>
+                <button onclick="ApplyMarkupDiscount('ApplyOverwrite')" class="btn btn-warning">Apply &amp; overwrite</button>
+
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+<script>
+    var $table = $(".price-book-prices-table").DataTable();
+    $table.destroy();
+    $(".price-book-prices-table").DataTable({
+        responsive: true,
+        "lengthChange": true,
+        "pageLength": 10,
+        "columnDefs": [
+            {
+                "targets": 3,
+                "orderable": false
+            }
+        ],
+        "order": []
+    });
+
+    $(".price-book-prices-table").show();
+
+
+    if ('@isPriceCalWithAvgCost' === "True" && document.getElementById('th-avg-cost') != null)
+        document.getElementById('th-avg-cost').style.background = '#63b9d5';
+    else if (document.getElementById('th-avg-cost') != null)
+        document.getElementById('th-latest-cost').style.background = '#63b9d5';
+</script>

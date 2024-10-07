@@ -1,0 +1,394 @@
+﻿@using Qbicles.Models.Qbicles
+@using Qbicles.Models.Trader
+@using Qbicles.BusinessRules;
+@{
+    var contacts = (List<TraderContact>)ViewBag.Contacts;
+    var locationId = ViewBag.LocationId;
+    var countries = (List<Country>)ViewBag.Countries;
+    var contactGroups = (List<TraderContactGroup>)ViewBag.ContactGroups;
+    var paymentMethods = (List<PaymentMethod>)ViewBag.PaymentMethods;
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+}
+
+<div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <h5 class="modal-title">Add a payment 456</h5>
+        </div>
+        <div class="modal-body">
+            <form id="cash-account-payment">
+                <div class="activity-overview task" style="padding: 20px 20px 10px 20px; margin-bottom: 25px;">
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group">
+                                <label for="type">Type of payment</label>
+                                <select id="payment-type-select" name="Type" class="form-control select2" style="width: 100%;" data-placeholder="Income or expense?">
+                                    <option value="1">Incoming payment</option>
+                                    <option value="2">Outgoing payment</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group">
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-8">
+                                        <label for="to">Contact</label>
+                                        <select name="Contact" id="payment-contact-select" class="form-control select2" style="width: 100%;" data-placeholder="Choose an existing contact">
+                                            @foreach (var c in contacts)
+                                            {
+                                                <option value="@c.Id">@c.Name</option>
+                                            }
+                                        </select>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-4">
+                                        <button style="margin-top: 25px;" class="btn btn-success" data-toggle="modal" data-target="#app-trader-add-contact"><i class="fa fa-user-plus"></i> &nbsp; New contact</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group">
+                                <label for="title">Payment method <span>*</span></label>
+                                <select id="payment-method" class="form-control select2 select-modal" style="width: 100%;">
+                                    @foreach (var method in paymentMethods)
+                                    {
+                                        <option value="@method.Id">@method.Name</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group">
+                                <label for="amount">Reference  <span>*</span></label>
+                                <input id="reference" required="" class="form-control" name="reference">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-6">
+                            <label for="amount">Amount <span>*</span></label>
+                            <div class="input-group" style="padding-bottom: 20px;">
+                                <input id="payment-amount" type="number" required="" class="form-control" name="Amount" />
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group">
+                                <label for="to">For</label>
+                                <select id="sale-purchase-select" name="for" class="form-control select2" style="width: 100%;" data-placeholder="Choose a sale or purchase, or pay on account">
+                                    @{Html.RenderAction("RenderSelectSalePurchasePayment", "TraderCashBank", new { idLocation = locationId });}
+
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-6">
+                            <label for="amount">Charges <span>*</span></label>
+                            <div class="input-group" style="padding-bottom: 20px;">
+                                <span class="input-group-addon">@currencySettings.CurrencySymbol</span>
+                                <input id="charges-payment" type="number" required="" class="form-control" name="Charges">
+                            </div>
+                        </div>
+
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group" style="margin: 0;">
+                                <label for="description">Attachments</label><br />
+                                <button class="btn btn-info" onclick="ShowTransactionAttachments(0)">
+                                    <i class="fa fa-paperclip"></i> &nbsp; <span id="span-attachment-count">0</span> attachment
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-12">
+                            <div class="form-group">
+                                <label for="description">Description</label>
+                                <textarea id="payment-description" name="Description" class="form-control"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+
+
+
+
+            <br />
+            <button onclick="SaveCashAccountPayment()" class="btn btn-success">Add now</button>
+            <button class="btn btn-danger" onclick="CloseAddPayment()">Cancel</button>
+
+        </div>
+
+    </div><!-- /.modal-content -->
+</div>
+<!-- /.modal-dialog -->
+
+<div class="modal fade" id="app-trader-add-contact" role="dialog" aria-labelledby="app-trader-add-contact">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" onclick="CloseAddContact()" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+                <h5 class="modal-title">
+                    <span id="modal-title-contact">Add a contact</span>
+                </h5>
+            </div>
+            <div class="modal-body">
+
+                <form class="form-group" method="POST" id="form_contact_add" action="/TraderContact/SaveContact" enctype="multipart/form-data" novalidate="novalidate">
+                    <div class="activity-overview task" style="padding: 20px;">
+                        <input id="contact-id" name="Id" hidden="" />
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="group">Assign to a group</label>
+                                    <select id="group-contact-id" name="groupId" class="form-control select2" style="width: 100%;">
+                                        @foreach (var group in contactGroups)
+                                        {
+                                            <option value="@group.Id">@group.Name</option>
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="name">Name <span>*</span></label>
+                                    <input id="contact-name" type="text" name="Name" required="" class="form-control">
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="avatar">Avatar</label>
+                                    <input id="contactAvatar" type="file" name="contactAvatar" class="form-control">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="company">Company</label>
+                                    <input id="contact-company" type="text" name="CompanyName" class="form-control">
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="job">Job title </label>
+                                    <input id="contact-job" type="text" name="JobTitle" class="form-control">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="phone">Phone</label>
+                                    <input id="contact-phone" type="text" name="PhoneNumber" class="form-control">
+                                </div>
+                                <input id="contact-address-id" name="addressId" value="0" hidden="" />
+                            </div>
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="email">Email <span>*</span></label>
+                                    <input id="contact-email" type="email" name="Email" required="" class="form-control">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="address1">Address line 1</label>
+                                    <input type="text" id="AddressLine1" name="AddressLine1" class="form-control">
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="address2">Address line 2</label>
+                                    <input type="text" id="AddressLine2" name="AddressLine2" class="form-control">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="city">City</label>
+                                    <input type="text" id="City" name="City" class="form-control">
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="state">State</label>
+                                    <input type="text" id="State" name="State" class="form-control">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="country">Country</label>
+                                    <select id="CountryName" name="CountryName" class="form-control select2" style="width: 100%;">
+                                        @foreach (var c in countries)
+                                        {
+                                            if (c.CommonName == "Nigeria")
+                                            {
+                                                <option value="@c.CommonName" selected>@c.CommonName</option>
+                                            }
+                                            else
+                                            {
+                                                <option value="@c.CommonName">@c.CommonName</option>
+                                            }
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="postcode">Postcode</label>
+                                    <input type="text" id="PostCode" name="PostCode" class="form-control">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <div class="form-group" style="margin: 0;">
+                                    <label for="customer-account">Select customer account</label><br />
+                                    <br />
+                                    <input id="accountId" name="accountId" hidden="" />
+                                    <button class="btn btn-info addbtnaccount" onclick="LoadAccountTree()" data-toggle="modal" data-target="#app-bookkeeping-treeview"><i class="fa fa-plus"></i> &nbsp; Choose account</button>
+                                    <p class="accountInfo" style="display: inline-block; font-family: 'Roboto', Arial, sans-serif; font-size: 12px; padding: 0 10px 0 0;"></p>
+                                    <button class="btn btn-small btn-warning editbtnaccount" style="display: none;" data-toggle="modal" onclick="LoadAccountTree()" data-target="#app-bookkeeping-treeview">
+                                        <i class="fa fa-pencil"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </form>
+
+
+                <br />
+                <a href="javascript:void(0);" onclick="CloseAddContact()" class="btn btn-danger"><i class="fa fa-remove"></i> &nbsp; Cancel</a>
+                <button type="button" class="btn btn-success" onclick="SaveContact()"><i class="fa fa-save"></i> &nbsp;Finish & Save</button>
+
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+    <!-- /.modal-dialog -->
+</div><!-- /.modal -->
+<!-- /Account modal-dialog -->
+
+
+<div class="modal fade" id="attachments-view-payment" role="dialog" aria-labelledby="attachments-view">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" onclick="CloseAddAttachment()" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Manage Attachments</h5>
+            </div>
+            <div class="modal-body">
+                <div id="transaction-attachments" class="row">
+                    <div class="col-xs-12 col-md-6">
+
+                        <div class="activity-overview task" style="margin-bottom: 40px;">
+                            <div name="add_attachment" class="attachments_0">
+
+                                <div class="repeater_wrap">
+
+                                    <div class="row attachment_row">
+                                        <div class="col-xs-12">
+                                            <div class="form-group">
+                                                <label for="name">Name</label>
+                                                <input type="text" name="name" class="form-control inputfilename1" />
+                                            </div>
+                                        </div>
+                                        <div class="col-xs-12">
+                                            <div class="form-group">
+                                                <label for="file">File</label>
+                                                <input type="file" name="file" onchange="changeFile(this, 1, 0)" class="form-control inputfile">
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                </div>
+                                <button onclick="addAnother(0)" class="btn btn-info"><i class="fa fa-plus"></i> &nbsp; Add another</button>
+                                <button onclick="confirmAddViewer(0)" class="btn btn-success"><i class="fa fa-check"></i> &nbsp; Add selected files to list</button>
+                            </div>
+                        </div>
+
+                    </div>
+                    <div class="col-xs-12 col-md-6">
+
+                        <ul id="domain-change-list" class="domain-change-list unstyled" style="margin-top: 0;"></ul>
+
+                    </div>
+                </div>
+                <br />
+                <button class="btn btn-danger" onclick="CloseModalMedia()">Cancel</button>
+                <button class="btn btn-success" onclick="CloseModalMedia()"><i class="fa fa-save"></i> &nbsp; Finish &amp; save</button>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+<script>
+    $('.country-add').not('.multi-select').select2();
+    //initJsTree();
+
+    $("#form_contact_add").submit(function (e) {
+        $.LoadingOverlay("show");
+        e.preventDefault();
+        $.ajax({
+            type: this.method,
+            cache: false,
+            url: this.action,
+            enctype: "multipart/form-data",
+            data: new FormData(this),
+            processData: false,
+            contentType: false,
+            beforeSend: function (xhr) {
+            },
+            success: function (data) {
+                if (data.result) {
+                    $("#app-trader-add-contact").modal("hide");
+                    setTimeout(function () {
+                        $("#payment-contact-select").append(data.msg);
+                        $.LoadingOverlay("hide");
+                        cleanBookNotification.updateSuccess();
+
+                    }, 2000);
+                }
+            },
+            error: function (data) {
+                cleanBookNotification.error(_L("ERROR_MSG_EXCEPTION_SYSTEM"), "Qbicles");
+                console.log(data);
+                setTimeout(function () {
+                        $.LoadingOverlay("hide");
+                    },
+                    2000);
+            }
+
+        });
+    });
+</script>
+
+<style>
+    input[type='number'] {
+        -moz-appearance: textfield;
+    }
+
+    input::-webkit-outer-spin-button,
+    input::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+    }
+</style>

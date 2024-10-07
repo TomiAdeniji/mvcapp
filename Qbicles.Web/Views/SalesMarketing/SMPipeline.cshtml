@@ -1,0 +1,212 @@
+﻿@using Qbicles.BusinessRules;
+@using Qbicles.Models.SalesMkt;
+@model Pipeline
+@{
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+}
+<input type="hidden" id="pipelineId" value="@Model.Id" />
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail mdv2-wrapper" style="position: relative;">
+
+
+    <div class="alert_matches projects">
+        <p>3 contacts selected</p>
+        <div class="btn-group options">
+            <button type="button" class="btn btn-info dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style="margin-bottom: 0;">
+                <i class="fa fa-cog"></i> &nbsp; With selected... &nbsp; <i class="fa fa-angle-down"></i>
+            </button>
+            <ul class="dropdown-menu info">
+                <li><a href="#" id="btnRemovePipelineContact">Remove from pipeline</a>
+                <li><a href="#" data-toggle="modal" data-target="#app-marketing-pipeline-move">Move to another stage</a>
+                <li><a href="#" id="btnClearSelected">Clear selections</a>
+            </ul>
+        </div>
+    </div>
+
+
+
+    <!-- Main content -->
+    <section class="mdv2 dash" data-tooltip-color="teal" data-tooltip-delay="300" data-tooltip-animate-function="spin" style="border-top: 1px solid #f1f1f1;">
+
+
+        <!-- App bar -->
+        <div class="mdv2-col-app" style="margin-bottom: 0;">
+
+            <div data-spy="affix" class="contained-sidebar">
+
+                <div class="activity-overview plain company-overview welcome-info" style="text-align: left !important; flex: none; margin: 0; padding-top: 30px; padding-bottom: 0;">
+
+                    <div class="pull-left" style="margin-bottom: 15px;">
+                        <a href="/SalesMarketing/SMApps" class="btn btn-info"><i class="fa fa-angle-left"></i> &nbsp; Sales &amp; Marketing</a>
+                        <a href="#app-marketing-pipeline-addedit" data-toggle="modal" class="btn btn-warning" onclick="LoadModalPipeline(@Model.Id)"><i class="fa fa-pencil"></i> &nbsp; Edit</a>
+                    </div>
+                    <div class="clearfix"></div>
+
+                    <br /><br />
+
+                    <h1 style="line-height: 1.2;">@Model.Name</h1>
+                    <br />
+
+                    <p style="color: rgba(0, 0, 0, 0.5);">@Model.Summary</p>
+
+                    <br /><br />
+
+                    <div class="row">
+                        <div class="col-xs-6">
+                            <label>Created</label>
+                            <p>@HelperClass.DatetimeToOrdinal(Model.CreatedDate)</p>
+                        </div>
+                        <div class="col-xs-6">
+                            <label>Creator</label>
+                            <p><a href="/Community/UserProfilePage?uId=@(Model.CreatedBy.Id)">@(Model.CreatedBy.Forename + " " + Model.CreatedBy.Surname)</a></p>
+                        </div>
+                    </div>
+
+
+
+                    <button class="btn btn-success community-button" style="margin: 30px 0;" data-toggle="modal" data-target="#app-marketing-pipeline-prospect-addedit" onclick="LoadModalPipelineContact(@Model.Id)">
+                        <i class="fa fa-user-cog"></i> &nbsp; Manage Pipeline Contacts
+                    </button>
+
+                </div>
+
+
+
+
+            </div>
+        </div>
+        <!-- END App bar -->
+        <!-- Main area -->
+        <div class="mdv2-col-dash" style="overflow: hidden;">
+
+            <div class="pipeline sm-pipeline-block" id="pipeline_step" style="height: auto; min-height: 95%;">
+                @foreach (var step in Model.Steps)
+                {
+                    <div class="pipeline-block">
+
+                        <div class="topic-detail">@step.Name &nbsp; <span class="pull-right" style="color: rgba(255, 255, 255, 0.6);">@step.Contacts.Sum(c => c.PotentialValue).ToCurrencySymbol(currencySettings)</span></div>
+
+                        <div class="horizontal-portlets">
+
+                            <div class="column ui-sortable" data-id="@step.Id">
+                                @foreach (var pipeContact in step.Contacts)
+                                {
+                                    <div class="portlet rework" data-id="@pipeContact.Id">
+                                        <div class="portlet-side">
+                                            <input type="checkbox" value="@pipeContact.Id">
+                                        </div>
+                                        <div class="portlet-content">
+                                            <div class="row">
+                                                <div class="col-xs-9">
+                                                    <div class="dropdown">
+                                                        <a href="#app-marketing-pipeline-contact-manage" data-toggle="modal" onclick="LoadModalPipelineContactDetail(@pipeContact.Id, @pipeContact.Contact.Id)">
+                                                            <p>@pipeContact.Contact.Name &nbsp; <span class="value">(@pipeContact.PotentialValue.ToCurrencySymbol(currencySettings))</span></p>
+                                                        </a>
+                                                    </div>
+                                                    <a href="#">
+                                                        @{
+                                                            var num = 0;
+                                                            switch (pipeContact.Rating)
+                                                            {
+                                                                case ProspectRating.Star_1: num = 1; break;
+                                                                case ProspectRating.Star_2: num = 2; break;
+                                                                case ProspectRating.Star_3: num = 3; break;
+                                                                case ProspectRating.Star_4: num = 4; break;
+                                                                case ProspectRating.Star_5: num = 5; break;
+                                                            }
+                                                        }
+                                                        @for (var i = 1; i <= num; i++)
+                                                        {
+                                                            <i class="fa fa-star"></i>
+                                                        }
+                                                    </a>
+                                                </div>
+                                                <div class="col-xs-3 text-right">
+                                                    <button data-toggle="modal" data-target="#app-marketing-pipeline-move" onclick="moveOnePipelineContact(@pipeContact.Id)" class="btn btn-info"><i class="fa fa-exchange"></i></button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                }
+
+                            </div> <!-- ./column -->
+
+                        </div> <!-- ./horizontal-portlets -->
+
+                    </div> <!-- ./pipeline-block -->
+
+                }
+
+            </div> <!-- ./pipeline -->
+
+        </div>
+
+
+
+    </section>
+    <!-- ./content -->
+
+</div>
+<!-- /.content-wrapper -->
+<div class="modal fade left" id="app-marketing-pipeline-move" role="dialog" aria-labelledby="app-marketing-pipeline-move">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Move contact(s)</h5>
+            </div>
+            <div class="modal-body">
+
+                <div class="well custom">
+                    <div class="form-group" style="margin: 0;">
+                        <label for="title">Move to this stage in the pipeline</label>
+                        <select id="stepId" name="stage" class="form-control select2" style="width: 100%;">
+                            @{
+                                var index = 0;
+                                var steps = Model.Steps.OrderBy(s => s.Order).ToList();
+                            }
+                            @foreach (var step in steps)
+                            {
+                                if (index == 0)
+                                {
+                                    <option value="@step.Id" selected>@step.Name</option>
+                                }
+                                else
+                                {
+                                    <option value="@step.Id">@step.Name</option>
+                                }
+
+                                index++;
+
+                            }
+                        </select>
+                    </div>
+                </div>
+
+                <button type="btn" id="btnMovePipelineContact" class="btn btn-success" data-dismiss="modal">Confirm</button>
+                <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+
+<div class="modal fade left" id="app-marketing-pipeline-prospect-addedit" role="dialog" aria-labelledby="app-marketing-pipeline-prospect-addedit" data-keyboard="false" data-backdrop="static"></div>
+<div class="modal fade left" id="app-marketing-pipeline-addedit" role="dialog" aria-labelledby="app-marketing-pipeline-addedit" data-keyboard="false" data-backdrop="static"></div>
+<div class="modal fade left" id="app-marketing-pipeline-contact-manage" role="dialog" aria-labelledby="app-marketing-pipeline-contact-manage" data-keyboard="false" data-backdrop="static"></div>
+@{Html.RenderAction("GenerateModalTask", "SalesMarketing", new { taskKey = "", pipelineContactId = 0, pipelineId = Model.Id }); }
+@{Html.RenderAction("GenerateModalEvent", "SalesMarketing", new { eventId = 0, pipelineContactId = 0, pipelineId = Model.Id }); }
+@{if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Content/DesignStyle/js/bootstrap-multiselect.js"></script>
+        <script src="~/Scripts/dev/salesmarketing.social.app.js"></script>
+    }
+    else
+    {
+        <script src="~/Content/DesignStyle/js/bootstrap-multiselect.min.js"></script>
+        <script src="~/Scripts/dev/salesmarketing.social.app.js"></script>
+    }
+}

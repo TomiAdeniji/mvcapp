@@ -1,0 +1,473 @@
+﻿@using CleanBooksData;
+@using Qbicles.BusinessRules;
+@model List<accountgroup>
+@{
+    ViewBag.Title = "Cleanbooks - Accounts";
+    var memberAccount = (bool)ViewBag.MemberAccount;
+    var memberAccountData = (bool)ViewBag.MemberAccountData;
+}
+<link href="~/Content/DesignStyle/css/jasny-bootstrap.min.css" rel="stylesheet" />
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail cleanbooks">
+
+    <div hidden id="accountIdSelected"></div>
+    <div hidden id="accountLastBalanceSelected"></div>
+    <div hidden id="tabledataCofirm"></div>
+    <input hidden="" id="right-delete-history" value="@(memberAccountData ? "" : "isDisabled")" />
+    <!-- Main content -->
+    <section class="content"
+             data-tooltip-animate-function="fadein" data-tooltip-delay="300" data-tooltip-stickTo="top" data-tooltip-stickDistance="30">
+
+        <br /><br />
+
+        <div class="mod_title">
+            <img src="~/Content/DesignStyle/images/cleanbooks_logo.png" style="width: 200px; height: auto; margin-bottom: 30px;">
+        </div>
+
+        <div class="app_topnav restyle" id="navigationcleanBook">
+            @{ Html.RenderAction("NavigationCleanBooksPartial", "Apps", new { tab = "account" });}
+        </div>
+
+        <div class="row">
+            <div class="col-xs-12">
+                <div class="app_filter">
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-4 col-lg-4 button_options">
+                            <a href="javascript:void(0)" onclick="window.location.href = '/Apps/AppManagement';" class="btn btn-info"><i class="fa fa-th"></i> &nbsp; All apps</a>
+                            @if (memberAccount)
+                            {
+                                <div class="btn-group options">
+                                    <button type="button" class="btn btn-success dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                        Create a new &nbsp; <i class="fa fa-angle-down"></i>
+                                    </button>
+                                    <ul class="dropdown-menu">
+                                        <li>
+                                            <a href="javascript:void(0)" id="button_add_group">Group</a>
+                                        </li>
+                                        <li>
+                                            @if (Model != null && Model.Count > 0)
+                                            {
+                                                <a href="javascript:void(0)" id="button_add_account_0" onclick="AddAccount(0,'button_add_account_0')">Account</a>
+                                            }
+                                        </li>
+                                    </ul>
+                                </div>
+                            }
+
+
+                        </div>
+                        <div class="col-xs-12 col-sm-8 col-lg-8 block_filters">
+                            <form class="form-inline">
+                                <div class="form-group">
+                                    <select name="groups" id="filter-group" class="single-select form-control select2">
+                                        <option value="0" selected>Show all groups</option>
+                                        @foreach (var item in Model)
+                                        {
+                                            <option value="@item.Id"> @item.Name</option>
+                                        }
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <select name="ordering" id="filter-order" class="single-select form-control select2">
+                                        <option value="@Enums.SortOrderBy.NameAZ" selected>Order alphabetically A-Z</option>
+                                        <option value="@Enums.SortOrderBy.NameZA">Order alphabetically Z-A</option>
+                                        <option value="@Enums.SortOrderBy.BalanceHigh">Order by balance high to low</option>
+                                        <option value="@Enums.SortOrderBy.BalanceLow">Order by balance low to high</option>
+                                        <option value="@Enums.SortOrderBy.LastUpdateNewest">Order by Last Update Date (Newest-Oldest)</option>
+                                        <option value="@Enums.SortOrderBy.LastUpdateOldest">Order by Last Update Date (Oldest-Newest)</option>
+                                        <option value="@Enums.SortOrderBy.DataManagerAZ">Order by Data Manager (A-Z)</option>
+                                        <option value="@Enums.SortOrderBy.DataManagerZA">Order by Data Manager (Z-A)</option>
+                                        <option value="@Enums.SortOrderBy.LinkedTasksMost">Order by Linked Tasks (Most-Least)</option>
+                                        <option value="@Enums.SortOrderBy.LinkedTasksLeast">Order by Linked Tasks (Least-Most)</option>
+                                    </select>
+                                </div>
+                                <div class="form-group views">
+                                    <a id="grid-view" href="#grid_view" onclick="DisplayView('grid')" class="toggle_view">
+                                        <i class="fa fa-th-large"></i>
+                                    </a>
+                                    <a id="list-view" href="#list_view" onclick="DisplayView('list')" class="toggle_view">
+                                        <i class="fa fa-list"></i>
+                                    </a>
+                                </div>
+
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <br /><br />
+
+        <div id="account-page-display">
+            <div id="account-content">
+            </div>
+        </div>
+    </section>
+    <!-- ./content -->
+
+</div>
+<!-- /.content-wrapper -->
+<!-- Account group -->
+<div class="modal fade left" id="modal_group" role="dialog" aria-labelledby="app-group-generic-add">
+
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title"></h5>
+            </div>
+            <div class="modal-body">
+
+                <div class="well">
+                    <form id="form_group" method="post" action="/ManageAccounts/SaveCBAccountGroup" enctype="multipart/form-data" novalidate="novalidate">
+                        <input id="input_group_id" type="hidden" name="Id" />
+                        <input id="input_group_createddate" type="hidden" name="CreatedDate" />
+                        <input id="input_group_createdbyid" type="hidden" name="CreatedById" />
+
+                        <div class="form-group">
+                            <label for="title">Title</label>
+                            <input type="text" id="input_rectaskgroup_name" name="Name" class="form-control" />
+                        </div>
+                    </form>
+
+                </div>
+                <button type="button" class="btn btn-success" onclick="SaveGroup()"><i class="fa fa-check"></i> &nbsp; <span id="save-group"></span></button>
+                <button class="btn btn-danger" data-dismiss="modal"><i class="fa fa-remove"></i> &nbsp; Cancel</button>
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+<!-- /.modal -->
+<!-- Account add edit-->
+<div class="modal fade left" id="modal_account" role="dialog" aria-labelledby="app-cb-account-edit">
+
+</div>
+<!-- /.modal -->
+<!-- Delete Account -->
+<div id="modal-delete-account" class="modal fade" role="dialog">
+    <div class="modal-dialog">
+
+        <!-- Modal content-->
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4 class="modal-title">Delete Account</h4>
+            </div>
+            <div class="modal-body">
+
+                <div id="confirm-del-account" class="alert alert-danger">
+                    <p>You are about to delete Account: <strong><span id="task-name-confirm-account"></span></strong></p>
+                    <br />
+                    <button data-dismiss="modal" class="btn btn-warning">Cancel</button>
+                    <button onclick="AccountDelete()" class="btn btn-danger">Confirm Delete</button>
+                </div>
+
+                <div id="permission-del-account" class="alert alert-warning">
+                    <p>You may not delete Account: <strong><span id="task-name-permission-account"></span></strong></p>
+                    <label>Account cannot be deleted because there are associated uploads or tasks</label>
+                    <br />
+                    <button data-dismiss="modal" class="btn btn-success">OK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- /.modal -->
+<!-- new Upload -->
+<div class="modal fade cleanbooks" id="modal_transaction_edit" role="dialog" aria-labelledby="modal_transaction_edit">
+    <div class="modal-dialog modal-xl" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" onclick="close_modal_upload()" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">New upload</h5>
+            </div>
+            <div class="modal-body">
+
+                <div class="row">
+                    <div class="col-xs-12">
+                        <ul id="upload-ul" class="app_subnav">
+                            <li id="step_2_edit" class="active disabledTab">
+                                <a id="step2_edit-vtab" href="#stepv2edit" data-toggle="tab">Choose a File</a>
+                            </li>
+                            <li id="step_3_edit" class="disabledTab">
+                                <a id="step3_edit-vtab" href="#stepv3edit" data-toggle="tab">Define Columns</a>
+                            </li>
+                            <li id="step_4_edit" class="disabledTab">
+                                <a id="step4_edit-vtab" href="#stepv4edit" data-toggle="tab">Confirm</a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <br /><br />
+
+                <div id="account-upload-content" class="tab-content">
+                    <div class="tab-pane fade in active" id="stepv2edit">
+
+                        <div class="row">
+                            <div class="col-xs-12 col-md-5 col-lg-6">
+                                <div class="well tan">
+                                    <div class="row">
+                                        <div class="col-xs-12 col-lg-6">
+                                            <label>Active account</label>
+                                            <p class="form-style-p xs-pad" id="label_upload_name" name="Name"></p>
+                                        </div>
+                                        <div class="col-xs-12 col-lg-6 stack-pad-to-lg">
+                                            <div class="form-group" style="margin-bottom: 0;">
+                                                <label for="opening_balance">Opening balance</label>
+                                                <input type="text" name="opening_balance" id="opening_balance" value="0" class="form-control">
+                                                <span class="form-style-p xs-pad" for="" id="lblOpenBalance" style="display:none;"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-md-7 col-lg-6">
+                                <form name="" method="post" action="#" class="well">
+                                    <div class="row">
+                                        <div class="col-xs-12 col-lg-12">
+                                            <label for="upload_file">Choose a file <span>*</span></label>
+                                            <div id="group_file_upload" class="fileinput input-group fileinput-new" data-provides="fileinput">
+                                                <div class="form-control" data-trigger="fileinput">
+                                                    <i class="glyphicon glyphicon-file fileinput-exists"></i>
+                                                    <span class="fileinput-filename"></span>
+                                                </div>
+                                                <span class="input-group-addon btn btn-warning btn-file">
+                                                    <span class="fileinput-new"><i class="fa fa-file"></i> Select file</span>
+                                                    <span class="fileinput-exists"><i class="fa fa-pencil"></i> Change</span>
+                                                    <input type="file" name="excelFile" id="input_transaction_upload">
+                                                </span>
+                                                <a href="javascript:void(0)" class="input-group-addon btn btn-danger fileinput-exists"
+                                                   data-dismiss="fileinput"><i class="fa fa-trash"></i>&nbsp;Remove</a>
+                                            </div>
+                                            <button class="pull-left btn btn-success" type="button" id="buttoncheckscan" onclick="CheckFileTypeVirusScaning()"><i class="fa fa-lock"></i> &nbsp;File validation and Virus-scan.</button>
+                                            <div class="col-md-8 col-lg-8">
+                                                <label id="lblcheckfilefeedback" for="lblcheckfilefeedback" style="color:red"></label>
+                                            </div>
+                                        </div>
+                                        <div class="col-xs-12 col-lg-5 stack-pad-to-lg choose_sheet">
+                                            <div id="dlsheetname" class="form-group">
+                                                <label for="upload_sheet">Choose a sheet<span>*</span></label>
+                                                <select id="select_sheetnameFile" class="single-select chosen-select" name="UploadFormatId" style="width: 100%;"></select>
+
+                                            </div>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+
+                        <div class="pull-right">
+                            <a href="javascript:void(0)" id="ReadSheetData" onclick="ReadSheetData_Click()" class="btnNext btn btn-success">Next &nbsp; <i class="fa fa-chevron-right"></i></a>
+                        </div>
+                        <div class="clearfix"></div>
+
+                    </div>
+
+                    <div class="tab-pane fade" id="stepv3edit">
+                        <div class="row">
+                            <div id="containerdiv" class="col-xs-12">
+                                <div id="alertConfigureColumns1" class="well tan new-text">
+
+                                </div>
+                                <br />
+                                <div id="resizediv" style="width: 100%; height: 330px; overflow: auto;">
+                                    <table id="tabletransactionNew" class="table t1style table-bordered" style="margin: 0; padding: 0; table-layout: fixed;">
+                                        <tbody></tbody>
+
+                                    </table>
+                                </div>
+                                <br /><br />
+                            </div>
+                            <div class="col-xs-12">
+                                <div class="pull-left">
+                                    <button id="buttonBack3" onclick="resetTitlle()" class="btnPrevious btn btn-warning"><i class="fa fa-chevron-left"></i> &nbsp; Previous</button>
+                                </div>
+                                <div class="pull-right">
+                                    <button id="DefineColumnsData" onclick="DefineColumnsData_Click()" class="btnNext btn btn-success">Next&nbsp; <i class="fa fa-chevron-right"></i></button>
+                                </div>
+                                <div class="clearfix"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="tab-pane fade" id="stepv4edit">
+                        <div id="Divuploaderror" class="col-md-12 col-lg-12" style="display:none">
+                            <p id="ReportError" style="color:red; font-size:13px">We found an error in the file upload. Please download the file bug reports here to check: <a id="linkerrorfile">File error reports</a></p>
+                            <br />
+                            <div class="pull-left">
+                                <a href="javascript:void(0)" class="btnPrevious btn btn-warning"><i class="fa fa-chevron-left"></i> &nbsp; Previous</a>
+                            </div>
+                        </div>
+                        <div id="Divuploadnoerror" class="col-md-12 col-lg-12" style="display:none">
+                            <h5>Analysed Data</h5>
+
+                            <div class="table-responsive">
+                                <table id="tableAnalysedData" class="table table-striped app_specific">
+                                    <thead>
+                                        <tr>
+                                            <th>From date</th>
+                                            <th>To date</th>
+                                            <th>Total Records</th>
+                                            <th>Total Credit</th>
+                                            <th>Total Debit</th>
+                                            <th>Opening Balance</th>
+                                            <th>Closing Balance</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+
+                            <br />
+
+                            <h5>Final Version</h5>
+                            <div class="well tan new-text">
+                                <p>
+                                    Below you will see the final version of your import, after running your configuration. Excluded rows are highlighted in red.
+                                    If you're happy with all of this you can choose to Finish and Save, or alternatively click Back to return to make additional changes
+                                </p>
+                            </div>
+
+                            <div class="well">
+                                <div class="form-group" style="margin: 0;">
+                                    <label for="date_options">Date options</label>
+                                    <select class="columnDateSelected" name="list_dateformat" id="list_dateformat" style="width: 100%;"></select>
+                                </div>
+                            </div>
+
+                            <div style="width: 100%; max-height: 300px; overflow: scroll;">
+                                <table id="tableConfirmDisplay" class="table app_specific table-bordered table-striped table-hover" style="margin: 0; padding: 0; overflow: hidden;">
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                            <br />
+                            <div class="pull-left">
+                                <a href="javascript:void(0)" class="btnPrevious btn btn-warning"><i class="fa fa-chevron-left"></i> &nbsp; Previous</a>
+                            </div>
+
+                            <div class="pull-right">
+                                <button id="buttonProceed4" onclick="ConfirmUpload()" class="btnNext btn btn-success" data-dismiss="modal">
+                                    <i class="fa fa-check"></i>
+                                    &nbsp; Finish and Save
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="lblfromtodate" hidden></div>
+
+                        <div class="clearfix"></div>
+
+                    </div>
+
+                    <div class="clearfix"></div>
+                </div>
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+<!-- /.modal -->
+<!-- Upload history -->
+<div class="modal fade cleanbooks" id="modal_transaction_preview" role="dialog" aria-labelledby="modal_transaction_preview">
+    <div class="modal-dialog modal-xl" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Upload History</h5>
+            </div>
+            <div id="upload-history" class="modal-body">
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div>
+    <!-- /.modal-dialog -->
+</div>
+<!-- /.modal delete upload -->
+<div id="modal-delete" class="modal fade" role="dialog">
+    <div class="modal-dialog">
+
+        <!-- Modal content-->
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4 class="modal-title">Delete Upload</h4>
+            </div>
+            <div class="modal-body">
+
+                <div id="confirm-del" class="alert alert-danger">
+                    <p>
+                        You are about to delete Upload :<strong><span id="upload-name-confirm"></span></strong>
+                        for the Account: <strong><span id="account-name-confirm"></span></strong>
+                    </p>
+                    <br />
+                    <button data-dismiss="modal" class="btn btn-warning">Cancel</button>
+                    <button onclick="ConfirmDeleteUpload()" class="btn btn-danger">Confirm Delete</button>
+                </div>
+
+                <div id="permission-del" class="alert alert-warning">
+                    <p>
+                        You may not delete Upload: <strong><span id="upload-name-permission"></span></strong>
+                        for the Account: <strong><span id="account-name-permission"></span></strong>
+                    </p><br />
+                    <label><strong><span id="temp-name-permission"></span></strong></label>
+                    <br />
+                    <button data-dismiss="modal" class="btn btn-success">OK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade cleanbooks" id="app-cb-account-import" role="dialog">
+    <div class="modal-dialog modal-xl" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">New import</h5>
+            </div>
+            <div class="modal-body">
+
+                <div class="loading-placeholder text-center">
+                    <h5 style="margin: 0; padding: 0; position: relative; top: 15px;">Importing from Bookkeeping...</h5>
+                    <img src="~/Content/DesignStyle/img/loading-new.gif" style="width: 200px; height: auto; margin: 0 auto;">
+                </div>
+
+                <div class="imported-data-transaction" style="display: none;">
+
+
+
+                </div>
+
+
+
+
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+<script src="~/Scripts/jquery.number.min.js"></script>
+<script src="~/Content/DesignStyle/js/jasny-bootstrap.min.js"></script>
+
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/cleanbooks.account.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/cleanbooks.account.min.js"></script>
+    }
+}
+
+<style>
+
+    a.disabled {
+        pointer-events: none;
+        cursor: default;
+    }
+</style>

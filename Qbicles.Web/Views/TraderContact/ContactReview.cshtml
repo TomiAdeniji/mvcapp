@@ -1,0 +1,220 @@
+﻿@using Qbicles.BusinessRules
+@using Qbicles.Models
+@using Qbicles.Models.Trader
+@using Qbicles.Models.Qbicles
+@model TraderContact
+@{
+    ViewBag.Title = "Trader - Customers #" + Model.Id;
+    var workGroups = (List<WorkGroup>)ViewBag.WorkGroups;
+    var contactGroups = (List<TraderContactGroup>)ViewBag.ContactGroups;
+    var countries = (List<Country>)ViewBag.Countries;
+
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var pageSize = HelperClass.activitiesPageSize;
+    var timeZone = (string)ViewBag.CurrentTimeZone ?? "";
+    var userId = ViewBag.CurrentUserId;
+    var userAvatar = ViewBag.CurrentUserAvatar;
+    var traderAppRight = (IsReviewerAndApproverModel)ViewBag.TraderApprovalRight;
+    var isUpdate = (bool)ViewBag.IsUpdate;
+
+    var accId = 0;
+    var accName = "";
+    if (Model.CustomerAccount != null)
+    {
+        accId = Model.CustomerAccount.Id;
+        accName = Model.CustomerAccount.Name;
+    }
+    var dateFormat = (string)ViewBag.CurrentDateFormat;
+}
+
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail" style="padding-left: 0;">
+
+    <input type="hidden" id="contact_id" value="@Model.Id" />
+    <!-- Main content -->
+    <section class="mdv2 dash" data-tooltip-color="teal" data-tooltip-delay="300" data-tooltip-animate-function="spin" style="border-top: 1px solid #f1f1f1;" id="contact-content">
+    </section>
+    <!-- ./content -->
+
+</div>
+<!-- /.content-wrapper -->
+
+
+@{
+    Html.RenderAction("GenerateModalMedia", "Qbicles");
+}
+<div class="modal fade left" id="team-view" role="dialog" aria-labelledby="team-view">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Team Members</h5>
+            </div>
+            <div class="modal-body">
+
+                <div class="row">
+                    <div class="col-xs-12">
+                        <ul class="app_subnav">
+                            <li class="active"><a href="#initiators" data-toggle="tab">Initiators</a></li>
+                            <li><a href="#reviewers" data-toggle="tab">Reviewers</a></li>
+                            <li><a href="#approvers" data-toggle="tab">Approvers</a></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <br />
+
+                <div class="tab-content">
+                    @if (Model.Workgroup.Members.Any())
+                    {
+                        var approvalProcesss = new ApprovalRequestDefinition();
+                        if (Model.ContactApprovalProcess != null && Model.ContactApprovalProcess.ApprovalRequestDefinition != null)
+                        {
+                            approvalProcesss = Model.ContactApprovalProcess.ApprovalRequestDefinition;
+                        }
+                        var approvers = Model.Workgroup.Approvers;
+                        approvers.AddRange(Model.Workgroup.Members.Where(q => approvalProcesss.Approvers.Any(a => a.Id == q.Id)).ToList());
+                        approvers = approvers.Distinct().ToList();
+
+                        var reviewers = Model.Workgroup.Reviewers;
+                        reviewers.AddRange(Model.Workgroup.Members.Where(q => approvalProcesss.Reviewers.Any(a => a.Id == q.Id)).ToList());
+                        reviewers = reviewers.Distinct().ToList();
+
+                        var initiators = Model.Workgroup.Members.Where(q => !(approvers.Any(a => a.Id == q.Id) || reviewers.Any(r => r.Id == q.Id))).ToList();
+                        initiators.AddRange(Model.Workgroup.Members.Where(q => approvalProcesss.Initiators.Any(a => a.Id == q.Id)).ToList());
+                        initiators = initiators.Distinct().ToList();
+
+
+                        <div class="tab-pane fade in active" id="initiators">
+                            <ul class="avatar-listing team unstyled" style="margin-bottom: 0 !important;">
+                                @if (initiators.Any())
+                                {
+                                    foreach (var applicationUser in initiators)
+                                    {
+                                        var roleInit = "Initiator";
+                                        roleInit += approvalProcesss.Reviewers.Any(q => q.Id == applicationUser.Id) ? ", Reviewer" : "";
+                                        roleInit += approvalProcesss.Approvers.Any(q => q.Id == applicationUser.Id) ? ", Approver" : "";
+
+                                        <li>
+                                            <a>
+                                                <div class="owner-avatar">
+                                                    <div class="avatar-sm" style="background: url('@api@applicationUser.ProfilePic');"></div>
+                                                </div>
+                                                <h5>@HelperClass.GetFullNameOfUser(applicationUser)<br><small>@roleInit</small></h5>
+                                            </a>
+                                        </li>
+                                    }
+                                }
+                            </ul>
+                        </div>
+                        <div class="tab-pane fade" id="reviewers">
+                            <ul class="avatar-listing team unstyled" style="margin-bottom: 0 !important;">
+                                @if (reviewers.Any())
+                                {
+                                    foreach (var applicationUser in reviewers)
+                                    {
+                                        var roleReview = "Reviewer";
+                                        roleReview = approvalProcesss.Initiators.Any(q => q.Id == applicationUser.Id) ? "Initiator, " + roleReview : roleReview;
+                                        roleReview += approvalProcesss.Approvers.Any(q => q.Id == applicationUser.Id) ? ", Approver" : "";
+
+                                        <li>
+                                            <a>
+                                                <div class="owner-avatar">
+                                                    <div class="avatar-sm" style="background: url('@api@applicationUser.ProfilePic');"></div>
+                                                </div>
+                                                <h5>@HelperClass.GetFullNameOfUser(applicationUser)<br><small>@roleReview</small></h5>
+                                            </a>
+                                        </li>
+
+                                    }
+                                }
+                            </ul>
+                        </div>
+                        <div class="tab-pane fade" id="approvers">
+                            <ul class="avatar-listing team unstyled" style="margin-bottom: 0 !important;">
+                                @if (approvers.Any())
+                                {
+                                    foreach (var applicationUser in approvers)
+                                    {
+                                        var roleApprover = "";
+                                        roleApprover += approvalProcesss.Initiators.Any(q => q.Id == applicationUser.Id) ? "Initiator" : roleApprover;
+                                        roleApprover += approvalProcesss.Reviewers.Any(q => q.Id == applicationUser.Id) ? string.IsNullOrEmpty(roleApprover) ? "Reviewer" : ", Reviewer" : roleApprover;
+                                        roleApprover += (string.IsNullOrEmpty(roleApprover) ? "Approver" : ", Approver");
+                                        <li>
+                                            <a>
+                                                <div class="owner-avatar">
+                                                    <div class="avatar-sm" style="background: url('@api@applicationUser.ProfilePic');"></div>
+                                                </div>
+                                                <h5>@HelperClass.GetFullNameOfUser(applicationUser)<br><small>@roleApprover</small></h5>
+                                            </a>
+                                        </li>
+                                    }
+                                }
+                            </ul>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="tab-pane fade in active" id="initiators">
+
+                            <ul class="avatar-listing team unstyled" style="margin-bottom: 0 !important;">
+                            </ul>
+
+                        </div>
+                        <div class="tab-pane fade" id="reviewers">
+
+                            <ul class="avatar-listing team unstyled" style="margin-bottom: 0 !important;">
+                            </ul>
+
+                        </div>
+                        <div class="tab-pane fade" id="approvers">
+                            <ul class="avatar-listing team unstyled" style="margin-bottom: 0 !important;">
+                            </ul>
+                        </div>
+                    }
+
+                </div>
+
+                <br /><br />
+                <button class="btn btn-primary" data-dismiss="modal">Close</button>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+<div class="modal fade left" id="history-view" role="dialog" aria-labelledby="history-view">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Approval history</h5>
+            </div>
+            <div class="modal-body">
+
+                <div id="view-timeline">
+
+                </div>
+                <br />
+                <button class="btn btn-primary" data-dismiss="modal">Close</button>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+<div class="modal fade left" id="app-bookkeeping-treeview" role="dialog" aria-labelledby="app-bookkeeping-treeview">
+    
+</div>
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/trader.contact.review.js"></script>
+        <script src="~/Scripts/dev/trader.domain.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/trader.contact.review.min.js"></script>
+        <script src="~/Scripts/dev/trader.domain.min.js"></script>
+
+    }
+}
+<script>
+    RenderContentUpdated();
+</script>

@@ -1,0 +1,207 @@
+﻿@using Qbicles.Models;
+@model QbicleActivity
+@{
+    var approvalReq = (ApprovalReq)Model;
+    var manuJob = approvalReq.Manufacturingjobs.FirstOrDefault();
+    var priorityName = "";
+    switch (approvalReq.RequestStatus)
+    {
+        case ApprovalReq.RequestStatusEnum.Pending:
+            priorityName = "Awaiting Review";
+            break;
+        case ApprovalReq.RequestStatusEnum.Reviewed:
+            priorityName = "Awaiting Approval";
+            break;
+        case ApprovalReq.RequestStatusEnum.Approved:
+            priorityName = ApprovalReq.RequestStatusEnum.Approved.ToString();
+            break;
+        case ApprovalReq.RequestStatusEnum.Denied:
+        case ApprovalReq.RequestStatusEnum.Discarded:
+            priorityName = ApprovalReq.RequestStatusEnum.Discarded.ToString();
+            break;
+    }
+    var showDetail = "";
+    var dateFormat = (string)ViewBag.CurrentDateFormat;
+}
+<div class="modal-dialog" role="document">
+    <div class="modal-content">
+        <div class="modal-body">
+
+            <div class="newlabels activity-overview plain company-overview welcome-info" style="text-align: left !important; flex: none; margin: 0 !important; padding: 0 !important;">
+                @if (manuJob != null)
+                {
+                    var fullName = (manuJob.Reference?.FullRef ?? "") + " " + (manuJob.Product?.Name ?? "");
+                    <ul class="breadcrumb unintrusive" style="margin-top: 0;">
+                        <li><a href="#">Trader</a></li>
+                        <li><a href="#">Manufacturing</a></li>
+                        <li><a href="#">@fullName</a></li>
+                    </ul>
+                    <h6 class="subhead">Trader Compound Item Assembly</h6>
+                    <h1 style="line-height: 1.2;">@fullName</h1>
+                }
+                else
+                {
+                    <ul class="breadcrumb unintrusive" style="margin-top: 0;">
+                        <li><a href="#">@Model.Qbicle.Domain.Name</a></li>
+                        <li><a href="#">@Model.Qbicle.Name</a></li>
+                    </ul>
+                    <h1 style="line-height: 1.2;">@Model.Name</h1>
+                }
+
+                @if (approvalReq.RequestStatus == ApprovalReq.RequestStatusEnum.Pending)
+                {
+                    <span class="label label-lg label-info">@priorityName</span>
+                }
+                else if (approvalReq.RequestStatus == ApprovalReq.RequestStatusEnum.Approved)
+                {
+                    <span class="label label-lg label-success">@priorityName</span>
+                }
+                else if (approvalReq.RequestStatus == ApprovalReq.RequestStatusEnum.Denied)
+                {
+                    <span class="label label-lg label-danger">@priorityName</span>
+                }
+                else if (approvalReq.RequestStatus == ApprovalReq.RequestStatusEnum.Reviewed)
+                {
+                    <span class="label label-lg label-warning">@priorityName</span>
+                }
+                else
+                {
+                    <span class="label label-lg label-danger">@priorityName</span>
+                }
+
+                @if (Model.Folders != null && Model.Folders.Any())
+                {
+                    foreach (var tag in Model.Folders)
+                    {
+                        <span class="label label-lg label-info tag_@tag.Id">#@tag.Name</span>
+                    }
+                }
+
+
+                <br /><br /><br />
+                <p style="color: rgba(0, 0, 0, 0.6); font-weight: 400;">@approvalReq.Notes</p>
+
+                <br />
+
+
+                <div class="row">
+                    <div class="col-xs-12 col-md-6">
+                        <label>Created</label>
+                        <p>@Model.StartedDate.ToString(dateFormat + " hh:mmtt").ToLower()</p>
+                    </div>
+                    <div class="col-xs-12 col-md-6">
+                        <label>App</label>
+                        @if (approvalReq.JournalEntries.Any() || approvalReq.BKAccounts.Any())
+                        {
+                            <p>Bookkeeping</p>
+                        }
+                        else if (approvalReq.EmailPostApproval.Any() || approvalReq.CampaigPostApproval.Any())
+                        {
+                            <p>Sales & Marketing</p>
+                        }
+                        else
+                        {
+                            <p>Trader</p>
+                        }
+
+                    </div>
+                </div>
+
+            </div>
+
+
+            <br /><br />
+
+            @if (Model.ActivityType == QbicleActivity.ActivityTypeEnum.ApprovalRequestApp)
+            {
+                if (approvalReq.JournalEntries.Any())
+                {
+                    showDetail = "ShowApprovalPage('" + approvalReq.Key + "', false, 'journal');";
+                    <a href="javascript:void(0);" class="btn btn-info" onclick="@showDetail"><i class="fa fa-eye"></i> &nbsp; Manage in Qbicle</a>
+                }
+                else if (approvalReq.CampaigPostApproval.Any())
+                {
+                    var campaignApproval = approvalReq.CampaigPostApproval.FirstOrDefault();
+                    showDetail = "/SalesMarketing/SocialPostInApp?id=" + campaignApproval?.Id;
+                    <a href="@showDetail" class="btn btn-info"><i class="fa fa-eye"></i> &nbsp; Manage in Qbicle</a>
+
+                }
+                else if (approvalReq.EmailPostApproval.Any())
+                {
+                    var campaignApproval = approvalReq.EmailPostApproval.FirstOrDefault();
+                    showDetail = "/SalesMarketing/EmailPostInApp?id=" + campaignApproval?.Id;
+                    <a href="@showDetail" class="btn btn-info"><i class="fa fa-eye"></i> &nbsp; Manage in Qbicle</a>
+                }
+                else
+                {
+                    showDetail = "ShowApprovalPage('" + approvalReq.Key + "', false, 'approval')";
+                    <a href="javascript:void(0);" class="btn btn-info" onclick="@showDetail"><i class="fa fa-eye"></i> &nbsp; Manage in Qbicle</a>
+                }
+
+            }
+            else
+            {
+                if (approvalReq.Transfer.Any())
+                {
+                    showDetail = "/TraderTransfers/TransferReview?key=" + approvalReq.Transfer.FirstOrDefault().Key;
+                }
+                else if (approvalReq.Sale.Any())
+                {
+                    showDetail = "/TraderSales/SaleReview?key=" + approvalReq.Sale.FirstOrDefault().Key;
+                }
+                else if (approvalReq.TraderReturns.Any())
+                {
+                    showDetail = "/TraderSalesReturn/SaleReturnReview?id=" + approvalReq.TraderReturns.FirstOrDefault().Id;
+                }
+                else if (approvalReq.Purchase.Any())
+                {
+                    showDetail = "/TraderPurchases/PurchaseReview?id=" + approvalReq.Purchase.FirstOrDefault().Id;
+                }
+                else if (approvalReq.TraderContact.Any())
+                {
+                    showDetail = "/TraderContact/ContactReview?id=" + approvalReq.TraderContact.FirstOrDefault().Id;
+                }
+                else if (approvalReq.Invoice.Any())
+                {
+                    var invoice = approvalReq.Invoice.FirstOrDefault();
+                    if (invoice.Sale != null)
+                    {
+                        showDetail = "/TraderInvoices/InvoiceReview?key=" + invoice.Key;
+                    }
+                    else
+                    {
+                        showDetail = "/TraderBill/BillReview?id=" + invoice.Id;
+                    }
+                }
+                else if (approvalReq.Payments.Any())
+                {
+                    showDetail = "/TraderPayments/PaymentReview?id=" + approvalReq.Payments.FirstOrDefault().Id; ;
+                }
+                else if (approvalReq.SpotCounts.Any())
+                {
+                    showDetail = "/TraderSpotCount/SpotCountReview?id=" + approvalReq.SpotCounts.FirstOrDefault().Id;
+                }
+                else if (approvalReq.WasteReports.Any())
+                {
+                    showDetail = "/TraderWasteReport/WasteReportReview?id=" + approvalReq.WasteReports.FirstOrDefault().Id;
+                }
+                else if (approvalReq.Manufacturingjobs.Any())
+                {
+                    showDetail = "/Manufacturing/ManuJobReview?id=" + approvalReq.Manufacturingjobs.FirstOrDefault().Id;
+                }
+                else if (approvalReq.BudgetScenarioItemGroups.Any())
+                {
+                    showDetail = "/TraderBudget/ProcessApproval?id=" + approvalReq.BudgetScenarioItemGroups.FirstOrDefault().Id + "&oView=A";
+                }
+                else if (approvalReq.TillPayment.Any())
+                {
+                    showDetail = "/CashManagement/TillPaymentReview?tillPaymentId=" + approvalReq.TillPayment.FirstOrDefault().Id;
+                }
+                <a href="javascript:void(0);" onclick="RedirectToApprovalDetailPage('@approvalReq.Key', '@showDetail')" class="btn btn-info"><i class="fa fa-eye"></i> &nbsp; Manage in Qbicle</a>
+            }
+
+            <button class="btn btn-primary" data-dismiss="modal">Close</button>
+
+        </div>
+    </div><!-- /.modal-content -->
+</div><!-- /.modal-dialog -->

@@ -1,0 +1,628 @@
+﻿@using Qbicles.Models.Operator.Compliance;
+@using Qbicles.BusinessRules;
+@using Qbicles.Models;
+@using Qbicles.Models.Form;
+@model ComplianceTask
+@{
+    var currentTaskInstance = (TaskInstance)ViewBag.TaskInstance;
+    var task = currentTaskInstance != null ? currentTaskInstance.AssociatedQbicleTask : null;
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var dateFormat = (string)ViewBag.CurrentDateFormat;
+    var lstFormsSubmitted = currentTaskInstance != null && currentTaskInstance.FormInstances != null ? currentTaskInstance.FormInstances : null;
+    var totalForms = Model.OrderedForms?.Count ?? 0;
+    var totalFormsSubmitted = lstFormsSubmitted != null ? lstFormsSubmitted.Where(s => s.IsSubmitted).Count() : 0;
+    var valProgressBar = 100 - ((totalForms - totalFormsSubmitted) * 100 / totalForms);
+    var minutes = Model.OrderedForms.Sum(s => s.FormDefinition.EstimatedTime);
+    var pageSize = HelperClass.activitiesPageSize;
+    var comments = task.Posts.OrderByDescending(x => x.StartedDate).Take(pageSize);
+    var count_comments = task.Posts.Count();
+    var count_medias = task.SubActivities.Count();
+    var currentUserId = (string)ViewBag.CurrentUserId;
+    var currentTimeZone = (string)ViewBag.CurrentTimeZone;
+    ViewBag.Title = $"{Model.Domain.Name} > {task.Qbicle.Name} > {task.Name}";
+}
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail mdv2-wrapper" style="position: relative;">
+
+    <!-- Main content -->
+    <section class="mdv2 dash" data-tooltip-color="teal" data-tooltip-delay="300" data-tooltip-animate-function="spin" style="border-top: 1px solid #f1f1f1;">
+
+
+        <!-- App bar -->
+        <div class="mdv2-col-app" style="margin-bottom: 0;">
+
+            <div data-spy="affix" class="contained-sidebar">
+
+                <div class="activity-overview plain company-overview welcome-info" style="text-align: left !important; flex: none; margin: 0; padding-top: 30px; padding-bottom: 0;">
+
+                    <div class="pull-left" style="margin-bottom: 15px;">
+                        <a onclick="QbicleSelected('@Model.WorkGroup.SourceQbicle.Key','Dashboard')" class="btn btn-primary"><i class="fa fa-angle-left"></i> &nbsp; Qbicle</a>
+                    </div>
+                    <div class="clearfix"></div>
+
+                    <br />
+
+                    <h6 class="subhead">Operator &gt; Tasks &amp; Forms &gt; Compliance Task</h6>
+                    <h1 style="line-height: 1.2;">@Model.Name</h1>
+                    <br />
+
+                    <span class="label label-lg label-default">@(minutes > 60 ? $"{minutes / 60} hours" : $"{minutes} minutes")</span>
+                    <span class="label label-lg label-primary">@Model.WorkGroup.DefaultTopic.Name</span>
+                    @if (task != null && task.isComplete)
+                    {
+                        <span class="label label-lg label-success">Complete</span>
+                    }
+                    else
+                    {
+                        <span class="label label-lg label-warning">In progress</span>
+                    }
+                    <br /><br /><br />
+                    <p style="color: rgba(0, 0, 0, 0.5);">@Model.Description</p>
+
+                    <br /><br />
+
+                    <div class="row">
+                        <div class="col-xs-6">
+                            <label>Deadline</label>
+                            <p>@(task != null && task.ProgrammedEnd.HasValue ? task.ProgrammedEnd.Value.ToString(dateFormat + " hh:mmtt") : "")</p>
+                        </div>
+                        @if (task.isRecurs)
+                        {
+                            <div class="col-xs-6">
+                                <label>Recurring</label>
+                                <p>@Utility.ShowRecurring(task.AssociatedSet.Recurrance, task.ProgrammedStart.HasValue ? task.ProgrammedStart.Value.ToString("\"at\" h:mmtt").Replace(":00", "").ToLower() : "")</p>
+                            </div>
+                        }
+                    </div>
+
+
+                    <div class="completion" style="margin: 30px 0;">
+                        <h5>Completion</h5>
+                        <div class="mdv2-progress" style="margin-bottom: 30px;">
+                            <div class="progress">
+                                <div class="progress-bar" role="progressbar" style="width: @valProgressBar%" aria-valuenow="@valProgressBar" aria-valuemin="0" aria-valuemax="100"></div>
+                            </div>
+                            <small class="pull-left">@totalFormsSubmitted Form complete</small>
+                            <p class="pull-right" style="position: relative; top: 3px;">@totalForms Forms</p>
+                            <div class="clearfix"></div>
+                        </div>
+                    </div>
+                    @if (Model.Type == TaskType.Repeatable && totalFormsSubmitted > 0)
+                    {
+                        <button type="button" onclick="restartTask(@Model.Id,@task.Id)" class="btn btn-warning community-button" style="margin: 0 0 5px 0;"><i class="fa fa-refresh"></i> &nbsp; Restart this task</button>
+                    }
+                    <a href="/Operator/ComplianceTaskInstances?id=@Model.Id&tid=@task.Id" class="btn btn-info community-button" style="margin-bottom: 30px;"><i class="fa fa-history"></i> &nbsp; Submission history</a>
+                </div>
+
+
+
+
+            </div>
+        </div>
+        <!-- END App bar -->
+        <!-- Main area -->
+        <div class="mdv2-col-dash task-forms">
+
+            <ul class="subapps-nav" role="navigation" data-tooltip-stickto="bottom">
+                <li class="active">
+                    <a data-toggle="tab" data-target="#task-forms" data-tooltip="To-dos">
+                        <i class="fa fa-wpforms"></i>
+                    </a>
+                </li>
+                <li>
+                    <a data-toggle="tab" data-target="#task-discuss" data-tooltip="Discuss">
+                        <i class="fa fa-comment-alt"></i>
+                    </a>
+                </li>
+            </ul>
+
+            <div class="spacing" style="padding-top: 0;">
+
+                <div class="tab-content">
+
+                    <!-- Task Forms -->
+                    <div class="tab-pane fade in active" id="task-forms">
+
+                        <div class="row">
+                            <div class="col-xs-12 subscribe">
+                                <ul class="nav nav-pills traderv2" style="margin-top: 15px;">
+                                    @if (Model.OrderedForms != null)
+                                    {
+                                        var firstTab = true;
+                                        foreach (var item in Model.OrderedForms)
+                                        {
+                                            var isSubmitted = lstFormsSubmitted != null && lstFormsSubmitted.Any(s => s.IsSubmitted && s.ParentDefinition.Id == item.FormDefinition.Id) ? true : false;
+                                            <li class="@(firstTab?"active":"")"><a href="#form@(item.Id)" data-toggle="tab">@item.FormDefinition.Title @Html.Raw(isSubmitted ? " &nbsp;<i class=\"fa fa-check green\"></i>" : "")</a></li>
+                                            firstTab = false;
+                                        }
+                                    }
+                                </ul>
+                            </div>
+                        </div>
+
+                        <br /><br />
+
+
+                        <div class="tab-content">
+                            @if (Model.OrderedForms != null)
+                            {
+                                var firstTab = true;
+                                foreach (var item in Model.OrderedForms.OrderBy(s => s.DisplayOrder).ToList())
+                                {
+                                    var index = 0;
+                                    var formInstance = (currentTaskInstance != null && currentTaskInstance.FormInstances != null ? currentTaskInstance.FormInstances.FirstOrDefault(s => s.ParentDefinition.Id == item.FormDefinition.Id) : null);
+                                    if (formInstance == null || (formInstance != null && !formInstance.IsSubmitted))
+                                    {
+                                        <div class="tab-pane fade @(firstTab?"active in":"")" id="form@(item.Id)">
+                                            <form name="audit-form" method="post" action="/Operator/OperatorFormSubmit" novalidate enctype="multipart/form-data">
+                                                <input type="hidden" name="FormInstanceId" value="@(formInstance!=null? formInstance.Id:0)" />
+                                                <input type="hidden" name="FormDefinitionId" value="@(item.FormDefinition.Id)" />
+                                                <input type="hidden" name="TaskInstanceId" value="@(currentTaskInstance!=null? currentTaskInstance.Id:0)" />
+                                                <ul class="audit-steps">
+                                                    @foreach (var el in item.FormDefinition.Elements.OrderBy(s => s.DisplayOrder).ToList())
+                                                    {
+                                                        <li id="elm-@el.Id">
+                                                            @if (el.AllowNotes)
+                                                            {
+                                                                <!-- Add a note -->
+                                                                <div class="add-info add-note" style="display: none;">
+                                                                    <div class="valignm">
+                                                                        <div class="row">
+                                                                            <div class="col-xs-12">
+                                                                                <div class="form-group">
+                                                                                    <label for="Note">Add a note</label>
+                                                                                    <textarea name="Elements[@index].Note" class="form-control ip-note" placeholder="Add a note to this response"></textarea>
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                        <button type="button" class="btn btn-success" onclick="validateForm(this,'fa-comment','#elm-@el.Id');">Apply</button>
+                                                                        <button type="button" class="btn btn-danger" onclick="$(this).parent().parent().hide(); return false;">Cancel</button>
+                                                                    </div>
+                                                                </div>
+                                                                <!-- END Add a note -->
+                                                            }
+                                                            @if (el.AllowPhotos)
+                                                            {
+                                                                <!-- Add a photo -->
+                                                                <div class="add-info add-photo" style="display: none;">
+                                                                    <div class="valignm">
+                                                                        <div class="row">
+                                                                            <div class="col-xs-12 col-sm-6">
+                                                                                <div class="form-group">
+                                                                                    <label for="filename">Name this photo</label>
+                                                                                    <input type="text" id="element-image-object-name-@el.Id"name="Elements[@index].ImageName" class="form-control ip-imagename">
+                                                                                </div>
+                                                                            </div>
+                                                                            <div class="col-xs-12 col-sm-6">
+                                                                                <div class="form-group">
+                                                                                    <label for="ImageFile">Choose file</label>
+                                                                                    <input onchange="ChangeImageItem(@el.Id,'element-image-object')" type="file" id="element-image-object-@index" class="form-control ip-imagefile">
+
+                                                                                    <input type="hidden" id="element-image-object-key-@el.Id" name="Elements[@index].ImageKey" />
+                                                                                    <input type="hidden" id="element-image-object-size-@el.Id" name="Elements[@index].ImageSize" />
+
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                        <button type="button" class="btn btn-success" onclick="validateForm(this,'fa-camera','#elm-@el.Id');">Apply</button>
+                                                                        <button type="button" class="btn btn-danger" onclick="$(this).parent().parent().hide(); return false;">Cancel</button>
+                                                                    </div>
+                                                                </div>
+                                                                <!-- END Add a photo -->
+                                                            }
+                                                            @if (el.AllowDocs)
+                                                            {
+                                                                <!-- Add a Document -->
+                                                                <div class="add-info add-document" style="display: none;">
+                                                                    <div class="valignm">
+                                                                        <div class="row">
+                                                                            <div class="col-xs-12 col-sm-6">
+                                                                                <div class="form-group">
+                                                                                    <label for="DocName">Name this document</label>
+                                                                                    <input type="text" id="element-docfile-object-name-@el.Id" name="Elements[@index].DocName" class="form-control ip-docname">
+                                                                                </div>
+                                                                            </div>
+                                                                            <div class="col-xs-12 col-sm-6">
+                                                                                <div class="form-group">
+                                                                                    <label for="DocFile">Choose file</label>
+                                                                                    <input onchange="ChangeImageItem(@el.Id,'element-docfile-object')" type="file" id="element-docfile-object-@index" class="form-control ip-docfile">
+
+                                                                                    <input type="hidden" id="element-docfile-object-key-@el.Id" name="Elements[@index].DocKey" />
+                                                                                    <input type="hidden" id="element-docfile-object-size-@el.Id" name="Elements[@index].DocZise" />
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                        <button type="button" class="btn btn-success" onclick="validateForm(this,'fa-file-text','#elm-@el.Id');">Apply</button>
+                                                                        <button type="button" class="btn btn-danger" onclick="$(this).parent().parent().hide(); return false;">Cancel</button>
+                                                                    </div>
+                                                                </div>
+                                                                <!-- END Documents -->
+                                                            }
+                                                            @if (el.AllowScore)
+                                                            {
+                                                                <!-- Add a score -->
+                                                                <div class="add-info add-score" style="display: none;">
+                                                                    <div class="valignm">
+                                                                        <div class="row">
+                                                                            <div class="col-xs-12 col-sm-6">
+                                                                                <div class="form-group">
+                                                                                    <label for="Score">Score</label>
+                                                                                    <select name="Elements[@index].Score" required class="form-control select2 ip-score" onchange="$(this).valid()" style="width: 100%;">
+                                                                                        <option value=""></option>
+                                                                                        <option value="1">1 star</option>
+                                                                                        <option value="2">2 stars</option>
+                                                                                        <option value="3">3 stars</option>
+                                                                                        <option value="4">4 stars</option>
+                                                                                        <option value="5">5 stars</option>
+                                                                                    </select>
+                                                                                    <label id="Elements[@index].Score-error" class="error" for="Elements[@index].Score" style="display: none;"></label>
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                        <button type="button" class="btn btn-success" onclick="validateForm(this,'fa-trophy','#elm-@el.Id');">Apply</button>
+                                                                        <button type="button" class="btn btn-danger" onclick="$(this).parent().parent().hide(); return false;">Cancel</button>
+                                                                    </div>
+                                                                </div>
+                                                                <!-- END Add a score -->
+                                                            }
+                                                            <p class="title">@el.Label <i id="@el.Id-status"></i></p>
+                                                            <input type="hidden" name="Elements[@index].FormElementId" value="@el.Id" />
+                                                            @switch (el.Type)
+                                                            {
+                                                                case Qbicles.Models.Form.FormElementType.TrueOrFalse:
+                                                                    <ul class="nav nav-pills nav-justified audit-choices">
+                                                                        <li><a class="success" data-value="Yes">Yes</a></li>
+                                                                        <li><a class="danger" data-value="No">No</a></li>
+                                                                    </ul>
+                                                                    <input type="hidden" name="Elements[@index].Value" class="data-val" value="" required>
+                                                                    break;
+                                                                case Qbicles.Models.Form.FormElementType.Date:
+                                                                    <div class="well custom" style="margin-bottom: 0;">
+                                                                        <div class="row">
+                                                                            <div class="col-xs-12 col-sm-6">
+                                                                                <div class="form-group" style="margin: 0;">
+                                                                                    <input type="text" name="Elements[@index].Value" onchange="validateForm(this,'','#@el.Id-status');" class="form-control singledate" required>
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                    break;
+                                                                case Qbicles.Models.Form.FormElementType.FreeText:
+                                                                    <div class="well custom" style="margin-bottom: 0;">
+                                                                        <div class="row">
+                                                                            <div class="col-xs-12 col-sm-6">
+                                                                                <div class="form-group" style="margin: 0;">
+                                                                                    <input type="text" name="Elements[@index].Value" onchange="validateForm(this,'','#@el.Id-status');" class="form-control" required>
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                    break;
+                                                                default:
+                                                                    <div class="well custom" style="margin-bottom: 0;">
+                                                                        <div class="row">
+                                                                            <div class="col-xs-12 col-sm-6">
+                                                                                <div class="form-group" style="margin: 0;">
+                                                                                    <input type="number" name="Elements[@index].Value" onchange="validateForm(this,'','#@el.Id-status');" class="form-control" required>
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                    break;
+                                                            }
+
+                                                            <div class="audit-options">
+                                                                <div class="flex-grid-quarters text-center">
+                                                                    @if (el.AllowNotes)
+                                                                    {
+                                                                        <div class="col"><a onclick="$('.add-info').hide(); $(this).parent().parent().parent().parent().find('.add-note').show(); return false;"><i class="fa fa-comment elnote"></i> &nbsp; Note</a></div>
+                                                                    }
+                                                                    @if (el.AllowPhotos)
+                                                                    {
+                                                                        <div class="col"><a onclick="$('.add-info').hide(); $(this).parent().parent().parent().parent().find('.add-photo').show(); return false;"><i class="fa fa-camera elphoto"></i> &nbsp; Photo</a></div>
+                                                                    }
+                                                                    @if (el.AllowDocs)
+                                                                    {
+                                                                        <div class="col"><a onclick="$('.add-info').hide(); $(this).parent().parent().parent().parent().find('.add-document').show(); return false;"><i class="fa fa-file-text eldocument"></i> &nbsp; Document</a></div>
+                                                                    }
+                                                                    @if (el.AllowScore)
+                                                                    {
+                                                                        <div class="col"><a onclick="$('.add-info').hide(); $(this).parent().parent().parent().parent().find('.add-score').show(); return false;"><i class="fa fa-trophy elscore"></i> &nbsp; Score</a></div>
+                                                                    }
+                                                                </div>
+                                                            </div>
+                                                        </li>
+                                                        index++;
+                                                    }
+                                                </ul>
+                                                <br><br>
+                                                <button type="submit" class="btn btn-success community-button" style="width: auto;">Submit</button>
+                                            </form>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="tab-pane fade @(firstTab?"active in":"")" id="form@(item.Id)">
+                                            <ul class="audit-steps">
+                                                @foreach (var eldata in formInstance.ElementData.OrderBy(s => s.ParentElement.DisplayOrder).ToList())
+                                                {
+                                                    <li>
+                                                        <p class="title">@eldata.ParentElement.Label</p>
+                                                        @switch (eldata.ParentElement.Type)
+                                                        {
+                                                            case Qbicles.Models.Form.FormElementType.TrueOrFalse:
+                                                                <ul class="nav nav-pills nav-justified audit-choices">
+                                                                    @if (eldata.Value == "Yes")
+                                                                    {
+                                                                        <li class="active"><a class="success" data-value="Yes">Yes</a></li>
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <li class="active"><a class="danger" data-value="No">No</a></li>
+                                                                    }
+                                                                </ul>
+                                                                break;
+                                                            case Qbicles.Models.Form.FormElementType.Date:
+                                                                <div class="well custom" style="margin-bottom: 0;">
+                                                                    <div class="row">
+                                                                        <div class="col-xs-12 col-sm-6">
+                                                                            <div class="form-group" style="margin: 0;">
+                                                                                <input type="text" name="Value[]" disabled value="@eldata.Value" class="form-control">
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                                break;
+                                                            case Qbicles.Models.Form.FormElementType.FreeText:
+                                                                <div class="well custom" style="margin-bottom: 0;">
+                                                                    <div class="row">
+                                                                        <div class="col-xs-12 col-sm-6">
+                                                                            <div class="form-group" style="margin: 0;">
+                                                                                <input type="text" name="Value[]" disabled value="@eldata.Value" class="form-control">
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                                break;
+                                                            default:
+                                                                <div class="well custom" style="margin-bottom: 0;">
+                                                                    <div class="row">
+                                                                        <div class="col-xs-12 col-sm-6">
+                                                                            <div class="form-group" style="margin: 0;">
+                                                                                <input type="number" name="Value[]" disabled value="@eldata.Value" class="form-control">
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                                break;
+                                                        }
+                                                        <br />
+                                                        <div class="well custom" style="margin-bottom: 0;">
+                                                            <div class="row">
+                                                                @{
+                                                                    var note = (Note)eldata.Attachments.FirstOrDefault(s => s.AttachmentType == Attachment.AttachmentTypeEnum.Note);
+                                                                }
+                                                                @if (eldata.ParentElement.AllowNotes && note != null)
+                                                                {
+                                                                    <div class="col-xs-12 col-sm-6">
+                                                                        <label>Notes</label>
+                                                                        <p>@(note?.Text)</p>
+                                                                    </div>
+                                                                }
+                                                                @{
+                                                                    var photo = (Image)eldata.Attachments.FirstOrDefault(s => s.AttachmentType == Attachment.AttachmentTypeEnum.Image);
+                                                                }
+                                                                @if (eldata.ParentElement.AllowPhotos && photo != null)
+                                                                {
+
+                                                                    <div class="col-xs-12 col-sm-2">
+                                                                        <label>Photo</label><br />
+                                                                        <a href="@(api + photo?.ImageUri)" class="image-pop" rel="resources" title="This document's description content here">
+                                                                            Click to view
+                                                                        </a>
+                                                                    </div>
+                                                                }
+                                                                @{
+                                                                    var doc = (Document)eldata.Attachments.FirstOrDefault(s => s.AttachmentType == Attachment.AttachmentTypeEnum.Doc);
+                                                                }
+                                                                @if (eldata.ParentElement.AllowDocs && doc != null)
+                                                                {
+                                                                    <div class="col-xs-12 col-sm-2">
+                                                                        <label>Attached doc</label><br />
+                                                                        <a href="@(api+doc?.DocumentUri)">@doc.DocumentName</a>
+                                                                    </div>
+                                                                }
+                                                                @if (eldata.ParentElement.AllowScore)
+                                                                {
+                                                                    <div class="col-xs-12 col-sm-2">
+                                                                        <label>Score</label><br />
+                                                                        @for (int i = 1; i <= eldata.Score; i++)
+                                                                        {
+                                                                            <i class="fa fa-star yellow-text"></i>
+                                                                        }
+                                                                    </div>
+                                                                }
+                                                            </div>
+                                                        </div>
+                                                    </li>
+                                                }
+                                            </ul>
+                                        </div>
+                                    }
+                                    firstTab = false;
+                                }
+                            }
+                        </div> <!-- ./tab-content -->
+
+
+                    </div>
+                    <!-- END Forms -->
+                    <!-- Discuss -->
+                    <div class="tab-pane fade" id="task-discuss">
+
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <ul class="app_subnav admintabs" style="padding-top: 0;">
+                                    <li class="active"><a href="#task-comments" data-toggle="tab">Comments</a></li>
+                                    <li><a href="#task-files" data-toggle="tab">Files</a></li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <br />
+
+                        <div class="tab-content">
+
+
+                            <!-- Comments -->
+                            <div class="tab-pane fade in active" id="task-comments">
+
+                                <div class="well custom" style="margin-bottom: 60px;">
+                                    <div class="row">
+                                        <div class="col-xs-12">
+                                            <div class="form-group">
+                                                <label for="addcomment">Add a comment</label>
+                                                <textarea id="txt-comment-task" name="addcomment" onkeyup="validateAddCommentTask()" style="height: 80px;" class="form-control"></textarea>
+                                                <label id="addcomment-error" class="error" for="addcomment" style="display: none;">Your post is longer than the 1,500 character limit. Please reduce the length, or split it across multiple posts</label>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <button class="btn btn-success" onclick="addCommentToTask('@task.Key')">Submit</button>
+                                </div>
+                                <div id="list-comments-task">
+                                    @if (comments != null && count_comments > 0)
+                                    {
+                                        foreach (var item in comments)
+                                        {
+                                            <!-- General post -->
+                                            <article id="post-@item.Id" class="activity post">
+                                                <div class="activity-avatar" style="background-image: url('@(api+item.CreatedBy.ProfilePic)&size=T');"></div>
+                                                <div class="activity-detail">
+                                                    <div class="activity-meta">
+                                                        <h4>@HelperClass.GetFullNameOfUser(item.CreatedBy, currentUserId)</h4>
+                                                        <small>@item.StartedDate.ConvertTimeFromUtc(currentTimeZone).ToString(dateFormat + ", hh:mmtt")</small>
+                                                    </div>
+
+                                                    <div class="activity-overview media-comment">
+                                                        <p>@Html.Raw(item.Message.Replace(Environment.NewLine, "<br/>"))</p>
+                                                    </div>
+                                                </div>
+                                                <div class="clearfix"></div>
+                                            </article>
+                                            <!-- END General post -->
+                                        }
+                                    }
+                                </div>
+                                @if (count_comments > pageSize)
+                                {
+                                    <button id="btnLoadPosts" onclick="loadMorePosts('@task.Key', @pageSize, 'list-comments-task')" class="btn btn-info trigger_load">Load older medias</button>
+                                }
+                            </div>
+                            <!-- END Comments -->
+                            <!-- Files -->
+                            <div class="tab-pane fade" id="task-files">
+                                @if (task.ClosedBy == null)
+                                {
+                                    <button class="btn btn-success community-button" data-toggle="modal" data-target="#create-media" style="max-width: 230px; margin: 15px 0 30px 0;">
+                                        <i class="fa fa-upload"></i> &nbsp; Add a file
+                                    </button>
+                                }
+                                <div id="list-medias">
+                                    @if (count_medias > 0)
+                                    {
+                                        foreach (var item in task.SubActivities.OrderByDescending(x => x.Id).Take(pageSize))
+                                        {
+                                            var media = (QbicleMedia)item;
+                                            var createdByName = HelperClass.GetFullNameOfUser(media.StartedBy, currentUserId);
+                                            var createdDate = media.StartedDate.Date == DateTime.UtcNow.Date ? "Today, " + media.StartedDate.ToString("hh:mmtt") : media.StartedDate.ToString(dateFormat + " hh:mmtt");
+                                            var lastUpdateFile = "";
+                                            var mediaLastupdate = media.VersionedFiles.Where(e => !e.IsDeleted).OrderByDescending(x => x.UploadedDate).FirstOrDefault() ?? null;
+                                            if (mediaLastupdate != null)
+                                            {
+                                                lastUpdateFile = mediaLastupdate?.UploadedDate.Date == DateTime.UtcNow.Date ? "Today, " + mediaLastupdate.UploadedDate.ToString("hh:mmtt") : mediaLastupdate.UploadedDate.ToString(dateFormat + " hh:mmtt");
+                                            } //Media post
+                                            <!-- Media post -->
+                                            <article class="activity media">
+                                                <div class="activity-avatar" style="background-image: url('@api@(media.StartedBy.ProfilePic)&size=T');"></div>
+                                                <div class="activity-detail" style="width: 100%; max-width: 100%;">
+                                                    <div class="activity-meta">
+                                                        <h4>@createdByName</h4>
+                                                        <small>@createdDate</small>
+                                                        <br class="visible-xs">
+                                                    </div>
+
+                                                    <div class="activity-overview media">
+                                                        <div class="row">
+                                                            <div class="col-xs-12 col-sm-5 col-lg-4">
+                                                                <a href="javascript:void(0)" onclick="ShowMediaPage('@media.Key')">
+                                                                    @if (media.FileType.Type == "Image File")
+                                                                    {
+                                                                        <img id="media-@item.Id" class="img-responsive" src='@api@(mediaLastupdate.Uri)&size=M' />
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <img src="@media.FileType.ImgPath" class="img-responsive">
+                                                                    }
+                                                                </a>
+                                                            </div>
+                                                            <div class="col-xs-12 col-sm-7 col-lg-8 description" style="padding-top: 0;">
+                                                                <h5>@media.Name</h5>
+                                                                <p>
+                                                                    @media.Description
+                                                                </p>
+                                                                <small>@Utility.GetFileTypeDescription(media.FileType.Extension) | Update @lastUpdateFile</small>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="clearfix"></div>
+                                            </article>
+                                            <!-- END Media post -->
+                                        }
+                                    }
+                                    @if (count_medias > pageSize)
+                                    {
+                                        <button id="btnLoadMedias" onclick="loadMoreMedias(@task.Id, @pageSize, 'list-medias')" class="btn btn-info trigger_load">Load older medias</button>
+                                    }
+                                </div>
+                            </div>
+                            <!-- END Files -->
+
+
+                        </div>
+                        <!-- END Discuss -->
+
+
+                    </div>
+
+
+                </div>
+
+            </div>
+
+
+        </div>
+
+
+    </section>
+    <!-- ./content -->
+
+</div>
+<script>
+    $("#currentTaskId").val(@(task != null? task.Key :""));//Set current the taskid  page
+</script>
+<!-- /.content-wrapper -->
+@{
+    Html.RenderAction("GenerateModalMedia", "Qbicles");
+}
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/operator.compliance-task.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/operator.compliance-task.js"></script>
+    }
+}

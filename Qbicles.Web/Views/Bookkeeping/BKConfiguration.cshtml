@@ -1,0 +1,252 @@
+﻿@using Qbicles.BusinessRules;
+@using Qbicles.Models;
+@using Qbicles.Models.Bookkeeping;
+@{
+    ViewBag.Title = "Bookkeeping - App Configuration";
+    var bKAppSetting = (BKAppSettings)ViewBag.BKAppSettings;
+    var qbicleAttachment = (List<Qbicle>)ViewBag.QbicelAttachment;
+    var defaultAttachmentTopics = (List<Topic>)ViewBag.DefaultAttachmentTopics;
+    var currency =(CurrencySetting)ViewBag.Currency;
+
+    var userRoleRights = (List<string>)ViewBag.UserRoleRights;
+
+    var rightShowJournalTab = (bool)ViewBag.rightShowJournalTab;
+    var rightShowAccountTab = (bool)ViewBag.rightShowAccountTab;
+    var rightShowReportsTab = (bool)ViewBag.rightShowReportsTab;
+    var rightShowConfigurationTab = userRoleRights.Any(r => r == RightPermissions.BKManageAppSettings);
+
+
+}
+
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail">
+
+    <!-- Main content -->
+    <section class="content">
+
+        <br /><br />
+
+        <div class="mod_title">
+            <h5>Bookkeeping</h5>
+            <h4>App Configuration</h4>
+        </div>
+        <div id="bk-navigate">
+            @Html.Partial("_BookkeepingNavigatePartial", new ViewDataDictionary
+            {
+                {"tabSelected", 4 },
+                { "rightShowJournalTab", rightShowJournalTab },
+                { "rightShowAccountTab", rightShowAccountTab },
+                { "rightShowReportsTab", rightShowReportsTab },
+                { "rightShowConfigurationTab", rightShowConfigurationTab }
+            })
+        </div>
+
+
+        <div class="row">
+            <div class="col-xs-12">
+                <div class="app_filter">
+                    <div class="row">
+                        <div class="col-xs-12">
+                            <a href="/Apps/AppManagement" class="btn btn-info"><i class="fa fa-th"></i> &nbsp; All apps</a>
+                            @if (rightShowAccountTab)
+                            {
+                                <a href="/Bookkeeping/BKApps" class="btn btn-info"><i class="fa fa-home"></i> &nbsp; App home</a>
+                            }
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <br /><br />
+
+
+
+        <div class="row">
+            <div class="col-xs-12 col-sm-4 col-md-3">
+
+                <ul class="nav nav-stacked nav-pills nav-marketing" style="margin-bottom: 30px;">
+                    <li class="active"><a href="#" data-toggle="tab" data-target="#tab-settings">Settings</a></li>
+                    <li><a href="#" data-toggle="tab" data-target="#tab-defaults">Defaults</a></li>
+                    <li><a href="#" data-toggle="tab" data-target="#tab-workgroups">Workgroups</a></li>
+                    <li><a href="#" data-toggle="tab" data-target="#tab-dimensions">Reporting Filters</a></li>
+                    <li><a href="#" data-toggle="tab" data-target="#tab-groups">Journal Groups</a></li>
+                    @*<li><a href="#" data-toggle="tab" data-target="#tab-tax">Tax Rates</a></li>*@
+                    <li><a href="#" data-toggle="tab" data-target="#tab-templates">Report Templates</a></li>
+                </ul>
+
+            </div>
+
+
+            <div class="col-xs-12 col-sm-8 col-lg-9">
+
+                <div class="tab-content">
+                    <div class="tab-pane fade in active" id="tab-settings">
+                        <form id="frmCurrencyConfiguration" method="post" action="/Qbicles/SaveCurrencySettings">
+                            <div class="activity-overview generic help-text animated bounce">
+                                <i class="fa fa-info-circle"></i>
+                                <p>
+                                    Choose how you want currency values to appear in Bookkeeping. <strong>Please note</strong> that any changes you make here will also be applied to your
+                                    Trader app settings (where relevant) to ensure consistency.
+                                </p>
+                            </div>
+
+                            <div class="well custom" style="padding-bottom: 5px;">
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-4">
+                                        <div class="form-group">
+                                            <label for="symbol">Currency symbol</label>
+                                            <select name="CurrencySymbol" class="form-control select2" style="width: 100%;">
+                                                <option value="₦" @(currency!=null&&currency.CurrencySymbol=="₦"?"selected":"")>₦ (NGN)</option>
+                                                <option value="€" @(currency!=null&&currency.CurrencySymbol=="€"?"selected":"")>€ (EUR)</option>
+                                                <option value="£" @(currency!=null&&currency.CurrencySymbol=="£"?"selected":"")>£ (GBP)</option>
+                                                <option value="$" @(currency!=null&&currency.CurrencySymbol=="$"?"selected":"")>$ (USD)</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-4">
+                                        <div class="form-group">
+                                            <label for="SymbolDisplay">Symbol display</label>
+                                            <select name="SymbolDisplay" class="form-control select2" style="width: 100%;">
+                                                <option value="0" @(currency!=null&&currency.SymbolDisplay==CurrencySetting.SymbolDisplayEnum.Prefixed?"selected":"")>Prefixed (₦1,000)</option>
+                                                <option value="1" @(currency!=null&&currency.SymbolDisplay==CurrencySetting.SymbolDisplayEnum.Suffixed?"selected":"")>Suffixed (1,000₦)</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-4">
+                                        <div class="form-group">
+                                            <label for="DecimalPlace">Decimal places</label>
+                                            <select name="DecimalPlace" class="form-control select2" style="width: 100%;">
+                                                <option value="0" @(currency!=null&&currency.DecimalPlace==CurrencySetting.DecimalPlaceEnum.None?"selected":"")>None</option>
+                                                <option value="1" @(currency!=null&&currency.DecimalPlace==CurrencySetting.DecimalPlaceEnum.One?"selected":"")>1 (1,000.0)</option>
+                                                <option value="2" @(currency!=null&&currency.DecimalPlace==CurrencySetting.DecimalPlaceEnum.Two?"selected":"")>2 (1,000.00)</option>
+                                                <option value="3" @(currency!=null&&currency.DecimalPlace==CurrencySetting.DecimalPlaceEnum.Three?"selected":"")>3 (1,000.000)</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <br>
+                            <button type="button" id="btnCurrencyReset" onclick="resetSettings('@(currency?.CurrencySymbol)','@((int)currency?.SymbolDisplay)','@((int)currency?.DecimalPlace)')" class="btn btn-danger">Cancel</button>
+                            <button type="submit" class="btn btn-success">Confirm</button>
+                        </form>
+                    </div>
+                    <!-- Defaults -->
+                    <div class="tab-pane fade" id="tab-defaults">
+
+                        <h4>Account attachments</h4>
+                        <div class="soft_tan" style="margin-bottom: 15px;">
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label for="approval_process_attachment_qbicles">Default Qbicle to assign attachments to</label>
+                                        <select name="approval_process_attachment_qbicles" id="approval_process_attachment_qbicles" class="form-control chosen-select" style="width: 100%;">
+                                            @{
+                                                <option value="0">Select qbicle</option>
+                                                foreach (var item in qbicleAttachment)
+                                                {
+
+                                                    if (bKAppSetting?.AttachmentQbicle != null && item.Id == bKAppSetting.AttachmentQbicle.Id)
+                                                    {
+                                                        <option value="@item.Id" selected>@item.Name</option>
+                                                    }
+                                                    else
+                                                    {
+                                                        <option value="@item.Id">@item.Name</option>
+                                                    }
+                                                }
+                                            }
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label for="journal_topic">Default topic for attachments</label>
+                                        <select name="journal_topic_attachment" id="journal_topic_attachment" class="form-control chosen-select" style="width: 100%;">
+                                            <option value="0">Select topic</option>
+                                            @foreach (var item in defaultAttachmentTopics)
+                                            {
+                                                if (bKAppSetting?.AttachmentDefaultTopic != null && item.Id == bKAppSetting.AttachmentDefaultTopic.Id)
+                                                {
+                                                    <option value="@item.Id" selected>@item.Name</option>
+                                                }
+                                                else
+                                                {
+                                                    <option value="@item.Id">@item.Name</option>
+                                                }
+                                            }
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+
+
+                        <br />
+                        <a href="javascript:" id="defaultsavesettings" class="btn btn-info"><i class="fa fa-save"></i> &nbsp; Save settings</a>
+                    </div>
+                    <!-- END Defaults -->
+                    <!-- Dimensions -->
+
+                    <div id="tab-workgroups" class="tab-pane fade">
+                        @{ Html.RenderAction("WorkGroupPartial");}
+                    </div>
+
+                    <!-- END Dimensions -->
+                    <!-- Dimensions -->
+
+                    <div id="tab-dimensions" class="tab-pane fade">
+                        @{ Html.RenderAction("DimensionPartial");}
+                    </div>
+
+                    <!-- END Dimensions -->
+                    <!-- Groups -->
+                    <div class="tab-pane fade" id="tab-groups">
+                        @{ Html.RenderAction("JournalGroupPartial");}
+                    </div>
+                    <!-- END Groups -->
+                    <!-- Tax Rates -->
+                    @*<div class="tab-pane fade" id="tab-tax">
+            @{ Html.RenderAction("TaxRatePartial");}
+        </div>*@
+                    <!-- END Tax Rates -->
+                    <!-- Templates -->
+                    <div class="tab-pane fade" id="tab-templates">
+                        @Html.Partial("TemplatePartial")
+                    </div>
+                    <!-- END Tax Rates -->
+
+
+
+                </div>
+
+            </div>
+        </div>
+
+        <input class="hidden" id="bkappsettingHiden" value="@(bKAppSetting?.Id??0)" />
+        <input class="hidden" id="defaultAttachmentTopicHiden" value="@(bKAppSetting?.AttachmentDefaultTopic?.Id ?? 0)" />
+
+    </section>
+    <!-- ./content -->
+
+</div>
+<!-- /.content-wrapper -->
+
+
+
+
+
+@if (System.Diagnostics.Debugger.IsAttached)
+{
+    <script src="~/Scripts/dev/bookkeeping-configuration.js"></script>
+    <script src="~/Scripts/dev/trader.domain.js"></script>
+}
+else
+{
+    <script src="~/Scripts/dev/bookkeeping-configuration.min.js"></script>
+    <script src="~/Scripts/dev/trader.domain.min.js"></script>
+}
+

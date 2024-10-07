@@ -1,0 +1,197 @@
+﻿@using Qbicles.Models.SalesMkt;
+@using Qbicles.BusinessRules.Model;
+@{
+    var Type = ViewBag.Type as string;
+    var dateFormat = ViewBag.CurrentDateFormat;
+}
+@if (Type == "queue")
+{
+    var LstQueuePosts = (List<EmailCampaignQueue>)ViewBag.LstQueuePosts;
+
+    <table class="datatable table-striped table-hover" data-order='[[0, "desc"]]' style="width: 100%;">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Title</th>
+                <th>Recipients</th>
+                <th>Scheduled post time</th>
+                <th>Status</th>
+                <th>Options</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in LstQueuePosts)
+            {
+                <tr>
+                    <td>@item.Id.ToString("000")</td>
+                    <td><a href="#">@item.Email.Title</a></td>
+                    <td>
+                        @item.Email.Segments.SelectMany(s => s.Contacts).Distinct().Count()
+                    </td>
+                    <td>@(item.PostingDate.ToString(dateFormat+", hh:mmtt"))(GMT)</td>
+                    <td>
+                        @if (item.Status == CampaignEmailQueueStatus.Scheduled)
+                        {
+                            <span class="label label-lg label-info">Scheduled</span>
+                        }
+                        else
+                        {
+                            <span class="label label-lg label-danger">Error</span>
+                        }
+
+                    </td>
+                    <td>
+                        <div class="dropdown">
+                            <button class="btn btn-primary" data-toggle="dropdown">
+                                <i class="fa fa-cog"></i>
+                            </button>
+                            <ul class="dropdown-menu primary">
+                                <li><a href="#" data-toggle="modal" onclick="AddEmailPostQueueImmediately(@item.Id)">Post immediately</a></li>
+                                <li><a href="#" onclick="SentBackFromEmailQueueToReview(@item.Id)">Send back to review</a></li>
+                                <li><a href="#" data-toggle="modal" onclick="$('#discard-post-queue-id').val(@item.Id)" data-target="#app-marketing-discard-post-queue">Cancel and discard</a></li>
+                            </ul>
+                        </div>
+                    </td>
+                </tr>
+            }
+            </tbody>
+    </table>
+}
+else if (Type == "approved")
+{
+    var LstapprovedPosts = (List<EmailPostApproval>)ViewBag.LstApprovedPosts;
+    <table class="datatable table-striped table-hover" data-order='[[0, "desc"]]' style="width: 100%;">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Title</th>
+                <th>Recipients</th>
+                <th>Status</th>
+                <th>Options</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in LstapprovedPosts)
+            {
+            <tr>
+                <td>@item.Id.ToString("000")</td>
+                <td><a href="/SalesMarketing/EmailPostInApp?id=@item.Id">@item.CampaignEmail.Title</a></td>
+                <td>
+                    @item.CampaignEmail.Segments.SelectMany(s => s.Contacts).Distinct().Count()
+                </td>
+                <td>
+                    @if (item.ApprovalStatus == SalesMktApprovalStatusEnum.Approved)
+                    {
+                        <span class="label label-lg label-success">Approved</span>
+                    }
+                    else
+                    {
+                        <span class="label label-lg label-danger">Denied</span>
+                    }
+                </td>
+                <td>
+                    <div class="dropdown">
+                        <button class="btn btn-primary" data-toggle="dropdown">
+                            <i class="fa fa-cog"></i>
+                        </button>
+                        <ul class="dropdown-menu primary">
+                            @if (item.ApprovalStatus == SalesMktApprovalStatusEnum.Approved)
+                            {
+                                <li><a href="#" onclick="AddEmailPostImmediately(@item.Id)">Post immediately</a></li>
+                                <li><a href="#" data-toggle="modal" onclick="$('#aId').val(@item.Id)" data-target="#app-marketing-schedule-queue">Add to Queue (Schedule)</a></li>
+                            }
+                            <li><a href="#" onclick="SentBackEmailPostToReview(@item.Id)">Send back to review</a></li>
+                            <li><a href="#" data-toggle="modal" onclick="$('#discard-post-id').val(@item.Id)" data-target="#app-marketing-discard-post">Cancel and discard</a></li>
+                        </ul>
+                    </div>
+                </td>
+            </tr>
+            }
+        </tbody>
+    </table>
+}
+else if (Type == "approvals")
+{
+    var LstapprovalPosts = (List<EmailPostApproval>)ViewBag.LstApprovedPosts;
+    <table class="datatable table-striped table-hover" data-order='[[0, "desc"]]' style="width: 100%;">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Title</th>
+                <th>Recipients</th>
+                <th>Status</th>
+                <th>Options</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in LstapprovalPosts)
+            {
+            <tr>
+                <td>@item.Id.ToString("000")</td>
+                <td><a href="/SalesMarketing/EmailPostInApp?id=@item.Id">@item.CampaignEmail.Title</a></td>
+                <td>
+                    @item.CampaignEmail.Segments.SelectMany(s => s.Contacts).Distinct().Count()
+                </td>
+                <td>
+                    @if (item.ApprovalStatus == SalesMktApprovalStatusEnum.InReview)
+                    {
+                        <span class="label label-lg label-warning">Pending</span>
+                    }  
+                </td>
+                <td>
+                    <div class="dropdown">
+                        <button class="btn btn-primary" data-toggle="dropdown">
+                            <i class="fa fa-cog"></i>
+                        </button>
+                        <ul class="dropdown-menu primary">
+                            <li><a href="#" data-toggle="modal" onclick="$('#discard-post-id').val(@item.Id)" data-target="#app-marketing-discard-post">Cancel and discard</a></li>
+                        </ul>
+                    </div>
+                </td>
+            </tr>
+            }
+        </tbody>
+    </table>
+}
+else
+{
+    var LstQueuePosts = (List<EmailCampaignQueue>)ViewBag.LstQueuePosts;
+    <table class="datatable table-striped table-hover" data-order='[[0, "desc"]]' style="width: 100%;">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Title</th>
+                <th>Recipients</th>
+                <th>Date issued</th>
+                @*<th>Status</th>
+                <th>Failed sends</th>*@
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in LstQueuePosts)
+            {
+            <tr>
+                <td>@item.Id.ToString("000")</td>
+                <td><a href="#">@item.Email.Title</a></td>
+                <td>
+                    @item.Email.Segments.SelectMany(s => s.Contacts).Distinct().Count()
+                </td>
+                <td>@(item.CreatedDate.ToString(dateFormat+", hh:mmtt"))(GMT)</td>
+                @*<td>
+                    @if (item.Status == CampaignEmailQueueStatus.Sent)
+                    {
+                        <span class="label label-lg label-success">Sent</span>
+                    }
+                    else
+                    {
+                        <span class="label label-lg label-danger">Error</span>
+                    }
+
+                </td>
+                <td>@item.CountErrors</td>*@
+            </tr>
+            }
+        </tbody>
+    </table>
+}
+

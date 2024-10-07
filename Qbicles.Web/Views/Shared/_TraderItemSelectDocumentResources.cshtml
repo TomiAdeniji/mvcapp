@@ -1,0 +1,119 @@
+﻿@using Qbicles.Models.Trader.Resources
+@model List<ResourceDocument>
+@{
+    var categoryResources = (List<ResourceCategory>)ViewBag.ResourceCategorys;
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var dateFormat = (string)ViewBag.CurrentDateFormat;
+}
+
+<div class="modal-dialog modal-xl" role="document">
+    <div class="modal-content">
+        <div class="modal-header">
+            <button type="button" class="close" onclick="$('#app-trader-resources-docs-select').modal('toggle');" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <h5 class="modal-title">Choose Resource Documents to attach</h5>
+        </div>
+        <div class="modal-body">
+
+            <div class="well custom" style="padding-bottom: 5px;">
+                <div class="row">
+                    <div class="col-xs-12 col-sm-6 col-lg-4">
+                        <div class="form-group">
+                            <label for="search">Search documents</label>
+                            <input type="text" name="search" onkeyup="searchOnDocumentResource()" id="selected_redocument_search_dt" class="form-control" placeholder="Search for...">
+                        </div>
+                    </div>
+                    <div class="col-xs-12 col-sm-6 col-lg-3">
+                        <div class="form-group">
+                            <label for="search">Filter by Category</label>
+                            <select name="category" id="selectdocument_category" onchange="searchOnDocumentResource()" class="form-control select2" style="width: 100%;">
+                                <option value="">Show all</option>
+                                @foreach (var item in categoryResources)
+                                {
+                                    <option value="@item.Name">@item.Name</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+            <br />
+
+            <table class="datatable table-striped table-hover" id="resource_document_datatable" style="width: 100%;">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Category</th>
+                        <th>Type</th>
+                        <th>Description</th>
+                        <th>Uploaded</th>
+                        <th>Include</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model)
+                    {
+                        <tr>
+                            <td><a href="@api@item.FileUri">@item.Name</a></td>
+                            <td>@item.Category.Name</td>
+                            <td>@item.Type.Extension.ToUpper()</td>
+                            <td>@item.Description</td>
+                            <td>@item.CreatedDate.ToString(dateFormat)</td>
+                            <td>
+                                <div class="checkbox toggle">
+                                    <label>
+                                        <input data-toggle="toggle" data-onstyle="success" type="checkbox" onchange="selectedChangeDocument(@item.Id)" class="select_document_resource" data-on="Yes" data-off="No" data="@item.Id">
+                                    </label>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+
+
+            <br />
+            <a href="#" class="btn btn-danger" onclick="$('#app-trader-resources-docs-select').modal('toggle');">Cancel</a>
+            <a href="#" class="btn btn-success" onclick="selectedDocumentResource()">Confirm</a>
+
+
+        </div>
+    </div><!-- /.modal-content -->
+</div><!-- /.modal-dialog -->
+
+
+<script>
+    dataDocument = @Html.Raw(Json.Encode(Model.Select(q=> new
+                   {
+                       Id = q.Id,
+                       Name = q.Name,
+                       Type = new
+                       {
+                           Extension = q.Type.Extension,
+                           Type = q.Type.Type,
+                           IconPath = q.Type.IconPath,
+                           ImgPath = q.Type.ImgPath
+                       }, ImageUri = q.FileUri
+                   })));
+    var oTable = $("#resource_document_datatable");
+    var listKey = [];
+    function searchOnDocumentResource() {
+        listKey = [];
+        if ($('#selectdocument_category').val() !== " " && $('#selectdocument_category').val() !== "" && $('#selectdocument_category').val() !== null) {
+            listKey.push($('#selectdocument_category').val());
+        }
+
+        var keys = $('#selected_redocument_search_dt').val();
+        if (keys !== "" && keys !== null && keys.length > 0) {
+            listKey.push(keys);
+        }
+        oTable.DataTable().search(listKey.join("|"), true, false, true).draw();
+    }
+
+    oTable.DataTable().search(listKey.join("|"), true, false, true).draw();
+    $('#selectdocument_category').select2();
+    $('.select_document_resource').bootstrapToggle();
+
+</script>
+

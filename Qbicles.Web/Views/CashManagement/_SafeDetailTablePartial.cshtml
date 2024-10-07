@@ -1,0 +1,144 @@
+﻿@using Qbicles.BusinessRules
+@{
+    var transactionFilter = (SafeDetailFilterParameter)ViewBag.Filter;
+    var fromDateTime = ViewBag.FromDateTime;
+    var toDateTime = ViewBag.ToDateTime;
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+
+    //Export
+    var createdDate = DateTime.Now;
+    var timeZone = (string)ViewBag.CurrentTimeZone ?? "";
+    var user = (Qbicles.Models.ApplicationUser)ViewBag.CurrentUser;
+    var defaultLocation = (Qbicles.Models.Trader.TraderLocation)ViewBag.DefaultLocation;
+    var logoBase64 = (string)ViewBag.DomainLogoBase64;
+}
+
+<input type="hidden" id="fromDateTime" value="@fromDateTime">
+<input type="hidden" id="toDateTime" value="@toDateTime">
+<br />
+<input type="hidden" id="safe-id" value="@ViewBag.SafeId" />
+<div class="subspacing" style="padding: 30px;">
+
+    <div class="well custom" style="padding-bottom: 5px;">
+        <div class="row">
+            <div class="col-xs-12 col-sm-4">
+                <div class="form-group">
+                    <label for="search">Search</label>
+                    <input type="text" id="search_dt" value="@(transactionFilter.Key ?? "")" onchange="onKeySearchChangedSafeDetail(this)" name="search" class="form-control">
+                </div>
+            </div>
+            <div class="col-xs-12 col-sm-4 col-lg-3">
+                <label for="search">Filter by date</label>
+                <div class="input-group" style="margin-bottom: 15px;">
+                    <input type="text" value="@(transactionFilter.DateRange ?? "")" id="safe-transaction-input-datetimerange" name="daterange" class="form-control daterange" placeholder="Choose a range">
+                    <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                </div>
+            </div>
+            <div class="col-xs-12 col-lg-3">
+                <label>&nbsp;</label>
+                <div class="form-group">
+
+                    <!-- Export -->
+                    <div class="btn-group options">
+                        <button type="button" class="btn btn-warning dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            <i class="fa fa-download"></i> &nbsp; Export
+                        </button>
+                        <div class="dropdown-menu" id="kt_datatable_example_export_menu" aria-labelledby="dropdownMenuButton" style="background-color: #a37a41;">
+                            <li>
+                                <a class="dropdown-item data-qb-excel" href="javascript:void(0)" onclick="GetDataTableContentExport()">Excel</a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item data-qb-csv" href="javascript:void(0)" onclick="GetDataTableContentExport(2)">CSV</a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item data-qb-pdf" href="javascript:void(0)" onclick="GetDataTableContentExport(3)">PDF</a>
+                            </li>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!--begin::Hide default export buttons-->
+    <div id="kt_datatable_example_buttons" style="display: none;"></div>
+    <!--end::Hide default export buttons-->
+
+    <table class="table-striped table-hover" id="safe-transaction-list-table" data-order='[[0, "desc"]]' style="width: 100%;">
+        <thead>
+            <tr>
+                <th>Date &amp; time</th>
+                <th>Till/account</th>
+                <th>Safe in/out</th>
+                <th>Amount (@(currencySettings.CurrencySymbol ?? ""))</th>
+                <th>Balance (@(currencySettings.CurrencySymbol ?? ""))</th>
+                <th>Difference (@(currencySettings.CurrencySymbol ?? ""))</th>
+                <th>Status</th>
+                <th data-orderable="false">Options</th>
+            </tr>
+        </thead>
+        <tbody> </tbody>
+    </table>
+</div>
+
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/cashmanagement.device.js"></script>
+        <script src="~/Content/DesignStyle/js/app.js"></script>
+        <script src="~/Scripts/dev/safedetail.cashmanagement.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/cashmanagement.device.min.js"></script>
+        <script src="~/Content/DesignStyle/js/app.min.js"></script>
+        <script src="~/Scripts/dev/safedetail.cashmanagement.min.js"></script>
+    }
+}
+
+<script>
+
+     if ('@transactionFilter.Key' === ""||'@transactionFilter.DateRange' === "") {
+         var filter = {
+            Key: "@transactionFilter.Key",
+            DateRange: "@transactionFilter.DateRange"
+        };
+    }
+
+    // ----------------------------------------
+    //         EXPORT FUNCTIONALITY
+    // ----------------------------------------
+    function GetDataTableContentExport(exportType = 1) {
+        $.LoadingOverlay("show");
+
+        var params = $('#safe-transaction-list-table').DataTable().ajax.params();
+        console.log(params, "params");
+
+        //init params
+        var _parameter = {
+            ...params,
+            "export": exportType
+        };
+
+        $.ajax({
+            type: 'POST',
+            url: '/Report/GetVirtualSafeTableContentExport',
+            dataType: 'json',
+            data: _parameter,
+            success: function (response) {
+                if (response.result == true) {
+                    console.log(response, 'response');
+                    window.location.href = response.Object;
+                    cleanBookNotification.success("Export downloaded successfully!", "Qbicles");
+                }
+                $.LoadingOverlay("hide");
+            },
+            error: function (err) {
+                console.log(err, 'error');
+                $.LoadingOverlay("hide");
+            }
+        });
+    }
+
+</script>

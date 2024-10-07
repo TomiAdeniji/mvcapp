@@ -1,0 +1,128 @@
+﻿@using Qbicles.Models;
+@using Qbicles.BusinessRules;
+@using Qbicles.BusinessRules.Model
+@model QbicleLink
+@{
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var currentQbicleId = (int)ViewBag.CurrentQbicleId;
+    var dbContext = new Qbicles.BusinessRules.Model.ApplicationDbContext();
+    var qbicleTopics = new TopicRules(dbContext).GetTopicByQbicle(currentQbicleId);
+    var uriMediaImage = Model != null && Model.FeaturedImage != null ? Model.FeaturedImage.VersionedFiles.Where(e => !e.IsDeleted).OrderByDescending(f => f.UploadedDate).FirstOrDefault()?.Uri : "";
+    var lstDefaultImg = (List<DefaultMedia>)ViewBag.DefaultMedia;
+    var isSelectFromDefault = Model != null && lstDefaultImg.Any(i => i.Id.Equals(Model.FeaturedImage!=null?Model.FeaturedImage.Name:"0"));
+    var mediaLinkUse = Model != null && Model.FeaturedImage != null ? Model.FeaturedImage.Name : "0";
+}
+<div class="modal fade left" id="create-link" role="dialog" aria-labelledby="create-link">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">@(Model != null && Model.Id > 0 ? "Edit link" : "Add a link")</h5>
+            </div>
+            <div class="modal-body">
+                <form id="frm-link" enctype="multipart/form-data">
+                    <div class="well custom">
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label for="media-title">Link title</label>
+                                    <input type="text" name="Name" required value="@(Model!=null?Model.Name:"")" class="form-control">
+                                    <input type="hidden" id="hdlinkKey" name="Key" value="@(Model!=null&& Model.Id>0?Model.Key:"")" />
+                                    <input type="hidden" id="media-object-key" name="mediaObjectKey" />
+                                    <input type="hidden" id="media-object-name" name="mediaObjectName" />
+                                    <input type="hidden" id="media-object-size" name="mediaObjectSize" />
+                                </div>
+                            </div>
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label for="topic">Topic</label>
+                                    <select name="topicId" class="form-control select2" style="width: 100%;">
+                                        @foreach (var item in qbicleTopics)
+                                        {
+                                            <option value="@item.Id">@item.Name</option>
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label for="media-title">URL</label>
+                                    <input type="text" required name="URL" value="@(Model != null ? Model.URL : "")" class="form-control">
+                                </div>
+                            </div>
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label for="media">Featured image</label>
+                                    <select name="featuredOption" class="form-control select2" style="width: 100%;" onchange="if($(this).val() == '1') { $('.link-resource-picker').show(); $('.linkuploadnew').hide(); $('.other').show()} else { $('.link-resource-picker').hide(); $('.linkuploadnew').show(); }" tabindex="-1" aria-hidden="true">
+                                        <option value="1" @(isSelectFromDefault ? "selected" : "")>Select from a list of defaults</option>
+                                        <option value="2" @(isSelectFromDefault ? "" : "selected")>Upload my own image</option>
+                                    </select>
+                                </div>
+                                <div class="linkuploadnew" style="display: @(!isSelectFromDefault? "block" : "none"); margin-top: 15px; @(!string.IsNullOrEmpty(uriMediaImage) ? "margin-bottom: 30px;" : "margin-bottom: 0px;")">
+
+                                    <div class="form-group">
+                                        <label for="featuredimg">Choose an image to upload</label>
+                                        <input type="file" id="link-upload-file" class="form-control preview-link-img" onchange="if ($(this).val() !== '') { $('.linkuploadnew').css('margin-bottom', '30px'); }" name="fileFeaturedImage" accept=".jpg,.jpeg,.png,.webp" data-target=".preview-link">
+                                        <input type="hidden" id="mediaLinkUse" name="mediaLinkUse" value="@mediaLinkUse" />
+                                    </div>
+                                    <img src="@(!string.IsNullOrEmpty(uriMediaImage)?api+uriMediaImage:"")" class="preview-link" style="width: 100%; height: auto;@(!string.IsNullOrEmpty(uriMediaImage)?"display:block":"display:none")">
+                                </div>
+                                <div class="link-resource-picker" style="display: @(isSelectFromDefault? "block" : "none"); padding: 15px 0 0 0;">
+
+                                    <div class="flex-grid-half-lg from-community c1" style="width: 100%;">
+                                        @foreach (var item in lstDefaultImg)
+                                        {
+                                            <div id="otherlink_@(item.Id)" class="col other" style="display:@(Model==null||mediaLinkUse=="0"||(Model.FeaturedImage!=null&&item.Id.Equals(Model.FeaturedImage.Name)) ? "block" : "none")">
+                                                <a href="#" class="article-feature">
+                                                    <div class="article-feature-img" style="background: url('@item.FileUrl');">
+                                                    </div>
+                                                    <div class="info" style="padding: 15px 0;">
+                                                        <div style="padding: 0 20px;">
+
+                                                            <button id="btnuselink_@item.Id" type="button" class="btn btn-info community-button usetheme" style="display:@(Model!=null && item.Id.Equals(Model.FeaturedImage!=null?Model.FeaturedImage.Name:"0") ? "none" : "block")" onclick="$(this).hide(); $('#btnchangelink_@item.Id').show(); $('.other').hide(); $('#mediaLinkUse').val('@item.Id');$('#otherlink_@(item.Id)').show();">
+                                                                <i class="fa fa-check"></i> &nbsp; Use this
+                                                            </button>
+
+                                                            <button id="btnchangelink_@item.Id" type="button" class="btn btn-warning community-button change" style="display: @(Model!=null && item.Id.Equals(Model.FeaturedImage!=null?Model.FeaturedImage.Name:"0") ? "block" : "none")" onclick="$(this).hide(); $('#btnuselink_@item.Id').show(); $('#mediaLinkUse').val('0');$('.other').show();">
+                                                                <i class="fa fa-pencil"></i> &nbsp; Change
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </a>
+                                            </div>
+                                        }
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label for="media-description">Add a description</label>
+                                    <textarea name="Description" class="form-control" style="height: 80px;">@(Model != null? Model.Description:"")</textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                    <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                    <button class="btn btn-success" type="submit">@(Model != null && Model.Id > 0 ? "Confirm changes" : "Confirm")</button>
+                </form>
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+
+@{
+
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/qbicle.modal-link.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/qbicle.modal-link.js"></script>
+    }
+}

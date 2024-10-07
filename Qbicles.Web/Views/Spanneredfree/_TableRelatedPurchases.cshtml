@@ -1,0 +1,87 @@
+﻿@using Qbicles.Models.Spannered
+@using Qbicles.BusinessRules
+@using Qbicles.Models.Trader
+@model Asset
+@{
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+    var workGroupsOfMember = (List<WorkGroup>)ViewBag.WorkGroupsOfMember ?? (new List<WorkGroup>());
+}
+<table class="datatable table-striped table-hover" style="width: 100%;" id="tblRelatedPurchases">
+    <thead>
+        <tr>
+            <th data-priority="1">#</th>
+            <th data-priority="2">Workgroup</th>
+            <th data-priority="2">Items</th>
+            <th data-priority="1">Contact</th>
+            <th data-priority="2">Total (@currencySettings.CurrencySymbol)</th>
+            <th data-priority="1">Status</th>
+            <th data-priority="1" data-orderable="false">Options</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model.AssetTraderPurchases)
+        {
+            <tr>
+                <td>@(item.Reference?.FullRef??item.Id.ToString())</td>
+                <td>@item.Workgroup.Name</td>
+                <td><button class="btn btn-info" onclick="ShowPurchaseItems(@item.Id)" data-toggle="modal" data-target="#app-spannered-purchase-detail"><i class="fa fa-list"></i> &nbsp; @(item.PurchaseItems?.Count() ?? 0)</button></td>
+                <td><a href="#">@(item.Vendor?.Name)</a></td>
+                <td>@item.PurchaseTotal.ToDecimalPlace(currencySettings)</td>
+                <td>
+                    @{
+                        string str = "";
+                        switch (item.Status)
+                        {
+                            case Qbicles.Models.Trader.TraderPurchaseStatusEnum.Draft:
+                                str = "<span class=\"label label-lg label-primary\">Draft</span>";
+                                break;
+                            case Qbicles.Models.Trader.TraderPurchaseStatusEnum.PendingReview:
+                                str = "<span class=\"label label-lg label-warning\">Awaiting Review</span>";
+                                break;
+                            case Qbicles.Models.Trader.TraderPurchaseStatusEnum.PendingApproval:
+                                str = "<span class=\"label label-lg label-info\">Awaiting Approval</span>";
+                                break;
+                            case Qbicles.Models.Trader.TraderPurchaseStatusEnum.PurchaseDenied:
+                                str = "<span class=\"label label-lg label-danger\">Denied</span>";
+                                break;
+                            case Qbicles.Models.Trader.TraderPurchaseStatusEnum.PurchaseApproved:
+                                str = "<span class=\"label label-lg label-success\">Approved</span>";
+                                break;
+                            case Qbicles.Models.Trader.TraderPurchaseStatusEnum.PurchaseDiscarded:
+                                str = "<span class=\"label label-lg label-danger\">Discarded</span>";
+                                break;
+                            case Qbicles.Models.Trader.TraderPurchaseStatusEnum.PurchaseOrderIssued:
+                                str = "<span class=\"label label-lg label-success\">Order Issued</span>";
+                                break;
+                        }
+                    }
+                    @Html.Raw(str)
+                </td>
+                <td>
+                    @if (item.Status == Qbicles.Models.Trader.TraderPurchaseStatusEnum.Draft)
+                    {
+                        if (workGroupsOfMember.Any())
+                        {
+                            <button class="btn btn-info" onclick="editPurchase(@item.Id)"><i class="fa fa-pencil"></i> &nbsp; Continue</button>
+                        }
+                        else
+                        {
+                            <button class="btn btn-info" disabled><i class="fa fa-pencil"></i> &nbsp; Continue</button>
+                        }
+                    }
+                    else
+                    {
+                            <button class="btn btn-primary" onclick="window.location.href='/TraderPurchases/PurchaseMaster?id=@(item.Id)';"><i class="fa fa-eye"></i> &nbsp; Manage</button>
+                    }
+                </td>
+            </tr>
+        }
+
+    </tbody>
+</table>
+<style>
+    #tblRelatedPurchases_filter{
+        display:none
+    }
+</style>

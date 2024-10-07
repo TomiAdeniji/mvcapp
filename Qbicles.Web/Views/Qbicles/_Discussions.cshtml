@@ -1,0 +1,86 @@
+﻿@using Qbicles.BusinessRules;
+@using Qbicles.Models;
+@model IEnumerable<DateTime>
+@{
+        <!--Acivities data-->
+    var activitiesDateCount = (int)ViewBag.AcivitiesDateCount;
+    var activitiesDiscussion = (List<QbicleDiscussion>)ViewBag.acitvitiesDiscussion;
+    var myPinned = (List<QbicleActivity>)ViewBag.myPinneds;
+    string dateStr = "";
+    string dateStart = "";
+    var currentUserId = (string)ViewBag.CurrentUserId;
+    string classMyPostOrReply = "";
+    var today = (DateTime)ViewBag.Today;
+}
+@foreach (var dates in Model.OrderBy(d => d.Date).Batch(HelperClass.qbiclePageSize))
+{
+    foreach (var item in dates)
+    {
+        dateStart = @HelperClass.DatetimeToOrdinal(item);
+        if (item.Date == today.Date)
+            dateStr = "Today";
+        else
+            dateStr = dateStart;
+
+        <div class="clearfix"></div>
+        <div class="day-block" id=@(dateStr == "Today"?"activity-date-today":dateStr)  style="margin-bottom: 0;">
+            <div class="day-date">
+                <span class="date">@dateStr</span>
+            </div>
+            @if (activitiesDiscussion.Where(d => d.TimeLineDate.Date == item).ToList().Count > 0)
+            {
+                foreach (var dis in activitiesDiscussion.Where(d => d.TimeLineDate.Date == item).OrderBy(d => d.TimeLineDate))
+                {
+                    classMyPostOrReply = dis.StartedBy.Id == currentUserId ? "mypost" : "reply";
+                    <div class="@classMyPostOrReply" onclick="ShowDiscussionPage('@dis.Key');">
+                        <div class="poster">
+                            @{
+                                if (dis.StartedBy.ProfilePic != null)
+                                {
+                                    <img src="@dis.StartedBy.ProfilePic">
+                                }
+                                else
+                                {
+                                    <img src="https://www.placehold.it/300x250/EFEFEF/AAAAAA&text=no+image+selected">
+                                }
+                            }
+                        </div>
+                        <div class="content">
+                            <a href="javascript:void(0);" onclick="PinnedActivity('@dis.Id',false,event)" class="pin">
+                                @if (myPinned != null && myPinned.Any(e => e.Id == dis.Id))
+                                {
+                                    <i id="pinIcon-@dis.Id" class="fa fa-check green"></i>
+                                }
+                                else
+                                {
+                                    <i id="pinIcon-@dis.Id" class="fa fa-thumb-tack"></i>
+                                }
+                            </a>
+                            <div class="bubble-marker"></div>
+                            <small>@dis.StartedBy.Forename @dis.StartedBy.Surname &nbsp; | &nbsp;@dis.TimeLineDate.ToString("hh:mmtt")</small>
+                            <p>@dis.Name</p>
+
+                            @{
+                                
+                                var postsToday = dis.Posts.Where(d => d.StartedDate.Date == today).Count();
+                                var tasksToday = dis.SubActivities.Where(d => d.TimeLineDate.Date == today && d.ActivityType == QbicleActivity.ActivityTypeEnum.TaskActivity).Count();
+                                <div class="info_labels">
+                                    @if (postsToday > 0)
+                                    {
+                                        <span class="label label-success"> @postsToday new replies</span>
+                                    }
+                                    @if (tasksToday > 0)
+                                    {
+                                        <span class="label label-warning">@tasksToday new task</span>
+                                    }
+                                </div>
+                            }
+                        </div>
+                        <div class="clearfix"></div>
+                    </div>
+                    <div class="clearfix"></div>
+                                    }
+                                }
+        </div>
+                                    }
+                                }

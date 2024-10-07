@@ -1,0 +1,78 @@
+﻿@using Qbicles.Models.MyBankMate
+@using Qbicles.BusinessRules
+@using Qbicles.Models.Trader
+@model List<IGrouping<DateTime, CashAccountTransaction>>
+@{
+    var accountId = ViewBag.AccountId;
+    var api = (string)ViewBag.DocRetrievalUrl;
+
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+    //var isAllApprovedTransactionShown = (bool)ViewBag.isAllApprovedTransactionShown;
+}
+
+@if (Model.Count > 0)
+{
+    foreach (var groupTransactions in Model)
+    {
+        var groupKey = groupTransactions.Key;
+
+        <div class="statement-date">
+            @{
+                var groupDateTime = groupTransactions.FirstOrDefault().CreatedDate;
+                var groupDateStr = groupDateTime.ToString("MMMM") + " " + groupDateTime.Day + groupDateTime.Day.ToOrdinal() + ", " + groupDateTime.ToString("yyyy");
+            }
+            <h5>@groupDateStr</h5>
+        </div>
+
+        <ul class="mbm-acclist statement">
+            @foreach (var transactionItem in groupTransactions)
+            {
+                var destinationAcc = transactionItem.DestinationAccount;
+                var originatingAcc = transactionItem.OriginatingAccount;
+                var transactionType = "";
+                decimal transactionAmount = transactionItem.Amount;
+                var transactionAmountString = "";
+                var colourClassName = "";
+                var imageUri = "";
+                var showName = "";
+                if (destinationAcc != null && destinationAcc.Id == accountId)
+                {
+                    transactionType = "Credit";
+                    transactionAmountString = "+" + currencySettings.CurrencySymbol + transactionAmount.ToDecimalPlace(currencySettings);
+                    colourClassName = "green";
+                    showName = originatingAcc?.Name ?? "";
+                    imageUri = originatingAcc?.ImageUri ?? "";
+                }
+                else if (originatingAcc != null && originatingAcc.Id == accountId)
+                {
+                    transactionType = "Debit";
+                    transactionAmountString = "-" + currencySettings.CurrencySymbol + transactionAmount.ToDecimalPlace(currencySettings);
+                    colourClassName = "red";
+                    showName = destinationAcc?.Name ?? "";
+                    imageUri = destinationAcc?.ImageUri ?? "";
+                }
+
+                <li>
+                    <a href="#" onclick="transactionDetailModalShow(@transactionItem.Id, @accountId)" data-toggle="modal">
+                        <div class="accimg" style="background-image: url('@api@imageUri');"></div>
+                        <div class="accinf">
+                            <h5>@showName</h5>
+                            <p>@transactionType</p>
+                        </div>
+                        <div class="accbal text-right">
+                            <h3>
+                                <span class="@colourClassName">@transactionAmountString</span>
+                            </h3>
+                        </div>
+                    </a>
+                </li>
+            }
+        </ul>
+    }
+    <button id="load-more-approved-btn" onclick="LoadMoreTransaction(@accountId, this)" takeNum="0" class="btn btn-info community-button" style="margin-top: 15px">Load more</button>
+    @*if (!isAllApprovedTransactionShown)
+    {
+        <button id="load-more-approved-btn" skip="0" takeNumber class="btn btn-info community-button" style="margin-top: 15px">Load more approved transactions</button>
+    }*@
+}

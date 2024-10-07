@@ -1,0 +1,276 @@
+﻿@using Qbicles.BusinessRules
+@using Qbicles.Models.Trader
+@model TraderCashAccount
+@{
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var locationId = (int)ViewBag.LocationId;
+    var destinationAccounts = (List<CashAccountTransaction>)ViewBag.DestinationAccounts;
+    var originationAccounts = (List<CashAccountTransaction>)ViewBag.OriginationAccounts;
+    var timeZone = (string)ViewBag.CurrentTimeZone ?? "";
+    var dateFormat = (string)ViewBag.CurrentDateFormat;
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+    var transactionInSum = (decimal)ViewBag.InTransactionsSum;
+    var transactionOutSum = (decimal)ViewBag.OutTransactionsSum;
+    var goBackPage = (string)ViewBag.GoBackPage;
+    var amountAvailable = transactionInSum - transactionOutSum -
+        (destinationAccounts.Where(e => e.Status == TraderPaymentStatusEnum.PaymentApproved).Sum(a => a.Charges)
+        + originationAccounts.Where(e => e.Status == TraderPaymentStatusEnum.PaymentApproved).Sum(a => a.Charges));
+
+    //Export
+    var createdDate = DateTime.Now;
+    var user = (Qbicles.Models.ApplicationUser)ViewBag.CurrentUser;
+    var defaultLocation = (Qbicles.Models.Trader.TraderLocation)ViewBag.DefaultLocation;
+    var logoBase64 = (string)ViewBag.DomainLogoBase64;
+}
+
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail" id="discussion-thread">
+    <input id="manager_location" type="hidden" value="@locationId" />
+    <input id="tradercashaccount_id" type="hidden" value="@Model.Id" />
+    <input id="accountdomain_id" type="hidden" value="@(Model.Domain?.Id ?? 0)" />
+    <input type="hidden" id="available-amount" value="@amountAvailable" />
+
+    <!-- Main content -->
+    <section class="content">
+
+        <br />
+
+        <div class="row">
+            <div class="col-xs-12 item_detail" style="padding-left: 15px;">
+
+                <div class="item_type_icon">
+                    <img src="@(api+Model.ImageUri)&size=T">
+                </div>
+                <div class="item_titling" style="position: relative; top: -8px;">
+                    <span class="item_type">Cash &amp; Bank</span>
+                    <h3>@Model.Name</h3>
+                </div>
+                <div class="clearfix"></div>
+
+                <br />
+
+                <div class="row">
+                    <div class="col-xs-12">
+                        <div class="app_filter">
+                            <div class="row">
+                                <div class="col-xs-12">
+                                    @if (!string.IsNullOrEmpty(goBackPage) && goBackPage == "BusinessProfile")
+                                    {
+                                        <a href="/Commerce/BusinessProfileTrading?tab=general-candb" class="btn btn-primary"><i class="fa fa-angle-left"></i> &nbsp; Cash &amp; Bank</a>
+                                    }
+                                    else
+                                    {
+                                        <a href="/Trader/AppTrader#CashBank" onclick="setTabTrader('cashbank')" class="btn btn-primary"><i class="fa fa-angle-left"></i> &nbsp; Cash &amp; Bank</a>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <br /><br />
+
+        <div class="row">
+            <div class="col-xs-12">
+
+                <div class="app_upper_dash text-center" style="max-width: 1200px;">
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-6 col-lg-3">
+                            <div class="stat_label">
+                                <span>In</span>
+                                <h3>
+                                    @transactionInSum.ToCurrencySymbol(currencySettings)
+                                </h3>
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-sm-6 col-lg-3">
+                            <div class="stat_label">
+                                <span>Out</span>
+                                <h3>
+                                    @transactionOutSum.ToCurrencySymbol(currencySettings)
+                                </h3>
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-sm-6 col-lg-3">
+                            <div class="stat_label">
+                                <span>Charges</span>
+                                <h3>@((destinationAccounts.Where(e => e.Status == TraderPaymentStatusEnum.PaymentApproved).Sum(a => a.Charges) + originationAccounts.Where(e => e.Status == TraderPaymentStatusEnum.PaymentApproved).Sum(a => a.Charges)).ToCurrencySymbol(currencySettings))</h3>
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-sm-6 col-lg-3">
+                            <div class="stat_label">
+                                <span>Transactions</span>
+                                <h3>@(originationAccounts.Count() + destinationAccounts.Count())</h3>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <br />
+
+                <div class="well custom" style="padding-bottom: 5px;">
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-6 col-md-4">
+                            <div class="form-group">
+                                <label for="search_dt">Search for something</label>
+                                <input type="text" id="search_trans" name="search_trans" id="search_trans" onkeyup="$('#community-list').DataTable().ajax.reload();" class="form-control" placeholder="Search for something">
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-sm-6 col-md-3">
+                            <div class="form-group">
+                                <label for="daterange">Date range</label>
+                                <input type="text" id="date_range" class="form-control daterange" placeholder="Limit to a date range" value="">
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-sm-12 col-md-5">
+                            <label>Options</label>
+                            <br />
+                            <div class="form-group">
+                                @if (ViewBag.IsMemberWorkGroup && Model.BankmateType == BankmateAccountType.NotInBankMate)
+                                {
+                                    if (!ViewBag.HasAssociatedSafe)
+                                    {
+                                        <button class="btn btn-success" data-toggle="modal" onclick="AddPayment(@Model.Id)"><i class="fa fa-plus"></i> &nbsp; Add payment</button>
+                                    }
+                                    <button class="btn btn-warning" data-toggle="modal" onclick="AddTranfer(@Model.Id)"><i class="fa fa-exchange"></i> &nbsp; Transfer funds</button>
+                                }
+
+                                <div class="btn-group options">
+                                    <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                        <i class="fa fa-sliders"></i> &nbsp; Manage display
+                                    </button>
+                                    <ul class="dropdown-menu primary manage-columns">
+                                        <li><label><input type="checkbox" data-column="1" checked> Date</label></li>
+                                        <li><label><input type="checkbox" data-column="2" checked> Reference</label></li>
+                                        <li><label><input type="checkbox" data-column="3" checked> Source</label></li>
+                                        <li><label><input type="checkbox" data-column="4" checked> Payment Method</label></li>
+                                        <li><label><input type="checkbox" data-column="5" checked> Destination</label></li>
+                                        <li><label><input type="checkbox" data-column="6" checked> Type</label></li>
+                                        <li><label><input type="checkbox" data-column="7" checked> In/Out</label></li>
+                                        <li><label><input type="checkbox" data-column="8" checked> For</label></li>
+                                        <li><label><input type="checkbox" data-column="9" checked> Amount</label></li>
+                                        <li><label><input type="checkbox" data-column="10" checked> Status</label></li>
+                                    </ul>
+                                </div>
+
+                                <!-- Export -->
+                                <div class="btn-group options">
+                                    <button type="button" class="btn btn-warning dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                        <i class="fa fa-download"></i> &nbsp; Export
+                                    </button>
+                                    <div class="dropdown-menu" id="kt_datatable_example_export_menu" aria-labelledby="dropdownMenuButton" style="background-color: #a37a41;">
+                                        <li>
+                                            <a class="dropdown-item data-qb-excel" href="javascript:void(0)" onclick="GetDataTableContentExport()">Excel</a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item data-qb-csv" href="javascript:void(0)" onclick="GetDataTableContentExport(2)">CSV</a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item data-qb-pdf" href="javascript:void(0)" onclick="GetDataTableContentExport(3)">PDF</a>
+                                        </li>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="visible-xs" style="width: 100%; height: 15px;">&nbsp;</div>
+
+                <!--begin::Hide default export buttons-->
+                <div id="kt_datatable_example_buttons" style="display: none;"></div>
+                <!--end::Hide default export buttons-->
+
+                <br /><br />
+                <div id="table_transaction">
+                    <table class="datatable table-hover table-striped" width="100%" data-order='[[0, "desc"]]' cellspacing="0" id="community-list">
+                        <thead>
+                            <tr>
+                                <th data-priority="1">#</th>
+                                <th data-priority="2">Date</th>
+                                <th data-priority="2">Reference</th>
+                                <th data-priority="2">Source</th>
+                                <th data-priority="2">Payment Method</th>
+                                <th data-priority="2">Destination</th>
+                                <th data-priority="1">Type</th>
+                                <th data-priority="1">In/Out</th>
+                                <th data-priority="2">For</th>
+                                <th data-priority="1">Amount <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                <th data-priority="3">Status</th>
+                                <th data-priority="1" class="nosort">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+    <!-- ./content -->
+</div>
+<!-- /.content-wrapper -->
+
+<div class="modal fade left" id="cashbank-payment" role="dialog" aria-labelledby="cashbank-payment">
+</div><!-- /.modal -->
+
+<div class="modal fade left" id="cashbank-transfer" role="dialog" aria-labelledby="cashbank-transfer">
+</div><!-- /.modal -->
+
+<div class="modal fade left" id="app-trader-workgroup-preview" role="dialog" aria-labelledby="app-trader-workgroup-preview">
+</div><!-- /.modal -->
+
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/trader.cashbank.manage.js"></script>
+        <script src="~/Scripts/dev/trader.domain.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/trader.cashbank.manage.js"></script>
+        <script src="~/Scripts/dev/trader.domain.min.js"></script>
+    }
+}
+
+<script>
+
+    // ----------------------------------------
+    //         EXPORT FUNCTIONALITY
+    // ----------------------------------------
+    function GetDataTableContentExport(exportType = 1) {
+        $.LoadingOverlay("show");
+
+        //Get table params
+        var params = $('#community-list').DataTable().ajax.params();
+        console.log(params, "params");
+
+        //init params
+        var _parameter = {
+            ...params,
+            "export": exportType
+        };
+
+        $.ajax({
+            type: 'POST',
+            url: '/Report/GetCashBankTableContentExport',
+            dataType: 'json',
+            data: _parameter,
+            success: function (response) {
+                if (response.result == true) {
+                    console.log(response, 'response');
+                    window.location.href = response.Object;
+                    cleanBookNotification.success("Export downloaded successfully!", "Qbicles");
+                }
+                $.LoadingOverlay("hide");
+            },
+            error: function (err) {
+                console.log(err, 'error');
+                $.LoadingOverlay("hide");
+            }
+        });
+    }
+
+</script>

@@ -1,0 +1,142 @@
+﻿@using Qbicles.Models.Trader;
+@{ 
+    var lstTraderLocation = (List<TraderLocation>)ViewBag.ListTraderLocation ?? new List<TraderLocation>();
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+}
+
+
+<div class="well custom" style="padding-bottom: 5px;">
+
+    <div class="row">
+        <div class="col-xs-12 col-sm-6 col-lg-3">
+            <div class="form-group">
+                <label for="loc">Location</label>
+                <select name="loc" class="form-control select2" id="inventory-location" style="width: 100%;">
+                    @foreach (var location in lstTraderLocation)
+                    {
+                        <option value="@location.Id" selected>@location.Name</option>
+                    }
+                </select>
+            </div>
+        </div>
+        <div class="col-xs-12 col-sm-6 col-lg-3">
+            <div class="form-group">
+                <label for="search_dt">Search</label>
+                <input type="text" name="search_dt" id="inventory_search_text" class="search_dt form-control" placeholder="Search for something">
+            </div>
+        </div>
+        <div class="col-xs-12 col-sm-6 col-lg-2">
+            <div class="form-group">
+                <label for="showvalues">Inventory total basis</label>
+                <select name="showvalues" id="inventory-basis-select" class="form-control select2" style="width: 100%;">
+                    <option value="average" selected>Average cost (FIFO)</option>
+                    <option value="latest">Latest cost</option>
+                </select>
+            </div>
+        </div>
+        <div class="col-xs-12 col-sm-6 col-lg-2">
+            <div class="form-group">
+                <label for="showvalues">Days to last basis</label>
+                <select name="showvalues" id="day-to-last-basis-select" class="form-control select2" style="width: 100%;">
+                    <option value="1">Last one week sales</option>
+                    <option value="2">Last one month sales</option>
+                    <option value="3" class="singledate">Custom range</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="div-filter-by-date-range" class="col-xs-12 col-sm-6 col-md-2" style="display: none">
+            <label for="datefilter">Filter by date</label>
+            <div class="input-group" style="margin-bottom: 15px;">
+                <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                <input type="text" id="filter_daterange" name="datefilter" class="form-control datetimerange" placeholder="Choose a range">
+            </div>
+        </div>
+
+        <div class="col-xs-12 col-sm-6 col-lg-2">
+            <div class="form-group">
+                <label for="maxdays">Max days to last</label>
+                <input type="number" min="0" id="max-day-to-last" value="12" name="maxdays" class="form-control">
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<br />
+
+
+<table class="datatable table-striped table-hover" id="tbl-inventory" style="width: 100%;">
+    <thead>
+        <tr>
+            <th data-priority="1">Item</th>
+            <th data-priority="3">Unit</th>
+            <th data-priority="1">Current inventory</th>
+            <th data-priority="1">Days to last</th>
+            <th data-priority="2">Inventory total <strong>(@currencySettings.CurrencySymbol)</strong></th>
+            <th data-priority="4">Associated</th>
+        </tr>
+    </thead>
+    <tbody>
+        
+    </tbody>
+</table>
+
+
+<script>
+    $(document).ready(function () {
+        var _dateFormat = $dateFormatByUser.toUpperCase();
+        $('#filter_daterange').daterangepicker({
+            autoUpdateInput: true,
+            timePicker: true,
+            cancelClass: "btn-danger",
+            opens: "right",
+            locale: {
+                cancelLabel: 'Clear',
+                format: _dateFormat
+            }
+        });
+        $('#filter_daterange').val("");
+        $('#filter_daterange').on('apply.daterangepicker', function (ev, picker) {
+            $(this).val(picker.startDate.format(_dateFormat) + ' - ' + picker.endDate.format(_dateFormat));
+            $('#filter_daterange').html(picker.startDate.format(_dateFormat) + ' - ' + picker.endDate.format(_dateFormat));
+            reloadInventoryTbl();
+        });
+        $('#filter_daterange').on('cancel.daterangepicker', function (ev, picker) {
+            $(this).val(null);
+            $('#filter_daterange').html('full history');
+            //CallBackFilterDataInventoryServeSide();
+        });
+
+        $("#inventory-location").on('change', function () {
+            reloadInventoryTbl();
+        });
+
+        $("#inventory_search_text").keyup(delay(function () {
+            reloadInventoryTbl();
+        }, 500));
+
+        $("#inventory-basis-select").on('change', function () {
+            reloadInventoryTbl();
+        });
+
+        $("#day-to-last-basis-select").on('change', function () {
+            if ($("#day-to-last-basis-select").val() === '3') {
+                $("#div-filter-by-date-range").show();
+            } else {
+                $("#div-filter-by-date-range").hide();
+                $('.datetimerange').val("");
+                reloadInventoryTbl();
+            }
+        });
+
+        $("#max-day-to-last").on('change', function () {
+            reloadInventoryTbl();
+        });
+    })
+
+    function reloadInventoryTbl() {
+        $("#tbl-inventory").DataTable().ajax.reload();
+    }
+
+</script>

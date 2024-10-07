@@ -1,0 +1,289 @@
+﻿@using Qbicles.Models;
+@using Qbicles.Models.Operator;
+@using Qbicles.Models.Operator.TimeAttendance;
+@using Qbicles.BusinessRules;
+@model Attendance
+    @{
+        var api = (string)ViewBag.DocRetrievalUrl;
+        var type=(string)ViewBag.type;
+        var currentTimeZone = (string)ViewBag.CurrentTimeZone;
+        var approval = type=="clockin"? Model.ApprovalTimeIn: Model.ApprovalTimeOut;
+        var currentUserId = (string)ViewBag.CurrentUserId;
+        var pageSize = HelperClass.activitiesPageSize;
+        var Comments = approval != null ? approval.Posts.OrderByDescending(x => x.StartedDate).Take(pageSize) : null;
+        var count_Comments = approval != null ? approval.Posts.Count() : 0;
+        var count_Medias = approval.SubActivities.Count();
+        var dateFormat = (string)ViewBag.CurrentDateFormat;
+        ViewBag.Title = (type == "clockin" ? $"Operator > {HelperClass.GetFullNameOfUser(Model.People)} Clocked in": $"Operator > {HelperClass.GetFullNameOfUser(Model.People)} Clocked out");
+    }
+    <!-- Content Wrapper. Contains page content -->
+    <div class="content-wrapper qbicle-detail mdv2-wrapper" style="position: relative;">
+
+
+        <!-- Main content -->
+        <section class="mdv2 dash" data-tooltip-color="teal" data-tooltip-delay="300" data-tooltip-animate-function="spin" style="border-top: 1px solid #f1f1f1;">
+
+
+            <!-- App bar -->
+            <div class="mdv2-col-app" style="margin-bottom: 0;">
+
+                <div data-spy="affix" class="contained-sidebar">
+
+                    <div class="activity-overview plain company-overview welcome-info" style="text-align: left !important; flex: none; margin: 0; padding-top: 30px; padding-bottom: 0;">
+
+                        <div class="pull-left" style="margin-bottom: 15px;">
+                            <a href="/Qbicles/Dashboard" class="btn btn-primary"><i class="fa fa-angle-left"></i> &nbsp; Qbicle</a>
+                            <a href="/Operator?tab=time-attendance" class="btn btn-info"><i class="fa fa-eye"></i> &nbsp; Attendance</a>
+                        </div>
+                        <div class="clearfix"></div>
+
+                        <br />
+
+                        <h1 style="line-height: 1.2;">@approval.Name</h1>
+                        <span class="label label-lg label-primary">@approval.Topic.Name</span>
+
+                        <br /><br /><br /><br />
+
+                        <div class="row">
+                            <div class="col-xs-12 col-md-6">
+                                <label>Location</label>
+                                <p>@(Model.WorkGroup?.Location.Name)</p>
+                            </div>
+                            <div class="col-xs-12 col-md-6">
+                                <label>Date</label>
+                                <p>@Model.Date.ConvertTimeFromUtc(currentTimeZone).ToString(dateFormat)</p>
+                            </div>
+                        </div>
+
+                    </div>
+
+
+
+
+                </div>
+            </div>
+            <!-- END App bar -->
+            <!-- Main area -->
+            <div class="mdv2-col-dash">
+
+
+                <ul class="subapps-nav" role="navigation" data-tooltip-stickto="bottom">
+                    <li class="active">
+                        <a href="#" data-toggle="tab" data-target="#task-time" data-tooltip="Time logging">
+                            <i class="fa fa-clock-o"></i>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" data-toggle="tab" data-target="#task-discuss" data-tooltip="Discuss">
+                            <i class="fa fa-comment-alt"></i>
+                        </a>
+                    </li>
+                </ul>
+
+
+
+                <div class="tab-content" style="padding-bottom: 30px;">
+
+
+                    <!-- Time logging -->
+                    <div class="tab-pane fade in active" id="task-time">
+
+                        <div class="subspacing">
+
+                            <table class="datatable table-striped table-hover" id="community-list" style="width: 100%;">
+                                <thead>
+                                    <tr>
+                                        <th>Person</th>
+                                        <th>@(type=="clockin"? "Clocked in":"Clocked out")</th>
+                                        <th>Notes</th>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>
+                                            <ul class="avatar-listing unstyled" style="margin-bottom: 0 !important;">
+                                                <li>
+                                                    <a href="/Community/UserProfilePage?uId=@Model.People.Id" target="_blank" style="text-decoration: none !important; background: transparent !important; padding: 0;">
+                                                        <div class="owner-avatar">
+                                                            <div class="avatar-sm" style="background: url('@(api+Model.People.ProfilePic)');"></div>
+                                                        </div>
+                                                        <h5>@(HelperClass.GetFullNameOfUser(Model.People))<br><small>@(Model.People?.JobTitle??"")</small></h5>
+                                                    </a>
+                                                </li>
+                                            </ul>
+                                        </td>
+                                        <td>@(type == "clockin" ? Model.TimeIn.ConvertTimeFromUtc(currentTimeZone).ToString("hh:mmtt").ToLower(): Model.TimeOut.Value.ConvertTimeFromUtc(currentTimeZone).ToString("hh:mmtt").ToLower())</td>
+                                        <td>@Model.Notes</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+                        </div>
+
+                    </div>
+                    <!-- END Time logging -->
+                    <!-- Discuss -->
+                    <div class="tab-pane fade" id="task-discuss">
+
+                        <div class="spacing" style="padding-top: 0;">
+
+
+                            <div class="row">
+                                <div class="col-xs-12">
+                                    <ul class="app_subnav admintabs" style="padding-top: 0;">
+                                        <li class="active"><a href="#task-comments" data-toggle="tab">Comments</a></li>
+                                        <li><a href="#task-files" data-toggle="tab">Files</a></li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <br />
+
+                            <div class="tab-content">
+
+
+                                <!-- Comments -->
+                                <div class="tab-pane fade in active" id="task-comments">
+                                    <div class="row">
+                                        <div class="col-xs-12">
+                                            <div class="well" style="max-width: 800px;">
+                                                <div class="form-group">
+                                                    <label for="add-comment">Add a comment</label>
+                                                    <textarea id="txt-comment-approval" name="addcomment" onkeyup="validateAddComment()" class="form-control"></textarea>
+                                                    <label id="addcomment-error" class="error" for="addcomment" style="display: none;">Your post is longer than the 1,500 character limit. Please reduce the length, or split it across multiple posts</label>
+                                                </div>
+
+                                                <button class="btn btn-success" onclick="addCommentForApproval('@approval.Key')">Submit</button>
+                                            </div>
+
+                                            <br>
+                                        </div>
+                                    </div>
+                                    <div id="list-comments-approval">
+                                        @if (Comments != null && count_Comments > 0)
+                                        {
+                                            foreach (var item in Comments)
+                                            {
+                                                <!-- General post -->
+                                                <article id="post-@item.Id" class="activity post">
+                                                    <div class="activity-avatar" style="background-image: url('@(api+item.CreatedBy.ProfilePic)&size=T');"></div>
+                                                    <div class="activity-detail">
+                                                        <div class="activity-meta">
+                                                            <h4>@HelperClass.GetFullNameOfUser(item.CreatedBy, currentUserId)</h4>
+                                                            <small>@item.StartedDate.ConvertTimeFromUtc(currentTimeZone).ToString(dateFormat + ", hh:mmtt").ToLower()</small>
+                                                        </div>
+
+                                                        <div class="activity-overview media-comment">
+                                                            <p>@Html.Raw(item.Message.Replace(Environment.NewLine, "<br/>"))</p>
+                                                        </div>
+                                                    </div>
+                                                    <div class="clearfix"></div>
+                                                </article>
+                                                <!-- END General post -->
+                                            }
+                                        }
+                                    </div>
+                                    @if (count_Comments > pageSize)
+                                    {
+                                        <button id="btnLoadPosts" onclick="LoadMorePostsDiscussion('@approval.Key', @pageSize, 'list-comments-approval')" class="btn btn-info">Load older posts</button>
+                                    }
+                                </div>
+                                <!-- END Comments -->
+                                <!-- Files -->
+                                <div class="tab-pane fade" id="task-files">
+                                    <br>
+                                    @if (approval.ClosedBy == null)
+                                    {
+                                        <a href="#" class="btn btn-success" data-toggle="modal" data-target="#create-media"><i class="fa fa-upload"></i> &nbsp; Upload a file</a>
+                                    }
+                                    <br><br>
+                                    <div id="list-medias">
+                                        @if (count_Medias > 0)
+                                        {
+                                            foreach (var item in approval.SubActivities.OrderByDescending(x => x.Id).Take(pageSize))
+                                            {
+                                                var med = (QbicleMedia)item;
+                                                var createdByName = med.StartedBy.Id == currentUserId ? "Me" : HelperClass.GetFullNameOfUser(med.StartedBy);
+                                                var createdDate = med.StartedDate.Date == DateTime.Now.Date ? "Today, " + med.StartedDate.ToString("h:mmtt").ToLower() : med.StartedDate.ToString(dateFormat + " hh:mmtt").ToLower();
+                                                var lastUpdateFile = "";
+                                                var mediaLastupdate = med.VersionedFiles.Where(e => !e.IsDeleted).OrderByDescending(x => x.UploadedDate).FirstOrDefault() ?? null;
+                                                if (mediaLastupdate != null)
+                                                {
+                                                    lastUpdateFile = mediaLastupdate?.UploadedDate.Date == DateTime.Now.Date ? "Today, " + mediaLastupdate.UploadedDate.ToString("h:mmtt").ToLower() : mediaLastupdate.UploadedDate.ToString(dateFormat + " hh:mmtt").ToLower();
+                                                } //Media post
+                                                <!-- Media post -->
+                                                <article class="activity media">
+                                                    <div class="activity-avatar" style="background-image: url('@api@(med.StartedBy.ProfilePic)&size=T');"></div>
+                                                    <div class="activity-detail" style="width: 100%; max-width: 100%;">
+                                                        <div class="activity-meta">
+                                                            <h4>@createdByName</h4>
+                                                            <small>@createdDate</small>
+                                                            <br class="visible-xs">
+                                                        </div>
+
+                                                        <div class="activity-overview media">
+                                                            <div class="row">
+                                                                <div class="col-xs-12 col-sm-5 col-lg-4">
+                                                                    <a href="javascript:void(0)" onclick="ShowMediaPage('@med.Key')">
+                                                                        @if (med.FileType.Type == "Image File")
+                                                                        {
+                                                                            <img id="media-@item.Id" class="img-responsive" src='@api@(mediaLastupdate.Uri)&size=M' />
+                                                                        }
+                                                                        else
+                                                                        {
+                                                                            <img src="@med.FileType.ImgPath" class="img-responsive">
+                                                                        }
+                                                                    </a>
+                                                                </div>
+                                                                <div class="col-xs-12 col-sm-7 col-lg-8 description" style="padding-top: 0;">
+                                                                    <h5>@med.Name</h5>
+                                                                    <p>
+                                                                        @med.Description
+                                                                    </p>
+                                                                    <small>@Utility.GetFileTypeDescription(med.FileType.Extension) | Update @lastUpdateFile</small>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="clearfix"></div>
+                                                </article>
+                                                <!-- END Media post -->
+                                            }
+                                        }
+                                        @if (count_Medias > pageSize)
+                                        {
+                                            <button id="btnLoadMedias" onclick="LoadMoreMediasAprroval(@approval.Id, @pageSize, 'list-medias')" class="btn btn-info">Load older medias</button>
+                                        }
+                                    </div>
+                                </div>
+                                <!-- END Files -->
+
+                            </div>
+
+                        </div>
+                    </div>
+
+                </div>
+
+
+            </div>
+
+
+        </section>
+        <!-- ./content -->
+
+    </div>
+    <!-- /.content-wrapper -->
+
+    @{
+        Html.RenderAction("GenerateModalMedia", "Qbicles");
+    }
+    @{
+        if (System.Diagnostics.Debugger.IsAttached)
+        {
+            <script src="~/Scripts/dev/operator.clock.js"></script>
+        }
+        else
+        {
+            <script src="~/Scripts/dev/operator.clock.min.js"></script>
+        }
+    }

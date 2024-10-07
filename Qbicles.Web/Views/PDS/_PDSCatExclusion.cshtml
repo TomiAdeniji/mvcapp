@@ -1,0 +1,186 @@
+﻿@model List<Qbicles.Models.Trader.ODS.CategoryExclusionSet>
+@{
+}
+
+<br />
+
+<button class="btn btn-success community-button sm w-auto" data-toggle="modal" data-target="#app-trader-pds-catexclusionset-add" onclick="addCategoryExclution()"><i class="fa fa-plus"></i> &nbsp; Add a category exclusion set</button>
+<br />
+
+<br />
+<br />
+
+<div class="flex-grid-thirds-lg qbicles-dash-grid">
+    @if (Model != null)
+    {
+        foreach (var item in Model)
+        {
+            <article class="col">
+                <div class="qbicle-opts">
+                    <div class="dropdown">
+                        <a href="#" class="dropdown-toggle" data-toggle="dropdown">
+                            <i class="fa fa-cog"></i>
+                        </a>
+
+                        <ul class="dropdown-menu dropdown-menu-right primary">
+                            <li><a href="#" data-toggle="modal" data-target="#app-trader-pds-catexclusionset-add" onclick="editCategoryExclutionSet('@item.Id')">Edit</a></li>
+                            <li><a href="#" data-toggle="modal" onclick="deleteCategoryExclusionSet('@item.Id','@item.Name')">Delete</a></li>
+                        </ul>
+                    </div>
+
+                </div>
+                <a href="#" style="cursor: initial !important;">
+                    <h1 class="block1">@item.Name</h1>
+                </a>
+                <p class="qbicle-detail" style="padding: 0;">
+                    <div class="well custom rounded" style="margin: 0;">
+                        <h5>Associated PDS devices</h5><br />
+                        @foreach(var pdsDevices in item.PrepDisplayDevices)
+                    {
+                        <label class="label label-lg label-primary plabel">@pdsDevices.Name</label>
+                    }
+                    </div>
+                </p>
+            </article>
+        }
+    }
+</div>
+
+<script>
+    var listSelected = []
+    function addCategoryExclution()
+    {
+        var url = "/PDS/CreateCategoriesExclusion"
+        var urlOption = "/PDS/CategoryExclusionList"
+
+        $.ajax({
+        type: "GET",
+        url: url,
+        success: function (response) {
+            $("#app-trader-pds-catexclusionset-add").empty().append(response);
+            $("#app-trader-pds-catexclusionset-select").load(urlOption, function(){})
+        },
+        beforeSend: function(){
+            $("#app-trader-pds-catexclusionset-add").empty().append('<div class="modal-dialog"></div>');
+            $("#app-trader-pds-catexclusionset-add .modal-dialog").LoadingOverlay("show");
+        }
+    });
+
+        @* $("#app-trader-pds-catexclusionset-add").load(url, function () { 
+            $("#app-trader-pds-catexclusionset-select").load(urlOption, function(){})
+            $("#app-trader-pds-catexclusionset-add").LoadingOverlay("hide");
+        }); *@
+    }
+    function deleteCategoryExclusionSet(id, name){
+        if(confirm("Do you want to completely remove "+name+" Exclusion set?")){
+           var url = "/PDS/DeleteCategoryExclutionSet"
+           $.ajax({
+            type: "POST",
+            url: url,
+            data: {
+                name: name,
+                categoryExclutionSetId: id
+            },
+            dataType: "JSON",
+            success: function (response) {
+                if(response.result){
+                    cleanBookNotification.removeSuccess();
+                    reloadCategoryExclutionSet();
+                    }
+                else{
+                    cleanBookNotification.error(response.msg, "Qbicles");
+                    }
+                }
+            });
+        }
+    }
+    function editCategoryExclutionSet(id){
+        var url = "/PDS/CreateCategoriesExclusion"
+        var urlOption = "/PDS/CategoryExclusionList"
+
+        $.ajax({
+        type: "POST",
+        data: {CategoryExclutionSetId : id},
+        url: url,
+        beforeSend: function(){
+            $("#app-trader-pds-catexclusionset-add").empty().append('<div class="modal-dialog"></div>');
+            $("#app-trader-pds-catexclusionset-add .modal-dialog").LoadingOverlay("show");
+        },
+        success: function (response) {
+            $("#app-trader-pds-catexclusionset-add").empty().append(response);
+            $("#app-trader-pds-catexclusionset-select").load(urlOption, {currentExclusionSet : id} ,function(){})
+        }
+        })
+
+        @* $("#app-trader-pds-catexclusionset-add").load(url, {CategoryExclutionSetId : id} ,function () { 
+            $("#app-trader-pds-catexclusionset-select").load(urlOption, {currentExclusionSet : id} ,function(){})
+        }); *@
+    }
+
+    function updateCategoryExclutionSet(id){
+        var url = "/PDS/UpdateCategoryExclutionSet"
+        var listCategoriesName = [];
+        $(".category-select.option-selected label[title]").each(function(){ 
+            listCategoriesName.push($(this).attr("title"));
+            })
+        
+        var listPrepDevices = $("#assocdevices-list").val();
+
+        //validate
+        if(!validateCategoryExclutionSet(listCategoriesName)) return 0;
+        $("#app-trader-pds-catexclusionset-add .modal-content").LoadingOverlay("show");
+
+        $.ajax({
+        type: "POST",
+        url: url,
+        data: {
+            listCategoriesName: listCategoriesName,
+            name: $("#exclusion-name").val() ,
+            categoryExclutionSetId: id,
+            listPrepDevices : listPrepDevices
+        },
+        dataType: "JSON",
+        success: function (response) {
+            if(response.result){
+                cleanBookNotification.clearmessage();
+                cleanBookNotification.success(response.msg, "Qbicles");
+                $("#app-trader-pds-catexclusionset-add").modal("hide");
+                }
+            else{
+                cleanBookNotification.clearmessage();
+                cleanBookNotification.error(response.msg, "Qbicles");
+                }
+            },
+        complete: function (){
+                $("#app-trader-pds-catexclusionset-add .modal-content").LoadingOverlay("hide");
+                reloadCategoryExclutionSet();
+        }
+        });
+    }
+    function reloadCategoryExclutionSet(){
+        var ajaxUri = "/PDS/GetListCategoryExclutionSets";
+        $('#tab-pds-category-exclusion').LoadingOverlay("show");
+        $('#tab-pds-category-exclusion').load(ajaxUri, function () {
+                $('a[href="#pds-category-exclusion"]').tab('show');
+                $('#tab-pds-category-exclusion').LoadingOverlay("hide");
+            });
+    }
+
+    function validateCategoryExclutionSet(listCategoriesName){
+        var nameCategorySet = $("#exclusion-name").val();
+        var isValidName = $("#exclusion-name").attr("isValid");
+        
+        if(listCategoriesName.length == 0){
+            cleanBookNotification.clearmessage();
+            cleanBookNotification.error("Please select at least one category", "Qbicles");
+            return false;
+        };
+        if(nameCategorySet.length == 0 || isValidName == "false"){
+            cleanBookNotification.clearmessage();
+            cleanBookNotification.error("The name is invalid. Please try another name", "Qbicles");
+            return false;
+        }
+        return true;
+    }
+
+</script>

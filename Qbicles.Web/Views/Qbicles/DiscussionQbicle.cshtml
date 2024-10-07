@@ -1,0 +1,343 @@
+﻿@using Qbicles.Models
+@using Qbicles.BusinessRules;
+@model QbicleDiscussion
+@{
+    var api = (string)ViewBag.DocRetrievalUrl;
+    string currentTimeZone = ViewBag.currentTimeZone;
+    var currentUserId = (string)ViewBag.CurrentUserId;
+    var pageSize = HelperClass.activitiesPageSize;
+    var Comments = Model != null ? Model.Posts.OrderByDescending(x => x.StartedDate).Take(pageSize) : null;
+    var count_Comments = Model != null ? Model.Posts.Count() : 0;
+    var count_Medias = Model.SubActivities.Count();
+    var allowCommentAndUpload = (Model != null && Model.ExpiryDate == null) || (Model.ExpiryDate.HasValue && Model.ExpiryDate.Value > DateTime.UtcNow);
+    var _lstcontacts = Model.ActivityMembers;
+    var preChar = "";
+    var dateFormat = (string)ViewBag.CurrentDateFormat;
+}
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail mdv2-wrapper" style="position: relative;">
+    <!-- Main content -->
+    <section class="mdv2 dash" data-tooltip-color="teal" data-tooltip-delay="300" data-tooltip-animate-function="spin" style="border-top: 1px solid #f1f1f1;">
+        <!-- App bar -->
+        <div class="mdv2-col-app" style="margin-bottom: 0;">
+            <div data-spy="affix" class="contained-sidebar">
+                <div class="activity-overview plain company-overview welcome-info" style="text-align: left !important; flex: none; margin: 0 0 30px 0; padding-top: 30px; padding-bottom: 0;">
+                    <div class="pull-left" style="margin-bottom: 15px;">
+                        <input type="hidden" id="hdfDisId" value="@Model.Id" />
+                        <a onclick="QbicleSelected('@Model.Qbicle.Key','Dashboard')" class="btn btn-info"><i class="fa fa-angle-up"></i> &nbsp; Qbicle</a>
+                        <a href="#create-discussion-qb" data-toggle="modal" class="btn btn-warning"><i class="fa fa-pencil"></i> &nbsp; Edit</a>
+                    </div>
+                    <div class="clearfix"></div>
+                    <br /><br />
+                    @if (!string.IsNullOrEmpty(Model.FeaturedImageUri))
+                    {
+                        <img src="@(api+Model.FeaturedImageUri)&size=M" class="img-responsive" style="margin-bottom: 25px;">
+                    }
+                    <h1 style="line-height: 1.2;">@Model.Name</h1>
+                    <span class="label label-lg label-primary">@(Model.Topic?.Name)</span>
+                    @if (Model.ExpiryDate.HasValue && Model.ExpiryDate.Value <= DateTime.UtcNow)
+                    {
+                        <span class="label label-lg label-danger">Expired</span>
+                    }
+                    <div class="clearfix"></div>
+                    <br /><br /><br />
+                    <div class="row">
+                        <div class="col-xs-6">
+                            <label>Creator</label>
+                            <p><a href="/Community/UserProfilePage?uId=@Model.StartedBy.Id">@HelperClass.GetFullNameOfUser(Model.StartedBy)</a></p>
+                        </div>
+                        <div class="col-xs-6">
+                            <label>Created</label>
+                            <p>@(Model.StartedDate.ConvertTimeFromUtc(currentTimeZone).ToString(dateFormat+" hh:mmtt"))</p>
+                        </div>
+                    </div>
+                    <br />
+                    <div class="row">
+                        <div class="col-xs-6">
+                            <label>Expires</label>
+                            <p>@(Model.ExpiryDate.HasValue ? Model.ExpiryDate.Value.ConvertTimeFromUtc(currentTimeZone).ToString(dateFormat + " hh:mmtt") : "No expiry set")</p>
+                        </div>
+                    </div>
+                    <br /><br />
+                    <button class="btn btn-primary community-button" data-toggle="modal" data-target="#discussion-members"><i class="fa fa-user-cog"></i> &nbsp; Participants</button>
+                </div>
+            </div>
+        </div>
+        <!-- END App bar -->
+        <!-- Main area -->
+        <div class="mdv2-col-dash">
+            <div class="spacing" style="margin-top: -50px;">
+                <a id="discuss"></a>
+                <div class="app_topnav entity_adds" style="background: #fff; padding: 0;">
+                    <ul class="nav nav-pills app_main_nav">
+                        <li role="presentation" class="active">
+                            <a href="#tab1" data-toggle="tab">
+                                <i class="fa fa-comments"></i>
+                                Comments
+                            </a>
+                        </li>
+                        <li role="presentation">
+                            <a href="#tab2" data-toggle="tab">
+                                <i class="fa fa-folder-open"></i>
+                                Files
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+
+                <br><br>
+
+                <div class="row">
+                    <div class="col-xs-12">
+
+                        <div class="tab-content">
+
+                            <div class="tab-pane fade in active" id="tab1">
+                                @if (allowCommentAndUpload)
+                                {
+                                    <div class="row">
+                                        <div class="col-xs-12">
+                                            <div class="well" style="max-width: 800px;">
+                                                <div class="form-group">
+                                                    <label for="add-comment">Add a comment</label>
+                                                    <textarea id="txt-comment-link" name="addcomment" onkeyup="validateAddComment();" class="form-control"></textarea>
+                                                    <label id="addcomment-error" class="error" for="addcomment" style="display: none;">Your post is longer than the 1,500 character limit. Please reduce the length, or split it across multiple posts</label>
+                                                </div>
+
+                                                <button class="btn btn-success" onclick="AddCommentToDiscussion('@Model.Key')">Submit</button>
+                                            </div>
+
+                                            <br>
+                                        </div>
+                                    </div>
+                                }
+                                <div id="list-comments-discussion">
+                                    @if (Comments != null && count_Comments > 0)
+                                    {
+                                        foreach (var item in Comments)
+                                        {
+                                            <!-- General post -->
+                                            <article id="post-@item.Id" class="activity post">
+                                                <div class="activity-avatar" style="background-image: url('@(api+item.CreatedBy.ProfilePic)&size=T');"></div>
+                                                <div class="activity-detail">
+                                                    <div class="activity-meta">
+                                                        <h4>@HelperClass.GetFullNameOfUser(item.CreatedBy, currentUserId)</h4>
+                                                        <small>@item.StartedDate.ConvertTimeFromUtc(currentTimeZone).ToString(dateFormat+", hh:mmtt")</small>
+                                                    </div>
+
+                                                    <div class="activity-overview media-comment">
+                                                        <p>@Html.Raw(item.Message.Replace(Environment.NewLine, "<br/>"))</p>
+                                                    </div>
+                                                </div>
+                                                <div class="clearfix"></div>
+                                            </article>
+                                            <!-- END General post -->
+                                        }
+                                    }
+                                </div>
+                                @if (count_Comments > pageSize)
+                                {
+                                    <button id="btnLoadPosts" onclick="LoadMorePostsDiscussion('@Model.Key', @pageSize, 'list-comments-approval')" class="btn btn-info">Load older posts</button>
+                                }
+                            </div>
+                            <div class="tab-pane fade " id="tab2">
+                                <br>
+                                @if (Model.ClosedBy == null && allowCommentAndUpload)
+                                {
+                                    <a href="#" class="btn btn-success" data-toggle="modal" data-target="#create-media"><i class="fa fa-upload"></i> &nbsp; Upload a file</a>
+                                }
+                                <br><br>
+                                <div id="list-medias">
+                                    @if (count_Medias > 0)
+                                    {
+                                        foreach (var item in Model.SubActivities.OrderByDescending(x => x.Id).Take(pageSize))
+                                        {
+                                            var med = (QbicleMedia)item;
+                                            var createdByName = med.StartedBy.Id == currentUserId ? "Me" : HelperClass.GetFullNameOfUser(med.StartedBy);
+                                            var createdDate = med.StartedDate.Date == DateTime.Now.Date ? "Today, " + med.StartedDate.ToString("hh:mmtt") : med.StartedDate.ToString(dateFormat + " hh:mmtt");
+                                            var lastUpdateFile = "";
+                                            var mediaLastupdate = med.VersionedFiles.Where(e => !e.IsDeleted).OrderByDescending(x => x.UploadedDate).FirstOrDefault() ?? null;
+                                            if (mediaLastupdate != null)
+                                            {
+                                                lastUpdateFile = mediaLastupdate?.UploadedDate.Date == DateTime.Now.Date ? "Today, " + mediaLastupdate.UploadedDate.ToString("hh:mmtt") : mediaLastupdate.UploadedDate.ToString(dateFormat + " hh:mmtt");
+                                            } //Media post
+                                            <!-- Media post -->
+                                            <article class="activity media">
+                                                <div class="activity-avatar" style="background-image: url('@api@(med.StartedBy.ProfilePic)&size=T');"></div>
+                                                <div class="activity-detail" style="width: 100%; max-width: 100%;">
+                                                    <div class="activity-meta">
+                                                        <h4>@createdByName</h4>
+                                                        <small>@createdDate</small>
+                                                        <br class="visible-xs">
+                                                    </div>
+
+                                                    <div class="activity-overview media">
+                                                        <div class="row">
+                                                            <div class="col-xs-12 col-sm-5 col-lg-4">
+                                                                <a href="javascript:void(0)" onclick="ShowMediaPage('@med.Key')">
+                                                                    @if (med.FileType.Type == "Image File")
+                                                                    {
+                                                                        <img id="media-@item.Id" class="img-responsive" src='@api@(mediaLastupdate.Uri)&size=M' />
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <img src="@med.FileType.ImgPath" class="img-responsive">
+                                                                    }
+                                                                </a>
+                                                            </div>
+                                                            <div class="col-xs-12 col-sm-7 col-lg-8 description" style="padding-top: 0;">
+                                                                <h5>@med.Name</h5>
+                                                                <p>
+                                                                    @med.Description
+                                                                </p>
+                                                                <small>@Utility.GetFileTypeDescription(med.FileType.Extension) | Update @lastUpdateFile</small>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="clearfix"></div>
+                                            </article>
+                                            <!-- END Media post -->
+                                        }
+                                    }
+                                    @if (count_Medias > pageSize)
+                                    {
+                                        <button id="btnLoadMedias" onclick="LoadMoreMediasDiscussion(@Model.Id, @pageSize, 'list-medias')" class="btn btn-info">Load older medias</button>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+
+
+                    </div>
+                </div>
+
+                <br><br><br>
+            </div>
+        </div>
+    </section>
+    <!-- ./content -->
+</div>
+<!-- /.content-wrapper -->
+@{
+    Html.RenderAction("GenerateModalDiscussion", "Qbicles", new { disId = Model.Id });
+}
+<div class="modal fade left" id="discussion-members" role="dialog" aria-labelledby="discussion-members" style="display: none;">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+                <h5 class="modal-title">Discussion participants</h5>
+            </div>
+            <div class="modal-body">
+                <ul class="subapps-nav" role="navigation" data-tooltip-stickto="bottom">
+                    <li class="active">
+                        <a href="#" data-toggle="tab" data-target="#members-view" data-tooltip="View all participants" aria-expanded="true">
+                            <i class="fa fa-users"></i>
+                        </a>
+                    </li>
+                    <li class="">
+                        <a href="#" data-toggle="tab" data-target="#members-add" data-tooltip="Invite someone to this Discussion" aria-expanded="false">
+                            <i class="fa fa-user-plus"></i>
+                        </a>
+                    </li>
+                </ul>
+                <div class="tab-content">
+                    <!-- Members view -->
+                    <div class="tab-pane fade active in" id="members-view">
+
+                        <div class="contact-list">
+
+                            <div class="well custom" style="margin-bottom: 30px;">
+
+                                <div class="form-group" style="margin: 0;">
+                                    <label for="search">Search existing participants</label>
+                                    <input type="text" id="txtSearchContacts" name="search" class="form-control" placeholder="Search members...">
+                                </div>
+                            </div>
+                            <ul id="contacts-participants" class="widget-contacts" style="margin-bottom: 30px;">
+                                @foreach (var item in _lstcontacts)
+                                {
+                                    var firstChar = "";
+                                    if (string.IsNullOrEmpty(item.Surname))
+                                    {
+                                        firstChar = string.IsNullOrEmpty(item.DisplayUserName) ? item.UserName : item.DisplayUserName;
+                                    }
+                                    if (!preChar.Equals(firstChar))
+                                    {
+                                        preChar = firstChar.ToUpper();
+                                        <li class="letters" style="padding-top: 0;">@firstChar</li>
+                                    }
+                                    <li>
+                                        <a href="#" onclick="$('.contact-list').hide(); $('.contact').fadeIn();ParticipantsDetail('@item.Id')">
+                                            <div class="contact-avatar">
+                                                <div style="background-image: url('@(api+item.ProfilePic)');">&nbsp;</div>
+                                            </div>
+                                            <div class="contact-info">
+                                                <h5>@HelperClass.GetFullNameOfUser(item)</h5>
+                                                @*<p>Bounty Hunters</p>*@
+                                            </div>
+                                        </a>
+                                    </li>
+                                }
+                            </ul>
+
+                        </div>
+
+                        <div class="contact" style="display: none;">
+
+                            <a href="#" class="btn btn-info" onclick="$('.contact').hide(); $('.contact-list').fadeIn();"><i class="fa fa-angle-left"></i> &nbsp; Member List</a>
+
+                            <div id="dis-contact-detail" class="activity-overview plain company-overview welcome-info" style="flex: none; margin: 0; padding-top: 15px;">
+                            </div>
+                        </div>
+                    </div>
+                    <!-- END Members view -->
+                    <!-- Invite -->
+                    <div class="tab-pane fade" id="members-add">
+
+                        <div class="well custom">
+                            <div class="form-group" style="margin: 0;">
+                                <label for="existing">Invite an existing Qbicle user</label>
+                                <input type="text" id="txtSearchUsersQbicle" class="form-control" name="member-search" placeholder="Search by name..." onkeyup="$('.existing-member').show();">
+                            </div>
+                        </div>
+                        <div class="existing-member" style="margin-top: 15px 0; display: none;">
+
+                            <div class="contact-list-found" style="margin-bottom: 30px;">
+
+                                <ul id="contacts-participants-add" class="widget-contacts"></ul>
+                            </div>
+                            <div class="contact-add" style="display: none;">
+
+                                <a href="#" class="btn btn-info" onclick="$('.contact-add').hide(); $('.contact-invite').fadeIn(); $('.contact-list-found').fadeIn();"><i class="fa fa-angle-left"></i> &nbsp; Back to search</a>
+
+                                <div id="dis-contact-detail-add" class="activity-overview plain company-overview welcome-info" style="flex: none; margin: 0; padding-top: 15px;">
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+                    <!-- END Invite -->
+
+                </div>
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+@{
+    Html.RenderAction("GenerateModalMedia", "Qbicles");
+}
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/qbicle.discussion-qb.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/qbicle.discussion-qb.min.js"></script>
+    }
+}

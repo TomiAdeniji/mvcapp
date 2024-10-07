@@ -1,0 +1,257 @@
+﻿@using CleanBooksData
+@using Qbicles.BusinessRules
+@using Qbicles.Models.Trader;
+@using Qbicles.Models;
+@model CBWorkGroup
+@{
+    var qbicles = (List<Qbicle>)ViewBag.Qbicles;
+    var topics = (List<Topic>)ViewBag.Topics;
+    var process = (List<CBProcess>)ViewBag.Process;
+    var api = (string)ViewBag.DocRetrievalUrl;
+}
+
+
+<!-- Specifics -->
+<div class="tab-pane fade in active" id="edit-specifics">
+    <form id="form-wg-edit" action="" novalidate="novalidate">
+        <div class="activity-overview task" style="padding: 20px 20px 10px 20px;">
+            <div class="row">
+                <div class="col-xs-12 col-sm-6">
+                    <div class="form-group">
+                        <label for="name">Workgroup name<span>*</span></label>
+                        <input type="text" name="wgNameEdit" id="wg-name-edit" value="@Model.Name" class="form-control" required="">
+                    </div>
+                </div>
+                <div class="col-xs-12 col-sm-6">
+                    <div class="form-group">
+                        <label for="qbicle">Qbicle <span>*</span></label>
+                        <select id="wg-qbicle-edit" onchange="QbicleEditChange(this)" class="form-control select2" style="width: 100%;" required="">
+                            @foreach (var q in qbicles)
+                            {
+                                if (q.Id == Model.Qbicle.Id)
+                                {
+                                    <option value="@q.Id" selected="">@q.Name</option>
+                                }
+                                else
+                                {
+                                    <option value="@q.Id">@q.Name</option>
+                                }
+                            }
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                
+                <div class="col-xs-12 col-sm-6">
+                    <div class="form-group">
+                        <label for="qbicle">Default topic <span>*</span></label>
+                        <select id="wg-topic-edit" class="form-control select2" style="width: 100%;" required="">
+                            @foreach (var t in topics)
+                            {
+                                if (t.Id == Model.Topic.Id)
+                                {
+                                    <option value="@t.Id" selected="">@t.Name</option>
+                                }
+                                else
+                                {
+                                    <option value="@t.Id">@t.Name</option>
+                                }
+                            }
+                        </select>
+                    </div>
+                </div>
+                <div class="col-xs-12 col-sm-6">
+                    <div class="form-group">
+                        <label for="process">Associated process <span>*</span></label>
+                        <select id="wg-process-edit" class="form-control select2 chosen-multiple" style="width: 100%;" multiple required="">
+                            @foreach (var p in process)
+                            {
+                                if (Model.Processes.Any(n => n.Name == p.Name))
+                                {
+                                    <option value="@p.Id" selected="">@p.Name</option>
+                                }
+                                else
+                                {
+                                    <option value="@p.Id">@p.Name</option>
+                                }
+                            }
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                
+                
+            </div>
+        </div>
+    </form>
+
+
+    <br />
+    <a onclick="NextEdit()" class="btn btn-success btnNextEdit">Next &nbsp; <i class="fa fa-angle-right"></i></a>
+</div>
+<!-- END Specifics -->
+<!-- Members -->
+<div class="tab-pane fade" id="edit-members">
+
+    <div class="well custom" style="padding-bottom: 5px;">
+
+        <div class="row">
+            <div class="col-xs-12 col-sm-5">
+                <div class="form-group">
+                    <label for="search_dt">Search workgroup</label>
+                    <input type="text" id="search-member-edit" class="form-control" placeholder="...">
+                </div>
+            </div>
+            <div class="col-xs-12 col-sm-4">
+                <div class="form-group">
+                    <label for="search_dt">Show me</label>
+                    <select id="search-right-edit" name="role" class="form-control select2" style="width: 100%;">
+                        <option value="">All members</option>
+                        <option value="Approvers">Approvers</option>
+                        <option value="Reviewers">Reviewers</option>
+                    </select>
+                </div>
+            </div>
+            <div class="col-xs-12 col-sm-3">
+                <label>Options</label><br />
+                <button class="btn btn-success" data-toggle="modal" data-target="#app-trader-people-select"><i class="fa fa-user-plus"></i> &nbsp; Add people</button>
+            </div>
+        </div>
+    </div>
+
+    <br /><br />
+
+    <table class="datatable our-people table-hover table-striped" id="wg-table-members-edit" style="width: 100%;" data-order='[[ 1, "asc" ]]'>
+        <thead>
+            <tr>
+                <th data-priority="3" data-orderable="false" style="width: 80px;"></th>
+                <th data-priority="1">Name</th>
+                <th data-priority="1">Approver</th>
+                <th data-priority="1">Reviewer</th>
+                <th data-priority="1" data-orderable="false" style="width: 80px;">Options</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var u in Model.Members)
+            {
+                var app = Model.Approvers.Any(a => a.Id == u.Id) ? "checked" : "";
+                var rev = Model.Reviewers.Any(a => a.Id == u.Id) ? "checked" : "";
+                <tr id="tr_edit_user_@u.Id">
+                    <td>
+                        <div class="table-avatar mini" style="background-image: url('@api@(u.ProfilePic)&size=T');">&nbsp;</div>
+                    </td>
+                    <td>
+                        @HelperClass.GetFullNameOfUser(u)
+                        @if (app == "checked")
+                        {
+                            <span id="span-approval-edit-@u.Id" class="hidden">Approvers</span>
+                        }
+                        else
+                        {
+                            <span id="span-approval-edit-@u.Id" class="hidden"></span>
+                        }
+                        @if (rev == "checked")
+                        {
+                            <span id="span-review-edit-@u.Id" class="hidden">Reviewers</span>
+                        }
+                        else
+                        {
+                            <span id="span-review-edit-@u.Id" class="hidden">Approvers</span>
+                        }
+                    </td>
+                    <td>
+                        <input onchange="AddUsersApprovers(this.checked,'@u.Id','span-approval-edit-')" id="approval-user-id-@u.Id" class="check-right" data-toggle="toggle" data-onstyle="success" data-on="<i class='fa fa-check'></i>" data-off=" " type="checkbox"
+                               @app>
+                    </td>
+                    <td>
+                        <input onchange="AddUsersToReviewers(this.checked,'@u.Id','span-review-edit-')" id="reviewer-user-id-@u.Id" class="check-right" data-toggle="toggle" data-onstyle="success" data-on="<i class='fa fa-check'></i>" data-off=" " type="checkbox" @rev>
+                    </td>
+                    <td>
+                        <button class="btn btn-danger" onclick="RemoveRowTableMemberAdd('@u.Id')">
+                            <i class="fa fa-trash"></i>
+                        </button>
+                    </td>
+
+
+                </tr>
+            }
+        </tbody>
+    </table>
+
+
+    <br />
+    <a onclick="PreviousEdit()" class="btn btn-warning btnPreviousEdit"><i class="fa fa-angle-left"></i> &nbsp; Previous</a>
+    <a href="javascript:void(0)" onclick="UpdateWorkgroup()" class="btn btn-success trigger-setup">Confirm</a>
+
+</div>
+<!-- END Members -->
+
+
+<script>
+    $('#form-wg-edit .select2').select2({
+        placeholder: 'Please select'
+    });
+
+    $(".check-right").bootstrapToggle();
+    $(".chosen-multiple").select2({ multiple: true });
+    $("#wg-table-members-edit").DataTable({
+        responsive: true,
+        "lengthChange": true,
+        "pageLength": 10,
+        "columnDefs": [
+            {
+                "targets": 3,
+                "orderable": false
+            }
+        ],
+        "order": []
+    });
+
+    $("#wg-table-members-edit").show();
+    $('.btnPreviousAdd').click(function () {
+        var parent = $(this).closest('.modal');
+        $(parent).find('.app_subnav .active').prev('li').find('a').trigger('click');
+    });
+    $('.btnNextAdd').click(function () {
+        var wGroup = {
+            Id: 0,
+            Name: $("#wg-name-add").val()
+        };
+
+        if ($("#form-wg-add-new").valid()) {
+            $.ajax({
+                url: "/TraderWorkGroups/ValidateName",
+                data: { wg: wGroup },
+                type: "POST",
+                dataType: "json"
+            }).done(function (refModel) {
+                if (refModel.result) {
+                    $("#form-wg-add-new").validate().showErrors({ wgNameAdd: "Name of Workgroup already exists." });
+
+                }
+                else {
+                    var parent = $(".btnNextAdd").closest('.modal');
+                    $(parent).find('.app_subnav .active').next('li').find('a').trigger('click');
+                }
+
+            }).fail(function (er) {
+                $("#form-wg-add-new").validate().showErrors({ wgNameAdd: "Error" + er });
+            });
+        }
+    });
+
+    // search on table user members edit
+    var editTable = $("#wg-table-members-edit");
+    $("#search-right-edit").on("change",
+        function () {
+            var group = $(this).val();
+            editTable.DataTable().search(group).draw();
+        });
+
+    $("#search-member-edit").keyup(function () {
+        editTable.DataTable().search($(this).val()).draw();
+    });
+    $('select.select2').select2();
+</script>

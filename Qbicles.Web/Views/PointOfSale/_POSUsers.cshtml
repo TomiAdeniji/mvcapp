@@ -1,0 +1,145 @@
+﻿@using Qbicles.BusinessRules
+@using Qbicles.Models.Trader.PoS
+@model List<Qbicles.Models.ApplicationUser>
+@{
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var postUsers = (List<PosRoleUsersViewModel>)ViewBag.PosUsers;
+}
+
+<!-- Users -->
+<div class="tab-pane fade in active" id="tab-users">
+
+    <table id="pos-user-table" class="datatable table-hover table-striped" style="width: 100%; background: #fff;" data-order='[[ 1, "asc" ]]'>
+        <thead>
+            <tr>
+                <th data-priority="3" data-orderable="false" style="width: 40px;"></th>
+                <th data-priority="1">Name</th>
+                <th data-priority="2">Email</th>
+                <th data-priority="1">Include in Device Pool?</th>
+                <th data-priority="1">PIN</th>
+            </tr>
+        </thead>
+        <tbody>
+            @{
+                    foreach (var member in Model)
+                    {
+                        var posUser = postUsers.FirstOrDefault(u => u.User.Id == member.Id);
+                        var posUserType = "";
+                        if (posUser != null)
+                        {
+                             posUserType = @HelperClass.GetPosUserType(posUser.PosUserType);
+                        }
+
+                    <tr>
+                        <td>
+                            <div class="table-avatar mini" style="background-image: url('@(api+member.ProfilePic)&size=T');">&nbsp;</div>
+                        </td>
+                        <td>
+                            @HelperClass.GetFullNameOfUser(member)
+                        </td>
+                        <td>
+                            @member.Email
+                            @*<a href="mailto:@member.Email"></a>*@
+                        </td>
+                        <td>
+                            <div class="check-pool-column checkbox toggle" onclick="IncludeInPosPool('@member.Id','@posUserType');">
+                                <label>
+                                    @{
+                                        if (posUser != null)
+                                        {
+                                            <input id="check-@member.Id" class="check-pool" data-toggle="toggle" data-onstyle="success" data-on="Yes" data-off="No" type="checkbox" checked>
+                                        }
+                                        else
+                                        {
+                                            <input id="check-@member.Id" class="check-pool" data-toggle="toggle" data-onstyle="success" data-on="Yes" data-off="No" type="checkbox">
+                                        }
+                                    }
+                                </label>
+                            </div>
+                        </td>
+                        <td id="td-user-@member.Id">
+                            @{
+
+                                if (posUser != null)
+                                {
+                                    if (posUser.Pin == null)
+                                    {
+                                        <button id="generate-pin-button-@member.Id" class="btn btn-primary pin-@member.Id" onclick="GeneratePin('@member.Id','@posUserType')">
+                                            <div class="loading-pin hidden">
+                                                <i class="fa fa-spinner fa-spin"></i> &nbsp; Generating...
+                                            </div>
+                                            <div class="general-pin">
+                                                Generate PIN 
+                                            </div>
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <button id="generate-pin-button-@member.Id" class="btn btn-info pin-@member.Id" onclick="GeneratePin('@member.Id','@posUserType')">
+                                            <div class="loading-pin hidden">
+                                                <i class="fa fa-spinner fa-spin"></i> &nbsp; Generating...
+                                            </div>
+                                            <div class="general-pin">
+                                                Regenerate PIN
+                                            </div>
+                                        </button>
+                                    }
+                                }
+                                else
+                                {
+                                    <button id="generate-pin-button-@member.Id" style="display: none;" class="btn btn-primary pin-@member.Id" onclick="GeneratePin('@member.Id','@posUserType')">
+                                        <div class="loading-pin hidden">
+                                            <i class="fa fa-spinner fa-spin"></i> &nbsp; Regenerating...
+                                        </div>
+                                        <div class="general-pin">
+                                            Generate PIN 
+                                        </div>
+                                    </button>
+                                }
+                            }
+
+                        </td>
+                    </tr>
+                }
+            }
+        </tbody>
+    </table>
+
+</div>
+<!-- END Users -->
+
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/pos.users.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/pos.users.min.js"></script>
+    }
+    <script>
+        var table = $('#pos-user-table').DataTable({
+            responsive: true,
+            "lengthChange": true,
+            "pageLength": 10,
+            "columnDefs": [{
+                //"targets": 5,
+                "orderable": false
+            }],
+            "order": [],
+            "drawCallback": function (settings) {
+                setTimeout(function () {
+                    $('.check-pool').bootstrapToggle();
+                }, 100);
+            }
+        }).on('search.dt', function () {
+
+        }).on('datachange.dt', function () {
+
+        }).on('page.dt', function () {
+
+        });
+
+        $('.check-pool').bootstrapToggle();
+    </script>
+}

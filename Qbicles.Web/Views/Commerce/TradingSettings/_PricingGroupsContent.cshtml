@@ -1,0 +1,159 @@
+﻿@using Qbicles.BusinessRules.Model
+@using Qbicles.Models.Trader.Settings
+@using Newtonsoft.Json
+@using Qbicles.BusinessRules
+@model TabGroupConfigModel
+@{
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+}
+<div class="well custom mydesk in-community" style="min-height: 0; height: auto;">
+    <form id="frmConfigsPrice@(Model.TraderGroup.Id)" action="~/TraderConfiguration/ApplyConfigPriceByGroup" method="post">
+        <div class="row">
+            <div class="col-xs-12 col-sm-4">
+
+                <div class="activity-overview plain nopad">
+                    <div class="block-header">
+                        <h4>Locations &amp; Sales Channels</h4>
+                    </div>
+                    <div class="" style="padding: 20px;">
+
+                        <div class="form-group">
+                            <label>Location(s)</label><br />
+                            <select name="Locations" onchange="$(this).valid()" class="form-control checkmulti" multiple>
+                                @foreach (var item in Model.Locations)
+                                {
+                                    <option value="@item.Id">@item.Name</option>
+                                }
+                            </select>
+                            <label id="Locations-error" class="error" for="Locations" style="display:none">This field is required.</label>
+                        </div>
+
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label>Sales Channel(s)</label><br />
+                            <select name="Salechannels" onchange="$(this).valid()" class="form-control checkmulti" multiple>
+                                @foreach (var item in Model.SalesChannels)
+                                {
+                                    <option value="@((int)item)">@item.ToString()</option>
+                                }
+                            </select>
+                            <label id="Salechannels-error" class="error" for="Salechannels" style="display:none">This field is required.</label>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+            <div class="col-xs-12 col-sm-4">
+
+                <div class="activity-overview plain nopad">
+                    <div class="block-header">
+                        <h4>Markup &amp; discount</h4>
+                    </div>
+                    <div class="block-content" style="padding: 20px;">
+
+
+                        <label for="str">Markup</label><br />
+                        <div class="row" style="margin-bottom: 15px;">
+                            <div class="col-xs-9 npr">
+                                <input name="MarkupValue" style="border: 1px solid #e1e1e1;" type="number" value="0" class="form-control">
+                            </div>
+                            <div class="col-xs-3 npl">
+                                <select name="MarkupMethod" class="form-control select2" style="width: 100%;">
+                                    <option value="1" selected>%</option>
+                                    <option value="2">Value</option>
+                                </select>
+                            </div>
+                        </div>
+
+
+                        <label for="str">Discount</label><br />
+                        <div class="row">
+                            <div class="col-xs-9 npr">
+                                <input name="DiscountValue" style="border: 1px solid #e1e1e1;" type="number" value="0" class="form-control">
+                            </div>
+                            <div class="col-xs-3 npl">
+                                <select name="DiscountMethod" class="form-control select2" style="width: 100%;">
+                                    <option value="1" selected>%</option>
+                                    <option value="2">Value</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <input type="hidden" value="@Model.TraderGroup.Id" name="GroupId" />
+        <div>
+
+            <div class="checkbox toggle">
+                <button type="button" class="btn btn-primary community-button w-auto" onclick="applyPriceConfig(@Model.TraderGroup.Id);">Apply</button>
+                <label style="margin-left: 25px;" data-tooltip-color="teal" data-tooltip="Please apply Margin and Discount to create any missing prices">
+                    <input data-toggle="toggle" data-onstyle="success" type="checkbox" id="isOverwrite"> Overwrite existing prices
+                </label>
+            </div>
+        </div>
+    </form>
+</div>
+
+<br />
+
+<div class="well custom" style="padding-bottom: 5px;">
+    <div class="row">
+        <div class="col-xs-12 col-sm-4 col-lg-3">
+            <div class="form-group">
+                <label for="search">Search</label>
+                <input id="txtKeyword@(Model.TraderGroup.Id)" type="text" class="form-control">
+            </div>
+        </div>
+        <div class="col-xs-12 col-sm-4 col-lg-3">
+            <div class="form-group">
+                <label for="search">Location</label>
+                <select id="slFilterLocation@(Model.TraderGroup.Id)" name="Location" class="form-control select2" style="width: 100%;">
+                    <option value="0" selected>Show all</option>
+                    @foreach (var item in Model.Locations)
+                    {
+                        <option value="@item.Id">@item.Name</option>
+                    }
+                </select>
+            </div>
+        </div>
+        <div class="col-xs-12 col-sm-4 col-lg-3">
+            <div class="form-group">
+                <label for="search">Sales Channel</label>
+                <select id="slFilterSalesChannel@(Model.TraderGroup.Id)" name="SalesChannel" class="form-control select2" style="width: 100%;">
+                    <option value="0" selected>Show all</option>
+                    @foreach (var item in Model.SalesChannels)
+                    {
+                        <option value="@((int)item)">@item.ToString()</option>
+                    }
+                </select>
+            </div>
+        </div>
+    </div>
+</div>
+
+<table class="datatable table-striped table-hover" id="tblPrice@(Model.TraderGroup.Id)" style="width: 100%;">
+    <thead>
+        <tr>
+            <th data-priority="1">Item</th>
+            <th data-priority="2">Location</th>
+            <th data-priority="2">Sales Channel</th>
+            <th data-priority="2">Average Cost (@currencySettings.CurrencySymbol)</th>
+            <th data-priority="1">Price exc. tax (@currencySettings.CurrencySymbol)</th>
+            <th data-priority="1">Tax (@currencySettings.CurrencySymbol)</th>
+            <th data-priority="1">Price inc. tax (@currencySettings.CurrencySymbol)</th>
+        </tr>
+    </thead>
+    <tbody></tbody>
+</table>
+<script>
+    $(document).ready(function () {
+        $('#group@(Model.TraderGroup.Id) select.select2').select2({ placeholder: 'Please select' });
+        $('.toggle > label > input').bootstrapToggle();
+        setTimeout(function () {
+            initDatatablePrices(@Model.TraderGroup.Id);
+            initFormAppconfigPrice(@Model.TraderGroup.Id);
+        }, 500);
+    });
+</script>

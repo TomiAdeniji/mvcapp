@@ -1,0 +1,336 @@
+﻿@using Qbicles.Models.B2C_C2C
+@using Qbicles.BusinessRules.Helper
+@using Qbicles.Models.B2C_C2C
+@using Qbicles.BusinessRules
+@using Qbicles.Models
+@using Qbicles.Models.TraderApi
+@model B2COrderCreation
+@{
+    var b2cqbicle = Model.Qbicle as B2CQbicle;
+    ViewBag.Title = "Place an order with " + b2cqbicle.Name;
+    var businessProfile = b2cqbicle.Business.Id.BusinesProfile();
+    var currencySetting = (CurrencySetting)ViewBag.currencySetting;
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var allowUpload = (Model != null && Model.ExpiryDate == null) || (Model.ExpiryDate.HasValue && Model.ExpiryDate.Value > DateTime.UtcNow);
+    var currentUserId = (string)ViewBag.CurrentUserId;
+    string currentTimeZone = ViewBag.currentTimeZone;
+    var dateFormat = (string)ViewBag.CurrentDateFormat;
+    var pageSize = HelperClass.activitiesPageSize;
+    var Comments = Model != null ? Model.Posts.OrderByDescending(x => x.StartedDate).Take(pageSize).ToList() : new List<QbiclePost>();
+    var count_Comments = Model != null ? Model.Posts.Count() : 0;
+    var catalog = Model.TradeOrder?.ProductMenu ?? new Qbicles.Models.Catalogs.Catalog();
+    var tradeOrder = Model.TradeOrder.OrderJson != null ? JsonHelper.ParseAs<Order>(Model.TradeOrder.OrderJson) : new Order();
+    var vouchers = (List<ContactVoucher>)ViewBag.Vouchers;
+}
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail mdv2-wrapper" style="position: relative;">
+    <input type="hidden" id="tradeorderid" value="@Model.TradeOrder.Id" />
+    <input type="hidden" id="tradeorder-key" value="@Model.TradeOrder.Key" />
+    <input type="hidden" id="domainid" value="@b2cqbicle.Business.Id" />
+    <input type="hidden" id="domain-key" value="@b2cqbicle.Business.Key" />
+    <input type="hidden" id="discussionId" value="@(Model.Id)" />
+    <input type="hidden" id="discussionKey" value="@(Model.Key)" />
+    <input type="hidden" id="isCustomerDiscussion" value="true" />
+    <input type="hidden" id="total-voucher" value="@vouchers.Count" />
+    <input hidden id="voucher-seleced-id" value="@tradeOrder.VoucherId" />
+    <!-- Main content -->
+    <section class="mdv2 dash" data-tooltip-color="teal" data-tooltip-delay="300" data-tooltip-animate-function="spin" style="border-top: 1px solid #f1f1f1;">
+        <!-- Main area -->
+        <div class="mdv2-col-dash @(Model.Interaction==OrderDiscussionInteraction.Noninteraction?"":"mdlock")" id="store" style="transition: width 1s ease;">
+            <div class="spacing" style="padding-top: 30px;">
+                <div class="welcome-info" style="margin: 0 0 20px 0;">
+                    <div class="pull-left" style="margin-bottom: 15px;">
+                        <a href="~/C2C" class="btn btn-primary"><i class="fa fa-angle-left"></i> &nbsp; Back</a>
+                    </div>
+                    <div class="clearfix"></div>
+                    <br /><br />
+                    <div style="display: flex; flex-direction: row; align-items: middle;">
+                        <div style="flex: 0 0 80px;">
+                            <div class="avatar-sm rounded" style="width: 80px; height: 80px; background-size: cover; background-image: url('@(api+businessProfile.LogoUri)&size=T');">&nbsp;</div>
+                        </div>
+                        <div style="flex: 1; align-self: center; padding-left: 15px;">
+                            <h1 style="line-height: 1.1; margin-bottom: 0;">Shop with @(businessProfile.BusinessName)</h1>
+                            <h4>@catalog.Name</h4>
+                        </div>
+                    </div>
+                </div>
+
+                <br />
+                <div class="app_topnav entity_adds" style="background: #fff; padding: 0; margin-top: 0;">
+                    <ul class="nav nav-pills app_main_nav">
+                        <li role="presentation" class="active">
+                            <a href="#tab0" data-toggle="tab">
+                                <i class="fa fa-file-text"></i>
+                                Order
+                            </a>
+                        </li>
+                        <li role="presentation">
+                            <a href="#order-cart-tab" data-toggle="tab" id="basket" onclick="showOrderCartB2C()" style="position: relative;">
+                                <i class="fa fa-shopping-basket"></i>
+                                Cart
+                                <label class="label label-danger animated bounce" id="item-count" style="font-size: 10px !important; padding: 4px 7px; position: absolute; top: 10px; right: 25px;">@(tradeOrder.Items?.Count ?? 0)</label>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+
+                <br /><br />
+
+                <div class="row">
+                    <div class="col-xs-12">
+
+                        <div class="tab-content">
+
+                            <!-- Order -->
+                            <div class="tab-pane fade in active" id="tab0">
+
+                                <div class="row">
+                                    <div class="col-xs-12">
+
+                                        <div class="tab-content">
+
+                                            <!-- Shop -->
+                                            <div class="tab-pane fade in active" id="tab0">
+
+                                                <div class="row">
+                                                    <div class="col-xs-12">
+
+                                                        <div class="tab-content">
+
+                                                            <div class="tab-pane fade in active" id="tab0">
+
+                                                                <div class="well custom" style="padding-bottom: 5px;">
+                                                                    <div class="row">
+                                                                        <div class="col-xs-12 col-sm-4 col-lg-3">
+                                                                            <div class="form-group">
+                                                                                <label for="search">Search</label>
+                                                                                <input type="text" class="form-control" id="orer-item-search-text">
+                                                                            </div>
+                                                                        </div>
+                                                                        <div class="col-xs-12 col-sm-4 col-lg-3">
+                                                                            <div class="form-group">
+                                                                                <label for="search">Categories</label>
+                                                                                <select id="orer-item-search-categories" class="form-control checkmulti" multiple>
+                                                                                    @foreach (var catItem in Model.TradeOrder.ProductMenu.Categories)
+                                                                                    {
+                                                                                        <option value="@catItem.Id" selected>@catItem.Name</option>
+                                                                                    }
+                                                                                </select>
+                                                                            </div>
+                                                                        </div>
+                                                                        @if (Model.Interaction == OrderDiscussionInteraction.Noninteraction)
+                                                                        {
+                                                                            <div class="col-xs-12 col-sm-4">
+                                                                                <div class="form-group">
+                                                                                    <label for="options">Options</label><br />
+                                                                                    <button class="btn btn-info"
+                                                                                            onclick="activeInteraction(@Model.Id,this)">
+                                                                                        <i class="fa fa-comment"></i> &nbsp; Talk to an agent
+                                                                                    </button>
+                                                                                </div>
+                                                                            </div>
+                                                                        }
+                                                                    </div>
+                                                                </div>
+                                                                <br />
+                                                                <div id="items-container" class="flex-grid-thirds-lg gridfix mydeskmarket mdogrid mydeskmarketitems" style="width: 100%; padding: 0;"></div>
+                                                                <div id="pagiation-items" style="float: right;"></div>
+                                                            </div>
+                                                        </div>
+
+
+                                                    </div>
+                                                </div>
+
+                                            </div>
+                                            <!-- END Shop -->
+
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+                            <!-- END Order -->
+                            <!-- Cart -->
+                            <div class="tab-pane fade" id="order-cart-tab">
+                            </div>
+                            <!-- END Cart -->
+
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+        <div class="mdv2-col-user mdfix animated slideInRight" id="talktoagent" style="@(Model.Interaction==OrderDiscussionInteraction.Noninteraction?"display: none;":"")">
+
+            @if (allowUpload)
+            {
+                <div class="form-group">
+                    @Html.Partial("_ChatPartial", new ViewDataDictionary { { "qbicleTopics", null }, { "chatType", ChatType.Order }, { "OrderCreation", @Model }, { "OrderChatTo", OrderChatTo.Business } })
+                </div>
+            }
+
+            <br /><br />
+            <div class="scroller-tall">
+
+                <div id="list-comments-discussion" discussionType="orderdiscussion-customer" class="column-comments">
+                    @if (Comments != null && count_Comments > 0)
+                    {
+                        foreach (var item in Comments)
+                        {
+                            <div class="activity-overview post-mini animated fadeInUp newpost">
+                                <p>@item.Message.Replace(Environment.NewLine, "<br/>")</p>
+
+                                <a href="#">
+                                    <div class="activity-avatar" style="background-image: url('@(api+item.CreatedBy.ProfilePic)&size=T');"></div>
+                                    <h5>@HelperClass.GetFullNameOfUser(item.CreatedBy, currentUserId), @item.StartedDate.GetTimeRelative()</h5>
+                                </a>
+                            </div>
+                        }
+                    }
+                </div>
+                @if (count_Comments > pageSize)
+                {
+                    <button id="btnLoadPosts" onclick="LoadMorePostsDiscussion('@Model.Key', @pageSize, 'list-comments-discussion')" class="btn btn-info">Load older posts</button>
+                }
+
+
+            </div>
+
+        </div>
+
+    </section>
+    <!-- ./content -->
+
+</div>
+<div class="modal fade left" id="user-address-add" role="dialog" aria-labelledby="user-address-add">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Add an Address</h5>
+            </div>
+            <div class="modal-body">
+                <form id="frmuseraddressadd" method="post" action="~/C2C/SaveAddressForCustomer" novalidate>
+                    <div class="well custom" style="padding-bottom: 5px;">
+
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label for="AddressLine1">Address line 1</label>
+                                    <input required type="text" name="AddressLine1" class="form-control">
+                                </div>
+                            </div>
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label for="AddressLine2">Address line 2</label>
+                                    <input type="text" name="AddressLine2" class="form-control">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label for="City">City</label>
+                                    <input required type="text" name="City" class="form-control">
+                                </div>
+                            </div>
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label for="State">State</label>
+                                    <input required type="text" name="State" class="form-control">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            @{
+                                var countries = new CountriesRules().GetAllCountries();
+                            }
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label for="country">Country</label>
+                                    <select required name="country" class="form-control select2" onchange="$(this).valid()" style="width: 100%;">
+                                        <option value=""></option>
+                                        @foreach (var c in countries)
+                                        {
+                                            <option value="@c.CommonName" @(c.CommonName == "Nigeria" ? "selected" : "")>@c.CommonName</option>
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label for="PostCode">Postcode</label>
+                                    <input type="text" name="PostCode" class="form-control">
+                                </div>
+                            </div>
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label for="postcode">Set as my default address</label>
+                                    <div class="checkbox toggle">
+                                        <label>
+                                            <input data-toggle="toggle" value="True" name="IsDefault" data-onstyle="success" type="checkbox">
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <button type="button" class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">Confirm</button>
+                </form>
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+<!--/END Modals-->
+<div class="modal fade left" id="item-content-modal" role="dialog" aria-labelledby="product-more-menu" style="display: none; padding-right: 17px;"></div>
+
+<div class="modal fade left" id="apply-voucher" role="dialog" aria-labelledby="apply-voucher">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Vouchers you can use in this order</h5>
+            </div>
+            <div class="modal-body">
+
+                <ul class="unstyled voucherlist" style="padding-top: 10px; margin-bottom: 30px;">
+                    @foreach (var voucher in vouchers)
+                    {
+                        <li>
+                            <a href="#" class="date-schedule" style="margin: 0; padding: 0;" data-toggle="modal" data-target="#voucher-order-more">
+                                <div class="mdv2-activity" style="padding-top: 25px; margin: 0 0 5px 0;">
+                                    <h2 style="margin: 0; padding: 0 0 5px 0;">@voucher.Name</h2>
+                                    <p style="margin-bottom: 10px;">Expires on @voucher.EndDateString</p>
+                                    <button class="btn btn-success" data-dismiss="modal" onclick="SelectedVoucher(@voucher.Id, '@voucher.Name', '@voucher.Code')">Apply</button>
+                                </div>
+                            </a>
+                        </li>
+                    }
+                </ul>
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+<!-- /.content-wrapper -->
+<link href="~/Content/DesignStyle/css/bootstrap-multiselect.css" rel="stylesheet" />
+<script src="~/Content/DesignStyle/js/bootstrap-multiselect.min.js"></script>
+@if (System.Diagnostics.Debugger.IsAttached)
+{
+    <script src="~/Scripts/dev/b2c.discussionorder.js"></script>
+    <script src="~/Scripts/dev/qbicle.discussion-qb.js"></script>
+}
+else
+{
+    <script src="~/Scripts/dev/b2c.discussionorder.js"></script>
+    <script src="~/Scripts/dev/qbicle.discussion-qb.min.js"></script>
+}
+<script>
+    initCustomerDiscussionPage();
+</script>

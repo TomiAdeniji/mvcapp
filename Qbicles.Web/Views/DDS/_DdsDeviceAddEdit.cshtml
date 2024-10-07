@@ -1,0 +1,185 @@
+﻿@using Qbicles.Models
+@using Qbicles.Models.Trader.PoS
+@using Qbicles.Models.Trader.DDS
+@using Qbicles.Models.Trader.ODS
+@using Qbicles.BusinessRules;
+@model DdsDevice
+@{
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var ddsQueue = (DeliveryQueue)ViewBag.DdsQueue;
+    var odsDeviceTypes = (List<OdsDeviceType>)ViewBag.OdsDeviceTypes;
+    var administrators = (List<ApplicationUser>)ViewBag.ddsAdministrators;
+    var users = (List<PosRoleUsersViewModel>)ViewBag.PosUsers;
+    var modalTitle = Model.Id == 0 ? "Add a DDS Device" : "Edit DDS Device";
+    if (Model.Id == 0)
+    {
+        Model.Queue = ddsQueue;
+    }
+}
+<input hidden="" id="device-id" value="@Model.Id" />
+<div class="modal-dialog" role="document">
+    <div class="modal-content">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <h5 class="modal-title">@modalTitle</h5>
+        </div>
+        <div class="modal-body">
+
+            <form id="device-form" class="well custom">
+                <div class="row">
+                    <div class="col-xs-12">
+                        <div class="form-group">
+                            <label for="name">Name <span>*</span></label>
+                            <input type="text" id="device-name" name="devicename" class="form-control" value="@Model.Name" required="">
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-xs-12">
+                        <div class="form-group">
+                            <label style="width: 100%" for="queue">Delivery Queue <span>*</span></label>
+                            <p>@Model.Queue.Name</p>
+                            <input type="hidden" value="@Model.Queue.Id" id="device-queue" />
+
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-xs-12">
+                        <div class="form-group">
+                            <label style="width: 100%" for="queue">Device type <span>*</span></label>
+
+                            <select id="ods-device-type" name="devicequeue" class="form-control select2All" style="width: 100%;" required="">
+                                @foreach (var q in odsDeviceTypes)
+                                {
+                                    if (q.Id == Model.Type?.Id)
+                                    {
+                                        <option selected="" value="@q.Id">@q.Name</option>
+                                    }
+                                    else
+                                    {
+                                        <option value="@q.Id">@q.Name</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-xs-12">
+                        <div class="form-group">
+                            <label for="admin">Administrator(s) <span>*</span></label>
+                            <select hidden="" name="deviceadmin" id="device-admin" class="form-control checkmulti" multiple style="width: 100%; display:none;" required="">
+                                @foreach (var a in administrators)
+                                {
+                                    if (Model.Administrators.Any(e => e.Id == a.Id))
+                                    {
+                                        <option selected="" value="@a.Id">@a.DisplayUserName</option>
+                                    }
+                                    else
+                                    {
+                                        <option value="@a.Id">@a.DisplayUserName</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-xs-12">
+                        <div class="form-group avatarpickermulti" style="margin: 0;">
+                            <label for="assignee">User(s) <span>*</span></label>
+                            <select id="device-user" name="assignee" class="form-control select2avatar" data-placeholder="Type to search" multiple style="width: 100%;" required="">
+                                @foreach (var u in users)
+                                {
+                                    if (Model.Users.Any(e => e.Id == u.Id))
+                                    {
+                                        <option LogoUri="@(u.User.ProfilePic)" api="@api" value="@u.Id" selected>@u.User.DisplayUserName</option>
+                                    }
+                                    else
+                                    {
+                                        <option LogoUri="@(u.User.ProfilePic)" api="@api" value="@u.Id">@u.User.DisplayUserName</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </form>
+
+
+            <br />
+            <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+            @if (Model.Queue.Id > 0)
+            {
+                <button onclick="SaveDdsDevice()" class="btn btn-success">Confirm </button>
+            }
+            else
+            {
+                <button onclick="SaveDdsDevice()" disabled class="btn btn-success">Confirm </button>
+            }
+
+
+        </div>
+    </div><!-- /.modal-content -->
+</div>
+
+
+<script src="~/Content/DesignStyle/js/bootstrap-multiselect.min.js"></script>
+<script>
+    $('select.select2All').select2({ placeholder: 'Please select' });
+    $('.checkbox.toggle input').bootstrapToggle();
+
+    $('.checkmulti')
+        .multiselect({
+            allSelectedText: 'All',
+            includeSelectAllOption: false,
+            enableFiltering: false,
+            buttonWidth: '100%',
+            maxHeight: 400,
+            enableClickableOptGroups: true
+        })
+        .multiselect('selectAll', true)
+        .multiselect('updateButtonText');
+
+
+    //$("#device-admin").multiselect({
+    //    includeSelectAllOption: false,
+    //    enableFiltering: false,
+    //    buttonWidth: '100%',
+    //    maxHeight: 200,
+    //    enableClickableOptGroups: true
+    //});
+
+    $('.select2avatar').select2({
+        placeholder: 'Please select',
+        templateResult: formatOptions,
+        templateSelection: formatSelected
+    });
+</script>
+
+<style>
+    #device-user + label.error {
+        position: absolute;
+        top: 0 !important;
+        right: 15px;
+        border-top-left-radius: 5px !important;
+        border-top-right-radius: 5px !important;
+    }
+
+        #device-user + label.error + span {
+            border: 1px solid #b84c4c
+        }
+
+    #device-admin + label.error {
+        position: absolute;
+        top: 0 !important;
+        right: 15px;
+        border-top-left-radius: 5px !important;
+        border-top-right-radius: 5px !important;
+    }
+
+        #device-admin + label.error + span {
+            border: 1px solid #b84c4c
+        }
+</style>

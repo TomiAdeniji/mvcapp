@@ -1,0 +1,166 @@
+﻿
+@using Qbicles.BusinessRules;
+@model List<TraderConfigurationModel>
+@{
+    var dateFormat = (string)ViewBag.CurrentDateFormat;
+}
+<div class="modal fade left" id="app-dimension-add" role="dialog" aria-labelledby="app-dimension-add">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+                <h5 class="modal-title">New Reporting Filter</h5>
+            </div>
+            <div class="modal-body">
+
+                <div class="well">
+                    <form class="form-group" method="POST" id="form_dimension_add" action="/Bookkeeping/SaveDimension" enctype="multipart/form-data" novalidate="novalidate">
+                        <input id="input_group_id" type="hidden" name="Id" />
+                        <input id="input_group_createddate" type="hidden" name="CreatedDate" />
+                        <input id="input_group_createdbyid" type="hidden" name="CreatedBy" />
+                        <div class="form-group">
+                            <label for="name">Name <span class="required">*</span></label>
+                            <input type="text" id="addnew-dimension-name" required name="Name" class="form-control" placeholder="">
+                        </div>
+                    </form>
+                </div>
+
+                <button type="button" class="btn btn-success" onclick="addDimension()"><i class="fa fa-check"></i> &nbsp; Add now</button>
+                <button class="btn btn-danger modal-dimension-add-cancel" data-dismiss="modal"><i class="fa fa-remove"></i> &nbsp; Cancel</button>
+
+            </div>
+        </div> <!-- /.modal-content -->
+    </div> <!-- /.modal-dialog -->
+</div>
+<!-- /.modal Add new Dimension-->
+
+<div class="modal fade left" id="app-dimension-edit" role="dialog" aria-labelledby="app-dimension-edit">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Edit Reporting Filter</h5>
+            </div>
+            <div class="modal-body">
+
+                <div class="well">
+                    <form class="form-group" method="POST" id="form_dimension_edit" action="/Bookkeeping/SaveDimension" enctype="multipart/form-data" novalidate="novalidate">
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="date">Create by</label>
+                                    <input type="text" id="dimension-edit-createby" disabled class="form-control" value="">
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="date">Created date</label>
+                                    <input type="text" id="dimension-edit-createdate" disabled class="form-control" value="">
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-12">
+                                <input class="hidden" name="Id" id="dimension-edit-id" />
+                                <div class="form-group">
+                                    <label for="number">Name <span class="required">*</span></label>
+                                    <input type="text" name="Name" id="dimension-edit-name" class="form-control" required value="">
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
+                <button class="btn btn-success" onclick="updateDimension()"><i class="fa fa-check"></i> &nbsp; Save</button>
+                <button class="btn btn-danger modal-dimension-edit-cancel" data-dismiss="modal"><i class="fa fa-remove"></i> &nbsp; Cancel</button>
+
+            </div>
+        </div> <!-- /.modal-content -->
+    </div> <!-- /.modal-dialog -->
+</div>
+<!-- /.modal Edit Dimension-->
+
+
+<div class="soft_tan" style="margin-bottom: 15px;">
+    <table class="accgroup-table table table-hover t1style valignm custome-table" style="width: 100%; background: #fff;">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Created</th>
+                <th>Creator</th>
+                <th width="100">Options</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model)
+            {
+                <tr>
+                    <td>@item.Name</td>
+                    <td>@item.CreatedDate.ToString(dateFormat)</td>
+                    <td>@item.CreatedBy.GetFullName()</td>
+                    <td>
+                        <button class="btn btn-warning" onclick="EditDimension(@item.Id)" data-toggle="modal" data-target="#app-dimension-edit"><i class="fa fa-pencil"></i></button>
+                        @if (item.CanDelete)
+                        {
+                            <button class="btn btn-danger" data-toggle="modal" data-target="#app-dimension-confirm" onclick="ConfirmDeleteDimension(@item.Id, '@item.Name')"><i class="fa fa-trash"></i></button>
+                        }
+                        else
+                        {
+                            <button class="btn btn-danger" disabled><i class="fa fa-trash"></i></button>
+                        }
+                    </td>
+                </tr>
+            }
+
+        </tbody>
+    </table>
+
+
+    <a href="#" class="btn btn-success" data-toggle="modal" onclick="clickAddDimension()" data-target="#app-dimension-add"><i class="fa fa-plus"></i> &nbsp; Add new</a>
+</div> <!-- Table -->
+
+<div class="modal fade" id="app-dimension-confirm" role="dialog" aria-labelledby="app-dimension-confirm">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Delete dimension</h5>
+            </div>
+            <div class="modal-body">
+                <div class="col-xs-12 col-sm-12" style="margin-bottom: 30px;">
+                    <span id="label-confirm-dimension"></span>
+                    <input class="hidden" id="id-itemdimension-delete" />
+                </div>
+
+                <button class="btn btn-success" data-dismiss="modal" onclick="deleteDimension()"><i class="fa fa-check"></i> &nbsp; OK</button>
+                <button class="btn btn-danger" data-dismiss="modal"><i class="fa fa-remove"></i> &nbsp; Cancel</button>
+
+            </div>
+        </div> <!-- /.modal-content -->
+    </div> <!-- /.modal-dialog -->
+</div>
+<!-- /.modal Confirm delete-->
+
+<style>
+    .form-group {
+        position: relative;
+    }
+
+    label.error {
+        position: absolute;
+        right: 0;
+    }
+</style>
+<script>
+
+    $(document).ready(function () {
+        $('.accgroup-table').DataTable({
+            responsive: true,
+            "lengthChange": true,
+            "pageLength": 10,
+            "order": []
+        });
+
+        $('.accgroup-table').show();
+    });
+</script>

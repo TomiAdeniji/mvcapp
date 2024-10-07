@@ -1,0 +1,352 @@
+﻿@using Qbicles.BusinessRules
+@using Qbicles.Models
+@using Qbicles.Models.Trader
+@model CashAccountTransaction
+
+@{
+    ViewBag.Title = ViewBag.TraderTitle;
+
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var pageSize = HelperClass.activitiesPageSize;
+    var timeZone = (string)ViewBag.CurrentTimeZone ?? "";
+    var userId = ViewBag.CurrentUserId;
+    var userAvatar = ViewBag.CurrentUserAvatar;
+    var traderAppRight = (IsReviewerAndApproverModel)ViewBag.TraderApprovalRight;
+    var dateFormat = (string)ViewBag.CurrentDateFormat;
+    var today = (DateTime)ViewBag.Today;
+    var timeline = (List<ApprovalStatusTimeline>)ViewBag.Timeline;
+    var timelineDate = (List<DateTime>)ViewBag.TimelineDate;
+}
+
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail mdv2-wrapper" style="position: relative;" id="discussion-thread">
+    <div class="tabnav-spacer hidden-xs"></div>
+    <input value="@Model.Id" type="hidden" id="payment_id" />
+    <!-- Main content -->
+    <section id="payment_content" class="mdv2 dash" data-tooltip-color="teal" data-tooltip-delay="300" data-tooltip-animate-function="spin" style="border-top: 1px solid #f1f1f1;">
+    </section>
+    <!-- ./content -->
+
+</div>
+<!-- /.content-wrapper -->
+
+
+@{
+    Html.RenderAction("GenerateModalMedia", "Qbicles");
+}
+<div class="modal fade" id="attachments-view" role="dialog" aria-labelledby="attachments-view">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Manage Attachments</h5>
+            </div>
+            <div class="modal-body">
+
+                <div class="row">
+                    <div class="col-xs-12 col-md-6">
+
+                        <div class="activity-overview task" style="margin-bottom: 40px;">
+                            <form name="add_attachment" id="attachments">
+
+                                <div class="repeater_wrap">
+                                    <div class="row add_attachment_row">
+                                        <div class="col-xs-12">
+                                            <div class="form-group">
+                                                <label for="name">Name</label>
+                                                <input type="text" name="name" class="form-control">
+                                            </div>
+                                        </div>
+                                        <div class="col-xs-12">
+                                            <div class="form-group">
+                                                <label for="file">File</label>
+                                                <input type="file" name="file" class="form-control">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <button class="btn btn-info" id="add_attachment_trigger"><i class="fa fa-plus"></i> &nbsp; Add another</button>
+                                <button class="btn btn-success"><i class="fa fa-check"></i> &nbsp; Add selected files to list</button>
+                            </form>
+                        </div>
+
+                    </div>
+                    <div class="col-xs-12 col-md-6">
+
+                        <ul class="domain-change-list unstyled cap-height" style="margin-top: 0;">
+                            <li>
+                                <button class="btn btn-danger"><i class="fa fa-trash"></i></button>
+                                <a href="#">
+                                    <img src="dist/img/icon_file_doc.png" style="max-width: 80px; height: auto; padding-right: 10px;"> word_document.doc
+                                </a>
+                            </li>
+                            <li>
+                                <button class="btn btn-danger"><i class="fa fa-trash"></i></button>
+                                <a href="#">
+                                    <img src="dist/img/icon_file_pdf.png" style="max-width: 80px; height: auto; padding-right: 10px;"> example_file.pdf
+                                </a>
+                            </li>
+                            <li>
+                                <button class="btn btn-danger"><i class="fa fa-trash"></i></button>
+                                <a href="#">
+                                    <img src="dist/img/icon_file_xls.png" style="max-width: 80px; height: auto; padding-right: 10px;"> example_statement.xls
+                                </a>
+                            </li>
+                        </ul>
+
+                    </div>
+                </div>
+
+                <br />
+                <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                <button class="btn btn-success" data-dismiss="modal"><i class="fa fa-save"></i> &nbsp; Finish &amp; save</button>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+
+
+
+<div class="modal fade" id="app-trader-payment-change-destination" role="dialog" aria-labelledby="app-trader-payment-change-destination">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Change payment destination</h5>
+            </div>
+            <div class="modal-body">
+
+                <div class="activity-overview task" style="padding: 20px;">
+                    <div class="form-group" style="margin: 0;">
+                        <label for="title">Cash/Bank</label>
+                        <select name="cashorbank" class="form-control select2 select2-hidden-accessible" style="width: 100%;" tabindex="-1" aria-hidden="true">
+                            <option value=""></option>
+                            <optgroup label="Bank">
+                                <option value="2" selected>Guaranty Trust Bank</option>
+                            </optgroup>
+                            <optgroup label="Cash">
+                                <option value="1">Lekki cash-in-hand</option>
+                            </optgroup>
+                        </select>
+                    </div>
+                </div>
+
+                <br />
+                <button data-dismiss="modal" type="submit" class="btn btn-success">Change</button>
+                <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+
+
+<div class="modal fade left" id="app-trader-payment-contact" role="dialog" aria-labelledby="app-trader-payment-contact">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Change payment contact</h5>
+            </div>
+            <div class="modal-body">
+
+                <div class="activity-overview task" style="padding: 20px 20px 5px 20px;">
+                    <div class="row">
+                        <div class="col-xs-12">
+                            <div class="form-group">
+                                <label for="contact">Contact</label>
+                                <select name="contact" class="form-control select2" style="width: 100%;">
+                                    <option value=""></option>
+                                    <option value="Mila Kunis" selected>Mila Kunis</option>
+                                    <option value="Person 2">Person 2</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <br />
+                <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                <button class="btn btn-success" data-dismiss="modal">Confirm</button>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+
+<div class="modal fade left" id="history-view" role="dialog" aria-labelledby="history-view">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Approval history</h5>
+            </div>
+            <div class="modal-body">
+
+                <div id="view-timeline">
+
+                </div>
+                <br />
+                <button class="btn btn-primary" data-dismiss="modal">Close</button>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+
+<div class="modal fade left" id="team-view" role="dialog" aria-labelledby="team-view">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Team Members</h5>
+            </div>
+            <div class="modal-body">
+
+                <div class="row">
+                    <div class="col-xs-12">
+                        <ul class="app_subnav">
+                            <li class="active"><a href="#initiators" data-toggle="tab">Initiators</a></li>
+                            <li><a href="#reviewers" data-toggle="tab">Reviewers</a></li>
+                            <li><a href="#approvers" data-toggle="tab">Approvers</a></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <br />
+
+                <div class="tab-content">
+                    @if (Model.Workgroup.Members.Any())
+                    {
+                        var approvalProcesss = new ApprovalRequestDefinition();
+                        if (Model.PaymentApprovalProcess != null && Model.PaymentApprovalProcess.ApprovalRequestDefinition != null)
+                        {
+                            approvalProcesss = Model.PaymentApprovalProcess.ApprovalRequestDefinition;
+                        }
+                        var approvers = Model.Workgroup.Approvers;
+                        approvers.AddRange(Model.Workgroup.Members.Where(q => approvalProcesss.Approvers.Any(a => a.Id == q.Id)).ToList());
+                        approvers = approvers.Distinct().ToList();
+
+                        var reviewers = Model.Workgroup.Reviewers;
+                        reviewers.AddRange(Model.Workgroup.Members.Where(q => approvalProcesss.Reviewers.Any(a => a.Id == q.Id)).ToList());
+                        reviewers = reviewers.Distinct().ToList();
+
+                        var initiators = Model.Workgroup.Members.Where(q => !(approvers.Any(a => a.Id == q.Id) || reviewers.Any(r => r.Id == q.Id))).ToList();
+                        initiators.AddRange(Model.Workgroup.Members.Where(q => approvalProcesss.Initiators.Any(a => a.Id == q.Id)).ToList());
+                        initiators = initiators.Distinct().ToList();
+
+
+                        <div class="tab-pane fade in active" id="initiators">
+                            <ul class="avatar-listing team unstyled" style="margin-bottom: 0 !important;">
+                                @if (initiators.Any())
+                                {
+                                    foreach (var applicationUser in initiators)
+                                    {
+                                        var roleInit = "Initiator";
+                                        roleInit += approvalProcesss.Reviewers.Any(q => q.Id == applicationUser.Id) ? ", Reviewer" : "";
+                                        roleInit += approvalProcesss.Approvers.Any(q => q.Id == applicationUser.Id) ? ", Approver" : "";
+
+                                        <li>
+                                            <a>
+                                                <div class="owner-avatar">
+                                                    <div class="avatar-sm" style="background: url('@api@applicationUser.ProfilePic');"></div>
+                                                </div>
+                                                <h5>@HelperClass.GetFullNameOfUser(applicationUser)<br><small>@roleInit</small></h5>
+                                            </a>
+                                        </li>
+                                    }
+                                }
+                            </ul>
+                        </div>
+                        <div class="tab-pane fade" id="reviewers">
+                            <ul class="avatar-listing team unstyled" style="margin-bottom: 0 !important;">
+                                @if (reviewers.Any())
+                                {
+                                    foreach (var applicationUser in reviewers)
+                                    {
+                                        var roleReview = "Reviewer";
+                                        roleReview = approvalProcesss.Initiators.Any(q => q.Id == applicationUser.Id) ? "Initiator, " + roleReview : roleReview;
+                                        roleReview += approvalProcesss.Approvers.Any(q => q.Id == applicationUser.Id) ? ", Approver" : "";
+
+                                        <li>
+                                            <a>
+                                                <div class="owner-avatar">
+                                                    <div class="avatar-sm" style="background: url('@api@applicationUser.ProfilePic');"></div>
+                                                </div>
+                                                <h5>@HelperClass.GetFullNameOfUser(applicationUser)<br><small>@roleReview</small></h5>
+                                            </a>
+                                        </li>
+
+                                    }
+                                }
+                            </ul>
+                        </div>
+                        <div class="tab-pane fade" id="approvers">
+                            <ul class="avatar-listing team unstyled" style="margin-bottom: 0 !important;">
+                                @if (approvers.Any())
+                                {
+                                    foreach (var applicationUser in approvers)
+                                    {
+                                        var roleApprover = "";
+                                        roleApprover += approvalProcesss.Initiators.Any(q => q.Id == applicationUser.Id) ? "Initiator" : roleApprover;
+                                        roleApprover += approvalProcesss.Reviewers.Any(q => q.Id == applicationUser.Id) ? string.IsNullOrEmpty(roleApprover) ? "Reviewer" : ", Reviewer" : roleApprover;
+                                        roleApprover += (string.IsNullOrEmpty(roleApprover) ? "Approver" : ", Approver");
+                                        <li>
+                                            <a>
+                                                <div class="owner-avatar">
+                                                    <div class="avatar-sm" style="background: url('@api@applicationUser.ProfilePic');"></div>
+                                                </div>
+                                                <h5>@HelperClass.GetFullNameOfUser(applicationUser)<br><small>@roleApprover</small></h5>
+                                            </a>
+                                        </li>
+                                    }
+                                }
+                            </ul>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="tab-pane fade in active" id="initiators">
+
+                            <ul class="avatar-listing team unstyled" style="margin-bottom: 0 !important;">
+                            </ul>
+
+                        </div>
+                        <div class="tab-pane fade" id="reviewers">
+
+                            <ul class="avatar-listing team unstyled" style="margin-bottom: 0 !important;">
+                            </ul>
+
+                        </div>
+                        <div class="tab-pane fade" id="approvers">
+                            <ul class="avatar-listing team unstyled" style="margin-bottom: 0 !important;">
+                            </ul>
+                        </div>
+                    }
+
+                </div>
+
+                <br /><br />
+                <button class="btn btn-primary" data-dismiss="modal">Close</button>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+
+
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/trader.payment.review.js"></script>
+        <script src="~/Scripts/dev/trader.domain.js"></script>
+
+    }
+    else
+    {
+        <script src="~/Scripts/dev/trader.payment.review.min.js"></script>
+        <script src="~/Scripts/dev/trader.domain.min.js"></script>
+
+    }
+}
+<script>
+    RenderContentUpdated();
+</script>

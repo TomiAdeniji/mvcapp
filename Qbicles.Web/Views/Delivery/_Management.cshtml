@@ -1,0 +1,435 @@
+﻿@using Qbicles.Models.Trader.DDS
+@using Qbicles.BusinessRules
+@using Qbicles.BusinessRules
+@using Qbicles.Models
+@using Qbicles.BusinessRules.Helper
+@using Qbicles.Models.Trader.ODS
+@using Qbicles.Models.TraderApi
+@model Delivery
+@{
+
+    var currencySetting = (CurrencySetting)ViewBag.CurrencySettings;
+    var timeZone = (string)ViewBag.CurrentTimeZone;
+    var datetimeFormat = (string)ViewBag.CurrentDateTimeFormat;
+
+    var deliveryRoutes = Model.Routes?.ParseAs<DeliveryRoutes>();
+
+    var deliveryKey = Model.Key;
+
+
+    //if delivery started, can not update
+    var canUpdateDelivery = Model.Status == DeliveryStatus.New;
+
+    var canSortable = (Model.Status != DeliveryStatus.Completed && Model.Status != DeliveryStatus.Completed);
+
+    var deliveryQueue = Model.DeliveryQueue == null ? Model.DeliveryQueueArchive.ParentDeliveryQueue : Model.DeliveryQueue;
+    var depotPosition = new { deliveryQueue.Location.Id, Title = deliveryQueue.Location.Name, deliveryQueue.Location.Address.Latitude, deliveryQueue.Location.Address.Longitude };
+    var customerPosition = new List<object>();
+
+    foreach (var o in Model.Orders.OrderBy(e => e.DeliverySequence))
+    {
+        if (o.Customer == null) { continue; };
+        var title = o.Customer.CustomerName;
+        if (!string.IsNullOrEmpty(o.Customer.PhoneNumber))
+        { title += Environment.NewLine + o.Customer.PhoneNumber; }
+        customerPosition.Add(new
+        {
+            o.Id,
+            TraderId = o.Id,
+            Title = title,
+            o.DeliverySequence,
+            o.Status,
+            o.Customer.FullAddress.Latitude,
+            o.Customer.FullAddress.Longitude
+        });
+    }
+
+    var delivery = new
+    {
+        Model.Id,
+        TraderId = Model.Id,
+        DriverId = Model.Driver?.Id ?? 0,
+        DeliveryStatus = Model.Status.GetId(),// Status of the delivery
+        Status = Model.Driver?.DeliveryStatus.GetId() ?? 0,//status of the driver
+        Model.EstimateDistance,
+        Model.EstimateTime,
+        Routes = Model.Routes,
+        Orders = customerPosition,
+        CompleteOrderId = 0
+    };
+
+    var driverPosition = new { Id = 0, Title = "", Latitude = 0M, Longitude = 0M };
+    var dDriver = (Driver)ViewBag.Driver;
+
+    if (dDriver != null)
+    {
+        driverPosition = new { dDriver.Id, Title = dDriver.User.User.GetFullName(), Latitude = dDriver.Latitude, Longitude = dDriver.Longitude };
+    }
+
+    var driverIcon = dDriver?.User.User.ProfilePic.ToUri();
+
+
+}
+
+
+
+<div data-spy="affix" class="contained-sidebar animated fadeIn" id="deliveryinfo">
+
+    <div class="activity-overview plain company-overview welcome-info" style="text-align: left !important; flex: none; margin: 0; padding-top: 30px; padding-bottom: 0;">
+
+        <div class="pull-left" style="margin-bottom: 15px;">
+            <a href="~/Delivery" class="btn btn-primary"><i class="fa fa-angle-left"></i> &nbsp; All deliveries</a>
+        </div>
+        <div class="clearfix"></div>
+
+        <br />
+
+        <h1 style="line-height: 1.2;">Delivery #@(Model.Reference?.FullRef ?? Model.Id.ToString())</h1>
+        <span class="label label-lg label-@Model.Status.GetClass()">@Model.Status.GetDescription()</span>
+        <br />
+        <br />
+        <div class="row">
+            <div class="col-xs-6">
+                <label>Created</label><br />
+                <p>@Model.CreatedDate.ConvertTimeFromUtc(timeZone).ToString(datetimeFormat)</p>
+            </div>
+            <div class="col-xs-6">
+                <label>Started</label>
+                <p>@(Model.TimeStarted?.ConvertTimeFromUtc(timeZone).ToString(datetimeFormat)??"")</p>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-xs-6">
+                <label>Orders</label><br />
+                @{
+                    var completed = Model.Orders.Count(e => e.Status == Qbicles.Models.Trader.ODS.PrepQueueStatus.Completed || e.Status == Qbicles.Models.Trader.ODS.PrepQueueStatus.CompletedWithProblems);
+                    var oComplete = $"{completed}/{Model.Orders.Count} complete";
+                }
+                <p id="delivery-order-info">@Model.Orders.Count() stops (@oComplete)</p>
+            </div>
+            <div class="col-xs-6">
+                <label>Total</label>
+                <p id="delivery-order-total">@Model.Total.ToCurrencySymbol(currencySetting)</p>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-xs-6">
+                <label>Driver</label><br />
+                <p id="delivery-driver-info">@(dDriver?.User.User.GetFullName()??"Unassigned")</p>
+            </div>
+            <div class="col-xs-6">
+                <label>Driver status</label><br />
+                <span id="delivery-driver-status" class="label label-lg label-@(dDriver?.DeliveryStatus.GetClass())">@(dDriver?.DeliveryStatus.GetDescription())</span>
+
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-xs-6">
+                <label>Travel time</label><br />
+                @{
+                    var duration = TimeSpan.FromSeconds(Model.EstimateTime ?? 0);
+                    var hourTxt = duration.Hours == 1 ? "hour" : "hours";
+                    var minuteTxt = duration.Minutes == 1 ? "minute" : "minutes";
+                }
+                <p id="delivery-duration">@($"{duration.Hours} {hourTxt} {duration.Minutes} {minuteTxt}")</p>
+            </div>
+            <div class="col-xs-6">
+                <label>Travel distance</label>
+                <p id="delivery-distance">@($"{((decimal)(Model.EstimateDistance ?? 0) / 1000).ToDecimalPlace(currencySetting)} km")</p>
+
+            </div>
+        </div>
+        <br />
+        <ul class="community-v2-nav mydesk-alt" style="margin: 15px -5px 0 -5px;">
+            <li onclick="ShowDeliveryOrders('@Model.Key')" class="active"><a href="#" data-toggle="tab" data-target="#orders">Orders</a></li>
+            <li><a onclick="ShowDeliveryDrivers()" href="#" data-toggle="tab" data-target="#drivers">Drivers</a></li>
+
+        </ul>
+        <br />
+
+        <div class="activity-overview generic help-text animated fadeIn">
+            <i class="fa fa-car"></i>
+            @{
+                var ddStatus = Model.Driver?.DeliveryStatus ?? DriverDeliveryStatus.NotSet;
+                var displayManagement = "none";
+                var headDepot = "";
+                var pickup = "";
+                var startDelivery = "";
+                var headDepotBtn = "";
+                var pickupBtn = "";
+                var startDeliveryBtn = "";
+
+                switch (ddStatus)
+                {
+                    case DriverDeliveryStatus.NotSet:
+                    case DriverDeliveryStatus.Completed:
+                    case DriverDeliveryStatus.CompletedWithProblems:
+                    case DriverDeliveryStatus.StartedDelivery:
+                    case DriverDeliveryStatus.Rejected:
+                        break;
+                    case DriverDeliveryStatus.Accepted:
+                        //headDepot = "js-active";
+                        headDepotBtn = "js-active";
+                        break;
+                    case DriverDeliveryStatus.HeadingToDepot:
+                        headDepot = "js-active";
+                        //pickup = "js-active";
+                        //pickupBtn = "js-active";
+                        break;
+                    case DriverDeliveryStatus.ReadyForPickup:
+                        headDepot = "js-active";
+                        pickup = "js-active";
+                        //startDelivery = "js-active";
+                        startDeliveryBtn = "js-active";
+                        break;
+                    default:
+                        break;
+                }
+
+                if (ddStatus == DriverDeliveryStatus.Accepted || ddStatus == DriverDeliveryStatus.HeadingToDepot || ddStatus == DriverDeliveryStatus.ReadyForPickup)
+                {
+                    displayManagement = "";
+                }
+            }
+            <div id="driver-update-status-delivery" class="multisteps-form" style="display:@displayManagement;">
+                <!--progress bar-->
+                <div class="row">
+                    <div class="col-12 col-lg-12 ml-auto mr-auto mb-4">
+                        <div class="multisteps-form__progress">
+                            <button id="headdepotLine" style="cursor: default;" class="multisteps-form__progress-btn @headDepot" type="button">Head to depot</button>
+                            <button style="cursor: default;" class="multisteps-form__progress-btn @pickup" type="button">Pick up</button>
+                            <button style="cursor: default;" class="multisteps-form__progress-btn @startDelivery" type="button">Begin delivery</button>
+                        </div>
+                    </div>
+                </div>
+                <!--form panels-->
+                <div class="row">
+                    <div class="col-12 col-lg-12 m-auto">
+                        <form class="multisteps-form__form">
+                            <!--single form panel-->
+                            <div id="headdepotButton" class="multisteps-form__panel shadow p-4 rounded bg-white @headDepotBtn" data-animation="scaleIn">
+                                <!--<h3 class="multisteps-form__title">Your User Info</h3>-->
+                                <div class="multisteps-form__content">
+                                    <div class="button-row d-flex mt-4">
+                                        <button onclick="DriverHeadToDepot()" class="btn btn-primary ml-auto js-btn-next" type="button">Heading to the depot</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <!--single form panel-->
+                            <div class="multisteps-form__panel shadow p-4 rounded bg-white @pickupBtn" data-animation="scaleIn">
+                                <!--<h3 class="multisteps-form__title">Your Address</h3>-->
+                                <div class="multisteps-form__content">
+                                    <div class="button-row d-flex mt-4">
+                                        <button onclick="DriverReadyToPickup()" class="btn btn-primary ml-auto js-btn-next" type="button">Ready for pickup</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <!--single form panel-->
+                            <div class="multisteps-form__panel shadow p-4 rounded bg-white @startDeliveryBtn" data-animation="scaleIn">
+                                <!--<h3 class="multisteps-form__title">Your Order Info</h3>-->
+                                <div class="multisteps-form__content">
+                                    <div class="row">
+                                        <div class="button-row d-flex mt-4 col-12">
+                                            <button onclick="DriverStartDelivery()" class="btn btn-success ml-auto js-btn-next" type="button">Starting delivery</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div id="driver-accept-reject-delivery">
+                @if (Model.Status == DeliveryStatus.New && Model.Driver != null)
+                {
+                    <a href="#" class="btn btn-sm btn-warning" style="color: #fff;" onclick="DriverReject()">Reject</a>
+                    <a href="#" class="btn btn-sm btn-primary" style="color: #fff;" onclick="DriverAccept()">Accept</a>
+                }
+
+            </div>
+        </div>
+
+
+
+
+
+        <br />
+        <div class="tab-content">
+
+
+            <!-- Orders -->
+            <div class="tab-pane fade in active" id="orders">
+                @if (canUpdateDelivery)
+                {
+                    <button class="btn btn-success community-button" style="margin-bottom: 30px;" onclick="OpenOrderListModal()">
+                        <i class="fa fa-plus"></i> &nbsp; Add an Order
+                    </button>
+                }
+
+
+                <div class="activity-overview generic help-text animated fadeIn">
+                    <i class="fa fa-info-circle"></i>
+                    <p>
+                        Until this delivery is started you have the option of altering the driver's route by adding or reordering existing orders. To reorder, simply
+                        drag and drop the orders below - you'll be prompted to recalculate the route before locking in your changes.
+                    </p>
+                    <a href="#" onclick="$(this).parent().hide();">Dismiss</a>
+                </div>
+
+
+                <div style="width: 100%;">
+
+                    <div class="pipeline-block" style="margin: 0; padding: 0; width: 100%;">
+                        <div class="horizontal-portlets">
+                            <div class="delivery-orders-list">
+
+                                @{
+                                    var cssCompleted = "";
+                                    var actived = "";
+
+                                    var orderAcvied = Model.ActiveOrder?.Id ?? 0;
+
+                                    foreach (var o in Model.Orders.OrderBy(s => s.DeliverySequence))
+                                    {
+                                        switch (o.Status)
+                                        {
+                                            case Qbicles.Models.Trader.ODS.PrepQueueStatus.Completed:
+                                            case Qbicles.Models.Trader.ODS.PrepQueueStatus.CompletedWithProblems:
+                                                cssCompleted = "completed";
+                                                break;
+                                            default:
+                                                cssCompleted = "";
+                                                break;
+                                        }
+
+                                        if (orderAcvied == o.Id)
+                                        {
+                                            actived = "Active";
+                                        }
+                                        else if (orderAcvied == 0 && o.DeliverySequence == 1)
+                                        {
+                                            actived = "Active";
+                                        }
+                                        else
+                                        {
+                                            actived = "";
+                                        }
+                                        <div id="order-id-@o.Id" data-id="@o.Id">
+
+                                            <div class="portlet rework dds @cssCompleted" order-id="@o.Id">
+
+                                                <label class="label label-@o.Status.GetClass() label-lg" style="font-size: 11px !important; position: absolute; top: 5px; left: 5px;">@o.Status.GetDescription()</label>
+                                                <label id="active-@o.Id" class="label label-success label-lg" style="font-size: 11px !important; position: absolute; top: 5px; left: 85px;">@actived</label>
+
+                                                @if (canUpdateDelivery)
+                                                {
+                                                    <div class="qbicle-opts">
+                                                        <a class="remove-order" href="javascript:" onclick="ConfirmRemoveOrder(@o.Id, '@o.Key')">
+                                                            <i class="fa fa-trash"></i>
+                                                        </a>
+                                                    </div>
+                                                }
+
+                                                <div class="portlet-side">
+                                                    <span id="order-sequence-@o.Id">@o.DeliverySequence</span>
+                                                </div>
+
+                                                <div class="portlet-content">
+                                                    <div class="row">
+                                                        <div class="col-xs-12">
+                                                            <br />
+                                                            <p class="font-size: 14px; font-weight: 600;" id="order-ref-@o.Id">Order @(o.OrderRef)</p>
+
+                                                            @if (o.Customer != null)
+                                                            {
+                                                                <p>
+                                                                    @o.Customer.CustomerRef<br />
+                                                                    @o.Customer.CustomerName<br />
+                                                                    @o.Customer.PhoneNumber<br />
+                                                                    @Html.Raw(o.Customer.FullAddress.ToAddressHtml())
+
+                                                                </p>
+                                                            }
+                                                        </div>
+
+                                                        <div class="col-xs-12">
+                                                            <br />
+                                                            <a href="#" class="btn btn-sm btn-info" style="color: #fff;" onclick="ShowOrderInfo('@o.Key')">Details</a>
+
+                                                            @if (Model.Status == DeliveryStatus.Started && o.Status != PrepQueueStatus.Completed && o.Status != PrepQueueStatus.CompletedWithProblems)
+                                                            {
+                                                                <a href="#" class="btn btn-sm btn-primary" style="color: #fff;" onclick="ShowMessageCustomer(@o.Id)">Message customer</a>
+                                                                <a href="#" class="btn btn-sm btn-success" style="color: #fff;" onclick="CompleteOrder(@o.Id)">Complete</a>
+                                                            }
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                }
+                            </div> <!-- ./column -->
+                        </div> <!-- ./horizontal-portlets -->
+                    </div> <!-- ./pipeline-block -->
+
+                </div> <!-- ./pipeline -->
+
+                <br /><br /><br />
+            </div>
+            <!-- END Orders -->
+            <!-- Drivers -->
+            <div class="tab-pane fade" id="drivers">
+
+                <div class="activity-overview generic help-text animated bounce">
+                    <i class="fa fa-info-circle"></i>
+                    <p>
+                        You don't currently have a driver assigned to this delivery. To get started, assign one of the drivers below and they'll be notified
+                        about this delivery.
+                    </p>
+                    <a href="#" onclick="$(this).parent().hide();">Dismiss</a>
+                </div>
+
+                <div id="drivers-delivery-list"></div>
+
+            </div>
+            <!-- END Drivers -->
+
+
+        </div>
+    </div>
+</div>
+
+<div data-spy="affix" class="contained-sidebar animated fadeIn" style="display: none;" id="management-info">
+    <div class="activity-overview plain company-overview welcome-info" style="text-align: left !important; flex: none; margin: 0; padding-top: 30px; padding-bottom: 0;">
+        <div id="detail-info">
+
+        </div>
+    </div>
+</div>
+
+
+<script>
+     var $delivery = @Html.Raw(Json.Encode(delivery));
+    var $depot = @Html.Raw(Json.Encode(depotPosition));
+    var $driver = @Html.Raw(Json.Encode(driverPosition));
+    var $routes = @Html.Raw(Json.Encode(deliveryRoutes));
+
+
+
+    $(document).ready(function () {
+        
+        $("#driver-avata").val('@driverIcon');
+        $("#can-sortable").val('@canSortable');
+        
+        if ($routes == null || $routes.route == '' || $routes.route == null)
+            initMap();
+        else {
+            drawFromRoutes();
+        }
+
+    });
+</script>

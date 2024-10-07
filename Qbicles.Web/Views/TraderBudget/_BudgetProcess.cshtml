@@ -1,0 +1,188 @@
+﻿@using Qbicles.BusinessRules
+@using Qbicles.Models.Trader.Budgets
+@model  List<BudgetScenarioItemGroup>
+@{
+    var addNewRight = (bool)ViewBag.AddNewRight;
+    var budgetScenarioId = (int)ViewBag.BudgetScenarioId;
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+}
+
+
+    <div class="well custom" style="padding-bottom: 5px;">
+        <div class="row">
+            <div class="col-xs-12 col-sm-6 col-lg-4">
+                <div class="form-group">
+                    <label for="fiscal year">Search for something</label>
+                    <input type="text" name="search" class="form-control budget-process-search" placeholder="Search for...">
+                </div>
+            </div>
+            <div class="col-xs-12 col-sm-6 col-lg-2">
+                <div class="form-group">
+                    <label for="showtype">Limit by type</label>
+                    <select class="form-control select2 select-item-type" id="" style="width: 100%;">
+                        <option value=" " selected>Show all</option>
+                        <option value="Items I B_u_y">Only items I buy</option>
+                        <option value="Items I Sell">Only items I sell</option>
+                        <option value="Items I Buy and Sell">Only items I buy and sell</option>
+                    </select>
+                </div>
+            </div>
+            @if (addNewRight)
+            {
+                <div class="col-xs-12 col-sm-6 col-lg-4">
+                    <div class="form-group">
+                        <label for="">&nbsp;</label><br />
+                        <button class="btn btn-success" onclick="BudgetAddEditItem(0, @budgetScenarioId,'E')"><i class="fa fa-plus"></i> &nbsp; Add item(s) to Budget</button>
+                    </div>
+                </div>
+            }
+        </div>
+
+    </div>
+
+@{
+    decimal purchaseProjected = 0;
+    decimal saleProjected = 0;
+    Model.ForEach(group =>
+    {
+        group.BudgetScenarioItems.ForEach(item =>
+        {
+            purchaseProjected += item.PurchaseQuantity * item.AveragePurchaseCost;
+            saleProjected += item.SaleQuantity * item.AverageSalePrice;
+        });
+    });
+}
+<br />
+<div class="app_upper_dash text-center">
+    <div class="row">
+        <div class="col-xs-12 col-sm-6 col-lg-4">
+            <div class="stat_label">
+                <span>Total budgeted</span>
+                <h3>@((purchaseProjected + saleProjected).ToCurrencySymbol(currencySettings))</h3>
+            </div>
+        </div>
+        <div class="col-xs-12 col-sm-6 col-lg-4">
+            <div class="stat_label">
+                <span>Projected income</span>
+                <h3>@purchaseProjected.ToCurrencySymbol(currencySettings)</h3>
+            </div>
+        </div>
+        <div class="col-xs-12 col-lg-4">
+            <div class="stat_label" style="padding-bottom: 10px;">
+                <span>Projected expenditure</span>
+                <h3>@saleProjected.ToCurrencySymbol(currencySettings)</h3>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<br />
+<div class="activity-overview no-search">
+    <table class="datatable table-striped table-hover" id="budget-process-list" style="width: 100%;">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Workgroup</th>
+                <th>Items</th>
+                <th>Type</th>
+                <th>Status</th>
+                <th data-orderable="false">Options</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var group in Model)
+            {
+
+                <tr>
+                    <td>@group.Id.ToString("000")</td>
+                    <td>@group.WorkGroup.Name</td>
+                    <td><button class="btn btn-info" onclick="BudgetProcessItemsPreview(@group.Id)">@group.BudgetScenarioItems.Count</button></td>
+                    <td>
+                        @{
+                            var type = "";
+                            var typeSearch = "";
+                            switch (group.Type)
+                            {
+                                case ItemGroupType.ItemsIBuy:
+                                    type = "Items I buy";
+                                    typeSearch = "Items I B_u_y";
+                                    break;
+                                case ItemGroupType.ItemsISell:
+                                    type = "Items I sell";
+                                    break;
+                                case ItemGroupType.ItemsIBuyAndSell:
+                                    type = "Items I buy and sell";
+                                    break;
+                            }
+                        }
+                        @type
+                        <span hidden="">@typeSearch</span>
+                    </td>
+                    <td>
+                        @{
+                            switch (group.Status)
+                            {
+                                case BudgetScenarioItemGroupStatus.Draft:
+                                    <span class="label label-lg label-primary">@StatusLabelName.Draft</span>
+                                    break;
+                                case BudgetScenarioItemGroupStatus.Pending:
+                                    <span class="label label-lg label-warning">@StatusLabelName.Pending</span>
+                                    break;
+                                case BudgetScenarioItemGroupStatus.Reviewed:
+                                    <span class="label label-lg label-success">@StatusLabelName.Reviewed</span>
+                                    break;
+                                case BudgetScenarioItemGroupStatus.Denied:
+                                    <span class="label label-lg label-danger">@StatusLabelName.Denied</span>
+                                    break;
+                                case BudgetScenarioItemGroupStatus.Approved:
+                                    <span class="label label-lg label-primary">@StatusLabelName.Approved</span>
+                                    break;
+                                case BudgetScenarioItemGroupStatus.Discarded:
+                                    <span class="label label-lg label-danger">@StatusLabelName.Discarded</span>
+                                    break;
+                            }
+                        }
+                    </td>
+                    <td>
+                        @if (group.Status == BudgetScenarioItemGroupStatus.Draft)
+                        {
+                            <button class="btn btn-info" onclick="BudgetAddEditItem(@group.Id, @budgetScenarioId,'E')"><i class="fa fa-pencil"></i> &nbsp; Continue</button>
+                        }
+                        else
+                        {
+                            <button class="btn btn-primary" onclick="window.location.href='/TraderBudget/ProcessApproval?id=@group.Id&oView=M';"><i class="fa fa-eye"></i> &nbsp; Manage</button>
+                        }
+                    </td>
+                </tr>
+            }
+
+        </tbody>
+    </table>
+
+</div>
+
+
+
+<br />
+<br />
+
+
+<script>
+    $(function () {
+
+        $("#budget-process-list").DataTable({
+            "order": [[0, "desc"]]
+        });
+        $('.budget-process-search').keyup(function () {
+            $('#budget-process-list').DataTable().search($(this).val()).draw();
+        });
+
+        $(".select-item-type").select2();
+        $('.select-item-type').on('change', function () {
+            var group = $(this).val();
+            $('#budget-process-list').DataTable().search(group, true, false, true).draw();
+        });
+    });
+</script>

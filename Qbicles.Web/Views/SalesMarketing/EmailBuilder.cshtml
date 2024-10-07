@@ -1,0 +1,840 @@
+﻿@using Qbicles.Models.SalesMkt
+@using Qbicles.Models
+@using Qbicles.BusinessRules
+@model EmailTemplate
+@{
+    ViewBag.Title = "Sales & Marketing > Email Builder";
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var listMedia = (List<QbicleMedia>)ViewBag.listMedia;
+}
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail mdv2-wrapper" style="position: relative;">
+    <!-- Main content -->
+    <section class="mdv2 dash" data-tooltip-color="teal" data-tooltip-delay="300" data-tooltip-animate-function="spin" style="display: block; border-top: 1px solid #f1f1f1;">
+        <!-- App bar -->
+        <div class="mdv2-col-app" style="margin-bottom: 0; flex: none;">
+
+            <div class="activity-overview plain company-overview welcome-info" style="text-align: left !important; flex: none; margin: 0; padding-top: 30px; padding-bottom: 0;">
+
+                <div class="pull-left" style="margin-bottom: 15px;">
+                    <a href="~/SalesMarketing/SMApps" class="btn btn-danger"><i class="fa fa-angle-left"></i> &nbsp; Cancel</a>
+                </div>
+                <div class="clearfix"></div>
+
+                <br />
+                <h1 style="line-height: 1.2;">Configure your new template</h1>
+                <p style="color: rgba(0, 0, 0, 0.5);">
+                    After providing a name and description for your new template you can begin modifying its look and feel. You'll be able to see any
+                    changes you make in the template preview below. Once you're happy you can save your new template and start using it when creating Email Marketing Campaign posts.
+                </p>
+            </div>
+        </div>
+        <!-- END App bar -->
+        <!-- Main area -->
+        <div class="mdv2-col-dash">
+            <div class="spacing" style="padding-top: 0;">
+                <form id="frmFormBuilder" action="~/SalesMarketing/SaveEmailBuilder" method="post" enctype="multipart/form-data">
+                    <div class="well custom" style="padding-bottom: 5px; margin: 30px 0;">
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-6 col-lg-4">
+                                <div class="form-group">
+                                    <label for="campaigntitle">
+                                        Give this Template a name &nbsp;
+                                        <i class="fa fa-info-circle blue" data-tooltip="It'll be made available for future use."></i>
+                                    </label>
+                                    <input type="text" name="TemplateName" required class="form-control" value="@Model.TemplateName">
+                                    <input type="hidden" value="@Model.Id" name="Id" />
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-6 col-lg-8">
+                                <div class="form-group">
+                                    <label for="emailsubject">
+                                        Description &nbsp;
+                                        <i class="fa fa-info-circle blue" data-tooltip="Help to identify this template beyond its title"></i>
+                                    </label>
+                                    <input type="text" required name="TemplateDescription" value="@Model.TemplateDescription" class="form-control">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-6">
+
+                            <br />
+                            <div class="row">
+                                <div class="col-xs-12">
+                                    <ul class="nav nav-pills traderv2" style="padding-top: 0;">
+                                        <li class="active"><a href="#design-0" data-toggle="tab">Heading and title</a></li>
+                                        <li><a href="#design-1" data-toggle="tab">Body &amp; button</a></li>
+                                        <li><a href="#design-2" data-toggle="tab">Advert &amp; footer</a></li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <br /><br />
+                            <div class="tab-content">
+                                <!-- Heading -->
+                                <div class="tab-pane fade in active" id="design-0">
+                                    <div class="well custom" style="padding-bottom: 5px;">
+                                        <div class="row">
+                                            <div class="col-xs-12">
+                                                <div class="form-group">
+                                                    <label for="colour">Background colour</label><br />
+                                                    <input type="color" name="HeadingBg" class="form-control" value="@(string.IsNullOrEmpty(Model.HeadingBg)?"#3b4a69":Model.HeadingBg)" onchange="$('#heading').css('background-color', $(this).val());">
+                                                </div>
+                                            </div>
+                                            <div class="col-xs-12 col-sm-8">
+                                                <div class="form-group">
+                                                    <label for="headline">Headline</label>
+                                                    <input type="text" class="form-control" required name="HeadlineText" value="@Model.HeadlineText" onkeyup="$('#headline').html($(this).val());">
+                                                </div>
+                                            </div>
+                                            <div class="col-xs-12 col-sm-4">
+                                                <div class="form-group">
+                                                    <label for="colour">Headline colour</label><br />
+                                                    <input type="color" class="form-control" name="HeadlineColour" value="@(string.IsNullOrEmpty(Model.HeadlineColour)?"#ffffff":Model.HeadlineColour)" onchange="$('#headline').css('color', $(this).val());">
+                                                </div>
+                                            </div>
+                                            <div class="col-xs-12 col-sm-8">
+                                                <div class="form-group">
+                                                    <label for="headline">Font</label><br />
+                                                    @*<input id="headlinefont" type="hidden" name="HeadlineFont" value="@Model.HeadlineFont" class="form-control">*@
+                                                    <select id="headlinefont" name="HeadlineFont" required class="form-control" style="width: 100%;">
+                                                        <option value="arial, sans-serif" @(Model.HeadlineFont == "arial, sans-serif" ? "selected" : "") style="font-family:arial, sans-serif;font-size:17px;">Sans Serif</option>
+                                                        <option value="&quot;times new roman&quot;, serif" @(Model.HeadlineFont == "\"times new roman\", serif" ? "selected" : "") style="font-family: &quot;times new roman&quot;, serif;font-size: 17px;">Serif</option>
+                                                        <option value="monospace" @(Model.HeadlineFont == "monospace" ? "selected" : "") style="font-family:monospace;font-size: 17px;">Fixed width</option>
+                                                        <option value="&quot;arial black&quot;, sans-serif" @(Model.HeadlineFont == "\"arial black\", sans-serif" ? "selected" : "") style="font-family:&quot;arial black&quot;, sans-serif;font-size: 17px;">Wide</option>
+                                                        <option value="&quot;arial narrow&quot;, sans-serif" @(Model.HeadlineFont == "\"arial narrow\", sans-serif" ? "selected" : "") style="font-family:&quot;arial narrow&quot;, sans-serif;font-size: 17px;">Narrow</option>
+                                                        <option value="&quot;comic sans ms&quot;, sans-serif" @(Model.HeadlineFont == "\"comic sans ms\", sans-serif" ? "selected" : "") style="font-family:&quot;comic sans ms&quot;, sans-serif;font-size: 17px;">Comic Sans MS</option>
+                                                        <option value="garamond, &quot;times new roman&quot;, serif" @(Model.HeadlineFont == "garamond, \"times new roman\", serif" ? "selected" : "") style="font-family:garamond, &quot;times new roman&quot;, serif;font-size: 17px;">Garamond</option>
+                                                        <option value="georgia, serif" @(Model.HeadlineFont == "georgia, serif" ? "selected" : "") style="font-family:georgia, serif;font-size: 17px;">Georgia</option>
+                                                        <option value="tahoma, sans-serif" @(Model.HeadlineFont == "tahoma, sans-serif" ? "selected" : "") style="font-family:tahoma, sans-serif;font-size: 17px;">Tahoma</option>
+                                                        <option value="&quot;trebuchet ms&quot;, sans-serif" @(Model.HeadlineFont == "\"trebuchet ms\", sans-serif" ? "selected" : "") style="font-family:&quot;trebuchet ms&quot;, sans-serif;font-size: 17px;">Trebuchet MS</option>
+                                                        <option value="verdana, sans-serif" @(Model.HeadlineFont == "verdana, sans-serif" ? "selected" : "") style="font-size: 17px;font-family:verdana, sans-serif">Verdana</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="col-xs-12 col-sm-4">
+                                                <label for="headline">Font size</label>
+                                                <div class="input-group" style="margin-bottom: 15px;">
+                                                    <input type="number" max="68" value="@(string.IsNullOrEmpty(Model.HeadlineFontSize)?"34":Model.HeadlineFontSize)" required class="form-control" name="HeadlineFontSize" onchange="var hsize = $(this).val() + 'px'; $('#headline').css('font-size', hsize);">
+                                                    <span class="input-group-addon">px</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                    </div>
+
+                                </div>
+                                <!-- END Heading -->
+                                <!-- Body -->
+                                <div class="tab-pane fade" id="design-1">
+                                    <div class="well custom" style="padding-bottom: 5px;">
+                                        <div class="row">
+                                            <div class="col-xs-12 col-sm-4">
+                                                <div class="form-group">
+                                                    <label for="colour">Background colour</label><br />
+                                                    <input type="color" name="BodyBg" class="form-control" value="@(string.IsNullOrEmpty(Model.BodyBg)?"#f5f5f5":Model.BodyBg)" onchange="$('#body').css('background-color', $(this).val());">
+                                                </div>
+                                            </div>
+                                            <div class="col-xs-12 col-sm-4">
+                                                <div class="form-group">
+                                                    <label for="colour">Text colour</label><br />
+                                                    <input type="color" name="BodyTextColour" class="form-control" value="@(string.IsNullOrEmpty(Model.BodyTextColour)?"#999999":Model.BodyTextColour)" onchange="$('#bodycontent p').css('color', $(this).val());">
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="row">
+                                            <div class="col-xs-12">
+                                                <div class="form-group">
+                                                    <label for="media">
+                                                        Featured image &nbsp;
+                                                        <i class="fa fa-info-circle blue" data-tooltip="We recommend an image no wider than 600 pixels"></i>
+                                                    </label>
+                                                    <select name="FeaturedImageType" required class="form-control select2" style="width: 100%;" onchange="changeResourseType(this, 'FeaturedImage')">
+                                                        <option value=""></option>
+                                                        <option value="1" @(Model.Id > 0 ? "selected" : "")>Choose an existing Resource</option>
+                                                        <option value="2">Upload a new image</option>
+                                                    </select>
+                                                    <label id="FeaturedImageType-error" class="error" for="FeaturedImageType" style="display:none"></label>
+                                                    <input type="hidden" value="@Model.FeaturedImage" name="FeaturedImage" id="FeaturedImage" />
+                                                </div>
+                                                <div class="uploadnew" style="display: none; margin-top: 15px;">
+                                                    <div class="form-group">
+                                                        <label for="FileFeaturedImg">Choose an image</label>
+
+                                                        <input type="hidden" id="sm-email-builder-feature-object-key" name="mediaFeatureObjectKey" />
+                                                        <input type="hidden" id="sm-email-builder-feature-object-name" name="mediaFeatureObjectName" />
+                                                        <input type="hidden" id="sm-email-builder-feature-object-size" name="mediaFeatureObjectSize" />
+
+
+
+                                                        <input type="file" id="FileFeaturedImg" name="FileFeaturedImg" class="form-control previewimg" data-target='#fimg'>
+                                                    </div>
+                                                    <img class="newpreview" src="#" alt="Your attachment" style="display: none; width: 100%; height: auto;" />
+                                                </div>
+                                                <div class="campaign-resource-picker" style="display: @(!string.IsNullOrEmpty(Model.FeaturedImage)?"block":"none"); padding: 25px 0 0 0;">
+                                                    <div id="Choose-campaign-resources" class="flex-grid-half-lg from-community c1" style="width: 100%;max-height: 750px;overflow-y: auto;">
+                                                        @foreach (var item in listMedia)
+                                                        {
+                                                            var mediaLastUpdate = item.VersionedFiles.Where(e => !e.IsDeleted).OrderByDescending(x => x.UploadedDate).FirstOrDefault();
+                                                            if (item.FileType.Type.Equals("Image File", StringComparison.OrdinalIgnoreCase))
+                                                            {
+                                                                <div style="display:@(string.IsNullOrEmpty(Model.FeaturedImage)||(!string.IsNullOrEmpty(Model.FeaturedImage)&&mediaLastUpdate.Uri == Model.FeaturedImage) ? "block" : "none")" class="col other rs-@mediaLastUpdate.Uri">
+                                                                    <a href="javascript:void(0);" class="article-feature">
+                                                                        <div class="article-feature-img" style="background: url('@api@mediaLastUpdate.Uri&size=S');"></div>
+                                                                        <div class="info" style="padding: 30px 0 15px 0;">
+                                                                            <h1 style="margin: 0; padding: 0 20px 5px 20px;">@item.Name</h1>
+                                                                            <p>@Utility.GetFileTypeDescription(item.FileType.Extension)</p>
+
+                                                                            <div style="padding: 0 20px;">
+                                                                                <button type="button" class="btn btn-info community-button usetheme@(mediaLastUpdate.Uri)" style="display:@(!string.IsNullOrEmpty(Model.FeaturedImage)&&mediaLastUpdate.Uri == Model.FeaturedImage? "none" : "block")" onclick="chooseMediaAdd(this, '@(mediaLastUpdate.Uri)', '@api@mediaLastUpdate.Uri',true,'Choose-campaign-resources')">
+                                                                                    <i class="fa fa-check"></i> &nbsp; Use this
+                                                                                </button>
+
+                                                                                <button type="button" class="btn btn-warning community-button change@(mediaLastUpdate.Uri)" style="display:@(!string.IsNullOrEmpty(Model.FeaturedImage)&&mediaLastUpdate.Uri == Model.FeaturedImage? "block" : "none")" onclick="chooseMediaAdd(this, '@(mediaLastUpdate.Uri)', '#',false,'Choose-campaign-resources')">
+                                                                                    <i class="fa fa-pencil"></i> &nbsp; Change
+                                                                                </button>
+                                                                            </div>
+                                                                        </div>
+                                                                    </a>
+                                                                </div>
+                                                            }
+                                                        }
+                                                    </div>
+                                                </div>
+
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-xs-12">
+                                                <div class="form-group">
+                                                    <label for="headline">Body content</label>
+                                                    <div style="background: #fff;">
+                                                        <div class="editor-container" style="background: #fff;">
+                                                            <div id="toolbar-container">
+                                                                <span class="ql-formats">
+                                                                    <select class="ql-font"></select>
+                                                                    <select class="ql-size"></select>
+                                                                </span>
+                                                                <span class="ql-formats">
+                                                                    <button type="button" class="ql-bold"></button>
+                                                                    <button type="button" class="ql-italic"></button>
+                                                                    <button type="button" class="ql-underline"></button>
+                                                                </span>
+                                                                <span class="ql-formats">
+                                                                    <button type="button" class="ql-list" value="ordered"></button>
+                                                                    <button type="button" class="ql-list" value="bullet"></button>
+                                                                    <button type="button" class="ql-indent" value="-1"></button>
+                                                                    <button type="button" class="ql-indent" value="+1"></button>
+                                                                </span>
+                                                                <span class="ql-formats">
+                                                                    <select class="ql-align"></select>
+                                                                </span>
+                                                                <span class="ql-formats">
+                                                                    <button type="button" class="ql-link"></button>
+                                                                </span>
+                                                            </div>
+                                                            <div id="editor" style="min-height: 400px;">@Html.Raw(Model.BodyContent)</div>
+                                                            <input type="hidden" name="BodyContent" value="@Model.BodyContent" id="BodyContent" />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <br />
+                                        <div class="row">
+                                            <div class="col-xs-12 col-sm-8">
+                                                <div class="form-group">
+                                                    <label for="BodyFont">Font</label><br />
+                                                    @*<input id="bodyfont" name="BodyFont" type="hidden" value="@Model.BodyFont" class="form-control">*@
+                                                    <select id="bodyfont" name="BodyFont" required class="form-control" style="width: 100%;">
+                                                        <option value="arial, sans-serif" @(Model.BodyFont == "arial, sans-serif" ? "selected" : "") style="font-family:arial, sans-serif;font-size:17px;">Sans Serif</option>
+                                                        <option value="&quot;times new roman&quot;, serif" @(Model.BodyFont == "\"times new roman\", serif" ? "selected" : "") style="font-family: &quot;times new roman&quot;, serif;font-size: 17px;">Serif</option>
+                                                        <option value="monospace" @(Model.BodyFont == "monospace" ? "selected" : "") style="font-family:monospace;font-size: 17px;">Fixed width</option>
+                                                        <option value="&quot;arial black&quot;, sans-serif" @(Model.BodyFont == "\"arial black\", sans-serif" ? "selected" : "") style="font-family:&quot;arial black&quot;, sans-serif;font-size: 17px;">Wide</option>
+                                                        <option value="&quot;arial narrow&quot;, sans-serif" @(Model.BodyFont == "\"arial narrow\", sans-serif" ? "selected" : "") style="font-family:&quot;arial narrow&quot;, sans-serif;font-size: 17px;">Narrow</option>
+                                                        <option value="&quot;comic sans ms&quot;, sans-serif" @(Model.BodyFont == "\"comic sans ms\", sans-serif" ? "selected" : "") style="font-family:&quot;comic sans ms&quot;, sans-serif;font-size: 17px;">Comic Sans MS</option>
+                                                        <option value="garamond, &quot;times new roman&quot;, serif" @(Model.BodyFont == "garamond, \"times new roman\", serif" ? "selected" : "") style="font-family:garamond, &quot;times new roman&quot;, serif;font-size: 17px;">Garamond</option>
+                                                        <option value="georgia, serif" @(Model.BodyFont == "georgia, serif" ? "selected" : "") style="font-family:georgia, serif;font-size: 17px;">Georgia</option>
+                                                        <option value="tahoma, sans-serif" @(Model.BodyFont == "tahoma, sans-serif" ? "selected" : "") style="font-family:tahoma, sans-serif;font-size: 17px;">Tahoma</option>
+                                                        <option value="&quot;trebuchet ms&quot;, sans-serif" @(Model.BodyFont == "\"trebuchet ms\", sans-serif" ? "selected" : "") style="font-family:&quot;trebuchet ms&quot;, sans-serif;font-size: 17px;">Trebuchet MS</option>
+                                                        <option value="verdana, sans-serif" @(Model.BodyFont == "verdana, sans-serif" ? "selected" : "") style="font-size: 17px;font-family:verdana, sans-serif">Verdana</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="col-xs-12 col-sm-4">
+                                                <label for="headline">Font size</label>
+                                                <div class="input-group" style="margin-bottom: 15px;">
+                                                    <input type="number" max="68" value="@(Model.Id>0?Model.BodyFontSize:"14")" required class="form-control" name="BodyFontSize" onchange="var hsize = $(this).val() + 'px'; $('#bodypreview p').css('font-size', hsize);">
+                                                    <span class="input-group-addon">px</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <br />
+                                    <h5>Button</h5>
+                                    <div class="well custom" style="padding-bottom: 5px;">
+                                        <div class="checkbox toggle">
+                                            <label>
+                                                <input data-toggle="toggle" data-onstyle="success" value="true" type="checkbox" name="ButtonIsHidden" @(Model.Id == 0 || Model.ButtonIsHidden ? "checked" : "") onchange="validateBodyButton(this)">
+                                                Include button
+                                            </label>
+                                        </div>
+                                        <br />
+                                        <div class="row">
+                                            <div class="col-xs-12 col-sm-8">
+                                                <div class="form-group">
+                                                    <label for="buttontext">Button text</label>
+                                                    <input type="text" class="form-control" value="@Model.ButtonText" required name="ButtonText" onkeyup="$('#button').html($(this).val());">
+                                                </div>
+                                            </div>
+                                            <div class="col-xs-12 col-sm-4">
+                                                <div class="form-group">
+                                                    <label for="colour">Button text colour</label><br />
+                                                    <input type="color" class="form-control" value="@(string.IsNullOrEmpty(Model.ButtonTextColour)?"#ffffff":Model.ButtonTextColour)" name="ButtonTextColour" onchange="$('#button').css('color', $(this).val());">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-xs-8">
+                                                <label for="buttonlink">Button link</label>
+                                                <div class="form-group" style="margin-bottom: 30px;">
+                                                    <input type="text" class="form-control" value="@Model.ButtonLink" required name="ButtonLink" onchange="$('#button').attr('href', $(this).val());">
+                                                </div>
+                                            </div>
+                                            <div class="col-xs-12 col-sm-4">
+                                                <div class="form-group">
+                                                    <label for="colour">Button colour</label><br />
+                                                    <input type="color" class="form-control" value="@(string.IsNullOrEmpty(Model.ButtonBg)?"#33adc2":Model.ButtonBg)" name="ButtonBg" onchange="$('#button').css('background-color', $(this).val());">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-xs-12 col-sm-8">
+                                                <div class="form-group">
+                                                    <label for="colour">Button font</label><br />
+                                                    @*<input id="buttonfont" type="hidden" name="ButtonFont" value="@Model.ButtonFont" class="form-control">*@
+                                                    <select id="buttonfont" name="ButtonFont" required class="form-control" style="width: 100%;">
+                                                        <option value="arial, sans-serif" @(Model.ButtonFont == "arial, sans-serif" ? "selected" : "") style="font-family:arial, sans-serif;font-size:17px;">Sans Serif</option>
+                                                        <option value="&quot;times new roman&quot;, serif" @(Model.ButtonFont == "\"times new roman\", serif" ? "selected" : "") style="font-family: &quot;times new roman&quot;, serif;font-size: 17px;">Serif</option>
+                                                        <option value="monospace" @(Model.ButtonFont == "monospace" ? "selected" : "") style="font-family:monospace;font-size: 17px;">Fixed width</option>
+                                                        <option value="&quot;arial black&quot;, sans-serif" @(Model.ButtonFont == "\"arial black\", sans-serif" ? "selected" : "") style="font-family:&quot;arial black&quot;, sans-serif;font-size: 17px;">Wide</option>
+                                                        <option value="&quot;arial narrow&quot;, sans-serif" @(Model.ButtonFont == "\"arial narrow\", sans-serif" ? "selected" : "") style="font-family:&quot;arial narrow&quot;, sans-serif;font-size: 17px;">Narrow</option>
+                                                        <option value="&quot;comic sans ms&quot;, sans-serif" @(Model.ButtonFont == "\"comic sans ms\", sans-serif" ? "selected" : "") style="font-family:&quot;comic sans ms&quot;, sans-serif;font-size: 17px;">Comic Sans MS</option>
+                                                        <option value="garamond, &quot;times new roman&quot;, serif" @(Model.ButtonFont == "garamond, \"times new roman\", serif" ? "selected" : "") style="font-family:garamond, &quot;times new roman&quot;, serif;font-size: 17px;">Garamond</option>
+                                                        <option value="georgia, serif" @(Model.ButtonFont == "georgia, serif" ? "selected" : "") style="font-family:georgia, serif;font-size: 17px;">Georgia</option>
+                                                        <option value="tahoma, sans-serif" @(Model.ButtonFont == "tahoma, sans-serif" ? "selected" : "") style="font-family:tahoma, sans-serif;font-size: 17px;">Tahoma</option>
+                                                        <option value="&quot;trebuchet ms&quot;, sans-serif" @(Model.ButtonFont == "\"trebuchet ms\", sans-serif" ? "selected" : "") style="font-family:&quot;trebuchet ms&quot;, sans-serif;font-size: 17px;">Trebuchet MS</option>
+                                                        <option value="verdana, sans-serif" @(Model.ButtonFont == "verdana, sans-serif" ? "selected" : "") style="font-size: 17px;font-family:verdana, sans-serif">Verdana</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="col-xs-12 col-sm-4">
+                                                <label for="headline">Button font size</label>
+                                                <div class="input-group">
+                                                    <input type="number" max="68" value="@(Model.Id>0?Model.ButtonFontSize:"16")" required class="form-control" name="ButtonFontSize" onchange="var hsize = $(this).val() + 'px'; $('#button').css('font-size', hsize);">
+                                                    <span class="input-group-addon">px</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                </div>
+                                <!-- END Body -->
+                                <!-- Footer -->
+                                <div class="tab-pane fade" id="design-2">
+                                    <div class="well custom" style="padding-bottom: 5px;">
+                                        <div class="row">
+                                            <div class="col-xs-12">
+
+                                                <div class="checkbox toggle">
+                                                    <label>
+                                                        <input data-toggle="toggle" name="AdvertImgiIsHidden" value="true" data-onstyle="success" type="checkbox" @(Model.Id == 0 || Model.AdvertImgiIsHidden ? "checked" : "") onchange="$('#adimg').toggle(); validateAdvImg(this)">
+                                                        Include advert
+                                                    </label>
+                                                </div>
+
+                                                <br />
+                                                <div class="form-group">
+                                                    <label for="media">Advert image</label>
+                                                    <select name="AdvertImageType" required class="form-control select2" style="width: 100%;" onchange="changeResourseType(this, 'AdvertImage')">
+                                                        <option value=""></option>
+                                                        <option value="1" @(Model.Id > 0 ? "selected" : "")>Choose an existing Resource</option>
+                                                        <option value="2">Upload a new image</option>
+                                                    </select>
+                                                    <label id="AdvertImageType-error" class="error" for="AdvertImageType" style="display:none"></label>
+                                                    <input type="hidden" value="@Model.AdvertImage" name="AdvertImage" id="AdvertImage" />
+                                                </div>
+                                                <div class="uploadnew-ad" style="display: none; margin-top: 15px;">
+
+                                                    <div class="form-group">
+                                                        <label for="featuredimg">
+                                                            Choose an image &nbsp;
+                                                            <i class="fa fa-info-circle blue" data-tooltip="We recommend an image no wider than 600 pixels"></i>
+                                                        </label>
+
+                                                        <input type="hidden" id="sm-email-builder-adv-object-key" name="mediaAdvObjectKey" />
+                                                        <input type="hidden" id="sm-email-builder-adv-object-name" name="mediaAdvObjectName" />
+                                                        <input type="hidden" id="sm-email-builder-adv-object-size" name="mediaAdvObjectSize" />
+                                                        <input type="file" id="FileAdvImg" name="FileAdvImg" class="form-control previewimg" data-target='#adimg'>
+                                                    </div>
+                                                </div>
+                                                <div class="campaign-resource-picker-ad" style="display: @(!string.IsNullOrEmpty(Model.AdvertImage)?"block":"none"); padding: 25px 0 0 0;">
+                                                    <div id="Choose-campaign-resources-ad" class="flex-grid-half-lg from-community c1" style="width: 100%;max-height: 750px;overflow-y: auto;">
+                                                        @foreach (var item in listMedia)
+                                                        {
+                                                            var mediaLastUpdate = item.VersionedFiles.Where(e => !e.IsDeleted).OrderByDescending(x => x.UploadedDate).FirstOrDefault();
+                                                            if (item.FileType.Type.Equals("Image File", StringComparison.OrdinalIgnoreCase))
+                                                            {
+                                                                <div style="display:@(string.IsNullOrEmpty(Model.AdvertImage)||(!string.IsNullOrEmpty(Model.AdvertImage)&&mediaLastUpdate.Uri == Model.AdvertImage) ? "block" : "none")" class="col other rs-@mediaLastUpdate.Uri">
+                                                                    <a href="javascript:void(0);" class="article-feature">
+                                                                        <div class="article-feature-img" style="background: url('@api@mediaLastUpdate.Uri&size=S');"></div>
+                                                                        <div class="info" style="padding: 30px 0 15px 0;">
+                                                                            <h1 style="margin: 0; padding: 0 20px 5px 20px;">@item.Name</h1>
+                                                                            <p>@Utility.GetFileTypeDescription(item.FileType.Extension)</p>
+
+                                                                            <div style="padding: 0 20px;">
+                                                                                <button type="button" class="btn btn-info community-button usetheme@(mediaLastUpdate.Uri)" style="display:@(!string.IsNullOrEmpty(Model.AdvertImage)&&mediaLastUpdate.Uri == Model.AdvertImage? "none" : "block")" onclick="chooseMediaAdd(this, '@(mediaLastUpdate.Uri)', '@api@mediaLastUpdate.Uri',true,'Choose-campaign-resources-ad')">
+                                                                                    <i class="fa fa-check"></i> &nbsp; Use this
+                                                                                </button>
+
+                                                                                <button type="button" class="btn btn-warning community-button change@(mediaLastUpdate.Uri)" style="display:@(!string.IsNullOrEmpty(Model.AdvertImage)&&mediaLastUpdate.Uri == Model.AdvertImage? "block" : "none")" onclick="chooseMediaAdd(this, '@(mediaLastUpdate.Uri)', '#',false,'Choose-campaign-resources-ad')">
+                                                                                    <i class="fa fa-pencil"></i> &nbsp; Change
+                                                                                </button>
+                                                                            </div>
+                                                                        </div>
+                                                                    </a>
+                                                                </div>
+                                                            }
+                                                        }
+                                                    </div>
+                                                </div>
+                                                <div class="form-group">
+                                                    <label for="adlink">Advert link</label>
+                                                    <div class="form-group" style="margin-bottom: 0;">
+                                                        <input type="text" class="form-control" value="@Model.AdvertLink" required name="AdvertLink" onchange="$('#adimglink').attr('href', $(this).val());">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <br />
+                                    <div class="well custom" style="padding-bottom: 5px;">
+                                        <div class="row">
+                                            <div class="col-xs-12 col-sm-9">
+                                                <div class="form-group">
+                                                    <label for="FacebookLink">Facebook</label>
+                                                    <input type="text" name="FacebookLink" @(Model.IsHiddenFacebook ? "required" : "") class="form-control" value="@Model.FacebookLink" onchange="$('#fburl').attr('href', $(this).val());">
+                                                </div>
+                                            </div>
+                                            <div class="col-xs-3">
+                                                <label>Include</label><br />
+                                                <div class="checkbox toggle">
+                                                    <label>
+                                                        <input name="IsHiddenFacebook" @(Model.IsHiddenFacebook ? "checked" : "") value="true" data-toggle="toggle" data-onstyle="success" type="checkbox" onchange="$('#fblink').toggle(); validateSocial(this, 'FacebookLink')">
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="row">
+                                            <div class="col-xs-12 col-sm-9">
+                                                <div class="form-group">
+                                                    <label for="InstagramLink">Instagram</label>
+                                                    <input name="InstagramLink" type="text" @(Model.IsHiddenInstagram ? "required" : "") class="form-control" value="@Model.InstagramLink" onchange="$('#igurl').attr('href', $(this).val());">
+                                                </div>
+                                            </div>
+                                            <div class="col-xs-3">
+                                                <label>Include</label><br />
+                                                <div class="checkbox toggle">
+                                                    <label>
+                                                        <input name="IsHiddenInstagram" @(Model.IsHiddenInstagram ? "checked" : "") value="true" data-toggle="toggle" data-onstyle="success" type="checkbox" onchange="$('#iglink').toggle(); validateSocial(this, 'InstagramLink')">
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="row">
+                                            <div class="col-xs-12 col-sm-9">
+                                                <div class="form-group">
+                                                    <label for="LinkedInLink">LinkedIn</label>
+                                                    <input type="text" name="LinkedInLink" @(Model.IsHiddenLinkedIn ? "required" : "") class="form-control" value="@Model.LinkedInLink" onchange="$('#linkedinurl').attr('href', $(this).val());">
+                                                </div>
+                                            </div>
+                                            <div class="col-xs-3">
+                                                <label>Include</label><br />
+                                                <div class="checkbox toggle">
+                                                    <label>
+                                                        <input name="IsHiddenLinkedIn" @(Model.IsHiddenLinkedIn ? "checked" : "") value="true" data-toggle="toggle" data-onstyle="success" type="checkbox" onchange="$('#linkedinlink').toggle(); validateSocial(this, 'LinkedInLink')">
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="row">
+                                            <div class="col-xs-12 col-sm-9">
+                                                <div class="form-group">
+                                                    <label for="PinterestLink">Pinterest</label>
+                                                    <input type="text" name="PinterestLink" @(Model.IsHiddenPinterest ? "required" : "") class="form-control" value="@Model.PinterestLink" onchange="$('#pinteresturl').attr('href', $(this).val());">
+                                                </div>
+                                            </div>
+                                            <div class="col-xs-3">
+                                                <label>Include</label><br />
+                                                <div class="checkbox toggle">
+                                                    <label>
+                                                        <input name="IsHiddenPinterest" @(Model.IsHiddenPinterest ? "checked" : "") value="true" data-toggle="toggle" data-onstyle="success" type="checkbox" onchange="$('#pinterestlink').toggle(); validateSocial(this, 'PinterestLink')">
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="row">
+                                            <div class="col-xs-12 col-sm-9">
+                                                <div class="form-group">
+                                                    <label for="TwitterLink">Twitter</label>
+                                                    <input type="text" name="TwitterLink" @(Model.IsHiddenTwitter ? "required" : "") class="form-control" value="@Model.TwitterLink" onchange="$('#twitterurl').attr('href', $(this).val());">
+                                                </div>
+                                            </div>
+                                            <div class="col-xs-3">
+                                                <label>Include</label><br />
+                                                <div class="checkbox toggle">
+                                                    <label>
+                                                        <input name="IsHiddenTwitter" @(Model.IsHiddenTwitter ? "checked" : "") data-toggle="toggle" data-onstyle="success" type="checkbox" onchange="$('#twitterlink').toggle(); validateSocial(this, 'TwitterLink')">
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="row">
+                                            <div class="col-xs-12 col-sm-9">
+                                                <div class="form-group">
+                                                    <label for="YoutubeLink">Youtube</label>
+                                                    <input type="text" name="YoutubeLink" @(Model.IsHiddenYoutube ? "required" : "") class="form-control" value="@Model.YoutubeLink" onchange="$('#yturl').attr('href', $(this).val());">
+                                                </div>
+                                            </div>
+                                            <div class="col-xs-3">
+                                                <label>Include</label><br />
+                                                <div class="checkbox toggle">
+                                                    <label>
+                                                        <input name="IsHiddenYoutube" @(Model.IsHiddenYoutube ? "checked" : "") value="true" data-toggle="toggle" data-onstyle="success" type="checkbox" onchange="$('#ytlink').toggle(); validateSocial(this, 'YoutubeLink')">
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                    </div>
+
+                                </div>
+                                <!-- END Footer -->
+
+                            </div>
+                            <br /><br />
+                            <a href="#" class="btn btn-info community-button" style="max-width: 170px"
+                               onclick="var email = $('#emailpreview').html(); $('#codehere').text(email); $('#codeview').modal('show')">
+                                <i class="fa fa-code"></i> &nbsp; View code
+                            </a>
+                            <button type="submit" class="btn btn-success community-button" style="max-width: 200px;"><i class="fa fa-check"></i> &nbsp; Save Template</button>
+
+                        </div>
+                        <div class="col-xs-12 col-sm-6">
+                            <br />
+                            <div style="width: 100%; overflow-x: auto;" id="emailpreview">
+                                <style type="text/css">
+                                    /* CLIENT-SPECIFIC STYLES */
+                                    body, table, td, a {
+                                        -webkit-text-size-adjust: 100%;
+                                        -ms-text-size-adjust: 100%;
+                                    }
+
+                                    table, td {
+                                        mso-table-lspace: 0pt;
+                                        mso-table-rspace: 0pt;
+                                    }
+
+                                    img {
+                                        -ms-interpolation-mode: bicubic;
+                                    }
+
+                                    /* RESET STYLES */
+                                    img {
+                                        border: 0;
+                                        height: auto;
+                                        line-height: 100%;
+                                        outline: none;
+                                        text-decoration: none;
+                                    }
+
+                                    table {
+                                        border-collapse: collapse !important;
+                                    }
+
+                                    body {
+                                        height: 100% !important;
+                                        margin: 0 !important;
+                                        padding: 0 !important;
+                                        width: 100% !important;
+                                    }
+
+                                    /* iOS BLUE LINKS */
+                                    a[x-apple-data-detectors] {
+                                        color: inherit !important;
+                                        text-decoration: none !important;
+                                        font-size: inherit !important;
+                                        font-family: inherit !important;
+                                        font-weight: inherit !important;
+                                        line-height: inherit !important;
+                                    }
+
+                                    /* MOBILE STYLES */
+                                    @@media screen and (max-width: 600px) {
+                                        .img-max {
+                                            width: 100% !important;
+                                            max-width: 100% !important;
+                                            height: auto !important;
+                                        }
+
+                                        .max-width {
+                                            max-width: 100% !important;
+                                        }
+
+                                        .mobile-wrapper {
+                                            width: 85% !important;
+                                            max-width: 85% !important;
+                                        }
+
+                                        .mobile-padding {
+                                            padding-left: 5% !important;
+                                            padding-right: 5% !important;
+                                        }
+                                    }
+
+                                    /* ANDROID CENTER FIX */
+                                    div[style*="margin: 16px 0;"] {
+                                        margin: 0 !important;
+                                    }
+                                </style>
+                                <!-- HIDDEN PREHEADER TEXT -->
+                                <div style="display: none; font-size: 1px; color: #fefefe; line-height: 1px; font-family: Roboto, Helvetica, Arial, sans-serif; max-height: 0px; max-width: 0px; opacity: 0; overflow: hidden;">
+                                    This email was generated with Qbicles
+                                </div>
+                                <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                                    <tbody>
+                                        <tr>
+                                            <td align="center" valign="top" width="100%" bgcolor="#3c8dbc" id="heading" style="background: @(string.IsNullOrEmpty(Model.HeadingBg)?"#3b4a69":Model.HeadingBg); padding: 50px 15px;" class="mobile-padding">
+                                                <!--[if (gte mso 9)|(IE)]>
+                                                <table align="center" border="0" cellspacing="0" cellpadding="0" width="600">
+                                                <tr>
+                                                <td align="center" valign="top" width="600">
+                                                <![endif]-->
+                                                <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px;">
+                                                    <tbody>
+                                                        <tr>
+                                                            <td align="center" valign="top" style="padding: 0 0 5px 0; font-family: Open Sans, Helvetica, Arial, sans-serif;">
+                                                                <h1 style="font-size: @(string.IsNullOrEmpty(Model.HeadlineFontSize)?"34":Model.HeadlineFontSize)px; color:@(string.IsNullOrEmpty(Model.HeadlineColour)?"#ffffff":Model.HeadlineColour);@(string.IsNullOrEmpty(Model.HeadlineFont)?"":("font-family:"+Model.HeadlineFont.Replace('\"','"')))" id="headline">@(string.IsNullOrEmpty(Model.HeadlineText) ? "Headline" : Model.HeadlineText)</h1>
+                                                            </td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                                <!--[if (gte mso 9)|(IE)]>
+                                                </td>
+                                                </tr>
+                                                </table>
+                                                <![endif]-->
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td align="center" id="body" height="100%" valign="top" width="100%" bgcolor="@(string.IsNullOrEmpty(Model.BodyBg)?"#f6f6f6":Model.BodyBg)" style="padding: 60px 15px 15px 15px;" class="mobile-padding">
+                                                <!--[if (gte mso 9)|(IE)]>
+                                                <table align="center" border="0" cellspacing="0" cellpadding="0" width="600">
+                                                <tr>
+                                                <td align="center" valign="top" width="600">
+                                                <![endif]-->
+                                                <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width:600px;">
+
+                                                    <tbody>
+                                                        <tr>
+                                                            <td align="center" valign="top" style="padding: 0 0 25px 0; font-family: Open Sans, Helvetica, Arial, sans-serif;">
+                                                                <table cellspacing="0" cellpadding="0" border="0" width="100%">
+                                                                    <tbody>
+                                                                        <tr>
+                                                                            <td align="center" bgcolor="#ffffff" style="border-radius: 3px 3px 0 0;">
+                                                                                @if (string.IsNullOrEmpty(Model.FeaturedImage))
+                                                                                {
+                                                                                    <img src="https://via.placeholder.com/600x200?text=Featured+image (600x200px)" width="600" height="200" id="fimg" alt="..." style="display: block; border-radius: 3px 3px 0 0; font-family: sans-serif; font-size: 16px; color: #999999;" class="img-max">
+                                                                                }
+                                                                                else
+                                                                                {
+                                                                                    <img src="@(api+Model.FeaturedImage)" width="600" height="200" id="fimg" alt="..." style="display: block; border-radius: 3px 3px 0 0; font-family: sans-serif; font-size: 16px; color: #999999;" class="img-max">
+                                                                                }
+                                                                            </td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <td align="center" bgcolor="#ffffff" style="border-radius: 0 0 3px 3px; padding: 25px;">
+                                                                                <table cellspacing="0" cellpadding="0" border="0" width="100%">
+                                                                                    <tbody>
+                                                                                        <tr>
+                                                                                            <td align="center" style="font-family: Open Sans, Helvetica, Arial, sans-serif;">
+                                                                                                <br>
+                                                                                                <div id="bodypreview">
+                                                                                                    <p style="color: @(string.IsNullOrEmpty(Model.BodyTextColour)?"#999999":Model.BodyTextColour) !important; font-size: @(string.IsNullOrEmpty(Model.BodyFontSize)?"14px":(Model.BodyFontSize+"px")); line-height: 22px; margin: 0;@(string.IsNullOrEmpty(Model.BodyFont)?"":("font-family:"+Model.BodyFont.Replace('\"','"')))">
+                                                                                                        @if (!string.IsNullOrEmpty(Model.BodyContent))
+                                                                                                        {
+                                                                                                            @Html.Raw(Model.BodyContent)
+                                                                                                        }
+                                                                                                        else
+                                                                                                        {
+                                                                                                            @Html.Raw("Ready for content")
+                                                                                                        }
+                                                                                                    </p>
+                                                                                                </div>
+                                                                                                <br>
+                                                                                            </td>
+                                                                                        </tr>
+                                                                                    </tbody>
+                                                                                </table>
+                                                                            </td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <td align="center" bgcolor="#ffffff">
+                                                                                <a href="#" id="button" style="display:@(Model.Id == 0 ||Model.ButtonIsHidden?"inline-block":"none"); width: 250px; border-radius: 5px; background-color: @(string.IsNullOrEmpty(Model.ButtonBg)?"#33adc2":Model.ButtonBg); font-size: @(string.IsNullOrEmpty(Model.ButtonFontSize)?"16px":(Model.ButtonFontSize+"px")); padding: 20px 25px; color: @(string.IsNullOrEmpty(Model.ButtonTextColour)?"#fff":Model.ButtonTextColour); text-decoration: none; margin-bottom: 30px;@(string.IsNullOrEmpty(Model.ButtonFont)?"":("font-family:"+Model.ButtonFont.Replace('\"','"')))">@(string.IsNullOrEmpty(Model.ButtonText) ? "Button text" : Model.ButtonText)</a>
+                                                                            </td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <td align="center" bgcolor="#ffffff" style="border-radius: 3px 3px 0 0;">
+                                                                                <a href="@(string.IsNullOrEmpty(Model.AdvertLink)?"#":Model.AdvertLink)" target="_blank" id="adimglink">
+                                                                                    @if (string.IsNullOrEmpty(Model.AdvertImage))
+                                                                                    {
+                                                                                        <img src="https://via.placeholder.com/600x200?text=Optional+advert (600x200px)" width="600" height="200" id="adimg" alt="..." style="display: block; border-radius: 3px 3px 0 0; font-family: sans-serif; font-size: 16px; color: #999999;" class="img-max">
+                                                                                    }
+                                                                                    else
+                                                                                    {
+                                                                                        <img src="@(api+Model.AdvertImage)" width="600" height="200" id="adimg" alt="..." style="display: @(Model.AdvertImgiIsHidden?"block":"none"); border-radius: 3px 3px 0 0; font-family: sans-serif; font-size: 16px; color: #999999;" class="img-max">
+                                                                                    }
+
+                                                                                </a>
+                                                                            </td>
+                                                                        </tr>
+                                                                    </tbody>
+                                                                </table>
+                                                            </td>
+                                                        </tr>
+
+
+                                                    </tbody>
+                                                </table>
+                                                <!--[if (gte mso 9)|(IE)]>
+                                                </td>
+                                                </tr>
+                                                </table>
+                                                <![endif]-->
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td align="center" height="100%" valign="top" width="100%" style="padding: 40px 15px 40px 15px;">
+                                                <!--[if (gte mso 9)|(IE)]>
+                                                <table align="center" border="0" cellspacing="0" cellpadding="0" width="600">
+                                                <tr>
+                                                <td align="center" valign="top" width="600">
+                                                <![endif]-->
+
+                                                <table align="center" border="0" cellpadding="0" cellspacing="0" width="auto" style="max-width: 240px;">
+                                                    <tbody>
+                                                        <tr>
+                                                            <td align="center" valign="top" id="fblink" width="40" style="display:@(Model.IsHiddenFacebook?"table-cell":"none");" title="Visit our Facebook page">
+                                                                <a href="@Model.FacebookLink" id="fburl" target="_blank"><img src="~/Content/DesignStyle/img/social_fb.png" width="30" height="30" alt="Facebook logo"></a>
+                                                            </td>
+                                                            <td align="center" valign="top" id="iglink" width="40" style="display:@(Model.IsHiddenInstagram?"table-cell":"none");" title="Visit our Instagram page">
+                                                                <a href="@Model.InstagramLink" id="igurl" target="_blank"><img src="~/Content/DesignStyle/img/social_ig.png" width="30" height="30" alt="Instagram logo"></a>
+                                                            </td>
+                                                            <td align="center" valign="top" id="linkedinlink" width="40" style="display:@(Model.IsHiddenLinkedIn?"table-cell":"none");" title="Visit our LinkedIn page">
+                                                                <a href="@Model.LinkedInLink" id="linkedinurl" target="_blank"><img src="~/Content/DesignStyle/img/social_linkedin.png" width="30" height="30" alt="LinkedIn logo"></a>
+                                                            </td>
+                                                            <td align="center" valign="top" id="pinterestlink" width="40" style="display:@(Model.IsHiddenPinterest?"table-cell":"none");" title="Visit our Pinterest page">
+                                                                <a href="@Model.PinterestLink" id="pinteresturl" target="_blank"><img src="~/Content/DesignStyle/img/social_pinterest.png" width="30" height="30" alt="Pinterest logo"></a>
+                                                            </td>
+                                                            <td align="center" valign="top" id="twitterlink" width="40" style="display:@(Model.IsHiddenTwitter?"table-cell":"none");" title="Visit our Twitter page">
+                                                                <a href="@Model.TwitterLink" id="twitterurl" target="_blank"><img src="~/Content/DesignStyle/img/social_twitter.png" width="30" height="30" alt="Twitter logo"></a>
+                                                            </td>
+                                                            <td align="center" valign="top" id="ytlink" width="40" style="display:@(Model.IsHiddenYoutube?"table-cell":"none")" title="Visit our Youtube page">
+                                                                <a href="@Model.YoutubeLink" id="yturl" target="_blank"><img src="~/Content/DesignStyle/img/social_yt.png" width="30" height="30" alt="Youtube logo"></a>
+                                                            </td>
+                                                        </tr>
+
+                                                    </tbody>
+                                                </table>
+
+                                                <br><br>
+                                                <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width:600px;">
+                                                    <tbody>
+                                                        <tr>
+                                                            <td align="center" valign="top" style="padding: 0 0 5px 0;">
+                                                                <img src="~/Content/DesignStyle/img/logo_sm.png" width="95" height="66" border="0" style="display: block;">
+                                                            </td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td align="center" valign="top" style="padding: 0; font-family: Open Sans, Helvetica, Arial, sans-serif; color: #999999;">
+                                                                <p style="font-size: 11px; line-height: 20px;">
+                                                                    Powered by <a href="#" style="color: #999999;" target="_blank">Qbicles</a>.<br><br>
+                                                                    We respect your privacy. Please consult Qbicles <a href="#" style="color: #999999;" target="_blank">terms of service</a> for more information.
+
+                                                                    <br>
+
+                                                                    <a href="#" style="color: #999999;" target="_blank">Did you receive this email by accident?</a>
+                                                                </p>
+                                                            </td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                                <!--[if (gte mso 9)|(IE)]>
+                                                </td>
+                                                </tr>
+                                                </table>
+                                                <![endif]-->
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+
+            </div>
+        </div>
+    </section>
+    <!-- ./content -->
+</div>
+<!-- /.content-wrapper -->
+<div class="modal fade" id="codeview" style="z-index: 500000000;">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4 class="modal-title">Your email's generated HTML</h4>
+            </div>
+            <div class="modal-body">
+                <pre><code id="codehere"></code></pre>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+<link href="~/Content/DesignStyle/css/quill.snow.css" rel="stylesheet">
+@*<link href="~/Content/DesignStyle/css/fontselect-alternate.css" rel="stylesheet" />*@
+<script src="~/Content/DesignStyle/js/quill.js"></script>
+@*<script src="~/Content/DesignStyle/js/jquery.fontselect.min.js"></script>*@
+@{
+    /**/
+
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/salesmarketing.emailbuilder.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/salesmarketing.emailbuilder.js"></script>
+    }
+}

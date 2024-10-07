@@ -1,0 +1,107 @@
+﻿@using System.Diagnostics
+@using Qbicles.Models.Trader.DDS
+@model List<DdsDevice>
+@{
+    var ddsQueues = (List<DeliveryQueue>)ViewBag.DdsQueues;
+}
+
+<!-- Devices -->
+<div class="tab-pane fade in active" id="tab-dds-devices">
+
+    <div class="well custom" style="padding-bottom: 5px;">
+        <div class="row">
+            <div class="col-xs-12 col-sm-4">
+                <div class="form-group">
+                    <label for="search">Search DDS Devices</label>
+                    <input type="text" id="device-search" class="form-control" onkeyup="SearchDevice()">
+                </div>
+            </div>
+            <div class="col-xs-12 col-sm-3">
+                <div class="form-group">
+                    <label for="location">Filter by Delivery Queue</label>
+                    <select id="device-queue-search" class="form-control select2" style="width: 100%;" onchange="SearchDevice()">
+                        <option value="0" selected>Show all</option>
+                        @foreach (var d in ddsQueues)
+                        {
+                            <option value="@d.Id">@d.Name</option>
+                        }
+                    </select>
+                </div>
+            </div>
+            <div class="col-xs-12 col-sm-5">
+                <label for="">Options</label><br>
+                <button class="btn btn-success" onclick="DdsDeviceAddEdit(0)"><i class="fa fa-plus"></i> &nbsp; Add a DDS Device</button>
+            </div>
+        </div>
+    </div>
+
+    <br />
+    <div id="device-list" class="flex-grid-thirds-lg qbicles-dash-grid">
+        @foreach (var device in Model)
+        {
+        <article id="dds-device-item-@device.Id" class="col">
+            <span class="last-updated"><span id="device-queue-main-@device.Id">@device.Queue.Name</span></span>
+            <span style="top: 40px !important;" class="last-updated"><span id="device-type-main-@device.Id">@(device.Type?.Name ?? "Device type is empty")</span></span>
+            <div class="qbicle-opts">
+                <div class="dropdown">
+                    <a href="javascript:" class="dropdown-toggle" data-toggle="dropdown">
+                        <i class="fa fa-cog"></i>
+                    </a>
+
+                    <ul class="dropdown-menu dropdown-menu-right primary">
+                        <li><a onclick="DdsDeviceAddEdit(@device.Id)">Edit</a></li>
+                        <li><a onclick="ConfirmDeleteDevice(@device.Id)">Delete</a></li>
+                    </ul>
+                </div>
+
+            </div>
+            <a href="javascript:" style="cursor: initial !important;">
+                <div class="avatar" style="border-radius: 0; background-image: url('/Content/DesignStyle/img/dds.png');">&nbsp;</div>
+                <h1 style="color: #333;"><span id="device-name-main-@device.Id">@device.Name</span></h1>
+            </a>
+            <br />
+            <p class="qbicle-detail">
+                <label style="color: #333;">Administrators</label><br />
+                @{
+                    var admins = string.Join(", ", device.Administrators.Select(e => e.DisplayUserName));
+
+                }
+                <span id="device-admin-name-@device.Id">@admins</span>
+            </p>
+            <br />
+            <p class="qbicle-detail">
+                <label style="color: #333;">Users</label><br />
+                @{
+                    var users = string.Join(", ", device.Users.Select(e => e.User.DisplayUserName));
+
+                }
+                <span id="device-user-name-@device.Id">@users</span>
+            </p>
+            <br />
+            <p class="qbicle-detail">
+                <label style="color: #333;">Serial Number</label><br />
+                <span>@device.SerialNumber</span>
+            </p>
+        </article>
+        }
+
+
+    </div>
+
+</div>
+<!-- END Devices -->
+@{
+
+    if (Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/dds.device.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/dds.device.js"></script>
+    }
+}
+<script>
+    $('#device-queue-search').select2({ placeholder: 'Please select' });
+
+</script>

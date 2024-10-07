@@ -1,0 +1,124 @@
+﻿@using Qbicles.Models
+@using Qbicles.Models.B2B
+@using Qbicles.BusinessRules
+@model B2BProfile
+@{
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var currentDomain = (QbicleDomain)ViewBag.CurrentDomain;
+    var usersOfDomain = currentDomain.Users;
+}
+<form id="frmB2BProfile" action="~/Commerce/SaveProfileB2B" method="post" enctype="multipart/form-data" novalidate>
+    <br />
+    <div class="row">
+        <div class="col-xs-12 col-md-7">
+
+            <div class="well custom">
+                <div class="form-group">
+                    <input type="hidden" name="Id" value="@Model.Id" />
+                    <label for="BusinessName">Displayed business name</label>
+                    <input type="text" name="BusinessName" class="form-control" value="@Model.BusinessName">
+                </div>
+
+                <div class="form-group">
+                    <label for="BusinessSummary">About us text</label>
+                    <textarea name="BusinessSummary" class="form-control" style="max-width: 100%; height: 80px;">@Model.BusinessSummary</textarea>
+                </div>
+
+                <div class="row">
+                    <div class="col-xs-12">
+                        <label for="summary">Countries of Operation</label>
+                        <table id="tblAreas" class="table table-hover app_specific" style="width: 100%;">
+                            <thead>
+                                <tr>
+                                    <th>Area</th>
+                                    <th>Options</th>
+                                </tr>
+                            </thead>
+                            <tbody style="background: #fff;">
+                                @foreach (var item in Model.AreasOperation)
+                                {
+                                    <tr>
+                                        <td><input type="text" name="AreasOfOperation[]" required class="form-control" maxlength="150" value="@item.Name" style="width: 100%;"></td>
+                                        <td>
+                                            <button type="button" class="btn btn-danger" onclick="$(this).parent().parent().remove();"><i class="fa fa-trash"></i></button>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                        <button type="button" class="btn btn-success" onclick="addArea();"><i class="fa fa-plus"></i> &nbsp; Add an area</button>
+                    </div>
+                </div>
+                <br /><br />
+                <div class="row">
+                    <div class="col-xs-12 col-sm-6">
+                        <div class="form-group">
+                            <label>Include in B2B listings</label>
+                            <p class="formhelp">Remember to assign at least one relationship manager for B2B relationships.</p>
+                            <div class="checkbox toggle" onclick="showIconProfileManager()">
+                                <label>
+                                    <input name="IsDisplayedInB2BListings" value="true" data-toggle="toggle" data-onstyle="success" type="checkbox" @(Model.IsDisplayedInB2BListings || Model.Id == 0 ? "checked" : "")>
+                                </label>
+                            </div>
+                            <select name="UserIdB2BRelationshipManagers" style="display:none" multiple>
+                                @foreach (var user in usersOfDomain)
+                                {
+                                    <option value="@user.Id" @(Model.DefaultB2BRelationshipManagers.Any(s => s.Id == user.Id) ? "selected" : "")>@HelperClass.GetFullNameOfUser(user)</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-xs-12 col-sm-6">
+                        <div class="form-group">
+                            <label>Include in B2C listings</label>
+                            <p class="formhelp">Remember to assign at least one relationship manager for B2C relationships.</p>
+                            <div class="checkbox toggle" onclick="showIconProfileManager()">
+                                <label>
+                                    <input name="IsDisplayedInB2CListings" value="true" data-toggle="toggle" data-onstyle="success" type="checkbox" @(Model.IsDisplayedInB2CListings || Model.Id == 0 ? "checked" : "")>
+                                </label>
+                            </div>
+                            <select name="UserIdB2CRelationshipManagers" style="display:none" multiple>
+                                @foreach (var user in usersOfDomain)
+                                {
+                                    <option value="@user.Id" @(Model.DefaultB2CRelationshipManagers.Any(s=>s.Id == user.Id)? "selected" : "")>@HelperClass.GetFullNameOfUser(user)</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <br />
+            <button type="button" id="btnConfigCancel" onclick="location.reload();" class="btn btn-danger" disabled>Cancel</button>
+            <button type="submit" class="btn btn-success">Confirm</button>
+
+            <br /><br /><br />
+        </div>
+        <div class="col-xs-12 col-md-5">
+
+            <h5 style="margin: 0; padding: 0 0 15px 0;">Displayed logo</h5>
+            <div class="constrainedp" style="background-image: url('@(api+Model.LogoUri)');@(string.IsNullOrEmpty(Model.LogoUri)?"display: none;":"")">&nbsp;</div>
+
+            <div class="well custom" style="padding-bottom: 5px;">
+                <div class="form-group">
+                    <label for="Logo">Change logo</label>
+                    <input id="commerce-logo" type="file" name="Logo" class="hidden">
+                    <input type="hidden" id="commerce-logo-object-key" name="LogoUri" />
+                </div>
+            </div>
+
+            <br />
+
+            <h5 style="margin: 0; padding: 0 0 15px 0;">Banner image</h5>
+            <div class="constrainedp" style="background-image: url('@(api+Model.BannerUri)');@(string.IsNullOrEmpty(Model.BannerUri)?"display: none;":"")">&nbsp;</div>
+
+            <div class="well custom" style="padding-bottom: 5px;">
+                <div class="form-group">
+                    <label for="Banner">Change banner image</label>
+                    <input id="commerce-banner-image" type="file" name="Banner" @(Model.Id == 0 ? "required" : "") class="form-control">
+                    <input type="hidden" id="commerce-banner-object-key" name="BannerUri" />
+                </div>
+            </div>
+
+        </div>
+    </div>
+</form>

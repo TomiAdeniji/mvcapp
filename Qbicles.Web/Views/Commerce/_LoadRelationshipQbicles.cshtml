@@ -1,0 +1,168 @@
+﻿@using Qbicles.BusinessRules
+@using Qbicles.BusinessRules.Model
+@{
+    var relationships = (List<B2bRelationshipsModel>)ViewBag.Relationships;
+    var b2bcurrentqbicleid = (int)ViewBag.CurrentQbicleId;
+    var currentUserId = (string)ViewBag.CurrentUserId;
+    var timezone = (string)ViewBag.CurrentTimeZone;
+    var dateFormat = (string)ViewBag.CurrentDateFormat;
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var currentDomainId = (int)ViewBag.CurrentDomainId;
+    var activeTab = 0;
+    var isIndexRedirect = (bool)ViewBag.IsIndexRedirect;
+}
+<div id="rlQbicles" class="followingblock" style="margin-bottom: 60px;">
+    <div class="owl-carousel owl-theme following">
+        @if (relationships != null)
+        {
+            foreach (var item in relationships)
+            {
+                var active = (b2bcurrentqbicleid == item.RelationshipHub.Id 
+                    || item.Partnerships.Any(s => s.CommunicationQbicle != null 
+                    && s.CommunicationQbicle.Id == b2bcurrentqbicleid)
+                    ? "filterby" : "");
+                if (activeTab == 0)
+                {
+                    activeTab = (active != "" ? item.RelationshipId : 0);
+                }
+                <div class="item @active" data-toggle="tab" data-target="#b2b-@item.RelationshipId">
+                    <div class="theiravatar" style="background-image: url('@(api+item.PartnerDomainLogoUri)&size=T');"></div>
+                    <span>@item.PartnerDomainName</span>
+                </div>
+
+            }
+        }
+    </div>
+
+</div>
+<div class="tab-content">
+    @if (relationships != null)
+    {
+        foreach (var item in relationships)
+        {
+            <!-- DHL -->
+            <div class="tab-pane fade @(activeTab==item.RelationshipId?"filterby in active":"")" id="b2b-@item.RelationshipId">
+                <ul class="widget-contacts" style="margin-bottom: 30px; overflow-x: hidden !important;">
+                    <li class="@(b2bcurrentqbicleid==item.RelationshipHub.Id?"active":"")" data-rltype="hud" partnerKey="@item.PartnerDomainKey">
+                        <a href="#comms" onclick="clickB2bQbicle(@item.RelationshipId,'@item.RelationshipHub.Key',this)">
+                            <div class="contact-avatar">
+                                <div style="background-image: url('@(api+item.PartnerDomainLogoUri)&size=T');">&nbsp;</div>
+                            </div>
+                            <div class="contact-info">
+                                <h5>@item.PartnerDomainName</h5>
+                                <p>Updated @item.RelationshipHub.LastUpdated.ConvertTimeFromUtc(timezone).ToString(dateFormat + " hh:mmtt")</p>
+                            </div>
+                        </a>
+                    </li>
+                    @{
+                        var partnerships = item.Partnerships.Where(s => s.IsConsumerConfirmed && s.IsProviderConfirmed && s.CommunicationQbicle != null && s.CommunicationQbicle.Members.Any(m => m.Id == currentUserId));
+                    }
+                    @if (partnerships.Any())
+                    {
+                        foreach (var partnership in partnerships)
+                        {
+                            var parnertname = "";
+                            var icon = "";
+                            var relationshiptype = "";
+                            var businessName = item.PartnerDomainName;
+                            var businessDomainKey = "";
+                            if (partnership.ProviderDomain.Id == currentDomainId && partnership.Type == Qbicles.Models.B2B.B2BService.Products)
+                            {
+                                parnertname = "Sell to " + item.PartnerDomainName;
+                                icon = "/Content/DesignStyle/img/b2b-sell.png";
+                                relationshiptype = "sell";
+                                businessDomainKey = partnership.ConsumerDomain.Key;
+                            }
+                            else if (partnership.ConsumerDomain.Id == currentDomainId && partnership.Type == Qbicles.Models.B2B.B2BService.Products)
+                            {
+                                parnertname = "Buy from " + item.PartnerDomainName;
+                                icon = "/Content/DesignStyle/img/b2b-buy.png";
+                                relationshiptype = "buy";
+                                businessDomainKey = partnership.ProviderDomain.Key;
+                            }
+                            else if (partnership.ProviderDomain.Id == currentDomainId && partnership.Type == Qbicles.Models.B2B.B2BService.Logistics)
+                            {
+                                parnertname = "Provide logistics to " + item.PartnerDomainName;
+                                icon = "/Content/DesignStyle/img/b2b-logistics-out.png";
+                                relationshiptype = "providelogistics";
+                                businessDomainKey = partnership.ConsumerDomain.Key;
+                            }
+                            else if (partnership.ConsumerDomain.Id == currentDomainId && partnership.Type == Qbicles.Models.B2B.B2BService.Logistics)
+                            {
+                                parnertname = "Acquire logistics from " + item.PartnerDomainName;
+                                icon = "/Content/DesignStyle/img/b2b-logistics-in.png";
+                                relationshiptype = "acquirelogistics";
+                                businessDomainKey = partnership.ProviderDomain.Key;
+                            }
+                            <li class="@(b2bcurrentqbicleid == partnership.CommunicationQbicle.Id ? "active" : "")" data-partnershipkey="@partnership.Key" data-rltype="@relationshiptype">
+                                <a href="#comms" onclick="clickB2bQbicle(@item.RelationshipId,'@partnership.CommunicationQbicle.Key',this,'@businessDomainKey','@businessName.FixQuoteCode()')">
+                                    <div class="contact-avatar">
+                                        <div style="background-image: url('@icon');">&nbsp;</div>
+                                    </div>
+                                    <div class="contact-info">
+                                        <h5>@parnertname</h5>
+                                        <p>Updated @partnership.CommunicationQbicle.LastUpdated.ConvertTimeFromUtc(timezone).ToString(dateFormat + " hh:mmtt")</p>
+                                    </div>
+                                </a>
+                            </li>
+                        }
+                    }
+                    else
+                    {
+                        <li><div class="contact-info" style="margin: 25px 25px;color:#8d8d9b"><p>There are no Partnerships associated with this Relationship</p></div></li>
+                    }
+                </ul>
+            </div>
+            <!-- END DHL -->
+        }
+    }
+</div> <!-- ./tab-content -->
+<script>
+    $(document).ready(function () {
+        var $initahref = $("ul.widget-contacts li.active a");
+        if ($initahref.length>0)
+            $initahref.click();
+        else
+            showQbicleStream();
+        $(".following").owlCarousel({
+            items: 4,
+            margin: 0,
+            nav: false,
+            dots: true,
+            loop: false,
+            autoplay: false,
+            autplayHoverPause: true,
+            autoplayTimeout: 2000
+        });
+        $('.following .item').bind('click', function (e) {
+            var $cel = $(this);
+            $('.following .item').not($cel).removeClass('filterby');
+            if ($(this).hasClass('filterby')) {
+                $(this).removeClass('filterby');
+            } else {
+                $(this).addClass('filterby');
+            }
+            var tabid = $cel.attr('data-target');
+            var $b2bqbicle = $(tabid).find('ul.widget-contacts li.active');
+            setTimeout(function () {
+                if ($b2bqbicle.length > 0)
+                    $b2bqbicle.children('a').click();
+                else {
+                    $b2bqbicle = $(tabid).find('ul.widget-contacts li:first-child');
+                    if ($b2bqbicle.length > 0) {
+                        $b2bqbicle.addClass('active');
+                        $b2bqbicle.children('a').click();
+                    } else {
+                        showQbicleStream();
+                    }
+                }
+            }, 500);
+        });
+
+        //If no B2B connections exist
+        if (('@(relationships == null)' == 'True' || (@relationships.Count() == 0)) && '@isIndexRedirect' == 'True') {
+            $(".contained-sidebar .subapps-nav li a[href='#businesses'").trigger('click');
+            $(".contained-sidebar .subapps-nav li a[href='#comms'").addClass("disabled");
+        }
+    });
+</script>

@@ -1,0 +1,839 @@
+﻿@using System.Diagnostics
+@using Qbicles.Models.Highlight
+@using Qbicles.BusinessRules
+@{
+
+}
+@model List<HighlightModel>
+
+@if (Model != null && Model.Count > 0)
+{
+    foreach (var postItem in Model)
+    {
+        if (postItem.Type == HighlightPostType.News)
+        {
+            <article class="promo-block">
+                <div class="what">
+                    <div class="user-options" style="margin-left: 0;">
+
+                        <div style="display: flex; flex-direction: row;">
+                            <div class="who"><div class="who-avatar" style="background-image: url('@postItem.LogoUri');"></div></div>
+
+                            <div class="user-metainfo">
+                                <h5>@postItem.BusinessName</h5><br />
+                                <smaller>@postItem.CreatedDate.GetTimeRelative()</smaller>
+
+                                <div class="highlight-opts">
+                                    <div class="dropdown">
+                                        <button class="btn btn-primary dropdown-toggle" type="button" data-toggle="dropdown"><i class="fa fa-ellipsis-h"></i></button>
+                                        <ul class="dropdown-menu hlnav dropdown-menu-right">
+                                            @if (!string.IsNullOrEmpty(postItem.HyperLink))
+                                            {
+                                                <li><a href="#" onclick="window.open('https://@postItem.HyperLink', '_blank')">Open external site</a></li>
+                                            }
+
+                                            @if (postItem.IsDomainHiddenByCurrentUser)
+                                            {
+                                                <li><a href="#" style="cursor: pointer;" onclick="ChangeHidingStatus('@postItem.DomainKey', 2)">Unhide posts from @(postItem.BusinessName)</a></li>
+                                            }
+                                            else
+                                            {
+                                                <li><a href="#" style="cursor: pointer;" onclick="ChangeHidingStatus('@postItem.DomainKey', 1)">Hide posts from @(postItem.BusinessName)</a></li>
+                                            }
+
+                                            @if (postItem.IsDomainFollowedByCurrentUser)
+                                            {
+                                                <li><a style="cursor: pointer;" onclick="updateDomainFollowStatus('@postItem.DomainKey', 2)" class="red">Unfollow</a></li>
+                                            }
+                                            else
+                                            {
+                                                <li><a style="cursor: pointer;" onclick="updateDomainFollowStatus('@postItem.DomainKey', 1)">Follow</a></li>
+                                            }
+
+                                        </ul>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+
+                        <div class="post-body">
+                            <div class="labelling">
+                                <label class="label label-lg label-primary">News</label>
+                            </div>
+
+                            <a href="/HighlightPost/HighlightPostDetail?hlPostId=@postItem.Id">
+                                <div class="highlight-img" style="background-image: url('@postItem.ImageUri');">&nbsp;</div>
+                            </a>
+
+                            <div class="post-options">
+                                <div class="row">
+                                    <div class="col-xs-5"><a href="#" class="likecount" style="font-weight: 500; position: relative;">@postItem.LikeStatusString</a></div>
+                                    <div class="col-xs-7">
+                                        <ul class="hlopts">
+                                            <li><a href="javascript:void(0)" onclick="ShowingSharingHLPostPartialView(@postItem.Id)"><i class="fa fa-share-alt"></i></a></li>
+                                            <li>&nbsp;&nbsp;&nbsp;&nbsp;</li>
+                                            @if (postItem.IsBookmarkedByCurrentUser)
+                                            {
+                                                <li><a style="cursor: pointer" onclick="updateHLBookmarkStatus(@postItem.Id, 2, this)"><i class="fa fa-bookmark red"></i></a></li>
+                                            }
+                                            else
+                                            {
+                                                <li><a style="cursor: pointer" onclick="updateHLBookmarkStatus(@postItem.Id, 1, this)"><i class="fa fa-bookmark-o"></i></a></li>
+                                            }
+                                            @if (!postItem.IsCreatedByCurrentUser)
+                                            {
+                                                <li>&nbsp;&nbsp;&nbsp;&nbsp;</li>
+                                                if (postItem.IsLikedByCurrentUser)
+                                                {
+                                                    <li><a style="cursor: pointer" onclick="updateHLLikeStatus(@postItem.Id, 2, this)"><i class="fa fa-heart red"></i></a></li>
+                                                }
+                                                else
+                                                {
+                                                    <li><a style="cursor: pointer" onclick="updateHLLikeStatus(@postItem.Id, 1, this)"><i class="fa fa-heart-o"></i></a></li>
+                                                }
+                                            }
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+
+
+                            <div class="user-post">
+                                <h1>@postItem.Title</h1>
+
+                                @if (postItem.Tags != null && postItem.Tags.Count > 0)
+                                {
+                                    <div class="tag-list">
+                                        @foreach (var tagItem in postItem.Tags)
+                                        {
+                                            <a href="#" class="label label-soft">#@tagItem.Name</a>
+                                        }
+                                    </div>
+                                }
+
+                                <br /><br />
+                                <p style="white-space: pre-line;">@postItem.Content</p>
+
+                                @if (!string.IsNullOrEmpty(postItem.Citation))
+                                {
+                                    <br /> <br />
+                                    <i>via @postItem.Citation</i>
+                                }
+
+                                <br />
+
+                                @if (!string.IsNullOrEmpty(postItem.HyperLink))
+                                {
+                                    <button class="btn btn-info community-button w-auto" onclick="window.open('https://@postItem.HyperLink', '_blank')" style="margin-top: 15px;"><i class="fa fa-external-link"></i> &nbsp; Open external site</button>
+                                }
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </article>
+        }
+        else if (postItem.Type == HighlightPostType.Article)
+        {
+            <article class="promo-block">
+                <div class="what">
+                    <div class="user-options" style="margin-left: 0;">
+
+                        <div style="display: flex; flex-direction: row;">
+                            <div class="who"><div class="who-avatar" style="background-image: url('@postItem.LogoUri');"></div></div>
+
+                            <div class="user-metainfo">
+                                <h5>@postItem.BusinessName</h5><br />
+                                <smaller>@postItem.CreatedDate.GetTimeRelative()</smaller>
+
+                                <div class="highlight-opts">
+                                    <div class="dropdown">
+                                        <button class="btn btn-primary dropdown-toggle" type="button" data-toggle="dropdown"><i class="fa fa-ellipsis-h"></i></button>
+                                        <ul class="dropdown-menu hlnav dropdown-menu-right">
+                                            <li><a href="javascript:void(0)" onclick="showArticleContentModal(@postItem.Id)">Read full article</a></li>
+
+                                            @if (postItem.IsDomainHiddenByCurrentUser)
+                                            {
+                                                <li><a href="#" style="cursor: pointer;" onclick="ChangeHidingStatus('@postItem.DomainKey', 2)">Unhide posts from @(postItem.BusinessName)</a></li>
+                                            }
+                                            else
+                                            {
+                                                <li><a href="#" style="cursor: pointer;" onclick="ChangeHidingStatus('@postItem.DomainKey', 1)">Hide posts from @(postItem.BusinessName)</a></li>
+                                            }
+
+                                            @if (postItem.IsDomainFollowedByCurrentUser)
+                                            {
+                                                <li><a style="cursor: pointer;" onclick="updateDomainFollowStatus('@postItem.DomainKey', 2)" class="red">Unfollow</a></li>
+                                            }
+                                            else
+                                            {
+                                                <li><a style="cursor: pointer;" onclick="updateDomainFollowStatus('@postItem.DomainKey', 1)">Follow</a></li>
+                                            }
+                                        </ul>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+
+                        <div class="post-body">
+                            <div class="labelling">
+                                <label class="label label-lg label-primary">Newsletter</label>
+                            </div>
+
+                            <a href="/HighlightPost/HighlightPostDetail?hlPostId=@postItem.Id">
+                                <div class="highlight-img" style="background-image: url('@postItem.ImageUri');">&nbsp;</div>
+                            </a>
+
+                            <div class="post-options">
+                                <div class="row">
+                                    <div class="col-xs-5"><a href="#" class="likecount" style="font-weight: 500; position: relative;">@postItem.LikeStatusString</a></div>
+                                    <div class="col-xs-7">
+                                        <ul class="hlopts">
+                                            <li><a href="javascript:void(0)" onclick="ShowingSharingHLPostPartialView(@postItem.Id)"><i class="fa fa-share-alt"></i></a></li>
+                                            <li>&nbsp;&nbsp;&nbsp;&nbsp;</li>
+                                            @if (postItem.IsBookmarkedByCurrentUser)
+                                            {
+                                                <li><a style="cursor: pointer" onclick="updateHLBookmarkStatus(@postItem.Id, 2, this)"><i class="fa fa-bookmark red"></i></a></li>
+                                            }
+                                            else
+                                            {
+                                                <li><a style="cursor: pointer" onclick="updateHLBookmarkStatus(@postItem.Id, 1, this)"><i class="fa fa-bookmark-o"></i></a></li>
+                                            }
+                                            @if (!postItem.IsCreatedByCurrentUser)
+                                            {
+                                                <li>&nbsp;&nbsp;&nbsp;&nbsp;</li>
+                                                if (postItem.IsLikedByCurrentUser)
+                                                {
+                                                    <li><a style="cursor: pointer" onclick="updateHLLikeStatus(@postItem.Id, 2, this)"><i class="fa fa-heart red"></i></a></li>
+                                                }
+                                                else
+                                                {
+                                                    <li><a style="cursor: pointer" onclick="updateHLLikeStatus(@postItem.Id, 1, this)"><i class="fa fa-heart-o"></i></a></li>
+                                                }
+                                            }
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+
+
+                            <div class="user-post">
+                                <h1>@postItem.Title</h1>
+
+                                @if (postItem.Tags != null && postItem.Tags.Count > 0)
+                                {
+                                    <div class="tag-list">
+                                        @foreach (var tagItem in postItem.Tags)
+                                        {
+                                            <a href="#" class="label label-soft">#@tagItem.Name</a>
+                                        }
+                                    </div>
+                                }
+
+                                <br /><br />
+                                <p style="white-space: pre-line;">@postItem.Content</p>
+
+                                <br />
+
+                                <button class="btn btn-info community-button w-auto" style="margin-top: 15px;"
+                                        onclick="showArticleContentModal(@postItem.Id)">
+                                    <i class="fa fa-eye"></i> &nbsp; Read article
+                                </button>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </article>
+        }
+        else if (postItem.Type == HighlightPostType.Knowledge)
+        {
+            <article class="promo-block">
+                <div class="what">
+                    <div class="user-options" style="margin-left: 0;">
+
+                        <div style="display: flex; flex-direction: row;">
+                            <div class="who"><div class="who-avatar" style="background-image: url('@postItem.LogoUri');"></div></div>
+
+                            <div class="user-metainfo">
+                                <h5>@postItem.BusinessName</h5><br />
+                                <smaller>@postItem.CreatedDate.GetTimeRelative()</smaller>
+
+                                <div class="highlight-opts">
+                                    <div class="dropdown">
+                                        <button class="btn btn-primary dropdown-toggle" type="button" data-toggle="dropdown"><i class="fa fa-ellipsis-h"></i></button>
+                                        <ul class="dropdown-menu hlnav dropdown-menu-right">
+                                            @if (!string.IsNullOrEmpty(postItem.HyperLink))
+                                            {
+                                                <li><a href="#" onclick="window.open('https://@postItem.HyperLink', '_blank')" data-toggle="modal">Open external site</a></li>
+                                            }
+
+                                            @if (postItem.IsDomainHiddenByCurrentUser)
+                                            {
+                                                <li><a href="#" style="cursor: pointer;" onclick="ChangeHidingStatus('@postItem.DomainKey', 2)">Unhide posts from @(postItem.BusinessName)</a></li>
+                                            }
+                                            else
+                                            {
+                                                <li><a href="#" style="cursor: pointer;" onclick="ChangeHidingStatus('@postItem.DomainKey', 1)">Hide posts from @(postItem.BusinessName)</a></li>
+                                            }
+
+                                            @if (postItem.IsDomainFollowedByCurrentUser)
+                                            {
+                                                <li><a class="red" onclick="updateDomainFollowStatus('@postItem.DomainKey', 2)" href="#">Unfollow</a></li>
+                                            }
+                                            else
+                                            {
+                                                <li><a onclick="updateDomainFollowStatus('@postItem.DomainKey', 1)" href="#">Follow</a></li>
+                                            }
+                                            <!--<li><a href="#">View insights</a></li>-->
+                                        </ul>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+
+                        <div class="post-body">
+                            <div class="labelling">
+                                <label class="label label-lg label-primary">Knowledge</label>
+                            </div>
+                            <a href="/HighlightPost/HighlightPostDetail?hlPostId=@postItem.Id">
+                                <div class="highlight-img" style="background-image: url('@postItem.ImageUri');">&nbsp;</div>
+                            </a>
+                            <div class="post-options">
+                                <div class="row">
+                                    <div class="col-xs-5"><a href="#" class="likecount" style="font-weight: 500; position: relative;">@postItem.LikeStatusString</a></div>
+                                    <div class="col-xs-7">
+                                        <ul class="hlopts">
+                                            <li><a href="javascript:void(0)" onclick="ShowingSharingHLPostPartialView(@postItem.Id)"><i class="fa fa-share-alt"></i></a></li>
+                                            <li>&nbsp;&nbsp;&nbsp;&nbsp;</li>
+                                            @if (postItem.IsBookmarkedByCurrentUser)
+                                            {
+                                                <li><a style="cursor: pointer" onclick="updateHLBookmarkStatus(@postItem.Id, 2, this)"><i class="fa fa-bookmark red"></i></a></li>
+                                            }
+                                            else
+                                            {
+                                                <li><a style="cursor: pointer" onclick="updateHLBookmarkStatus(@postItem.Id, 1, this)"><i class="fa fa-bookmark-o"></i></a></li>
+                                            }
+                                            @if (!postItem.IsCreatedByCurrentUser)
+                                            {
+                                                <li>&nbsp;&nbsp;&nbsp;&nbsp;</li>
+                                                if (postItem.IsLikedByCurrentUser)
+                                                {
+                                                    <li><a style="cursor: pointer" onclick="updateHLLikeStatus(@postItem.Id, 2, this)"><i class="fa fa-heart red"></i></a></li>
+                                                }
+                                                else
+                                                {
+                                                    <li><a style="cursor: pointer" onclick="updateHLLikeStatus(@postItem.Id, 1, this)"><i class="fa fa-heart-o"></i></a></li>
+                                                }
+                                            }
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+
+
+                            <div class="user-post">
+                                <h1>@postItem.Title</h1>
+
+                                @if (postItem.Tags != null && postItem.Tags.Count > 0)
+                                {
+                                    <div class="tag-list">
+                                        @foreach (var tagItem in postItem.Tags)
+                                        {
+                                            <a href="#" class="label label-soft">#@tagItem.Name</a>
+                                        }
+                                    </div>
+                                }
+
+                                <br /><br />
+                                <p style="white-space: pre-line;">
+                                    @postItem.Content
+                                </p>
+
+                                @if (!string.IsNullOrEmpty(postItem.HyperLink))
+                                {
+                                    <br />
+                                    <button class="btn btn-info community-button w-auto" onclick="window.open('https://@postItem.HyperLink', '_blank')" style="margin-top: 15px;"><i class="fa fa-external-link"></i> &nbsp; Open external site</button>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </article>
+        }
+        else if (postItem.Type == HighlightPostType.Listings && postItem.HLListingType == ListingType.Event)
+        {
+            <article class="promo-block">
+                <div class="what">
+                    <div class="user-options" style="margin-left: 0;">
+
+                        <div style="display: flex; flex-direction: row;">
+                            <div class="who"><div class="who-avatar" style="background-image: url('@postItem.LogoUri&T');"></div></div>
+
+                            <div class="user-metainfo">
+                                <h5>@postItem.BusinessName</h5><br />
+                                <smaller>@(postItem.CreatedDate.GetTimeRelative())</smaller>
+
+                                <div class="highlight-opts">
+                                    <div class="dropdown">
+                                        <button class="btn btn-primary dropdown-toggle" type="button" data-toggle="dropdown"><i class="fa fa-ellipsis-h"></i></button>
+                                        <ul class="dropdown-menu hlnav dropdown-menu-right">
+                                            @if (postItem.IsFlaggedByCurrentUser)
+                                            {
+                                                <li><a style="cursor: pointer;" class="red flag" data-toggle="modal" onclick="updateHLFlagStatus(@postItem.Id, 2, this)">I'm not interested</a></li>
+                                            }
+                                            else
+                                            {
+                                                <li><a style="cursor: pointer;" data-toggle="modal" class="flag" onclick="updateHLFlagStatus(@postItem.Id, 1, this)">I'm interested</a></li>
+                                            }
+
+                                            @if (postItem.IsDomainHiddenByCurrentUser)
+                                            {
+                                                <li><a href="#" style="cursor: pointer;" onclick="ChangeHidingStatus('@postItem.DomainKey', 2)">Unhide posts from @(postItem.BusinessName)</a></li>
+                                            }
+                                            else
+                                            {
+                                                <li><a href="#" style="cursor: pointer;" onclick="ChangeHidingStatus('@postItem.DomainKey', 1)">Hide posts from @(postItem.BusinessName)</a></li>
+                                            }
+
+                                            @if (postItem.IsDomainFollowedByCurrentUser)
+                                            {
+                                                <li><a style="cursor: pointer;" onclick="updateDomainFollowStatus('@postItem.DomainKey', 2)" class="red">Unfollow</a></li>
+                                            }
+                                            else
+                                            {
+                                                <li><a onclick="updateDomainFollowStatus('@postItem.DomainKey', 1)" style="cursor: pointer;">Follow</a></li>
+                                            }
+                                        </ul>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+
+                        <div class="post-body">
+                            <div class="labelling">
+                                <label class="label label-lg label-primary">Event</label>
+                                @{
+                                    var eventCountry = "Available everywhere";
+                                    var eventArea = "";
+                                    if (!string.IsNullOrEmpty(postItem.CountryName))
+                                    {
+                                        eventCountry = postItem.CountryName;
+                                        eventArea = postItem.AreaName ?? "";
+                                        if (!string.IsNullOrEmpty(eventArea))
+                                        {
+                                            eventCountry = eventArea + ", " + eventCountry;
+                                        }
+                                    }
+                                }
+                                <label class="label label-lg label-info">@(eventCountry)</label>
+                            </div>
+                            <a href="/HighlightPost/HighlightPostDetail?hlPostId=@postItem.Id">
+                                <div class="highlight-img" style="background-image: url('@postItem.ImageUri');">&nbsp;</div>
+                            </a>
+
+                            <div class="post-options">
+                                <div class="row">
+
+                                    <div class="col-xs-5"><a href="#" class="likecount" style="font-weight: 500; position: relative;">@postItem.LikeStatusString</a></div>
+                                    <div class="col-xs-7">
+                                        <ul class="hlopts">
+                                            <li><a href="javascript:void(0)" onclick="ShowingSharingHLPostPartialView(@postItem.Id)"><i class="fa fa-share-alt"></i></a></li>
+                                            <li>&nbsp;&nbsp;&nbsp;&nbsp;</li>
+                                            @if (postItem.IsBookmarkedByCurrentUser)
+                                            {
+                                                <li><a style="cursor: pointer;" onclick="updateHLBookmarkStatus(@postItem.Id, 2, this)"><i class="fa fa-bookmark red"></i></a></li>
+                                            }
+                                            else
+                                            {
+                                                <li><a style="cursor: pointer;" onclick="updateHLBookmarkStatus(@postItem.Id, 1, this)"><i class="fa fa-bookmark-o"></i></a></li>
+                                            }
+                                            @if (!postItem.IsCreatedByCurrentUser)
+                                            {
+                                                <li>&nbsp;&nbsp;&nbsp;&nbsp;</li>
+                                                if (postItem.IsLikedByCurrentUser)
+                                                {
+                                                    <li><a style="cursor: pointer;" onclick="updateHLLikeStatus(@postItem.Id, 2, this)"><i class="fa fa-heart red"></i></a></li>
+                                                }
+                                                else
+                                                {
+                                                    <li><a style="cursor: pointer;" onclick="updateHLLikeStatus(@postItem.Id, 1, this)"><i class="fa fa-heart-o"></i></a></li>
+                                                }
+                                            }
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+
+
+                            <div class="user-post">
+                                <h1>@postItem.Title</h1>
+
+                                @if (postItem.Tags != null && postItem.Tags.Count > 0)
+                                {
+                                    <div class="tag-list">
+                                        @foreach (var tagItem in postItem.Tags)
+                                        {
+                                            <a href="#" class="label label-soft">#@tagItem.Name</a>
+                                        }
+                                    </div>
+                                }
+
+                                <br /><br />
+                                <p style="white-space: pre-line;">@postItem.Content</p>
+
+                                <br />
+
+                                <table class="table app_specific table-borderless highlinfo valigntop">
+                                    <tbody>
+                                        <tr>
+                                            <td><strong>When</strong></td>
+                                            <td>@postItem.StartTimeString - @postItem.EndTimeString</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Where</strong></td>
+                                            <td>@postItem.EventLocation</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                                @{
+                                    var FlagUp = postItem.IsFlaggedByCurrentUser ? "display: none" : "";
+                                    var FlagDown = postItem.IsFlaggedByCurrentUser ? "" : "display: none";
+                                }
+                                <button class="btn btn-primary community-button w-auto flag" style="margin-top: 15px; @FlagUp"
+                                        onclick="updateHLFlagStatus(@postItem.Id, 1, this)">
+                                    I'm interested
+                                </button>
+                                <button class="btn btn-danger community-button w-auto flag" style="margin-top: 15px; @FlagDown"
+                                        onclick="updateHLFlagStatus(@postItem.Id, 2, this)">
+                                    I'm not interested
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </article>
+        }
+        else if (postItem.Type == HighlightPostType.Listings && postItem.HLListingType == ListingType.Job)
+        {
+            <article class="promo-block" id="topjump">
+                <div class="what">
+                    <div class="user-options hl" style="margin-left: 0;">
+
+                        <div style="display: flex; flex-direction: row;">
+                            <div class="who"><div class="who-avatar" style="background-image: url('@postItem.LogoUri');"></div></div>
+
+                            <div class="user-metainfo">
+                                <h5>@postItem.BusinessName</h5><br />
+                                <smaller>@postItem.CreatedDate.GetTimeRelative()</smaller>
+
+                                <div class="highlight-opts">
+                                    <div class="dropdown">
+                                        <button class="btn btn-primary dropdown-toggle" type="button" data-toggle="dropdown"><i class="fa fa-ellipsis-h"></i></button>
+                                        <ul class="dropdown-menu hlnav dropdown-menu-right">
+                                            @if (postItem.IsFlaggedByCurrentUser)
+                                            {
+                                                <li><a class="red flag" href="#" onclick="updateHLFlagStatus(@postItem.Id, 2, this)">I'm not interested</a></li>
+                                            }
+                                            else
+                                            {
+                                                <li><a style="cursor: pointer" class="flag" onclick="updateHLFlagStatus(@postItem.Id, 1, this)">I'm interested</a></li>
+                                            }
+
+                                            @if (postItem.IsDomainHiddenByCurrentUser)
+                                            {
+                                                <li><a href="#" style="cursor: pointer;" onclick="ChangeHidingStatus('@postItem.DomainKey', 2)">Unhide posts from @(postItem.BusinessName)</a></li>
+                                            }
+                                            else
+                                            {
+                                                <li><a href="#" style="cursor: pointer;" onclick="ChangeHidingStatus('@postItem.DomainKey', 1)">Hide posts from @(postItem.BusinessName)</a></li>
+                                            }
+
+                                            @if (postItem.IsDomainFollowedByCurrentUser)
+                                            {
+                                                <li><a class="red" onclick="updateDomainFollowStatus('@postItem.DomainKey', 2)" href="#">Unfollow</a></li>
+                                            }
+                                            else
+                                            {
+                                                <li><a onclick="updateDomainFollowStatus('@postItem.DomainKey', 1)" href="#">Follow</a></li>
+                                            }
+                                        </ul>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+
+                        <div class="post-body">
+                            <div class="labelling">
+                                <label class="label label-lg label-primary">Job</label>
+                                @{
+                                    var jobCountry = "Available everywhere";
+                                    var jobArea = "";
+                                    if (!string.IsNullOrEmpty(postItem.CountryName))
+                                    {
+                                        jobCountry = postItem.CountryName;
+                                        jobArea = postItem.AreaName ?? "";
+                                        if (!string.IsNullOrEmpty(jobArea))
+                                        {
+                                            jobCountry = jobArea + ", " + jobCountry;
+                                        }
+                                    }
+                                }
+                                <label class="label label-lg label-info">@(jobCountry)</label>
+                            </div>
+
+                            <a href="/HighlightPost/HighlightPostDetail?hlPostId=@postItem.Id">
+                                <div class="highlight-img" style="background-image: url('@postItem.ImageUri');">&nbsp;</div>
+                            </a>
+
+                            <div class="post-options">
+                                <div class="row">
+                                    <div class="col-xs-5"><a href="#" class="likecount" style="font-weight: 500; position: relative; top: 0;">@postItem.LikeStatusString</a></div>
+                                    <div class="col-xs-7">
+                                        <ul class="hlopts">
+                                            <li><a href="javascript:void(0)" onclick="ShowingSharingHLPostPartialView(@postItem.Id)"><i class="fa fa-share-alt"></i></a></li>
+                                            <li>&nbsp;&nbsp;&nbsp;&nbsp;</li>
+                                            @if (postItem.IsBookmarkedByCurrentUser)
+                                            {
+                                                <li><a style="cursor: pointer" onclick="updateHLBookmarkStatus(@postItem.Id, 2, this)"><i class="fa fa-bookmark red"></i></a></li>
+                                            }
+                                            else
+                                            {
+                                                <li><a style="cursor: pointer" onclick="updateHLBookmarkStatus(@postItem.Id, 1, this)"><i class="fa fa-bookmark-o"></i></a></li>
+                                            }
+                                            @if (!postItem.IsCreatedByCurrentUser)
+                                            {
+                                                <li>&nbsp;&nbsp;&nbsp;&nbsp;</li>
+                                                if (postItem.IsLikedByCurrentUser)
+                                                {
+                                                    <li><a style="cursor: pointer" onclick="updateHLLikeStatus(@postItem.Id, 2, this)"><i class="fa fa-heart red"></i></a></li>
+                                                }
+                                                else
+                                                {
+                                                    <li><a style="cursor: pointer" onclick="updateHLLikeStatus(@postItem.Id, 1, this)"><i class="fa fa-heart-o"></i></a></li>
+                                                }
+                                            }
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+
+
+                            <div class="user-post">
+                                <h1>@postItem.Title</h1>
+
+                                @if (postItem.Tags != null && postItem.Tags.Count > 0)
+                                {
+                                    <div class="tag-list">
+                                        @foreach (var tagItem in postItem.Tags)
+                                        {
+                                            <a href="#" class="label label-soft">#@tagItem.Name</a>
+                                        }
+                                    </div>
+                                }
+
+                                <br /><br />
+                                <p style="white-space: pre-line;">
+                                    @postItem.Content
+                                </p>
+
+                                <br />
+                                <table class="table app_specific table-borderless highlinfo valigntop">
+                                    <tbody>
+                                        <tr>
+                                            <td><strong>Salary</strong></td>
+                                            <td>@postItem.Salary</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Skills required</strong></td>
+                                            <td style="white-space: pre-line;">@postItem.SkillRequired</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+
+                                <br />
+                                @{
+                                    var FlagUp = postItem.IsFlaggedByCurrentUser ? "display: none" : "";
+                                    var FlagDown = postItem.IsFlaggedByCurrentUser ? "" : "display: none";
+                                }
+                                <button class="btn btn-primary community-button w-auto flag" style="margin-top: 15px;@FlagUp"
+                                        onclick="updateHLFlagStatus(@postItem.Id, 1, this)">
+                                    I'm interested
+                                </button>
+                                <button class="btn btn-danger community-button w-auto flag" style="margin-top: 15px;@FlagDown"
+                                        onclick="updateHLFlagStatus(@postItem.Id, 2, this)">
+                                    I'm not interested
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </article>
+        }
+        else if (postItem.Type == HighlightPostType.Listings && postItem.HLListingType == ListingType.RealEstate)
+        {
+            <article class="promo-block">
+                <div class="what">
+                    <div class="user-options" style="margin-left: 0;">
+
+                        <div style="display: flex; flex-direction: row;">
+                            <div class="who"><div class="who-avatar" style="background-image: url('@postItem.LogoUri');"></div></div>
+
+                            <div class="user-metainfo">
+                                <h5>@postItem.BusinessName</h5><br />
+                                <smaller>@postItem.CreatedDate.GetTimeRelative()</smaller>
+
+                                <div class="highlight-opts">
+                                    <div class="dropdown">
+                                        <button class="btn btn-primary dropdown-toggle" type="button" data-toggle="dropdown"><i class="fa fa-ellipsis-h"></i></button>
+                                        <ul class="dropdown-menu hlnav dropdown-menu-right">
+                                            <li><a style="cursor: pointer" onclick="showRealEstateInfoModal(@postItem.Id)">View property info</a></li>
+                                            @if (postItem.IsFlaggedByCurrentUser)
+                                            {
+                                                <li><a class="red flag" style="cursor: pointer" data-toggle="modal" onclick="updateHLFlagStatus(@postItem.Id, 2, this)">I'm not interested</a></li>
+                                            }
+                                            else
+                                            {
+                                                <li><a style="cursor: pointer" class="flag" data-toggle="modal" onclick="updateHLFlagStatus(@postItem.Id, 1, this)">I'm interested</a></li>
+                                            }
+
+                                            @if (postItem.IsDomainHiddenByCurrentUser)
+                                            {
+                                                <li><a href="#" style="cursor: pointer;" onclick="ChangeHidingStatus('@postItem.DomainKey', 2)">Unhide posts from @(postItem.BusinessName)</a></li>
+                                            }
+                                            else
+                                            {
+                                                <li><a href="#" style="cursor: pointer;" onclick="ChangeHidingStatus('@postItem.DomainKey', 1)">Hide posts from @(postItem.BusinessName)</a></li>
+                                            }
+
+                                            @if (postItem.IsDomainFollowedByCurrentUser)
+                                            {
+                                                <li><a class="red" onclick="updateDomainFollowStatus('@postItem.DomainKey', 2)" style="cursor: pointer">Unfollow</a></li>
+                                            }
+                                            else
+                                            {
+                                                <li><a onclick="updateDomainFollowStatus('@postItem.DomainKey', 1)" style="cursor: pointer">Follow</a></li>
+                                            }
+                                        </ul>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+
+                        <div class="post-body">
+                            <div class="labelling">
+                                <label class="label label-lg label-primary">Real Estate</label>
+                                @{
+                                    var reCountry = "Available everywhere";
+                                    var reArea = "";
+                                    if (!string.IsNullOrEmpty(postItem.CountryName))
+                                    {
+                                        reCountry = postItem.CountryName;
+                                        reArea = postItem.AreaName ?? "";
+                                        if (!string.IsNullOrEmpty(reArea))
+                                        {
+                                            reCountry = reArea + ", " + reCountry;
+                                        }
+                                    }
+                                }
+                                <label class="label label-lg label-info">@(reCountry)</label>
+                            </div>
+
+                            <a href="/HighlightPost/HighlightPostDetail?hlPostId=@postItem.Id">
+                                <div class="highlight-img" style="background-image: url('@postItem.ImageUri');">&nbsp;</div>
+                            </a>
+
+                            <div class="post-options">
+                                <div class="row">
+                                    <div class="col-xs-5"><a href="#" class="likecount" style="font-weight: 500; position: relative;">@postItem.LikeStatusString</a></div>
+                                    <div class="col-xs-7">
+                                        <ul class="hlopts">
+                                            <li><a href="javascript:void(0)" onclick="ShowingSharingHLPostPartialView(@postItem.Id)"><i class="fa fa-share-alt"></i></a></li>
+                                            <li>&nbsp;&nbsp;&nbsp;&nbsp;</li>
+                                            @if (postItem.IsBookmarkedByCurrentUser)
+                                            {
+                                                <li><a style="cursor: pointer" onclick="updateHLBookmarkStatus(@postItem.Id, 2, this)"><i class="fa fa-bookmark red"></i></a></li>
+                                            }
+                                            else
+                                            {
+                                                <li><a style="cursor: pointer" onclick="updateHLBookmarkStatus(@postItem.Id, 1, this)"><i class="fa fa-bookmark-o"></i></a></li>
+                                            }
+                                            @if (!postItem.IsCreatedByCurrentUser)
+                                            {
+                                                <li>&nbsp;&nbsp;&nbsp;&nbsp;</li>
+                                                if (postItem.IsLikedByCurrentUser)
+                                                {
+                                                    <li><a style="cursor: pointer" onclick="updateHLLikeStatus(@postItem.Id, 2, this)"><i class="fa fa-heart red"></i></a></li>
+                                                }
+                                                else
+                                                {
+                                                    <li><a style="cursor: pointer" onclick="updateHLLikeStatus(@postItem.Id, 1, this)"><i class="fa fa-heart-o"></i></a></li>
+                                                }
+                                            }
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+
+
+                            <div class="user-post">
+                                <h1>@postItem.Title</h1>
+
+                                @if (postItem.Tags != null && postItem.Tags.Count > 0)
+                                {
+                                    <div class="tag-list">
+                                        @foreach (var tagItem in postItem.Tags)
+                                        {
+                                            <a href="#" class="label label-soft">#@tagItem.Name</a>
+                                        }
+                                    </div>
+                                }
+
+                                <br /><br />
+                                <p style="white-space: pre-line;">
+                                    @postItem.Content
+                                </p>
+
+                                <br /><br />
+                                @{
+                                    var FlagUp = postItem.IsFlaggedByCurrentUser ? "display: none" : "";
+                                    var FlagDown = postItem.IsFlaggedByCurrentUser ? "" : "display: none";
+                                }
+                                <button class="btn btn-info community-button w-auto" onclick="showRealEstateInfoModal(@postItem.Id)"><i class="fa fa-home"></i> &nbsp; Property info</button>
+                                <button class="btn btn-primary community-button w-auto flag" style="@FlagUp"
+                                        onclick="updateHLFlagStatus(@postItem.Id, 1, this)">
+                                    I'm interested
+                                </button>
+                                <button class="btn btn-danger community-button w-auto flag" style="@FlagDown"
+                                        onclick="updateHLFlagStatus(@postItem.Id, 2, this)">
+                                    I'm not interested
+                                </button>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </article>
+        }
+    }
+}
+@if (Debugger.IsAttached)
+{
+    <script src="~/Scripts/dev/social.highlight.js"></script>
+}
+else
+{
+    <script src="~/Scripts/dev/social.highlight.min.js"></script>
+}
+
+@*<script>
+        $(document).ready(function () {
+            Timeline();
+        });
+    </script>*@

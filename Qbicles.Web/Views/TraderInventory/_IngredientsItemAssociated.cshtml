@@ -1,0 +1,129 @@
+﻿@using Qbicles.BusinessRules
+@model ItemsAssociated
+@{
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var locationId = (int)ViewBag.CurrentLocationManage;
+    var title = "";
+    var ingredientId = (int)ViewBag.IngredientId;
+    if (Model.IsCompoundProduct)
+    {
+        title = "Compound Item";
+    }
+    else
+    {
+        title = "Ingredient";
+    }
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+
+    decimal amountCost = 0;
+
+    if (Model.IsCompoundProduct)
+    {
+        foreach (var item in Model.Items)
+        {
+            decimal cost = 0;
+            if (item.SubItem.InventoryDetails != null && item.SubItem.InventoryDetails.Count > 0)
+            {
+                var averageCost = item.SubItem?.InventoryDetails?.FirstOrDefault(ivnt => ivnt.Location.Id == locationId)?.AverageCost ?? 0;
+                cost = item.Unit.QuantityOfBaseunit * item.Quantity * averageCost;
+            }
+            amountCost += cost;
+        }
+    }
+    else
+    {
+        foreach (var item in Model.Items)
+        {
+            decimal cost = 0;
+            if (item.SubItem.InventoryDetails != null && item.SubItem.InventoryDetails.Count > 0)
+            {
+                var averageCost = item.ParentRecipe?.Ingredients?.FirstOrDefault(p => p.SubItem.Id == ingredientId)?.SubItem?.InventoryDetails?.FirstOrDefault()?.AverageCost ?? 0;
+                cost = item.Unit.QuantityOfBaseunit * item.Quantity * averageCost;
+            }
+            amountCost += cost;
+        }
+    }
+}
+
+<div class="modal-lg modal-dialog" role="document">
+    <div class="modal-content">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+
+            <h5 class="modal-title">@Model.ItemName - @title</h5>
+        </div>
+        <div class="modal-body">
+            <h7 class="modal-title">Total cost: @(amountCost.ToCurrencySymbol(currencySettings))</h7>
+            <div class="activity-overview task" style="padding: 20px;">
+                <table class="datatable table-striped table-hover" id="table_inventory_recipe_ingredients" data-order='[[ 1, "asc" ]]' style="width: 100%; background: #fff;">
+                    <thead>
+                        <tr>
+                            <th style="width: 90px;" data-orderable="false"></th>
+                            <th>Item</th>
+                            <th>Recipe</th>
+                            <th>Unit</th>
+                            <th>Quantity</th>
+                            <th>Cost <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model.IsCompoundProduct)
+                        {
+                            foreach (var item in Model.Items)
+                            {
+                                decimal cost = 0;
+                                if (item.SubItem.InventoryDetails != null && item.SubItem.InventoryDetails.Count > 0)
+                                {
+                                    var averageCost = item.SubItem?.InventoryDetails?.FirstOrDefault(ivnt => ivnt.Location.Id == locationId)?.AverageCost ?? 0;
+                                    cost = item.Unit.QuantityOfBaseunit * item.Quantity * averageCost;
+                                }
+                                <tr>
+                                    <td><div class="table-avatar mini" style="background-image: url('@api@item.SubItem.ImageUri');"></div></td>
+                                    <td>@item.SubItem.Name</td>
+                                    <td>@item.ParentRecipe.Name</td>
+                                    <td>@(item.Unit?.Name ?? "")</td>
+                                    <td>@item.Quantity</td>
+
+                                    <td>@cost.ToCurrencySymbol(currencySettings)</td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            foreach (var item in Model.Items)
+                            {
+                                decimal cost = 0;
+                                if (item.SubItem.InventoryDetails != null && item.SubItem.InventoryDetails.Count > 0)
+                                {
+                                    var averageCost = item.ParentRecipe?.Ingredients?.FirstOrDefault(p => p.SubItem.Id == ingredientId)?.SubItem?.InventoryDetails?.FirstOrDefault()?.AverageCost ?? 0;
+                                    cost = item.Unit.QuantityOfBaseunit * item.Quantity * averageCost;
+                                }
+                                <tr>
+                                    <td><div class="table-avatar mini" style="background-image: url('@api@item.SubItem.ImageUri');"></div></td>
+                                    <td>@item.SubItem.Name</td>
+                                    <td>@item.ParentRecipe.Name</td>
+                                    <td>@(item.Unit?.Name ?? "")</td>
+                                    <td>@item.Quantity</td>
+
+                                    <td>@cost.ToCurrencySymbol(currencySettings)</td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+<script>
+    $("#table_inventory_recipe_ingredients").dataTable({
+        "drawCallback": function (settings) {
+            $(".dataTables_filter").attr("style", "display: block !important;");
+        }
+    });
+
+</script>

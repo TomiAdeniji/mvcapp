@@ -1,0 +1,177 @@
+﻿@using Qbicles.Models
+@using Qbicles.BusinessRules
+@using Qbicles.Models.Bookkeeping
+@using Qbicles.Models.Trader
+@using Qbicles.Models.Trader.Budgets
+@model Qbicles.Models.Trader.Budgets.BudgetGroup
+@{
+    var workGroups = (List<WorkGroup>)ViewBag.WorkGroups;
+    var dimensions = (List<TransactionDimension>)ViewBag.Dimensions;
+    var scenario = Model.BudgetScenarios.FirstOrDefault() ?? new BudgetScenario();
+    var dateTimeFormat = (string)ViewBag.CurrentDateTimeFormat;
+    var timeZone = (string)ViewBag.CurrentTimeZone;
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+}
+
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail">
+
+    <input type="hidden" id="budget-scenario-Id" value="@ViewBag.BudgetScenarioId" />
+    <input type="hidden" id="budget-group-Id" value="@ViewBag.BudgetGroupId" />
+    <!-- Main content -->
+    <section class="content">
+
+        <div class="row">
+            <div class="col-xs-12 item_detail" style="padding-left: 15px;">
+
+                <br />
+                <div class="item_type_icon" style="position: relative; top: 12px;">
+                    <img src="/Content/DesignStyle/img/icon_bookkeeping.png">
+                </div>
+                <div class="item_titling">
+                    <span class="item_type">Trader</span>
+                    <h3>Admin Budget Group</h3>
+                </div>
+                <div class="clearfix"></div>
+
+                <br /><br />
+
+                <div class="row">
+                    <div class="col-xs-12">
+                        <div class="app_filter">
+                            <div class="row">
+                                <div class="col-xs-12">
+                                    <a href="/Trader/AppTrader" onclick="setTabTrader('apptrader')" class="btn btn-primary"><i class="fa fa-home"></i> &nbsp; Home</a>
+                                    <a href="/Trader/AppTrader" onclick="setTabTrader('budget','scenario')" class="btn btn-info"><i class="fa fa-angle-up"></i> &nbsp; Budget Reports</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <br />
+        <div class="well custom" style="padding-bottom: 5px;">
+            <div class="row">
+                <div class="col-xs-12 col-sm-6 col-lg-2">
+                    <div class="form-group">
+                        <label for="showtype">Filter by Workgroup</label>
+                        <select onchange="WorkGroupFilter()" id="work-group-filter" class="form-control select2" style="width: 100%;">
+                            <option value="0" selected>Show all</option>
+                            @foreach (var item in workGroups)
+                            {
+                                <option value="@item.Id">@item.Name</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+                <div class="col-xs-12 col-sm-6 col-lg-2">
+                    <label for="daterange">Filter by date</label>
+                    <div class="input-group" style="margin-bottom: 15px;">
+                        <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                        <input id="budget-group-report-date-range" type="text" class="form-control" placeholder="Choose a range" value="">
+                    </div>
+                </div>
+                <div class="col-xs-12 col-sm-6 col-lg-3">
+                    <div class="form-group">
+                        <label for="daterange">Reporting Filter(s)</label>
+                        <select onchange="DimensionFilter()" id="dimensions-filter" class="form-control select2" multiple style="width: 100%;">
+
+                            @foreach (var item in dimensions)
+                            {
+                                <option value="@item.Id">@item.Name</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+
+        <br />
+
+
+        <br />
+        <div class="app_upper_dash text-center">
+            <div class="row">
+                <div class="col-xs-12 col-sm-6">
+                    <div class="stat_label">
+                        <span>Total Amount</span>
+                        <h3>@(currencySettings.SymbolDisplay == CurrencySetting.SymbolDisplayEnum.Prefixed ? currencySettings.CurrencySymbol : "")<span id="total-amount-group-report"></span>@(currencySettings.SymbolDisplay == CurrencySetting.SymbolDisplayEnum.Suffixed ? currencySettings.CurrencySymbol : "")</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="row subinfo">
+                <div class="col-xs-12 col-sm-6 col-lg-3">
+                    <div class="stat_label">
+                        <span>Fiscal Period</span>
+                        <h3>@scenario.FiscalStartPeriod.ConvertTimeFromUtc(timeZone).DatetimeToOrdinal() - @scenario.FiscalEndPeriod.ConvertTimeFromUtc(timeZone).DatetimeToOrdinal()</h3>
+                    </div>
+                </div>
+                <div class="col-xs-12 col-sm-6 col-lg-3">
+                    <div class="stat_label">
+                        <span>Budget Group</span>
+                        <h3>@Model.Title</h3>
+                    </div>
+                </div>
+                <div class="col-xs-12 col-sm-6 col-lg-3">
+                    <div class="stat_label">
+                        <span>Period</span>
+                        <h3>@scenario.ReportingPeriod.GetDescription()</h3>
+                    </div>
+                </div>
+                <div class="col-xs-12 col-sm-6 col-lg-3">
+                    <div class="stat_label">
+                        <span>Type</span>
+                        <h3>@Model.Type.GetDescription()</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <br />
+        <h5>Breakdown for this fiscal period</h5>
+        <br />
+
+        <table id="table-budget-group-report" class="datatable table-striped table-hover" style="width: 100%;">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Item</th>
+                    <th>Unit</th>
+                    <th>Reporting Filters</th>
+                    <th>Quantity</th>
+                    <th>Date</th>
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+
+
+
+    </section>
+    <!-- ./content -->
+
+</div>
+<!-- /.content-wrapper -->
+
+<script src="~/Scripts/dev/trader.budget.group.report.js"></script>
+
+@*@{
+        if (Debugger.IsAttached)
+        {
+            <script src="~/Scripts/dev/trader.budget.group.report.js"></script>
+        }
+        else
+        {
+            <script src="~/Scripts/dev/trader.budget.group.report.min.js"></script>
+        }
+    }*@
+
+

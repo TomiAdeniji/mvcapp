@@ -1,0 +1,81 @@
+﻿@using Qbicles.Models;
+@using Qbicles.BusinessRules;
+@using Qbicles.Models.WaitList;
+@using Qbicles.BusinessRules.Helper;
+
+@model List<WaitListRequest>
+@{
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var timezone = (string)ViewBag.CurrentTimeZone;
+    var dateFormat = (string)ViewBag.CurrentDateFormat;
+
+    var waitlists = string.Join(",", Model.Select(e => e.Id).ToList());
+}
+<div class="modal-dialog modal-xl cx" role="document">
+    <input id="waitlist-bulk-ids" type="hidden" value="@waitlists" />
+    <div class="modal-content">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <h5 class="modal-title">Matching records</h5>
+        </div>
+        <div class="modal-body">
+            @if (Model.Count > 0)
+            {
+                <div class="well custom rounded">
+                    <p style="margin: 0 0 10px 0;">Allow the users below to create:</p>
+                    <button class="btn btn-success" onclick="ApprovalSubscriptionDomainBulk(false);">Subscription Domains</button>
+                    <button class="btn btn-primary" onclick="ApprovalSubscriptionAndCustomDomainBulk(false);">Subscription AND Custom Domains</button>
+                    @*<button class="btn btn-danger" onclick="RejectWaitlistDomainBulk(false);">Reject</button>*@
+                </div>
+            }
+            <br />
+
+            <table id="waitlist-bulk-result" class="datatable table-hover table-striped" style="width: 100%;">
+                <thead>
+                    <tr>
+                        <th data-priority="2">Date &amp; time</th>
+                        <th data-priority="1">User</th>
+                        <th data-priority="2">Country</th>
+                        <th data-priority="2">Business</th>
+                        @*<th data-priority="2">Discovered via</th>*@
+                        <th data-priority="2">Categories</th>                        
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var waitlist in Model)
+                    {
+                        var categories = string.Join(Environment.NewLine, waitlist.BusinessCategories.Select(e => e.Name));
+                        <tr>
+                            <td>@waitlist.CreatedDate.ConvertTimeFromUtc(timezone).ToString(dateFormat + " hh:mmtt")</td>
+                            <td>
+                                <a href="my-contact-profile.php">
+                                    <div class="table-avatar mini pull-left" style="background-image: url('@api@waitlist.User.ProfilePic');"></div>
+                                    <div class="avatar-name pull-left" style="color: #333; line-height: 4; padding-left: 15px;">@waitlist.User.GetFullName()</div>
+                                    <div class="clearfix"></div>
+                                </a>
+                            </td>
+                            <td>@waitlist.CountryName</td>
+                            <td>@waitlist.DiscoveredVia.GetDescription(), @waitlist.NumberOfEmployees.GetDescription()</td>
+                            @*<td> @waitlist.DiscoveredVia.GetDescription()</td>*@
+                            <td> @Html.Raw(categories)</td>
+                           
+                        </tr>
+                     }
+
+                </tbody>
+            </table>
+
+
+        </div>
+    </div><!-- /.modal-content -->
+</div>
+
+<script>
+    $("#waitlist-bulk-result").DataTable({
+        responsive: true,
+        order: [[0, 'desc']],
+        "language": {
+            "lengthMenu": "_MENU_ &nbsp; per page"
+        }
+    });
+</script>

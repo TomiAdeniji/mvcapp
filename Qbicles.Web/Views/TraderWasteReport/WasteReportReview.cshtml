@@ -1,0 +1,651 @@
+﻿@using Qbicles.BusinessRules
+@using Qbicles.Models
+@using Qbicles.Models.Trader.Inventory
+@model Qbicles.Models.Trader.Inventory.WasteReport
+@{
+    ViewBag.Title = "Trader - Waste report #" + Model.Id;
+    var accessTrader = ViewBag.AccessTrader;
+
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var pageSize = HelperClass.activitiesPageSize;
+
+    var userId = ViewBag.CurrentUserId;
+    var userAvatar = ViewBag.CurrentUserAvatar;
+    var userRight = "none";
+    var traderAppRight = (IsReviewerAndApproverModel)ViewBag.TraderApprovalRight;
+
+
+    var today = (DateTime)ViewBag.Today;
+    var timeline = (List<ApprovalStatusTimeline>)ViewBag.Timeline;
+    var timelineDate = (List<DateTime>)ViewBag.TimelineDate;
+
+    var timeZone = (string)ViewBag.CurrentTimeZone;
+
+    //o1
+    if (!traderAppRight.IsInitiators && !traderAppRight.IsReviewer && !traderAppRight.IsApprover)
+    {
+        userRight = "none";
+
+    }//hiden approval, no edit
+     //o2
+    else if (traderAppRight.IsInitiators && !traderAppRight.IsReviewer && !traderAppRight.IsApprover)
+    { userRight = "initiator"; } // readonly approval, no edit
+                                 //o3
+    else if (traderAppRight.IsReviewer && Model.WasteApprovalProcess.RequestStatus == ApprovalReq.RequestStatusEnum.Pending)
+    {
+        userRight = "reviewer";
+    }//If the user is an ApprovalReq.ApprovalRequestDefinition.Reviewer and the Status of the ApprovalReq is Pending, the drop down displays the items Discard, or Send to Approval.
+     //o4
+    else if (traderAppRight.IsApprover && Model.WasteApprovalProcess.RequestStatus == ApprovalReq.RequestStatusEnum.Reviewed)
+    {
+        userRight = "approver";
+    }
+    //o4.1
+    else if (traderAppRight.IsApprover && Model.WasteApprovalProcess.RequestStatus == ApprovalReq.RequestStatusEnum.Pending)
+    {
+        userRight = "initiator";
+    }
+    //o5
+    else if (Model.WasteApprovalProcess.RequestStatus == ApprovalReq.RequestStatusEnum.Approved
+             || Model.WasteApprovalProcess.RequestStatus == ApprovalReq.RequestStatusEnum.Denied
+             || Model.WasteApprovalProcess.RequestStatus == ApprovalReq.RequestStatusEnum.Discarded)
+    {
+        userRight = "completed";
+    }
+
+    var confirm = "";
+    var isChange = "";
+    if (userRight == "initiator" || userRight == "completed")
+    {
+        isChange = "disabled";
+        confirm = "hidden";
+    }
+    if (isChange == "disabled")
+    {
+        confirm = "hidden";
+    }
+    var isEdit = Model.Workgroup?.Members.Any(u => u.Id == userId) ?? false;
+
+    var wasteStatus = "Count Started";
+    var wasteStatusLabel = "";
+    var dateFormatUser = (string)ViewBag.CurrentDateFormat;
+
+    switch (Model.Status)
+    {
+        case WasteReportStatus.Started:
+            wasteStatus = StatusLabelName.Started;
+            wasteStatusLabel = StatusLabelStyle.Pending;
+            break;
+        case WasteReportStatus.Completed:
+            wasteStatus = StatusLabelName.Completed;
+            wasteStatusLabel = StatusLabelStyle.Reviewed;
+            break;
+        case WasteReportStatus.StockAdjusted:
+            wasteStatus = StatusLabelName.StockAdjusted;
+            wasteStatusLabel = StatusLabelStyle.Approved;
+            break;
+        case WasteReportStatus.Discarded:
+            wasteStatus = StatusLabelName.Discarded;
+            wasteStatusLabel = StatusLabelStyle.Discarded;
+            //editValue = false;
+            break;
+    }
+}
+
+
+
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail" id="discussion-thread">
+
+    <input id="wasteReport_id" type="hidden" value="@Model.Id" />
+    <input id="wasteReport_status" type="hidden" value="@Model.Status.ToString()" />
+    <!-- Main content -->
+    <section class="content">
+
+        <div class="row" id="waste_content">
+            <div class="col-xs-12 item_detail" style="padding-left: 15px;">
+
+                <div class="item_type_icon">
+                    <img src="/Content/DesignStyle/img/icon_bookkeeping.png">
+                </div>
+                <div class="item_titling">
+                    <span class="item_type">Trader - Waste Report Request</span>
+                    <h3>@Model.Name</h3>
+                    <span class="label label-lg @wasteStatusLabel">@wasteStatus</span>
+                </div>
+                <div class="clearfix"></div>
+
+                <br />
+
+                <div class="row">
+                    <div class="col-xs-12">
+                        <div class="app_filter">
+                            <div class="row">
+                                <div class="col-xs-12">
+                                    <a onclick="QbicleSelected('@(Model.Workgroup?.Qbicle.Key??"0")','Dashboard')" class="btn btn-primary"><i class="fa fa-angle-up"></i> &nbsp; View Qbicle</a>
+                                    @if (accessTrader)
+                                    {<a href="/Trader/AppTrader" onclick="setTabTrader('itemsproducts','waste-report-tab')" class="btn btn-primary"><i class="fa fa-angle-up"></i> &nbsp; Items &amp; Products</a>}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+            <div class="col-xs-12">
+
+                <br /><br />
+
+                <div class="row">
+                    <div class="col-xs-12 col-md-8">
+
+
+                        <div class="app_upper_dash text-center">
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-6 col-lg-4">
+                                    <div class="stat_label">
+                                        <span>Submitted</span>
+                                        <h3>@(Model.WasteApprovalProcess?.StartedDate.ConvertTimeFromUtc(timeZone).ToString("dd.MM.yyyy htt"))</h3>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-6 col-lg-4">
+                                    <div class="stat_label">
+                                        <span>Requested by</span>
+                                        <h3>@HelperClass.GetFullNameOfUser(Model.CreatedBy)</h3>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-6 col-lg-4">
+                                    <div class="stat_label" style="padding-bottom: 10px;">
+                                        <span>Items affected</span>
+                                        <h3>@(Model.ProductList?.Count ?? 0)</h3>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <ul class="app_subnav">
+                                    <li class="active"><a href="#overview" data-toggle="tab">Overview</a></li>
+                                    <li><a href="#items" data-toggle="tab">Wasted stock</a></li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <br /><br />
+
+                        <div class="tab-content">
+
+                            <!-- Overview -->
+                            <div class="tab-pane fade in active" id="overview">
+
+                                <div class="activity-overview task" style="padding: 20px;">
+                                    <div class="row">
+                                        <div class="col-xs-12 col-sm-8">
+
+                                            <h5>Description</h5>
+                                            <p>
+                                                @Model.Description
+                                            </p>
+                                        </div>
+                                        <div class="col-xs-12 col-sm-4">
+
+                                            <h5>Workgroup</h5>
+                                            <p>
+                                                <button class="btn btn-info" data-toggle="modal" data-target="#app-trader-workgroup-preview">
+                                                    <i class="fa fa-eye"></i> &nbsp; @(Model.Workgroup?.Name)
+                                                </button>
+                                            </p>
+
+                                        </div>
+
+                                    </div>
+                                </div>
+
+
+
+
+                                <br /><br />
+                            </div>
+                            <!-- END Overview -->
+                            <!-- Items &amp; products -->
+                            <div class="tab-pane fade" id="items">
+
+                                <table class="datatable table-striped table-hover" style="width: 100%;">
+                                    <thead>
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>SKU</th>
+                                            <th>Unit</th>
+                                            <th style="width: 90px;">Observed Inventory</th>
+                                            <th style="width: 90px;">Wasted</th>
+                                            <th style="width: 30%;">Notes</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @if (Model.ProductList != null)
+                                        {
+                                            foreach (var item in Model.ProductList)
+                                            {
+                                                <tr>
+                                                    <td>
+                                                        <span>@item.Product.Name</span>
+                                                    </td>
+                                                    <td>
+                                                        <span>@item.Product.SKU</span>
+                                                    </td>
+                                                    @{
+                                                        var inventory = item.Product.InventoryDetails.FirstOrDefault(q => q.Location.Id == Model.Location.Id)?.CurrentInventoryLevel ?? 0;
+                                                        if (userRight == "none" || userRight == "initiator" || Model.Status == WasteReportStatus.StockAdjusted || Model.Status == WasteReportStatus.Discarded)
+                                                        {
+                                                            @*5*@
+                                                            <td class="disabled">
+                                                                @{Html.RenderAction("WasteUnitSelect", "TraderWasteReport", new { unitId = item.CountUnit?.Id ?? 0, itemId = item.Id });}
+                                                            </td>
+                                                            @*6*@
+                                                            <td>@inventory</td>
+                                                            @*7*@
+                                                            <td>
+                                                                <input class="form-control disabled" disabled type="number" id="waste-@item.Id" value="@item.WasteCountValue" />
+                                                            </td>
+                                                            //8
+                                                            <td>
+                                                                <input type="text" id="note-@item.Id" value="@item.Notes" class="form-control disabled" disabled style="width: 100%;">
+                                                            </td>
+                                                        }
+                                                        else if ((userRight == "reviewer" && Model.Status == WasteReportStatus.Started) || (userRight == "approver" && Model.Status == WasteReportStatus.Completed))
+                                                        {
+                                                            @*5*@
+                                                            <td>
+
+                                                                @{Html.RenderAction("WasteUnitSelect", "TraderWasteReport", new { unitId = item.CountUnit?.Id ?? 0, itemId = item.Id });}
+                                                            </td>
+                                                            @*6*@
+                                                            <td>
+                                                                @inventory
+                                                            </td>
+                                                            @*7*@
+                                                            <td>
+                                                                <input class="form-control" onchange="UpdateWasteItems(@item.Id)" type="number" id="waste-@item.Id" value="@item.WasteCountValue" />
+                                                            </td>
+                                                            @*8*@
+                                                            <td>
+                                                                <input onchange="UpdateWasteItems(@item.Id)" type="text" id="note-@item.Id" value="@item.Notes" class="form-control" style="width: 100%;">
+                                                            </td>
+                                                        }
+
+                                                    }
+
+
+                                                </tr>
+                                            }
+                                        }
+
+                                    </tbody>
+                                </table>
+
+                            </div>
+                            <!-- END Items & Products -->
+
+
+                        </div> <!-- ./tab-content -->
+
+
+                    </div>
+                    <div class="col-xs-12 col-sm-4">
+
+                        @{
+                            <div class="alert activity-overview generic reviewer" style="margin-bottom: 5px;">
+                                <img style="background-image: url('@api@userAvatar')" class="activity-avatar">
+                                <strong style="display: block; padding-bottom: 5px;">You</strong>
+
+                                @if (Model.WasteApprovalProcess != null)
+                                {
+                                    <input type="hidden" id="action_approval_default" value="@Model.WasteApprovalProcess.RequestStatus" />
+                                }
+                                else
+                                {
+                                    <input type="hidden" id="action_approval_default" value="" />
+                                }
+                                <select @isChange id="action_approval" class="form-control select2" style="width: 100%;" data-placeholder="Please choose...">
+                                    @{
+                                        switch (userRight)
+                                        {
+                                            case "initiator":
+                                                <option>@(Model.WasteApprovalProcess?.RequestStatus)</option>
+                                                break;
+                                            case "reviewer":
+                                                <option value="Reviewed" selected>Completed</option>
+                                                <option value="Discarded">Discard</option>
+                                                break;
+                                            case "approver":
+                                                <option value="Approved" selected>@StatusLabelName.StockAdjusted</option>
+                                                <option value="Pending">Send back to @StatusLabelName.Started</option>
+                                                <option value="Denied">Deny</option>
+                                                break;
+                                            case "completed":
+                                                <option>
+                                                    @{
+                                                        var cStatus = "";
+                                                        if (Model.WasteApprovalProcess != null)
+                                                        {
+                                                            switch (Model.WasteApprovalProcess?.RequestStatus)
+                                                            {
+                                                                case ApprovalReq.RequestStatusEnum.Pending:
+                                                                    cStatus = StatusLabelName.Started;
+                                                                    break;
+                                                                case ApprovalReq.RequestStatusEnum.Reviewed:
+                                                                    cStatus = StatusLabelName.Completed;
+                                                                    break;
+                                                                case ApprovalReq.RequestStatusEnum.Approved:
+                                                                    cStatus = StatusLabelName.StockAdjusted;
+                                                                    break;
+                                                                case ApprovalReq.RequestStatusEnum.Denied:
+                                                                case ApprovalReq.RequestStatusEnum.Discarded:
+                                                                    cStatus = StatusLabelName.Discarded;
+                                                                    break;
+                                                            }
+                                                        }
+                                                    }
+                                                    @cStatus
+                                                </option>
+                                                break;
+                                        }
+                                    }
+                                </select>
+
+                                @{
+                                    if (confirm == "")
+                                    {
+                                        var approvalId = Model.WasteApprovalProcess?.Id.Encrypt();
+                                        <button id="approval-button" onclick="javascript:UpdateStatusApproval('@approvalId');" style="margin: 8px 0 3px 0;" class="btn btn-success">
+                                            <div class="loading-approval hidden">
+                                                <i class="fa fa-spinner fa-spin"></i> &nbsp; Approving...
+                                            </div>
+                                            <div class="general-approval">
+                                                Confirm
+                                            </div>
+                                        </button>
+                                    }
+                                }
+
+                            </div>
+                        }
+
+
+                        <br />
+                        @{
+                            if (Model.WasteApprovalProcess != null && Model.WasteApprovalProcess.ApprovedOrDeniedAppBy != null)
+                            {
+                                <div class="alert activity-overview approved reviewer hidden" style="margin-bottom: 5px;">
+                                    <img style="background-image: url('@api@Model.WasteApprovalProcess.ApprovedOrDeniedAppBy.ProfilePic')" class="activity-avatar">
+                                    <strong>@HelperClass.GetFullNameOfUser(Model.WasteApprovalProcess.ApprovedOrDeniedAppBy)</strong><br />
+                                    <i class="fa fa-check green"></i>
+                                    @{
+                                        var statusLable = "";
+                                        switch (Model.WasteApprovalProcess.RequestStatus)
+                                        {
+                                            case ApprovalReq.RequestStatusEnum.Pending:
+                                                statusLable = StatusLabelName.Started;
+                                                break;
+                                            case ApprovalReq.RequestStatusEnum.Reviewed:
+                                                statusLable = StatusLabelName.Completed;
+                                                break;
+                                            case ApprovalReq.RequestStatusEnum.Approved:
+                                                statusLable = StatusLabelName.StockAdjusted;
+                                                break;
+                                            case ApprovalReq.RequestStatusEnum.Denied:
+                                            case ApprovalReq.RequestStatusEnum.Discarded:
+                                                statusLable = StatusLabelName.Discarded;
+                                                break;
+                                        }
+                                    }
+
+                                    @statusLable
+                                </div>
+                            }
+                        }
+
+
+                        <br />
+                        <ul class="timeline">
+                            @if (timelineDate != null)
+                            {
+                                foreach (var date in timelineDate)
+                                {
+                                    var dateStart = @HelperClass.DatetimeToOrdinal(date);
+                                    var dateStr = date.Date == today.Date ? "Today" : dateStart;
+
+                                    <li class="time-label">
+                                        <span class="label label-lg label-primary">
+                                            @dateStr
+                                        </span>
+                                    </li>
+                                    foreach (var tl in timeline.Where(d => d.LogDate.Date == date.Date))
+                                    {
+                                        <li>
+                                            <i class="@tl.Icon"></i>
+                                            <div class="timeline-item">
+                                                <span class="time"><i class="fa fa-clock-o"></i> @tl.Time</span>
+                                                <h4 class="timeline-header">@tl.Status</h4>
+                                            </div>
+                                        </li>
+                                    }
+                                    <br />
+                                }
+                            }
+                        </ul>
+                    </div>
+                </div>
+
+
+
+                @* comment and media*@
+                <div class="app_topnav entity_adds" style="background: #fff; padding: 0;">
+                    <ul class="nav nav-pills app_main_nav">
+                        <li role="presentation" class="active">
+                            <a href="#tab1" data-toggle="tab">
+                                <i class="fa fa-comments"></i>
+                                Comments
+                            </a>
+                        </li>
+                        <li role="presentation">
+                            <a href="#tab2" data-toggle="tab">
+                                <i class="fa fa-folder-open"></i>
+                                Files
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+                <br />
+                <div class="row">
+                    <div class="col-xs-12">
+                        <div class="tab-content">
+                            <div class="tab-pane fade in active" id="tab1">
+                                <div class="row">
+                                    <div class="col-xs-12">
+                                        <div class="well" style="max-width: 800px;">
+                                            <div class="form-group">
+                                                <label for="add-comment">Add a comment</label>
+                                                <textarea id="txt-comment-approval" name="add-comment" class="form-control"></textarea>
+                                            </div>
+                                            <button onclick="addCommentForApproval('@(Model.WasteApprovalProcess?.Key ?? "")')" class="btn btn-success">Submit</button>
+                                        </div>
+                                        <br />
+                                    </div>
+                                </div>
+                                <div id="list-comments-approval">
+                                    @if (Model.WasteApprovalProcess != null)
+                                    {
+                                        foreach (var post in Model.WasteApprovalProcess.Posts.OrderByDescending(x => x.StartedDate).Take(pageSize))
+                                        {
+
+                                            <!-- General post -->
+                                            var fullName = HelperClass.GetFullNameOfUser(post.CreatedBy, userId);
+                                            <article id="post-@post.Id" class="activity post">
+                                                <img style="background-image: url('@api@post.CreatedBy.ProfilePic')" class="activity-avatar" />
+                                                <div class="activity-detail">
+                                                    <div class="activity-meta">
+                                                        <h4>@fullName</h4>
+                                                        <small>@post.StartedDate.ConvertTimeFromUtc(timeZone).ToString(dateFormatUser+ ", hh:mmtt")</small>
+                                                    </div>
+                                                    <div class="activity-overview media-comment">
+                                                        <p>
+                                                            @Html.Raw(post.Message.Replace(Environment.NewLine, "<br />"))
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <div class="clearfix"></div>
+                                            </article>
+                                            <!-- END General post -->
+                                        }
+                                    }
+
+                                </div>
+                                @if (Model.WasteApprovalProcess != null && Model.WasteApprovalProcess.Posts.Count() > pageSize)
+                                {
+                                    <button id="btnLoadPosts" onclick="LoadMorePosts('@Model.WasteApprovalProcess.Key', @pageSize,'list-comments-approval')" class="btn btn-info trigger_load">Load older posts</button>
+                                }
+                            </div>
+
+                            <div class="tab-pane fade" id="tab2">
+                                <br />
+                                <a href="javascript:void(0)" class="btn btn-success" id="btnAddFile" data-toggle="modal" data-target="#create-media"><i class="fa fa-upload"></i> &nbsp; Upload a file</a>
+
+                                <br /><br />
+                                <div id="list-medias">
+                                    @if (Model.WasteApprovalProcess != null && Model.WasteApprovalProcess.SubActivities.Count > 0)
+                                    {
+                                        foreach (var item in Model.WasteApprovalProcess.SubActivities.OrderByDescending(x => x.Id).Take(pageSize))
+                                        {
+                                            var media = (QbicleMedia)item;
+                                            var createdByName = HelperClass.GetFullNameOfUser(media.StartedBy, userId);
+                                            var createdDate = media.StartedDate.Date == DateTime.UtcNow.Date ? "Today, " + media.StartedDate.ToString("hh:mmtt").ToLower() : media.StartedDate.ToString(dateFormatUser + " hh:mmtt").ToLower();
+                                            var mediaLastupdate = media.VersionedFiles.Where(e => !e.IsDeleted).OrderByDescending(x => x.UploadedDate).First() ?? null;
+                                            var lastUpdateFile = mediaLastupdate != null ? (mediaLastupdate.UploadedDate.Date == DateTime.UtcNow.Date ? "Today, " + mediaLastupdate.UploadedDate.ToString("hh:mmtt").ToLower() : mediaLastupdate.UploadedDate.ToString(dateFormatUser + " hh:mmtt").ToLower()) : createdDate;
+                                            //Media post
+                                            <article class="activity media">
+                                                <img style="background-image: url('@api@media.StartedBy.ProfilePic')" class="activity-avatar" />
+                                                <div class="activity-detail">
+                                                    <div class="activity-meta">
+                                                        <h4>@createdByName</h4>
+                                                        <small>@createdDate</small>
+                                                        <br class="visible-xs">
+                                                    </div>
+                                                    <div class="activity-overview media">
+                                                        <div class="row">
+                                                            <div class="col-xs-12 col-sm-5 col-md-6 col-lg-5">
+                                                                <a href="javascript:void(0)" onclick="ShowMediaPage('@media.Key')">
+                                                                    @if (media.FileType.Type == "Image File")
+                                                                    {
+                                                                        <img id="media-@item.Id" class="img-responsive" src='@api@mediaLastupdate.Uri' />
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <img src="@media.FileType.IconPath" class="img-responsive">
+                                                                    }
+                                                                </a>
+                                                            </div>
+                                                            <div class="col-xs-12 col-sm-7 col-md-6 col-lg-7 description">
+                                                                <h5>@media.Name</h5>
+                                                                <p>
+                                                                    @media.Description
+                                                                </p>
+                                                                <small>@media.FileType.Type | Update @lastUpdateFile</small>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="clearfix"></div>
+                                            </article>
+                                            <!-- END Media post -->
+                                        }
+                                    }
+                                </div>
+                                @if (Model.WasteApprovalProcess != null && Model.WasteApprovalProcess.SubActivities.Count() > pageSize)
+                                {
+                                    <button id="btnLoadMedias" onclick="LoadMoreMedias(@Model.WasteApprovalProcess.Id,@pageSize,'list-medias')" class="btn btn-info trigger_load">Load older medias</button>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </section>
+    <!-- ./content -->
+
+</div>
+<!-- /.content-wrapper -->
+
+@{
+    Html.RenderAction("GenerateModalMedia", "Qbicles");
+}
+
+
+<div class="modal fade" id="app-trader-workgroup-preview" role="dialog" aria-labelledby="app-trader-workgroup-preview">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Workgroup @(Model.Workgroup?.Members.Count ?? 0) members</h5>
+            </div>
+            <div class="modal-body">
+
+                <table class="datatable table-striped table-hover" id="workgroup_members_table" style="width:100%">
+                    <thead>
+                        <tr>
+                            <th data-priority="2" data-orderable="false" style="width: 60px;"></th>
+                            <th data-priority="1">Name</th>
+                            <th data-priority="1">Role</th>
+                        </tr>
+                    </thead>
+                    <tbody style="background: #fff;">
+                        @if (Model.Workgroup != null)
+                        {
+                            foreach (var item in Model.Workgroup.Members)
+                            {
+                                <tr>
+                                    <td>
+                                        <div class="table-avatar mini" style="background-image: url(@api@item.ProfilePic);"></div>
+                                    </td>
+                                    <td>@HelperClass.GetFullNameOfUser(item)</td>
+                                    <td>
+                                        @if (item.Roles != null && item.Roles.Count > 0)
+                                        {
+                                            <span class="label label-lg label-success">Approver</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="label label-lg label-warning">Reviewer</span>
+                                        }
+
+                                    </td>
+                                </tr>
+                            }
+                        }
+
+                    </tbody>
+                </table>
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div>
+</div>
+
+
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/trader.waste.review.js"></script>
+        <script src="~/Scripts/dev/trader.domain.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/trader.waste.review.min.js"></script>
+        <script src="~/Scripts/dev/trader.domain.min.js"></script>
+    }
+}

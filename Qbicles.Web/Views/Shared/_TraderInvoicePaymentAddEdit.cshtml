@@ -1,0 +1,314 @@
+﻿@using Qbicles.Models.Trader
+@using Qbicles.BusinessRules;
+@model Invoice
+@{
+    var modelId = Model.Sale?.Id ?? Model.Purchase?.Id;
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+    var payment = (CashAccountTransaction)ViewBag.Payment;
+    var workgroups = (List<WorkGroup>)ViewBag.Workgroups;
+    var title = (payment.Id == 0) ? "Add a payment" : "Edit payment";
+    var traderAccounts = (List<TraderCashAccount>)ViewBag.TraderAccounts;
+    var paymentMethods = (List<PaymentMethod>)ViewBag.PaymentMethods;
+
+    var type = CashAccountTransactionTypeEnum.Transfer;
+    var accountId = 0;
+    if (Model.Sale != null)
+    {
+        type = CashAccountTransactionTypeEnum.PaymentIn;
+        accountId = payment.DestinationAccount?.Id ?? 0;
+    }
+    else if (Model.Purchase != null)
+    {
+        type = CashAccountTransactionTypeEnum.PaymentOut;
+        accountId = payment.OriginatingAccount?.Id ?? 0;
+    }
+}
+<input id="model-id" value="@modelId" type="hidden" />
+<input type="hidden" id="invoice-id" value="@(Model?.Id ?? 0)" />
+<input id="workgroup-location-id" value="@(Model.Workgroup?.Location.Id??0)" type="hidden" />
+
+<div class="modal-dialog modal-xl" role="document">
+    <div class="modal-content">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <h5 class="modal-title">@title</h5>
+        </div>
+        <div class="modal-body">
+
+            <div class="flex-avatar">
+                <div class="col-thumb" style="flex: 0 0 80px;">
+                    <img src="~/Content/DesignStyle/img/icon_payments.png" class="img-circle img-responsive" style="max-width: 80px;">
+                </div>
+                <div class="col">
+                    <h1 style="font-size: 16px; margin: 0 0 7px 0;">Invoice #@Model.Reference.FullRef</h1>
+                    <h5 style="margin: 0; color: rgba(0, 0, 0, 0.4);">
+                        Total: @Model.TotalInvoiceAmount.ToCurrencySymbol(currencySettings) &nbsp;/&nbsp;
+                        <span style="font-size: 13px; color: #333;">Outstanding: @((Model.TotalInvoiceAmount - Model.Payments.Sum(p => p.Amount)).ToCurrencySymbol(currencySettings))</span>
+                    </h5>
+                </div>
+            </div>
+
+            <br />
+            <form id="cash-account-payment" class="row">
+                <div class="col-xs-12 col-md-4">
+
+                    <div class="activity-overview generic" style="padding: 20px; margin-bottom: 30px;">
+
+                        <div class="form-group" style="margin: 0;">
+                            <label for="workgroup">Assign a Workgroup to this payment</label>
+                            <select id="workgroup-select" name="workgroup" class="form-control select2 select-modal" style="width: 100%;" onchange="WorkGroupSelectedChange()">
+                                @foreach (var w in workgroups)
+                                {
+                                    if (payment.Workgroup != null && payment.Workgroup.Id == w.Id)
+                                    {
+                                        <option value="@w.Id" selected>@w.Name</option>
+                                    }
+                                    else
+                                    {
+                                        <option value="@w.Id">@w.Name</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+
+                        <div class="preview-workgroup">
+                            <br />
+                            @{
+                                if (payment.Id > 0)
+                                {
+                                    <table class="table app_specific" style="margin: 0;">
+                                        <tr>
+                                            <td><h5>Location</h5></td>
+                                            <td class="location_name">@payment.Workgroup.Location.Name</td>
+                                        </tr>
+                                        <tr>
+                                            <td><h5>Process</h5></td>
+                                            <td class="workgroup_process">
+                                                @{
+                                                    foreach (var name in payment.Workgroup.Processes.Select(n => n.Name))
+                                                    {
+                                                        @name <br />
+                                                    }
+                                                }
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td><h5>Qbicle</h5></td>
+                                            <td class="workgroup_qbicle">@payment.Workgroup.Qbicle.Name</td>
+                                        </tr>
+                                        <tr>
+                                            <td><h5>Members</h5></td>
+                                            <td class="workgroup_member"><button class="btn btn-info" onclick="ShowGroupMember()" data-toggle="modal" data-target="#app-trader-workgroup-preview"><i class="fa fa-user"></i> &nbsp; <span>@payment.Workgroup.Members.Count</span></button></td>
+                                        </tr>
+                                    </table>
+                                }
+                                else
+                                {
+                                    var wGroup = workgroups.FirstOrDefault();
+                                    <table class="table app_specific" style="margin: 0;">
+                                        <tr>
+                                            <td><h5>Location</h5></td>
+                                            <td class="location_name">@wGroup.Location.Name</td>
+                                        </tr>
+                                        <tr>
+                                            <td><h5>Process</h5></td>
+                                            <td class="workgroup_process">
+                                                @{
+                                                    foreach (var name in wGroup.Processes.Select(n => n.Name))
+                                                    {
+                                                        @name <br />
+                                                    }
+                                                }
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td><h5>Qbicle</h5></td>
+                                            <td class="workgroup_qbicle">@wGroup.Qbicle.Name</td>
+                                        </tr>
+                                        <tr>
+                                            <td><h5>Members</h5></td>
+                                            <td class="workgroup_member"><button class="btn btn-info" onclick="ShowGroupMember()" data-toggle="modal" data-target="#app-trader-workgroup-preview"><i class="fa fa-user"></i> &nbsp; <span>@wGroup.Members.Count</span></button></td>
+                                        </tr>
+                                    </table>
+                                }
+                            }
+                        </div>
+                    </div>
+
+                </div> <!-- ./div -->
+                <div class="col-xs-12 col-md-8">
+
+                    <div class="activity-overview task" style="padding: 20px;">
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="title">Cash/Bank</label>
+                                    <select id="cashorbank" class="form-control select2 select-modal" style="width: 100%;">
+                                        @foreach (var account in traderAccounts)
+                                        {
+                                            if (account != null)
+                                            {
+                                                if (account.Id == accountId)
+                                                {
+                                                    <option value="@account.Id-@type" selected>@account.Name</option>
+                                                }
+                                                else
+                                                {
+                                                    <option value="@account.Id-@type">@account.Name</option>
+                                                }
+                                            }
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="amount">Amount</label>
+                                    <input id="amount" type="number" class="form-control" name="amount" max="7000" value="@payment.Amount">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="notes">Add a note</label>
+                                    <textarea id="description" name="notes" class="form-control">@payment.Description</textarea>
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group" style="margin-bottom: 0;">
+                                    <label for="attachment">Attachments</label><br />
+                                    @{
+                                        var attachmentsCount = "";
+                                        var btnCss = "fa fa-plus";
+                                        if (payment.AssociatedFiles != null && payment.AssociatedFiles.Count > 0)
+                                        {
+                                            attachmentsCount = $" Attachments {payment.AssociatedFiles?.Count.ToString()}";
+                                            btnCss = "fa fa-paperclip";
+                                        }
+                                    }
+                                    <button id="trader-invoice-attachment-manage" class="btn btn-info" data-toggle="modal" data-target="#attachments-view">
+                                        <i id="trader-invoice-attachment-icon" class="@btnCss"></i> @attachmentsCount
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="title">Payment method <span>*</span></label>
+                                    <select id="payment-method" class="form-control select2 select-modal" style="width: 100%;">
+                                        @foreach (var method in paymentMethods)
+                                        {
+                                            if (method.Id == payment.PaymentMethod?.Id)
+                                            {
+                                                <option value="@method.Id" selected>@method.Name</option>
+                                            }
+                                            else
+                                            {
+                                                <option value="@method.Id">@method.Name</option>
+                                            }
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="amount">Reference <span>*</span></label>
+                                    <input id="reference" required="" class="form-control" name="reference" value="@payment.Reference">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <br />
+                    <a class="btn btn-danger" data-dismiss="modal" onclick="ClearInvoicePayment()">Cancel</a>
+                    <a class="btn btn-primary" onclick="SaveInvoicePayment('Draft','@type')">Save draft</a>
+                    <a class="btn btn-success" onclick="SaveInvoicePayment('PendingReview','@type')">Send to review</a>
+
+                </div>
+            </form>
+
+
+        </div>
+    </div><!-- /.modal-content -->
+</div>
+<div class="modal fade" id="attachments-view" role="dialog" aria-labelledby="attachments-view">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" onclick="CloseModalMedia()" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Manage Attachments</h5>
+            </div>
+            <div class="modal-body">
+
+                <div id="invoice-attachments" class="row">
+                    <div class="col-xs-12 col-md-6">
+
+                        <div class="activity-overview task" style="margin-bottom: 40px;">
+                            <div name="add_attachment" class="attachments_@payment.Id">
+
+                                <div class="repeater_wrap">
+                                    @if (payment != null && payment.AssociatedFiles.Count > 0)
+                                    {
+                                        for (var i = 0; i < payment.AssociatedFiles.Count; i++)
+                                        {
+                                            <div id="manage-id-@payment.AssociatedFiles[i].Id" class="row attachment_row">
+                                                <div class="col-xs-12">
+                                                    <div class="form-group">
+                                                        <label for="name">Name</label>
+                                                        <input id="file_id_@(i+1)" type="hidden" value="@payment.AssociatedFiles[i].Id" />
+                                                        <input class="file-id-input-@(i+1)" type="hidden" value="@payment.AssociatedFiles[i].Id" />
+                                                        <input id="fileid-@payment.Id-@(i+1)" type="hidden" value="@payment.AssociatedFiles[i].Id" />
+                                                        <input id="inputiconpath_edit@(i+1)" type="hidden" value="@payment.AssociatedFiles[i].FileType.IconPath" />
+                                                        <input type="text" name="name" class="form-control inputfilename@(i+1)" value="@payment.AssociatedFiles[i].Name" />
+                                                    </div>
+                                                </div>
+                                                <div class="col-xs-12">
+                                                    <div class="form-group">
+                                                        <label for="file">File</label>
+                                                        <input type="file" name="file" style="pointer-events: none;" onchange="InvoicePaymentChangeFile(this, @(i+1), @payment.Id)" class="form-control inputfile">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        }
+                                    }
+                                </div>
+                                <button type="button" class="btn btn-info" onclick="InvoicePaymentAddAnother(@payment.Id)"><i class="fa fa-plus"></i> &nbsp; Add another</button>
+                                <button type="button" class="btn btn-primary" onclick="InvoicePaymentConfirmAddViewer(@payment.Id)"><i class="fa fa-check"></i> &nbsp; Confirm add</button>
+                                <button type="button" class="btn btn-success" onclick="CloseModalMedia()"><i class="fa fa-save"></i> &nbsp; Submit</button>
+                            </div>
+                        </div>
+
+                    </div>
+                    <div class="col-xs-12 col-md-6">
+
+                        <ul id="domain-change-list" class="domain-change-list unstyled" style="margin-top: 0;">
+                            @foreach (var item in payment.AssociatedFiles)
+                            {
+                                <li id="att-@item.Id">
+                                    <input type="hidden" class="file-id" value="@item.Id" />
+                                    <button class="btn btn-danger" onclick="InvoicePaymentRemoveAttachment(@item.Id)">
+                                        <i class="fa fa-trash"></i>
+                                    </button>
+                                    <a href="javascript:void(0)">
+                                        <img src="@item.VersionedFiles[0].FileType.IconPath"
+                                             style="max-width: 80px; height: auto; padding-right: 10px;">@(item.Name + "." + item.VersionedFiles[0].FileType.Extension)
+                                    </a>
+                                </li>
+                            }
+                        </ul>
+
+                    </div>
+                </div>
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+
+<script src="~/Scripts/dev/trader.invoice.add-edit.js"></script>
+<script>
+    $(".select-modal").select2();
+</script>

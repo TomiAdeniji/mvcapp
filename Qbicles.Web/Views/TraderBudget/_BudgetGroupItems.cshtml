@@ -1,0 +1,70 @@
+﻿@using Qbicles.Models.Trader
+@using Qbicles.Models.Trader.Budgets
+@model List<BudgetGroup>
+@{
+    var workGroups = (List<WorkGroup>)ViewBag.WorkGroups ?? (new List<WorkGroup>());
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var locationId = (int)ViewBag.CurrentLocationManage;
+}
+
+<table class="datatable table-striped table-hover" id="budget-table" style="width: 100%;">
+    <thead>
+        <tr>
+            <th>#</th>
+            <th>Name</th>
+            <th>Type</th>
+            <th>Products</th>
+            <th>Payment terms</th>
+            <th>Description</th>
+            <th>Options</th>
+        </tr>
+    </thead>
+    <tbody>
+        @{
+            foreach (var budget in Model)
+            {
+                var products = 0;
+
+                if (budget.Type == BudgetGroupType.Expenditure)
+                {
+                    var lstProducts = budget.ExpenditureGroups.Select(q => q.Items).SelectMany(q => q).Distinct().ToList();
+                    products = lstProducts.Where(q => q.Locations.Select(x => x.Id).Contains(locationId) && q.IsBought).Count();
+                }
+                else
+                {
+                    var lstProducts = budget.RevenueGroups.Select(q => q.Items).SelectMany(q => q).Distinct().ToList();
+                    products = lstProducts.Where(q => q.Locations.Select(x => x.Id).Contains(locationId) && q.IsSold).Count();
+                }
+                <tr>
+                    <td>@budget.Id.ToString("000")</td>
+                    <td>@budget.Title</td>
+                    <td>@budget.Type.ToString()</td>
+                    <td>
+                        <button class="btn btn-info" data-toggle="modal" data-target="#app-trader-budget-group-items" onclick="loadDialogItemProductBudgetGroup('@budget.Id')">@products</button>
+                    </td>
+                    <td>@budget.PaymentTerms.Name</td>
+                    <td>@budget.Description</td>
+                    <td>
+                        <div class="btn-group options">
+                            <button type="button" class="btn btn-success dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                <i class="fa fa-cog"></i> &nbsp; Options
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-right" style="right: 0;">
+                                <li><a href="/TraderBudget/BudgetGroupMaster?id=@budget.Id">View</a></li>
+                                @if (workGroups.Any())
+                                {
+                                    <li><a href="#" data-toggle="modal" data-target="#app-trader-budget-group-add" onclick="addEditBudgetGroup(@budget.Id)">Edit</a></li>
+                                    <li><a href="#" onclick="deleteBudgetGroup('@budget.Id')">Delete</a></li>
+                                }
+                            </ul>
+                        </div>
+                    </td>
+                </tr>
+            }
+        }
+    </tbody>
+</table>
+
+<script>
+    searchBudgetGroup();
+</script>

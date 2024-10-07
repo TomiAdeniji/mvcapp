@@ -1,0 +1,210 @@
+﻿@using Qbicles.BusinessRules
+@using Qbicles.Models.Trader.Payments
+@model CreditNote
+@{
+    var api = (string)ViewBag.DocRetrievalUrl;
+
+    var timeZone = (string)ViewBag.CurrentTimeZone ?? "";
+    var today = (DateTime)ViewBag.Today;
+    var timeline = (List<ApprovalStatusTimeline>)ViewBag.Timeline;
+    var timelineDate = (List<DateTime>)ViewBag.TimelineDate;
+    var isCreditNote = true;
+    if(Model.Reason == CreditNoteReason.DebitNote || Model.Reason == CreditNoteReason.PriceIncrease)
+    {
+        isCreditNote = false;
+    }
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+}
+
+
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail" id="discussion-thread">
+    <div class="tabnav-spacer hidden-xs"></div>
+
+    <!-- Main content -->
+    <section class="content">
+
+        <div class="row">
+            <div class="col-xs-12 item_detail" style="padding-left: 15px;">
+
+                <br />
+
+                <div class="mod_title">
+                    <h5>Trader &gt; Contacts &gt; @Model.Contact.Name</h5>
+                    @if (isCreditNote == false)
+                    {
+                        <h4>Debit Note #@Model.Reference.FullRef</h4>
+                    }
+                    else
+                    {
+                        <h4>Credit Note #@Model.Reference.FullRef</h4>
+                    }
+
+                </div>
+
+                <div class="row">
+                    <div class="col-xs-12">
+                        <div class="app_filter">
+                            <div class="row">
+                                <div class="col-xs-12">
+                                    <a href="/TraderContact/ContactMaster?key=@(HttpUtility.UrlEncode(Model.Contact.Key))" class="btn btn-primary"><i class="fa fa-th"></i> &nbsp; Contacts</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+            <div class="col-xs-12">
+
+
+                <br /><br />
+
+                <div class="row">
+                    <div class="col-xs-12 col-sm-12">
+
+                        <div class="app_upper_dash verbose text-center">
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-6 col-md-3">
+                                    <div class="stat_label">
+                                        <span>Ref</span>
+                                        <h3>#@Model.Reference.FullRef</h3>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-6 col-md-3">
+                                    <div class="stat_label">
+                                        <span>Value</span>
+                                        <h3>@Model.Value.ToCurrencySymbol(currencySettings)</h3>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-6 col-md-3">
+                                    <div class="stat_label">
+                                        <span>Reason</span>
+                                        <h3>@Model.Reason.ToString()</h3>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-6 col-md-3">
+                                    <div class="stat_label">
+                                        <span>Status</span>
+                                        <h3>@Model.Status.ToString()</h3>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                @*Credit Note*@
+                                @if (Model.Invoice != null && Model.Invoice.Reference != null && isCreditNote)
+                                {
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="stat_label">
+                                            <span>Invoice</span>
+                                            <h3>#@Model.Invoice.Reference.FullRef</h3>
+                                        </div>
+                                    </div>
+                                }
+                                @if (Model.Sale != null && Model.Sale.Reference != null && isCreditNote)
+                                {
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="stat_label">
+                                            <span>Sale</span>
+                                            <h3>#@Model.Sale.Reference.FullRef</h3>
+                                        </div>
+                                    </div>
+                                }
+                                @*Debit Note*@
+                                @if (Model.Invoice != null && Model.Invoice.Reference != null && !isCreditNote)
+                                {
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="stat_label">
+                                            <span>Bill</span>
+                                            <h3>#@Model.Invoice.Reference.FullRef</h3>
+                                        </div>
+                                    </div>
+                                }
+                                @if (Model.Purchase != null && Model.Purchase.Reference != null && !isCreditNote)
+                                {
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="stat_label">
+                                            <span>Purchase</span>
+                                            <h3>#@Model.Purchase.Reference.FullRef</h3>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+
+                        <br />
+
+                        <div class="activity-overview task" style="padding: 20px; margin-top: 5px;">
+                            <div class="row">
+                                <div class="col-xs-12 col-lg-6">
+
+                                    <div class="flex-avatar">
+                                        <div class="col-thumb" style="flex: 0 0 80px;">
+                                            <a href="/TraderContact/ContactReview?id=@Model.Contact.Id"><img src="@api@Model.Contact.AvatarUri" class="img-circle img-responsive"></a>
+                                        </div>
+                                        <div class="col">
+                                            <h5 style="font-family: 'Roboto'; margin-top: 0;">Contact: @Model.Contact.Name</h5>
+                                            @if (Model.Invoice != null && isCreditNote)
+                                            {
+                                                <a href="/TraderInvoices/InvoiceManage?key=@Model.Invoice.Key" class="btn btn-info"><i class="fa fa-eye"></i> &nbsp; View Invoice</a>
+                                            }
+                                            @if (Model.Invoice != null && !isCreditNote)
+                                            {
+                                                <a href="/TraderInvoices/InvoiceManage?key=@Model.Invoice.Key" class="btn btn-info"><i class="fa fa-eye"></i> &nbsp; View Bill</a>
+                                            }
+                                        </div>
+                                    </div>
+                                    <br class="hidden-lg">
+
+                                </div>
+                                <div class="col-xs-12 col-lg-6">
+                                    <h5>Notes</h5>
+                                    <p>@Html.Raw(Model.Notes?.Replace(Environment.NewLine, "<br/>").Replace("\n", "<br/>"))</p>
+                                </div>
+                            </div>
+                        </div>
+
+
+                    </div>
+                    <div class="col-xs-12 col-sm-12 hidden">
+
+                        <ul class="timeline">
+
+                            @foreach (var date in timelineDate)
+                            {
+                                var dateStart = date.ConvertTimeFromUtc(timeZone).DatetimeToOrdinal();
+                                var dateStr = date.Date == today.Date ? "Today" : dateStart;
+
+                                <li class="time-label">
+                                    <span class="label label-lg label-primary">
+                                        @dateStr
+                                    </span>
+                                </li>
+                                foreach (var tl in timeline.Where(d => d.LogDate.Date == date.Date))
+                                {
+                                    <li>
+                                        <i class="@tl.Icon"></i>
+                                        <div class="timeline-item">
+                                            <span class="time"><i class="fa fa-clock-o"></i> @tl.Time</span>
+                                            <h4 class="timeline-header">@tl.Status</h4>
+                                        </div>
+                                    </li>
+                                }
+                                <br />
+                            }
+
+                        </ul>
+
+
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </section>
+    <!-- ./content -->
+
+</div>
+<!-- /.content-wrapper -->

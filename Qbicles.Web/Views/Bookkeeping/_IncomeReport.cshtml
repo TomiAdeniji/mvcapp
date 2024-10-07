@@ -1,0 +1,102 @@
+﻿@using System.Data;
+@using Qbicles.BusinessRules;
+@model DataTable
+@{
+    var lstColums = Model.Columns.Cast<DataColumn>();
+    string style = "";
+    string bgrow = "";
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+}
+@if (lstColums.Count() > 0)
+{
+    <table class="datatablereport table-striped" style="width: 100%; table-layout: fixed; background: #fff;">
+        <thead>
+            <tr>
+                @foreach (var item in lstColums)
+                {
+                    if (item.ColumnName != "NodeId")
+                    {
+                        if (item.ColumnName == "NodeName")
+                        {
+                            <th style="width: 300px;">&nbsp;</th>
+                        }
+                        else
+                        {
+                            <th style="width: 100px;">@item.ColumnName</th>
+                        }
+                    }
+                }
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model.Rows.Cast<DataRow>())
+            {
+                if (item["NodeId"] != DBNull.Value)
+                {
+                    if (item["NodeId"].ToString() == "subtotal_0")
+                    {
+                        style = "border-top:2px solid #333; border-bottom: 2px solid #333;";
+                    }
+                    else if (item["NodeId"].ToString().Contains("in_"))
+                    {
+                        bgrow = "background-color: rgb(228, 200, 200);";
+                    }
+                    else if (item["NodeId"].ToString().Contains("rev_"))
+                    {
+                        bgrow = "background-color: rgb(219, 239, 225);";
+                    }
+                }
+                <tr style="@bgrow">
+                    @foreach (var cl in lstColums)
+                    {
+                        if (cl.ColumnName != "NodeId")
+                        {
+                            if (cl.ColumnName == "NodeName")
+                            {
+                                <td><strong>@Html.Raw(item[cl].ToString())</strong></td>
+                            }
+                            else
+                            {
+                                <td style="@style">
+                                    @(item[cl] != DBNull.Value ? Convert.ToDecimal(item[cl]).ToCurrencySymbol(currencySettings) : "")
+                                </td>
+                            }
+                        }
+                    }
+                </tr>
+                style = "";
+                bgrow = "";
+            }
+        </tbody>
+    </table>
+}
+else
+{
+    <div class="alert alert-warning" role="alert"> <strong>Warning!</strong> No data found. </div>
+}
+<script>
+    $(document).ready(function () {
+        $('#frm-filter input[name=date]').val('@(ViewBag.start_date) - @(ViewBag.end_date)');
+        $('.datatablereport').DataTable({
+            responsive: false,
+            searching: false,
+            paging: false,
+            scrollX: true,
+            scrollY: false,
+            info: false,
+            initComplete: function (settings, json) {
+                $('.dataTables_scrollBody thead tr').css({ visibility: 'collapse' });
+            },
+            columnDefs: [
+                { width: 300, targets: 0 }
+            ],
+            fixedColumns: true,
+            scrollCollapse: true,
+            ordering: false,
+            "language": {
+                "lengthMenu": "_MENU_ &nbsp; per page"
+            }
+        });
+    });
+</script>

@@ -1,0 +1,209 @@
+﻿@using Qbicles.Models;
+@using Qbicles.BusinessRules;
+@using Qbicles.Models.Community;
+@model QbicleDomain
+@{
+    ViewBag.Title = ViewBag.PageTitle;
+    var currentDomain = (QbicleDomain)ViewBag.CurrentDomain;
+    var cubeCurrentUserId = (string)ViewBag.CurrentUserId;
+    var lstQbicle = (List<Qbicle>)ViewBag.QbicleList;
+    var activityFilter = (string)ViewBag.ActivityType;
+    var communityPages = (List<CommunityPage>)ViewBag.CommunityPages;
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var dateFormat = (string)ViewBag.CurrentDateFormat;
+    var timezone = (string)ViewBag.CurrentTimeZone;
+    var currentDomainPlan = (DomainPlan)ViewBag.CurrentDomainPlan ?? null;
+    var currentDomainPlanLevel = currentDomainPlan?.Level?.Level ?? BusinessDomainLevelEnum.Free;
+}
+
+<style>
+    .qb-hidden {
+        opacity: 0.45 !important;
+    }
+
+        .qb-hidden:hover {
+            opacity: 1 !important;
+        }
+</style>
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail mdv2-wrapper" style="position: relative; min-height: 0; height: auto;">
+
+
+    <!-- Main content -->
+    <section class="mdv2 dash" data-tooltip-color="teal" data-tooltip-delay="300" data-tooltip-animate-function="spin">
+
+
+        <input type="hidden" value="@currentDomain.Id.Encrypt()" id="hdfCurrentDomainId" />
+        <!-- App bar -->
+        <div class="mdv2-col-app">
+
+            <div data-spy="affix" class="contained-sidebar">
+
+
+                <div class="spacing" style="padding: 30px 0;">
+
+                    <ul class="qbicles-list-v2">
+
+                        <li>
+                            <div class="mdv2-activity dash" style="padding: 20px;">
+                                @if (currentDomain.Administrators.Any(x => x.Id == cubeCurrentUserId))
+                                {
+                                    <span class="label label-lg label-info">Admin</span>
+                                }
+                                @if (currentDomain.QbicleManagers.Any(x => x.Id == cubeCurrentUserId))
+                                {
+                                    <br /><span class="label label-lg label-info">Manager</span>
+                                }
+                                <div class="flex-avatar">
+                                    <div class="col-circleimg">
+                                        <div class="image" style="background-image: url('@(currentDomain.LogoUri == null?"/Content/DesignStyle/img/icon_domain_default.png":api+""+currentDomain.LogoUri+"&size=T")');"></div>
+                                    </div>
+                                    <div class="col">
+                                        <h2 style="margin: 5px 0 0 0;">@currentDomain.Name</h2>
+                                        <ul class="breadcrumb" style="margin: 2px 0 0 0;">
+                                            @{currentDomain.CreatedDate = currentDomain.CreatedDate.ConvertTimeFromUtc(timezone); }
+                                            <li style="color: #acabbd;">Created on @String.Format("{0}{1} {2:MMM yyyy}", currentDomain.CreatedDate.Day, currentDomain.CreatedDate.Day.ToOrdinal(), currentDomain.CreatedDate)</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </li>
+
+                    </ul>
+
+
+                    <div class="qbicle-sidebar-options" style="padding: 15px; margin-top: 15px;">
+                        <div class="row">
+                            @{var show_col12 = true; }
+                            @if (currentDomain.Administrators.Any(a => a.Id == cubeCurrentUserId) && currentDomainPlanLevel >= BusinessDomainLevelEnum.Starter)
+                            {
+                                show_col12 = false;
+                                <div class="col-xs-12 col-sm-6">
+                                    <a href="/Qbicles/OurPeople" class="btn btn-warning community-button smb"><i class="fa fa-user-cog"></i> &nbsp; Members</a>
+                                </div>
+                            }
+                            @if (currentDomain.Administrators.Any(a => a.Id == cubeCurrentUserId) || currentDomain.QbicleManagers.Any(a => a.Id == cubeCurrentUserId))
+                            {
+                                <div class="col-xs-12 @(show_col12?"col-sm-12":"col-sm-6") ">
+                                    <button class="btn btn-success community-button" onclick="AddnewQbicleClick()" data-toggle="modal" data-target="#create-qbicle" style="margin-bottom: 30px;">
+                                        <i class="fa fa-plus"></i> &nbsp; New Qbicle
+                                    </button>
+                                </div>
+                            }
+                        </div>
+
+                        <div class="well custom" style="padding: 30px 20px;">
+                            <div class="row" style="margin-bottom: 8px;">
+                                <div class="col-xs-12">
+                                    <div class="form-group">
+                                        <label for="search-qbicles">Search for Qbicles</label>
+                                        <input type="text" id="searchQbicles" name="search-qbicles" class="form-control" placeholder="Search by name">
+                                    </div>
+                                </div>
+                                <div class="col-xs-12">
+                                    <div class="form-group">
+                                        <label for="order-qbicles">Order by</label>
+                                        <select name="order-qbicles" id="order" class="form-control select2" style="width: 100%;">
+                                            <option value="@((int)QbicleOrder.NameAsc)">Qbicle name A-Z</option>
+                                            <option value="@((int)QbicleOrder.NameDesc)">Qbicle name Z-A</option>
+                                            <option value="@((int)QbicleOrder.DateDesc)" selected>Last update (newest first)</option>
+                                            <option value="@((int)QbicleOrder.DateAsc)">Last update (oldest first)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-group" style="margin: 0 0 15px 0;">
+                                <div class="checkbox toggle">
+                                    <label>
+                                        <input data-toggle="toggle" data-onstyle="success" type="checkbox" id="isShowHidden"> Show hidden Qbicles
+                                    </label>
+                                </div>
+                            </div>
+
+                            <button class="btn btn-info" data-toggle="modal" data-target="#filter-qbicles"><i class="fa fa-filter"></i> &nbsp; Filter results</button>
+                            <button class="btn btn-danger" id="remove-filters" disabled onclick="RemoveFilter()"><i class="fa fa-remove"></i> &nbsp; Remove filters</button>
+                        </div>
+
+
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+        <!-- END App bar -->
+        <!-- Main area -->
+        <div class="mdv2-col-dash" style="background: #f5f5f5;">
+
+            <div style="padding: 15px 30px;">
+
+                <div class="qbicles-list" style="padding: 15px 0;">
+
+                    <div id="qbicles-dash-grid" class="flex-grid-thirds-lg qbicles-dash-grid">
+                        @if (lstQbicle != null && lstQbicle.Any())
+                        {
+                            foreach (var item in lstQbicle)
+                            {
+                                <article id="domain-qbicle-@item.Id" class="col">
+                                    <span class="last-updated">Updated @item.LastUpdated.ToString(dateFormat.Replace("/", "."))</span>
+                                    <div class="btn-group optsnew defaulted dropdown">
+                                        <button class="btn btn-default dropdown-toggle" data-toggle="dropdown">
+                                            <i class="fa fa-cog"></i>
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-right">
+                                            @if (currentDomain.Administrators.Any(a => a.Id == cubeCurrentUserId) || item.Manager.Id == cubeCurrentUserId)
+                                            {
+                                                <li>
+                                                    <a href="javascript:void(0)" onclick="ConfigQbicle('@item.Key')" data-target="#edit-qbicle" data-toggle="modal">
+                                                        Edit
+                                                    </a>
+                                                </li>
+                                            }
+                                            <li><a href="#" onclick="ShowOrHideQbicle('@item.Key', @item.IsHidden)">@(item.IsHidden ? "Show" : "Hide")</a></li>
+                                        </ul>
+                                    </div>
+                                    <a href="javascript:void(0)" onclick="QbicleSelected('@item.Key','@Enums.QbicleModule.Dashboard')">
+                                        <div class="avatar" style="background-image: url('@(item.LogoUri == null?"/Content/DesignStyle/img/icon_qbicle_default.png":api+""+item.LogoUri+"&size=T")');">&nbsp;</div>
+                                        <h1 style="color: #333;">@item.Name</h1>
+                                    </a>
+                                    <p class="qbicle-detail text-detail">@Html.Raw(item.Description)</p>
+                                </article>
+                            }
+                        }
+
+                    </div>
+
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </section>
+    <!-- ./content -->
+
+</div>
+<div class="td-scroll-up" style="display: block;"></div>
+<!-- /.content-wrapper -->
+
+@Html.Partial("_FilterQbic")
+@Html.Partial("_CreateOrEditQbic")
+@Html.Partial("_QbicleSettings")
+<script>
+    var activityFilter='@activityFilter';
+    var qbiclePageSize =@HelperClass.qbiclePageSize;
+    var api = '@api'
+    var currentUserId='@cubeCurrentUserId'
+</script>
+@{
+
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/qbicles.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/qbicles.js"></script>
+    }
+}

@@ -1,0 +1,776 @@
+﻿@using Qbicles.Models.Loyalty
+@using Qbicles.Models.Trader
+@using Qbicles.BusinessRules
+@using Qbicles.Models
+@model Qbicles.BusinessRules.Model.LoyaltyPromotionAndTypeModel
+@{
+    var locations = (List<TraderLocation>)ViewBag.Locations;
+    var currencySettings = (CurrencySetting)ViewBag.CurrencySetting;
+    var datetimeFormat = (string)ViewBag.CurrentDateTimeFormat;
+    var timezone = (string)ViewBag.CurrentTimeZone;
+    var planTypeId = Model.LoyaltyPromotion?.PlanType?.Id;
+}
+<div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <h5 class="modal-title">@(Model.LoyaltyPromotion.Id > 0 ? "Edit Promotion" : "Add a Promotion")</h5>
+        </div>
+        <div class="modal-body">
+            <form id="frmAddEditPromotion">
+                <div class="row">
+                    <div class="col-xs-12">
+                        <ul class="app_subnav admintabs" style="padding-top: 0;">
+                            <li class="active"><a href="#promo0" data-toggle="tab">Priority</a></li>
+                            <li><a href="#promo1" data-toggle="tab">Overview</a></li>
+                            <li><a href="#promo2" data-toggle="tab">Reward</a></li>
+                            <li><a href="#promov" data-toggle="tab">Voucher</a></li>
+                            <li><a href="#audience" data-toggle="tab">Audience</a></li>
+                        </ul>
+                    </div>
+                </div>
+                <br />
+                <div class="tab-content">
+                    <!-- Promo type -->
+                    <div class="tab-pane fade in active" id="promo0">
+
+                        <div>
+                            <input type="number" name="Plan" required hidden />
+                        </div>
+
+                        <br />
+
+                        <div class="well custom rounded" style="padding: 25px;">
+                            <h5>Getting started</h5>
+                            <p style="margin: 0;">
+                                To continue, please choose the level of priority you want your Promotion to possess - higher priority posts like Pinned or any other
+                                Premium posts are fixed at the start of the list, guaranteeing visibility to visitors.
+                            </p>
+                        </div>
+
+                        <br />
+                        <div class="flex-grid-half-lg gridfix qbicles-dash-grid pos-devices">
+
+                            @foreach (var item in Model.LoyaltyPromotionTypes)
+                            {
+                                // Cast item.Type to the PromotionTypeEnums enum
+                                var promoName = (PromotionTypeEnums)item.Type;
+                                var promoRank = $"{item.Rank}{item.Rank.ToOrdinal()}";
+
+                                //Edit Promotion
+                                if (Model.LoyaltyPromotion.Id > 0)
+                                {
+                                    //Show selected
+                                    if (item.Id == Model.LoyaltyPromotion.PlanType.Id)
+                                    {
+                                        <article class="col">
+                                            <div>
+                                                @if (item.Rank != 999999)
+                                                {
+                                                    <div class="avatar" style="background-image: url('@Url.Content("~/Content/DesignStyle/img/icon_premium.png")');">&nbsp;</div>
+                                                    <h1 style="color: #333; margin: 0 0 10px 0;">
+                                                        @item.Name &nbsp;
+                                                        <a class="fs-5"
+                                                           tabindex="0"
+                                                           data-toggle="popover"
+                                                           data-trigger="hover"
+                                                           data-html="true"
+                                                           data-placement="top"
+                                                           data-content='<div style="padding: 7px 4px;"><ul style="list-style-type: none; padding: 0;"><li><strong>Promotion type:</strong> @promoName</li><li><strong>Visibility rank:</strong> @promoRank</li><li><strong>Promotion duration:</strong> @item.Duration day(s)</li></ul></div>'>
+                                                            <i class="fa fa-info-circle" aria-hidden="true"></i>
+                                                        </a>
+                                                    </h1>
+                                                }
+                                                else
+                                                {
+                                                    <div class="avatar" style="background-image: url('@Url.Content("~/Content/DesignStyle/img/icon_standard.png")');">&nbsp;</div>
+                                                    <h1 style="color: #333; margin: 0 0 10px 0;">@item.Name</h1>
+                                                }
+                                            </div>
+
+                                            <p class="qbicle-detail">@item.Description</p>
+
+                                            <div class="well custom rounded typecost">
+                                                @if (item.Rank != 999999)
+                                                {
+                                                    <h6>Prices from</h6>
+                                                    <h4>@item.Price.ToCurrencySymbol(currencySettings)</h4>
+                                                }
+                                                else
+                                                {
+                                                    <h6>Prices from</h6>
+                                                    <h4>FREE</h4>
+                                                }
+
+                                                <button id="btn-promo-@item.Id" onclick="$('a[href=#promo1]').click()" type="button" class="btn btn-success community-button btnNext" data-toggle="tab" data-target="#promo1">Selected Plan</button>
+                                            </div>
+                                        </article>
+
+                                    }
+                                    //Show disabled
+                                    else
+                                    {
+                                        <article class="col disabled-article">
+                                            <div>
+                                                @if (item.Rank != 999999)
+                                                {
+                                                    <div class="avatar" style="background-image: url('@Url.Content("~/Content/DesignStyle/img/icon_premium.png")');">&nbsp;</div>
+                                                    <h1 style="color: #333; margin: 0 0 10px 0;">
+                                                        @item.Name &nbsp;
+                                                        <a class="fs-5"
+                                                           tabindex="0"
+                                                           data-toggle="popover"
+                                                           data-trigger="hover"
+                                                           data-html="true"
+                                                           data-placement="top"
+                                                           data-content='<div style="padding: 7px 4px;"><ul style="list-style-type: none; padding: 0;"><li><strong>Promotion type:</strong> @promoName</li><li><strong>Visibility rank:</strong> @promoRank</li><li><strong>Promotion duration:</strong> @item.Duration day(s)</li></ul></div>'>
+                                                            <i class="fa fa-info-circle" aria-hidden="true"></i>
+                                                        </a>
+                                                    </h1>
+                                                }
+                                                else
+                                                {
+                                                    <div class="avatar" style="background-image: url('@Url.Content("~/Content/DesignStyle/img/icon_standard.png")');">&nbsp;</div>
+                                                    <h1 style="color: #333; margin: 0 0 10px 0;">@item.Name</h1>
+                                                }
+                                            </div>
+
+                                            <p class="qbicle-detail">@item.Description</p>
+
+                                            <div class="well custom rounded typecost">
+                                                @if (item.Rank != 999999)
+                                                {
+                                                    <h6>Prices from</h6>
+                                                    <h4>@item.Price.ToCurrencySymbol(currencySettings)</h4>
+                                                }
+                                                else
+                                                {
+                                                    <h6>Prices from</h6>
+                                                    <h4>FREE</h4>
+                                                }
+
+                                                <button id="btn-promo-@item.Id" type="button" disabled onclick="selectPlan(@item.Id);" class="btn btn-info community-button btnNext" data-toggle="tab" data-target="#promo1">Choose Plan</button>
+                                            </div>
+                                        </article>
+
+                                    }
+
+                                }
+                                //Add new promotion
+                                else
+                                {
+
+                                    <article class="col">
+                                        <div>
+                                            @if (item.Rank != 999999)
+                                            {
+                                                <div class="avatar" style="background-image: url('@Url.Content("~/Content/DesignStyle/img/icon_premium.png")');">&nbsp;</div>
+                                                <h1 style="color: #333; margin: 0 0 10px 0;">
+                                                    @item.Name &nbsp;
+                                                    <a class="fs-5"
+                                                       tabindex="0"
+                                                       data-toggle="popover"
+                                                       data-trigger="hover"
+                                                       data-html="true"
+                                                       data-placement="top"
+                                                       data-content='<div style="padding: 7px 4px;"><ul style="list-style-type: none; padding: 0;"><li><strong>Promotion type:</strong> @promoName</li><li><strong>Visibility rank:</strong> @promoRank</li><li><strong>Promotion duration:</strong> @item.Duration day(s)</li></ul></div>'>
+                                                        <i class="fa fa-info-circle" aria-hidden="true"></i>
+                                                    </a>
+                                                </h1>
+                                            }
+                                            else
+                                            {
+                                                <div class="avatar" style="background-image: url('@Url.Content("~/Content/DesignStyle/img/icon_standard.png")');">&nbsp;</div>
+                                                <h1 style="color: #333; margin: 0 0 10px 0;">@item.Name</h1>
+                                            }
+                                        </div>
+
+                                        <p class="qbicle-detail">@item.Description</p>
+
+                                        <div class="well custom rounded typecost">
+                                            @if (item.Rank != 999999)
+                                            {
+                                                <h6>Prices from</h6>
+                                                <h4>@item.Price.ToCurrencySymbol(currencySettings)</h4>
+                                            }
+                                            else
+                                            {
+                                                <h6>Prices from</h6>
+                                                <h4>FREE</h4>
+                                            }
+
+                                            <button id="btn-promo-@item.Id" type="button" onclick="selectPlan(@item.Id);" class="btn btn-info community-button btnNext" data-toggle="tab" data-target="#promo1">Choose Plan</button>
+
+                                        </div>
+                                    </article>
+
+                                }
+                            }
+                        </div>
+
+                        <br />
+                        <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                    </div>
+                    <!-- END Promo type -->
+                    <!-- Overview -->
+                    <div class="tab-pane fade" id="promo1">
+
+                        <div class="well custom" style="padding-bottom: 5px;">
+
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label for="Type">Promotion type <span class="red">*</span></label>
+                                        <select name="Type" required class="form-control select2" style="width: 100%;" onchange="switchpromos(this); $('#stp1').removeAttr('disabled');">
+                                            <option value="">Please select</option>
+                                            <option value="1" @(Model.LoyaltyPromotion.VoucherInfo != null && Model.LoyaltyPromotion.VoucherInfo.Type == VoucherType.ItemDiscount ? "selected" : "")>Item discount</option>
+                                            <option value="2" @(Model.LoyaltyPromotion.VoucherInfo != null && Model.LoyaltyPromotion.VoucherInfo.Type == VoucherType.OrderDiscount ? "selected" : "")>Order discount</option>
+                                        </select>
+                                        <label id="Type-error" class="error" for="Type" style="display:none">This field is required.</label>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label for="name">Promotion name <span class="red">*</span></label>
+                                        <input type="text" required name="Name" class="form-control" value="@Model.LoyaltyPromotion.Name">
+                                        <input type="hidden" name="PromotionKey" value="@Model.LoyaltyPromotion.Key" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-xs-12">
+                                    <div class="form-group">
+                                        <label for="Description">Description <span class="red">*</span></label>
+                                        <textarea name="Description" required class="form-control" style="height: 80px; max-width: 100%;">@Model.LoyaltyPromotion.Description</textarea>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label for="account_number">Featured image <span class="red">*</span></label>
+                                        <input type="hidden" id="hdffeaturedimguri" value="@Model.LoyaltyPromotion.FeaturedImageUri" />
+                                        <input type="file" @(Model.LoyaltyPromotion.Id > 0 ? "" : "required") id="filefeaturedimg" class="form-control" name="featuredimg">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-6">
+                                    <label for="StartDate">Starts <span class="red">*</span></label>
+                                    <div class="input-group" style="margin-bottom: 15px;">
+                                        <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                                        @{
+                                            var startDate = Model.LoyaltyPromotion.StartDate.ConvertTimeFromUtc(timezone).ToString(datetimeFormat);
+                                            if (Model.LoyaltyPromotion.Id == 0)
+                                            {
+                                                startDate = DateTime.Now.Date.ToString(datetimeFormat);
+                                            }
+                                        }
+                                        <input type="text" required name="StartDate" value="@startDate" class="form-control singledateandtime-reinit">
+                                    </div>
+                                    <label id="StartDate-error" class="error" for="StartDate" style="display:none">This field is required.</label>
+                                </div>
+                                <div class="col-xs-12 col-sm-6">
+                                    <label for="EndDate">Ends <span class="red">*</span></label>
+                                    @{
+                                        var endDate = Model.LoyaltyPromotion.EndDate.ConvertTimeFromUtc(timezone).ToString(datetimeFormat);
+                                        if (Model.LoyaltyPromotion.Id == 0)
+                                        {
+                                            endDate = DateTime.Now.Date.AddDays(1).AddSeconds(-1).ToString(datetimeFormat);
+                                        }
+                                    }
+                                    <div class="input-group" style="margin-bottom: 15px;">
+                                        <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                                        <input type="text" required name="EndDate" value="@endDate" class="form-control singledateandtime-reinit">
+                                    </div>
+                                    <label id="EndDate-error" class="error" for="EndDate" style="display:none">This field is required.</label>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-6">
+                                    @{
+                                        var displayDate = Model.LoyaltyPromotion.DisplayDate.ConvertTimeFromUtc(timezone).ToString(datetimeFormat);
+                                        if (Model.LoyaltyPromotion.Id == 0)
+                                        {
+                                            displayDate = DateTime.Now.Date.ToString(datetimeFormat);
+                                        }
+                                    }
+                                    <label>Advertise from a specific date &amp; time</label>
+                                    <div class="checkbox toggle">
+                                        <label>
+                                            <input id="chkAdvertiseCustome" @(Model.LoyaltyPromotion.DisplayDate != Model.LoyaltyPromotion.StartDate ? "checked" : "") class="chktoggle" data-toggle="toggle" data-onstyle="success" type="checkbox" onchange="if ($(this).prop('checked') ? $('input[name=DisplayDate]').attr('required', true) : $('input[name=DisplayDate]').removeAttr('required')); $('.showfrom').fadeToggle();">
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="showfrom" style="@(Model.LoyaltyPromotion.DisplayDate!=Model.LoyaltyPromotion.StartDate?"":"display: none;")">
+                                        <div class="form-group">
+                                            <label for="name">Advertise from <span class="red">*</span></label>
+                                            <div class="input-group">
+                                                <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                                                <input type="text" name="DisplayDate" value="@displayDate" class="form-control singledateandtime-displaydate">
+                                            </div>
+                                            <label id="DisplayDate-error" class="error" for="DisplayDate" style="display:none">This field is required.</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <br />
+                        <button type="button" onclick="$('a[href=#promo2]').click()" id="stp1" @(Model.LoyaltyPromotion.Id > 0 ? "" : "disabled") class="btn btn-success btnNext">Next &nbsp; <i class="fa fa-angle-right"></i></button>
+                    </div>
+                    <!-- END Overview -->
+                    <!-- Criteria -->
+                    <div class="tab-pane fade" id="promo2">
+                        @{
+                            var itemdiscount = Model.LoyaltyPromotion.VoucherInfo != null && Model.LoyaltyPromotion.VoucherInfo.Type == VoucherType.ItemDiscount ? (ItemDiscountVoucherInfo)Model.LoyaltyPromotion.VoucherInfo : null;
+                        }
+                        <!-- Item -->
+                        <div class="well custom promotype" style="padding-bottom: 5px; @(itemdiscount!=null?"":"display: none;")" id="itemdiscount">
+
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-8">
+
+                                    <div class="form-group itemqty trader">
+                                        <label for="items">Item to be discounted <span class="red">*</span></label><br />
+                                        <div class="input-group">
+                                            <input type="hidden" name="hdfItemSKU" value="@(itemdiscount?.ItemSKU??"")" />
+                                            <input type="text" name="ItemSKU" id="item_sku" class="form-control" value="@(itemdiscount?.ItemSKU??"")">
+                                            <div class="input-group-btn" style="vertical-align: top;">
+                                                <button type="button" class="btn btn-info" data-toggle="modal" onclick="showModalFindSKU()" data-target="#app-trader-pos-itemlist">
+                                                    <i class="fa fa-search"></i> &nbsp; Find
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-4">
+                                    <label for="amount">Discount by <span class="red">*</span></label><br />
+                                    <div class="input-group">
+                                        <input type="number" name="ItemDiscount" value="@(itemdiscount?.ItemDiscount??1)" class="form-control" min="1" max="100">
+                                        <span class="input-group-addon">%</span>
+                                    </div>
+                                    <label id="ItemDiscount-error" class="error" for="ItemDiscount" style="display:none;margin-right: 34px;">Please enter a value greater than or equal to 1.</label>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-4">
+                                    <div class="form-group itemqty trader">
+                                        <label for="items">Max applicable items per order</label>
+                                        <input type="number" name="MaxNumberOfItemsPerOrder" step="1" min="0" class="form-control" value="@(itemdiscount?.MaxNumberOfItemsPerOrder.ToString().Replace("-1","")??"")">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- END Item -->
+                        @{
+                            var orderdiscount = Model.LoyaltyPromotion.VoucherInfo != null && Model.LoyaltyPromotion.VoucherInfo.Type == VoucherType.OrderDiscount ? (OrderDiscountVoucherInfo)Model.LoyaltyPromotion.VoucherInfo : null;
+                        }
+                        <!-- Order -->
+                        <div class="well custom promotype" style="@(orderdiscount!=null?"":"display: none;")" id="orderdiscount">
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-6">
+                                    <label for="amount">Discount order total by <span class="red">*</span></label><br />
+                                    <div class="input-group">
+                                        <input type="number" name="OrderDiscount" value="@(orderdiscount?.OrderDiscount??1)" class="form-control" min="1" max="100">
+                                        <span class="input-group-addon">%</span>
+                                    </div>
+                                    <label id="OrderDiscount-error" class="error" for="OrderDiscount" style="display:none;margin-right: 34px;"></label>
+                                </div>
+                                <div class="col-xs-12 col-sm-6">
+                                    <label for="items">Max discount value</label>
+                                    <div class="input-group">
+                                        <input type="number" name="MaxDiscountValue" value="@((orderdiscount?.MaxDiscountValue.ToDecimalPlace(currencySettings)??"").Replace("-1",""))" class="form-control" min="1" max="99999999.99" maxlength="11">
+                                        <span class="input-group-addon">@(currencySettings.CurrencySymbol)</span>
+                                    </div>
+                                    <label id="MaxDiscountValue-error" class="error" for="MaxDiscountValue" style="display:none;margin-right: 34px;"></label>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- END Order -->
+
+                        <br />
+                        <button type="button" onclick="$('a[href=#promo1]').click()" data-toggle="tab" class="btn btn-warning btnPrevious"><i class="fa fa-angle-left"></i> &nbsp; Previous</button>
+                        <button type="button" onclick="$('a[href=#promov]').click()" class="btn btn-success btnNext">Next &nbsp; <i class="fa fa-angle-right"></i></button>
+                    </div>
+                    <!-- END Criteria -->
+                    <!-- Voucher -->
+                    <div class="tab-pane fade" id="promov">
+
+                        <div class="well custom" style="padding-bottom: 5px;">
+
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label for="name">Maximum voucher count</label>
+                                        <input type="number" name="MaxVoucherCount" step="1" min="1" value="@(Model.LoyaltyPromotion.VoucherInfo?.MaxVoucherCount.ToString().Replace("-1","")??"")" class="form-control">
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label for="name">Per customer <span class="red">*</span></label>
+                                        <input type="number" name="MaxVoucherCountPerCustomer" step="1" value="@(Model.LoyaltyPromotion.VoucherInfo?.MaxVoucherCountPerCustomer??1)" class="form-control" min="1">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="terms">Terms &amp; conditions to show customers <span class="red">*</span></label>
+                                <textarea name="TermsAndConditions" required class="form-control" style="max-width: 100%; height: 80px;">@(Model.LoyaltyPromotion.VoucherInfo?.TermsAndConditions??"")</textarea>
+                            </div>
+
+                            <div class="row">
+                                @{
+                                    var displayExpiryDate = Model.LoyaltyPromotion.VoucherInfo?.VoucherExpiryDate?.ConvertTimeFromUtc(timezone).ToString(datetimeFormat);
+                                    if (Model.LoyaltyPromotion.Id == 0)
+                                    {
+                                        displayExpiryDate = DateTime.Now.Date.ToString(datetimeFormat);
+                                    }
+                                }
+                                <div class="col-xs-12 col-sm-6">
+
+                                    <div class="form-group">
+                                        <label>Voucher expires after the promotion has ended</label><br />
+                                        <div class="checkbox toggle">
+                                            <label>
+                                                <input id="chkExpiryDate" @(Model.LoyaltyPromotion.VoucherInfo?.VoucherExpiryDate != null ? "checked" : "") class="chktoggle" data-toggle="toggle" data-onstyle="success"
+                                                       type="checkbox" onchange="if ($(this).prop('checked') ? $('input[name=ExpiryDate]').attr('required', true) : $('input[name=ExpiryDate]').removeAttr('required')); $('#vtimes').fadeToggle();">
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-6">
+                                    <div id="vtimes" style="@(Model.LoyaltyPromotion.VoucherInfo?.VoucherExpiryDate != null?"":"display: none;")">
+                                        <label>Voucher expiry date <span class="red">*</span></label><br />
+                                        <div class="input-group">
+                                            <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                                            <input type="text" name="ExpiryDate" id="expiry-date" value="@displayExpiryDate" class="form-control singledateandtime">
+                                        </div>
+                                        <label id="ExpiryDate-error" class="error" for="ExpiryDate" style="display:none">This field is required.</label>
+                                    </div>
+                                </div>
+                            </div>
+                            @{
+                                var days = Model.LoyaltyPromotion.VoucherInfo?.DaysAllowed ?? new List<LoyaltyWeekDay>();
+                            }
+                            <div class="row">
+
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label>Voucher can only be redeemed at specific times</label><br />
+                                        <div class="checkbox toggle">
+                                            <label>
+                                                <input id="chkSpecificTime" @(days.Any() ? "checked" : "") class="chktoggle" data-toggle="toggle" data-onstyle="success" type="checkbox" onchange="$('#times').toggle();">
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-6">
+
+                                    <div id="times" style="@(days.Any()?"":"display: none;")">
+                                        <div class="form-group">
+                                            <label>Days this voucher can be used</label>
+                                            <select name="Days" class="form-control checkmulti" multiple style="width: 100%;">
+                                                <option value="Monday" @(days.Any(s => s.Day == "Monday") ? "selected" : "")>Monday</option>
+                                                <option value="Tuesday" @(days.Any(s => s.Day == "Tuesday") ? "selected" : "")>Tuesday</option>
+                                                <option value="Wednesday" @(days.Any(s => s.Day == "Wednesday") ? "selected" : "")>Wednesday</option>
+                                                <option value="Thursday" @(days.Any(s => s.Day == "Thursday") ? "selected" : "")>Thursday</option>
+                                                <option value="Friday" @(days.Any(s => s.Day == "Friday") ? "selected" : "")>Friday</option>
+                                                <option value="Saturday" @(days.Any(s => s.Day == "Saturday") ? "selected" : "")>Saturday</option>
+                                                <option value="Sunday" @(days.Any(s => s.Day == "Sunday") ? "selected" : "")>Sunday</option>
+                                            </select>
+                                        </div>
+
+                                        <label for="times">Between the following hours</label>
+                                        <div class="input-group" style="margin-bottom: 15px;">
+                                            <input type="time" name="FromTime" onchange="setMinTimeFromToTimePromotion()" class="form-control" style="width: 110px;" value="@(Model.LoyaltyPromotion.VoucherInfo?.StartTime.ToString(@"hh\:mm")??"")">
+                                            <span class="input-group-btn" style="float: left;margin-left:5px;margin-bottom:2px">
+                                                <input type="time" name="ToTime" class="form-control" style="width: 110px;" value="@(Model.LoyaltyPromotion.VoucherInfo?.EndTime.ToString(@"hh\:mm")??"")">
+                                            </span>
+                                            <br />
+                                            <label id="FromTime-error" class="error" style="display:none" for="FromTime"></label>
+                                            <label id="ToTime-error" class="error" style="display:none" for="ToTime"></label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label>Voucher can only be redeemed at specific locations</label>
+                                        @{
+                                            var showLocation = Model.LoyaltyPromotion.Id == 0 || (Model.LoyaltyPromotion.VoucherInfo != null && Model.LoyaltyPromotion.VoucherInfo.Locations.Any()) ? true : false;
+                                        }
+                                        <div class="checkbox toggle">
+                                            <label>
+                                                <input id="chkSpecificLocation" @(showLocation ? "checked" : "") class="chktoggle" data-toggle="toggle" data-onstyle="success" type="checkbox" onchange="$('#stores').toggle();">
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-6">
+                                    <div id="stores" style="@(showLocation?"":"display:none;")">
+                                        <div class="form-group">
+                                            <label>Applicable locations</label><br />
+                                            <select name="Locations" class="form-control checkmulti" multiple>
+                                                @foreach (var item in locations)
+                                                {
+                                                    <option value="@item.Id" @(Model.LoyaltyPromotion.Id == 0 || (Model.LoyaltyPromotion.VoucherInfo != null && Model.LoyaltyPromotion.VoucherInfo.Locations.Any(s => s.Id == item.Id)) ? "selected" : "")>@item.Name</option>
+                                                }
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <br />
+                        <button type="button" onclick="$('a[href=#promo2]').click()" class="btn btn-warning btnPrevious"><i class="fa fa-angle-left"></i> &nbsp; Previous</button>
+                        <button type="button" onclick="$('a[href=#audience]').click()" class="btn btn-success btnNext">Next &nbsp; <i class="fa fa-angle-right"></i></button>
+                    </div>
+                    <!-- END Voucher -->
+                    <!-- Audience -->
+                    <div class="tab-pane fade" id="audience">
+                        <div class="well custom" style="padding-bottom: 5px;">
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label for="audience">Visibility based on customer location</label>
+                                        <select name="locationVisibility" class="form-control select2" style="width: 100%;"
+                                                onchange="setlocation($(this).val())">
+                                            <option value="0" selected>Unrestricted</option>
+                                            <option value="1">Location based</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-6">
+                                    <div style="display: none;" id="locationbased">
+                                        <label for="audience">Exclusive to users within</label>
+                                        <div class="input-group" style="margin-bottom: 15px;">
+                                            <input type="number" min="0" class="form-control" name="distance">
+                                            <span class="input-group-btn">
+                                                <select name="factor" class="form-control select2" style="width: 150px;">
+                                                    <option value="1" selected>feet</option>
+                                                    <option value="2">kilometers</option>
+                                                    <option value="3">miles</option>
+                                                </select>
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-6">
+                                    <div style="display: none;" id="locationbased2">
+                                        <div class="form-group">
+                                            <label for="audience">
+                                                Which location should be used as the basis? &nbsp;
+                                                <a tabindex="0" data-toggle="popover"
+                                                   data-trigger="hover"
+                                                   data-html="true"
+                                                   data-content="Ensure your business locations are geo located. Go to <strong>Profile&Config>Locations</strong> to update.">
+                                                    <i class="fa fa-info-circle" aria-hidden="true"></i>
+                                                </a>
+                                            </label>
+                                            <select name="location" class="form-control select2" style="width: 100%;">
+                                                <option value="" selected hidden>Select location</option>
+                                                @foreach (var location in Model.TraderGeoLocations)
+                                                {
+                                                    <option value="@location.Address.ToAddress().ToString()">@location.Address.ToAddress()</option>
+                                                }
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            @*<div class="row">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="audience">Target audience</label>
+                                            <select name="audience" class="form-control select2" style="width: 100%;"
+                                                    onchange="setaudience($(this).val());">
+                                                <option value="0" selected>Unrestricted</option>
+                                                <option value="1">Specific Domain(s)</option>
+                                                <option value="2">Specific individual(s)</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group audiencemethod" style="display: none;" id="specdom">
+                                            <label for="audience">Choose Domain(s)</label>
+                                            <select name="audience" class="form-control checkmulti" multiple style="width: 100%;">
+                                                <option value="0">Domain 1</option>
+                                                <option value="1">Domain 2</option>
+                                                <option value="2">Domain 3</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group audiencemethod" style="display: none;" id="specind">
+                                            <label for="individual">Choose individual(s)</label>
+                                            <select name="individual" class="form-control checkmulti" multiple style="width: 100%;">
+                                                <option value="1">Alex Peters</option>
+                                                <option value="2">Angela Wilson</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>*@
+                        </div>
+
+                        <br />
+                        <button type="button" onclick="$('a[href=#promov]').click()" class="btn btn-warning btnPrevious"><i class="fa fa-angle-left"></i> &nbsp; Previous</button>
+                        <button type="submit" id="draft-btn" class="btn btn-primary" onclick="savePromotionDraft(true)">Save as Draft</button>
+                        <button type="submit" class="btn btn-success">
+                            <span id="submit-btn">Submit</span>
+                            <span id="payment-btn" style="display: none;">Continue to payment</span>
+                        </button>
+
+                        <input type="hidden" name="IsDraft" required />
+                    </div>
+                    <!-- END Audience -->
+                </div>
+            </form>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+<script>
+    $(document).ready(function () {
+
+        $('[data-toggle="popover"]').popover();
+
+        //init datetime
+        initDateTimeCustomize();
+
+        //load on edit promo
+        onEditPromotion();
+
+        //init draft
+        $('#frmAddEditPromotion input[name="IsDraft"]').val(false);
+
+        // Allow only numbers
+        $('#distance').on('input', function () {
+            // Remove non-numeric characters
+            this.value = this.value.replace(/[^0-9]/g, '');
+        });
+
+        // Prevent non-numeric characters on keypress
+        $('#distance').on('keypress', function (event) {
+            // Allow control keys and numeric input
+            if (event.which < 48 || event.which > 57) {
+                event.preventDefault();
+            }
+        });
+
+        // Handle paste event
+        $('#distance').on('paste', function (event) {
+            let clipboardData = event.originalEvent.clipboardData || window.clipboardData;
+            let pastedData = clipboardData.getData('Text');
+
+            if (pastedData.match(/[^0-9]/)) {
+                event.preventDefault();
+            }
+        });
+    });
+
+    function onEditPromotion() {
+
+        var id = '@planTypeId';
+
+        if (id !== null) {
+            console.log(id, 'id');
+
+            // Set the value of the input field with the name 'Plan'
+            $('#frmAddEditPromotion input[name="Plan"]').val(id);
+
+            //Show only submit button,it button and hide both payment and draft
+            $('#submit-btn').fadeIn();
+            $('#payment-btn').fadeOut();
+            $('#draft-btn').fadeOut();
+        }
+    }
+
+    var currentlySelectedButton = null;
+
+    function selectPlan(promoId) {
+        // Trigger the click event for the tab
+        $('a[href=#promo1]').click();
+
+        // Set the plan type
+        setPlanType(promoId);
+
+        // Reset the previously selected button, if any
+        if (currentlySelectedButton) {
+            currentlySelectedButton.text('Choose Plan');
+            currentlySelectedButton.removeClass('btn-success');
+            currentlySelectedButton.addClass('btn-info');
+        }
+
+        // Change button text and class for the newly selected button
+        var button = $('#btn-promo-' + promoId);
+        button.text('Selected Plan');
+        button.removeClass('btn-info');
+        button.addClass('btn-success');
+
+        // Update the currently selected button reference
+        currentlySelectedButton = button;
+    }
+
+    function setPlanType(id) {
+        // Set the value of the input field with the name 'Plan'
+        $('#frmAddEditPromotion input[name="Plan"]').val(id);
+
+        // Retrieve the value after setting it to verify
+        var planType = $('#frmAddEditPromotion input[name="Plan"]').val();
+
+        console.log(planType, 'planType');
+
+        //If the plantype is a free promotion, hide payment button
+        if (planType == 1) {
+            $('#submit-btn').fadeIn();
+            $('#payment-btn').fadeOut();
+            console.log(planType, 'planType');
+        } else {
+            $('#payment-btn').fadeIn();
+            $('#submit-btn').fadeOut();
+        }
+    }
+
+    function savePromotionDraft(bool) {
+        $('#frmAddEditPromotion input[name="IsDraft"]').val(bool);
+
+        // Retrieve the value after setting it to verify
+        var draft = $('#frmAddEditPromotion input[name="IsDraft"]').val();
+        console.log(draft, 'draft');
+    }
+
+    function setlocation(method) {
+        if (method == '1') { $('#locationbased').fadeIn(); $('#locationbased2').fadeIn(); }
+        if (method == '0') { $('#locationbased').fadeOut(); $('#locationbased2').fadeOut(); }
+    }
+
+    function setaudience(method) {
+        $('.audiencemethod').hide();
+        if (method == '1') { $('#specdom').fadeIn(); }
+        if (method == '2') { $('#specind').fadeIn(); }
+    }
+</script>
+
+<style>
+    #filefeaturedimg-error {
+        float: left;
+    }
+</style>
+<style type="text/css">
+    article.disabled-article {
+        cursor: not-allowed;
+        filter: alpha(opacity = 65);
+        -webkit-box-shadow: none;
+        box-shadow: none;
+        opacity: .65;
+        -webkit-opacity: .4;
+        -moz-opacity: .4;
+        -o-opacity: .4;
+        opacity: .4;
+    }
+</style>

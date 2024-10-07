@@ -1,0 +1,655 @@
+﻿@using Qbicles.BusinessRules
+@using Qbicles.Models
+@using Qbicles.Models.Trader.Inventory;
+@model SpotCount
+@{
+    ViewBag.Title = "Inventory Adjustment #" + Model.Id;
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var pageSize = HelperClass.activitiesPageSize;
+    var timeZone = (string)ViewBag.CurrentTimeZone ?? "";
+    var userId = ViewBag.CurrentUserId;
+    var userAvatar = ViewBag.CurrentUserAvatar;
+
+    var userRight = "none";
+    var traderAppRight = (IsReviewerAndApproverModel)ViewBag.TraderApprovalRight;
+    //var editValue = true;
+
+    //Option 1:
+    //If the user is not a ApprovalReq.ApprovalRequestDefinition.Initiator, or .Reviewer or .Approver then the box is not shown.
+    //In this Status the user will NOT have access to EDIT the data on the Adjustments Tab. (Detail later in this story)
+    if (!traderAppRight.IsInitiators && !traderAppRight.IsReviewer && !traderAppRight.IsApprover)
+    {
+        //editValue = false;
+        userRight = "none";//hiden approval, no edit
+    }
+    //Option 2:
+    //If the user is an ApprovalReq.ApprovalRequestDefinition.Initiator (not .Reviewer or .Approver) then the Status of the SpotCount.Status is shown in the box, but it is disabled.
+    //In this Status the user will NOT have access to EDIT the data on the Adjustments Tab (Detail later in this story)
+    else if (traderAppRight.IsInitiators && !traderAppRight.IsReviewer && !traderAppRight.IsApprover)
+    {
+        //editValue = false;
+        userRight = "initiator";// readonly approval, no edit
+    }
+    //Option 3
+    /*
+     If the user is an ApprovalReq.ApprovalRequestDefinition.Reviewer and the Status of the SpotCount.Status is CountStarted, the drop down displays the items Discard, or CountCompleted.
+    In this Status the user will have access to edit the data on the Adjustments Tab (Detail later in this story)
+    The user may either:
+    Edit the data on the tab then
+    Select Discard and Press Confirm, this will set the ApprovalReq.RequestStatus to Denied and the SpotCount.Status to Discarded and refresh the page
+    Select CountCompleted and Confirm, this will set the ApprovalReq.RequestStatus to Reviewed and the SpotCount.Status to CountCompleted and refresh the page.
+     */
+    else if (traderAppRight.IsReviewer && Model.SpotCountApprovalProcess.RequestStatus == ApprovalReq.RequestStatusEnum.Pending)
+    {
+        userRight = "reviewer";
+    }//If the user is an ApprovalReq.ApprovalRequestDefinition.Reviewer and the Status of the ApprovalReq is Pending, the drop down displays the items Discard, or Send to Approval.
+    /*
+     Option 4:
+   If the user is an ApprovalReq.ApprovalRequestDefinition.Approver and the Status of the ApprovalReq is Reviewed, the drop down displays the items Redo Count, Discard or Adjust Stock.
+   In this Status the user will have access to EDIT the data on the Adjustments Tab. (Detail later in this story)
+   The user may either:
+   Select Redo Count, this will set the ApprovalReq.RequestStatus to Pending and the SpotCount.Status to CountStarted and refresh the page
+   Select Discard, this will set the ApprovalReq.RequestStatus to Discarded and the SpotCount.Status to Discarded and refresh the page.
+   Select Adjust Stock, this will set the ApprovalReq.RequestStatus to Approved and the SpotCount.Status to StockAdjusted and refresh the page
+     */
+    else if (traderAppRight.IsApprover && Model.SpotCountApprovalProcess.RequestStatus == ApprovalReq.RequestStatusEnum.Reviewed)
+    {
+        userRight = "approver";
+    }
+    /*
+     Option 5:
+     If the Status of the ApprovalReq is Approved or Denied, then the Status of the SpotCount is shown in the box, but it is disabled.
+     In this Status the user will NOT have access to EDIT the data on the Adjustments Tab. (Detail later in this story)
+     */
+    else if (traderAppRight.IsApprover && Model.SpotCountApprovalProcess.RequestStatus == ApprovalReq.RequestStatusEnum.Pending)
+    {
+        //editValue = false;
+        userRight = "initiator";
+    }
+    //o5
+    else if (Model.SpotCountApprovalProcess.RequestStatus == ApprovalReq.RequestStatusEnum.Approved
+             || Model.SpotCountApprovalProcess.RequestStatus == ApprovalReq.RequestStatusEnum.Denied
+             || Model.SpotCountApprovalProcess.RequestStatus == ApprovalReq.RequestStatusEnum.Discarded)
+    {
+        //editValue = false;
+        userRight = "completed";
+    }
+    var disabled = Model.Status == SpotCountStatus.StockAdjusted ? "disabled" : "";
+    var confirm = "";
+    var isChange = "";
+    if (userRight == "initiator" || userRight == "completed")
+    {
+        isChange = "disabled";
+        confirm = "hidden";
+    }
+    if (isChange == "disabled")
+    {
+        confirm = "hidden";
+    }
+
+
+
+
+    var accessTrader = ViewBag.AccessTrader;
+
+    var spotCountStatus = "Count Started";
+    var spotCountStatusLabel = "";
+
+
+    switch (Model.Status)
+    {
+        case SpotCountStatus.CountStarted:
+            spotCountStatus = StatusLabelName.CountStarted;
+            spotCountStatusLabel = StatusLabelStyle.Pending;
+            break;
+        case SpotCountStatus.CountCompleted:
+            spotCountStatus = StatusLabelName.CountCompleted;
+            spotCountStatusLabel = StatusLabelStyle.Reviewed;
+            break;
+        case SpotCountStatus.StockAdjusted:
+            spotCountStatus = StatusLabelName.StockAdjusted;
+            spotCountStatusLabel = StatusLabelStyle.Approved;
+            break;
+        case SpotCountStatus.Denied:
+            spotCountStatus = StatusLabelName.Denied;
+            spotCountStatusLabel = StatusLabelStyle.Denied;
+            //editValue = false;
+            break;
+        case SpotCountStatus.Discarded:
+            spotCountStatus = StatusLabelName.Discarded;
+            spotCountStatusLabel = StatusLabelStyle.Discarded;
+            //editValue = false;
+            break;
+    }
+    var approvalDate = Model.SpotCountApprovalProcess?.StartedDate.ConvertTimeFromUtc(timeZone).ToString("dd.MM.yyyy HH:mm") ?? "";
+
+    var itemCount = Model.ProductList?.Count ?? 0;
+    var dateFormatUser = (string)ViewBag.CurrentDateFormat;
+
+
+    var today = (DateTime)ViewBag.Today;
+    var timeline = (List<ApprovalStatusTimeline>)ViewBag.Timeline;
+    var timelineDate = (List<DateTime>)ViewBag.TimelineDate;
+}
+
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail" id="discussion-thread">
+
+    <input hidden="" id="trader-spot-count-id" value="@Model.Id" />
+    <!-- Main content -->
+    <section class="content">
+
+        <div class="row" id="sport_content">
+            <div class="col-xs-12 item_detail" style="padding-left: 15px;">
+
+                <div class="item_type_icon">
+                    <img src="~/Content/DesignStyle/img/icon_bookkeeping.png" class="img-circle img-responsive">
+                </div>
+                <div class="item_titling">
+                    <span class="item_type">Trader - Spot Count</span>
+                    <h3>@Model.Name</h3>
+                    <span class="label label-lg @spotCountStatusLabel">@spotCountStatus</span>
+                </div>
+                <div class="clearfix"></div>
+
+                <br />
+
+                <div class="row">
+                    <div class="col-xs-12">
+                        <div class="app_filter">
+                            <div class="row">
+                                <div class="col-xs-12">
+                                    <a onclick="QbicleSelected('@Model.Workgroup.Qbicle.Key','Dashboard')" class="btn btn-primary"><i class="fa fa-angle-up"></i> &nbsp; View Qbicle</a>
+                                    @if (accessTrader)
+                                    {<a href="/Trader/AppTrader" onclick="setTabTrader('itemsproducts','adjuststock-tab')" class="btn btn-info"><i class="fa fa-cube"></i> &nbsp; Items &amp; Products</a>}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+            <div class="col-xs-12">
+
+                <br /><br />
+
+                <div class="row">
+                    <div class="col-xs-12 col-md-8">
+
+                        <div class="app_upper_dash text-center">
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-6 col-lg-4">
+                                    <div class="stat_label">
+                                        <span>Submitted</span>
+                                        <h3>@approvalDate</h3>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-6 col-lg-4">
+                                    <div class="stat_label">
+                                        <span>Executor</span>
+                                        <h3>
+                                            @{var executor = Model.SpotCountApprovalProcess?.ApprovedOrDeniedAppBy?.GetFullName();}
+                                            <span>@executor</span>
+                                        </h3>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-6 col-lg-4">
+                                    <div class="stat_label" style="padding-bottom: 10px;">
+                                        <span>Items affected</span>
+                                        <h3>@itemCount</h3>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <ul class="app_subnav">
+                                    <li class="active"><a href="#overview" data-toggle="tab">Overview</a></li>
+                                    <li><a href="#items" data-toggle="tab">Adjustments</a></li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <br /><br />
+
+                        <div class="tab-content">
+
+                            <!-- Overview -->
+                            <div class="tab-pane fade in active" id="overview">
+
+                                <div class="activity-overview task" style="padding: 20px;">
+                                    <div class="row">
+                                        <div class="col-xs-12 col-sm-8">
+
+                                            <h5>Description</h5>
+                                            <textarea readonly class="form-control">@Model.Description.TrimStart()</textarea>
+                                        </div>
+                                        <div class="col-xs-12 col-sm-4">
+
+                                            <h5>Workgroup</h5>
+                                            <p><button class="btn btn-info" data-toggle="modal" data-target="#app-trader-workgroup-preview"><i class="fa fa-eye"></i> &nbsp; Stock Taking</button></p>
+
+                                        </div>
+
+                                    </div>
+                                </div>
+
+
+
+
+                                <br /><br />
+                            </div>
+                            <!-- END Overview -->
+                            <!-- Items &amp; products -->
+                            <div class="tab-pane fade" id="items">
+
+                                <table id="tb_form_item" class="datatable table-striped table-hover" style="width: 100%;">
+                                    <thead>
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>SKU</th>
+                                            <th>Unit</th>
+                                            @{
+                                                if (userRight == "reviewer")
+                                                {
+                                                    <th>Observed Inventory</th>
+                                                    <th hidden="">Adjustment</th>
+                                                    <th style="width: 40%;">Notes</th>
+                                                }
+                                                if (userRight == "approver")
+                                                {
+                                                    <th>Count</th>
+//6
+                                                    <th>Recorded Inventory</th>
+//6a
+                                                    <th>Adjustment</th>
+//7
+                                                    <th style="width: 30%;">Notes</th>
+                                                }
+                                                if (userRight == "completed" || userRight == "initiator" || userRight == "none")
+                                                {
+                                                    <th>System inventory</th>
+                                                    <th>Observed inventory</th>
+                                                    <th>Adjustment</th>
+                                                    <th style="width: 30%;">Notes</th>
+                                                }
+                                            }
+
+
+                                        </tr>
+                                    </thead>
+                                    <tbody id="spot-count-item-tbody">
+                                        @{
+                                            foreach (var item in Model.ProductList)
+                                            {
+                                                <tr>
+                                                    <td class="row_id">
+                                                        @item.Product.Name
+                                                        <input type="hidden" value="@item.Id" />
+                                                    </td>
+                                                    <td>@item.Product.SKU</td>
+
+                                                    @if (userRight == "completed" || userRight == "initiator" || userRight == "none")
+                                                    {
+                                                        <td>@item.CountUnit.Name</td>
+                                                        <td>@item.SavedInventoryCount</td>
+                                                        <td>@item.SpotCountValue</td>
+                                                        <td>@item.Adjustment</td>
+                                                        <td>@item.Notes</td>
+                                                    }
+                                                    @if (userRight == "reviewer")
+                                                    {
+                                                        <td class="row_unit">
+                                                            @{Html.RenderAction("ShowSpotCountItemUnit", "TraderSpotCount", new { id = item.Product.Id, locationId = Model.Location.Id, unitName = item.CountUnit.Name });}
+                                                        </td>
+                                                        <td class="row_spotcountvalue">
+                                                            <input @disabled onchange="UpdateItems(true)" type="number" class="form-control" value="@item.SpotCountValue">
+                                                        </td>
+                                                        <td hidden="" class="row_adjustment">
+                                                            <input @disabled value="@item.Adjustment">
+                                                        </td>
+                                                        <td class="row_spotcountnote">
+                                                            <input onchange="UpdateItems(true)" @disabled style="width: 100%;" type="text" class="form-control" value="@item.Notes">
+                                                        </td>
+
+                                                    }
+                                                    @if (userRight == "approver")
+                                                    {
+                                                        var count = item.SpotCountValue;
+                                                        var inv = item.SavedInventoryCount;
+                                                        var adjust = item.Adjustment == 0 ? (count - inv) : item.Adjustment;
+                                                        <td class="row_unit disabled">
+                                                            @{Html.RenderAction("ShowSpotCountItemUnit", "TraderSpotCount", new { id = item.Product.Id, locationId = Model.Location.Id, unitName = item.CountUnit.Name });}
+                                                        </td>
+                                                        <td class="row_spotcountvalue">
+                                                            <input readonly="" @disabled class="form-control" value="@count">
+                                                        </td>
+                                                        @*6*@
+                                                        <td class="row_savedinventorycount">
+                                                            <input readonly="" @disabled class="form-control" value="@inv">
+                                                        </td>
+                                                        @*6a*@
+                                                        <td class="row_adjustment">
+                                                            <input readonly onchange="UpdateItems(true)" @disabled type="number" class="form-control" value="@adjust"> @*7*@
+                                                        </td>
+                                                        <td class="row_spotcountnote">
+                                                            <input readonly onchange="UpdateItems(true)" @disabled style="width: 100%;" type="text" class="form-control" value="@item.Notes">
+                                                        </td>
+
+                                                    }
+
+                                                </tr>
+                                            }}
+
+                                    </tbody>
+                                </table>
+
+                            </div>
+                            <!-- END Items & Products -->
+
+
+                        </div> <!-- ./tab-content -->
+
+
+                    </div>
+                    <div class="col-xs-12 col-md-4">
+
+                        <br class="visible-xs">
+                        <br class="visible-xs">
+
+                        @{
+                            <div class="alert activity-overview generic reviewer" style="margin-bottom: 5px;">
+                                <img style="background-image: url('@api@userAvatar')" class="activity-avatar">
+                                <strong style="display: block; padding-bottom: 5px;">You</strong>
+
+                                @if (Model.SpotCountApprovalProcess != null)
+                                {
+                                    <input type="hidden" id="action_approval_default" value="@Model.SpotCountApprovalProcess.RequestStatus" />
+                                }
+                                else
+                                {
+                                    <input type="hidden" id="action_approval_default" value="" />
+                                }
+                                <select @isChange id="action_approval" class="form-control select2" style="width: 100%;" data-placeholder="Please choose...">
+
+                                    @if (userRight == "initiator")
+                                    {
+                                        <option>@SpotCountStatus.CountStarted</option>
+                                    }
+                                    else
+                                    {
+                                        if (userRight == "reviewer" && Model.Status == SpotCountStatus.CountStarted)
+                                        {
+                                            <option value="Reviewed" selected>Count Completed</option>
+                                            <option value="Discarded">Discard</option>
+                                        }
+                                        else if (userRight == "approver" && Model.Status == SpotCountStatus.CountCompleted)
+                                        {
+                                            <option value="Approved" selected>Adjust Stock</option>
+                                            <option value="Pending">Redo Count</option>
+                                            <option value="Discarded">Discard</option>
+                                        }
+                                        else if (userRight == "completed")
+                                        {
+                                            <option>@spotCountStatus</option>
+                                        }
+                                    }
+
+                                </select>
+
+                                @{if (confirm == "" && isChange == "")
+                                    {
+                                        var approvalId = Model.SpotCountApprovalProcess.Id.Encrypt();
+                                        <button id="approval-button" onclick="javascript:UpdateStatusApproval('@approvalId');" style="margin: 8px 0 3px 0;" class="btn btn-success">
+                                            <div class="loading-approval hidden">
+                                                <i class="fa fa-spinner fa-spin"></i> &nbsp; Approving...
+                                            </div>
+                                            <div class="general-approval">
+                                                Confirm
+                                            </div>
+                                        </button>
+                                    }
+                                }
+
+                            </div>
+                        }
+
+
+                        <br />
+                        <ul class="timeline noicon">
+
+                            @foreach (var date in timelineDate)
+                            {
+                                var dateStart = @HelperClass.DatetimeToOrdinal(date);
+                                var dateStr = date.Date == today.Date ? "Today" : dateStart;
+
+                                <li class="time-label">
+                                    <span class="label label-lg label-primary">
+                                        @dateStr
+                                    </span>
+                                </li>
+                                foreach (var tl in timeline.Where(d => d.LogDate.Date == date.Date))
+                                {
+                                    <li>
+                                        <i class="@tl.Icon"></i>
+                                        <div class="timeline-item">
+                                            <span class="time"><i class="fa fa-clock-o"></i> @tl.Time</span>
+                                            <h4 class="timeline-header">@tl.Status</h4>
+                                        </div>
+                                    </li>
+                                }
+                                <br />
+                            }
+
+                        </ul>
+
+
+                    </div>
+                </div>
+
+
+
+                <br /><br />
+                @* comment and media*@
+                <div class="app_topnav entity_adds" style="background: #fff; padding: 0;">
+                    <ul class="nav nav-pills app_main_nav">
+                        <li role="presentation" class="active">
+                            <a href="#tab1" data-toggle="tab">
+                                <i class="fa fa-comments"></i>
+                                Comments
+                            </a>
+                        </li>
+                        <li role="presentation">
+                            <a href="#tab2" data-toggle="tab">
+                                <i class="fa fa-folder-open"></i>
+                                Files
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+                <br />
+                <div class="row">
+                    <div class="col-xs-12">
+                        <div class="tab-content">
+                            <div class="tab-pane fade in active" id="tab1">
+                                <div class="row">
+                                    <div class="col-xs-12">
+                                        <div class="well" style="max-width: 800px;">
+                                            <div class="form-group">
+                                                <label for="add-comment">Add a comment</label>
+                                                <textarea id="txt-comment-approval" name="add-comment" class="form-control"></textarea>
+                                            </div>
+                                            <button onclick="addCommentForApproval('@(Model.SpotCountApprovalProcess?.Key ?? "")')" class="btn btn-success">Submit</button>
+                                        </div>
+                                        <br />
+                                    </div>
+                                </div>
+                                <div id="list-comments-approval">
+                                    @foreach (var post in Model.SpotCountApprovalProcess.Posts.OrderByDescending(x => x.StartedDate).Take(pageSize))
+                                    {
+
+                                        <!-- General post -->
+                                        var fullName = HelperClass.GetFullNameOfUser(post.CreatedBy, userId);
+                                        <article id="post-@post.Id" class="activity post">
+                                            <img style="background-image: url('@api@post.CreatedBy.ProfilePic')" class="activity-avatar" />
+                                            <div class="activity-detail">
+                                                <div class="activity-meta">
+                                                    <h4>@fullName</h4>
+                                                    <small>@post.StartedDate.ConvertTimeFromUtc(timeZone).ToString(dateFormatUser + ", hh:mmtt")</small>
+                                                </div>
+                                                <div class="activity-overview media-comment">
+                                                    <p>
+                                                        @Html.Raw(post.Message.Replace(Environment.NewLine, "<br />"))
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div class="clearfix"></div>
+                                        </article>
+                                        <!-- END General post -->
+                                    }
+                                </div>
+                                @if (Model.SpotCountApprovalProcess.Posts.Count() > pageSize)
+                                {
+                                    <button id="btnLoadPosts" onclick="LoadMorePosts('@Model.SpotCountApprovalProcess.Key', @pageSize,'list-comments-approval')" class="btn btn-info trigger_load">Load older posts</button>
+                                }
+                            </div>
+
+                            <div class="tab-pane fade" id="tab2">
+                                <br />
+                                <a href="javascript:void(0)" class="btn btn-success" id="btnAddFile" data-toggle="modal" data-target="#create-media"><i class="fa fa-upload"></i> &nbsp; Upload a file</a>
+
+                                <br /><br />
+                                <div id="list-medias">
+                                    @if (Model.SpotCountApprovalProcess.SubActivities.Count > 0)
+                                    {
+                                        foreach (var item in Model.SpotCountApprovalProcess.SubActivities.OrderByDescending(x => x.Id).Take(pageSize))
+                                        {
+                                            var media = (QbicleMedia)item;
+                                            var createdByName = HelperClass.GetFullNameOfUser(media.StartedBy, userId);
+                                            var createdDate = media.StartedDate.Date == DateTime.UtcNow.Date ? "Today, " + media.StartedDate.ConvertTimeFromUtc(timeZone).ToString("hh:mmtt").ToLower() : media.StartedDate.ConvertTimeFromUtc(timeZone).ToString(dateFormatUser + " hh:mmtt").ToLower();
+                                            var mediaLastupdate = media.VersionedFiles.Where(e => !e.IsDeleted).OrderByDescending(x => x.UploadedDate).First() ?? null;
+                                            var lastUpdateFile = mediaLastupdate != null ? (mediaLastupdate.UploadedDate.Date == DateTime.UtcNow.Date ? "Today, " + mediaLastupdate.UploadedDate.ConvertTimeFromUtc(timeZone).ToString("hh:mmtt").ToLower() : mediaLastupdate.UploadedDate.ConvertTimeFromUtc(timeZone).ToString(dateFormatUser + " hh:mmtt").ToLower()) : createdDate;
+                                            //Media post
+                                            <article class="activity media">
+                                                <img style="background-image: url('@api@media.StartedBy.ProfilePic')" class="activity-avatar" />
+                                                <div class="activity-detail">
+                                                    <div class="activity-meta">
+                                                        <h4>@createdByName</h4>
+                                                        <small>@createdDate</small>
+                                                        <br class="visible-xs">
+                                                    </div>
+                                                    <div class="activity-overview media">
+                                                        <div class="row">
+                                                            <div class="col-xs-12 col-sm-5 col-md-6 col-lg-5">
+                                                                <a href="javascript:void(0)" onclick="ShowMediaPage('@media.Key')">
+                                                                    @if (media.FileType.Type == "Image File")
+                                                                    {
+                                                                        <img id="media-@item.Id" class="img-responsive" src='@api@mediaLastupdate.Uri' />
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <img src="@media.FileType.IconPath" class="img-responsive">
+                                                                    }
+                                                                </a>
+                                                            </div>
+                                                            <div class="col-xs-12 col-sm-7 col-md-6 col-lg-7 description">
+                                                                <h5>@media.Name</h5>
+                                                                <p>
+                                                                    @media.Description
+                                                                </p>
+                                                                <small>@media.FileType.Type | Update @lastUpdateFile</small>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="clearfix"></div>
+                                            </article>
+                                            <!-- END Media post -->
+                                        }
+                                    }
+                                </div>
+                                @if (Model.SpotCountApprovalProcess.SubActivities.Count() > pageSize)
+                                {
+                                    <button id="btnLoadMedias" onclick="LoadMoreMedias(@Model.SpotCountApprovalProcess.Id,@pageSize,'list-medias')" class="btn btn-info trigger_load">Load older medias</button>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </section>
+    <!-- ./content -->
+
+</div>
+<!-- /.content-wrapper -->
+@{
+    Html.RenderAction("GenerateModalMedia", "Qbicles");
+}
+<div class="modal fade" id="app-trader-workgroup-preview" role="dialog" aria-labelledby="app-trader-workgroup-preview">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Workgroup @Model.Workgroup.Members.Count members</h5>
+            </div>
+            <div class="modal-body">
+
+                <table class="datatable" style="width:100%">
+                    <thead>
+                        <tr>
+                            <th data-priority="2" data-orderable="false" style="width: 60px;"></th>
+                            <th data-priority="1">Name</th>
+                            <th data-priority="1">Role</th>
+                        </tr>
+                    </thead>
+                    <tbody style="background: #fff;">
+                        @foreach (var w in Model.Workgroup.Members)
+                        {
+                            <tr>
+                                <td>
+                                    <div class="table-avatar mini" style="background-image: url('@api@w.ProfilePic');"></div>
+                                </td>
+                                <td>@HelperClass.GetFullNameOfUser(w)</td>
+                                <td>
+                                    @{
+                                        if (Model.Workgroup.Approvers.Any(e => e.Id == w.Id))
+                                        {
+                                            <span class='label label-lg label-success'>Approver</span>
+                                        }
+                                        if (Model.Workgroup.Reviewers.Any(e => e.Id == w.Id))
+                                        {
+                                            <span class='label label-lg label-warning'>Reviewer</span>
+                                        }
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/trader.spotcount.review.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/trader.spotcount.review.min.js"></script>
+    }
+}
+<script>
+    disable = '@Html.Raw(disabled)';
+    if ('@userRight' === "approver") {
+        UpdateItems(false);
+    }
+</script>

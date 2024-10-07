@@ -1,0 +1,375 @@
+﻿@using System.Globalization;
+@using Qbicles.Models;
+@using Qbicles.Models.SalesMkt;
+@using Qbicles.BusinessRules;
+@model CampaignEmail
+@{
+    ViewBag.Title = "Sales & Marketing > Campaigns > Email > " + Model.Title;
+    var setting = (Settings)ViewBag.Setting;
+    var emailAproval = (EmailPostApproval)ViewBag.EmailAproval;
+    var pageSize = HelperClass.activitiesPageSize;
+    var approReq = emailAproval.Activity;
+    var Comments = approReq != null ? approReq.Posts.OrderByDescending(x => x.StartedDate).Take(pageSize) : null;
+    var count_Comments = approReq != null ? approReq.Posts.Count() : 0;
+    var count_Medias = approReq.SubActivities.Count();
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var videoApi = ViewBag.VideoRetrievalUrl;
+    var CurrentUser = (ApplicationUser)ViewBag.CurrentUser;
+    var currentDomainId = (int)ViewBag.CurrentDomainId;
+    var dateFormat = (string)ViewBag.CurrentDateFormat;
+    var timeZone = (string)ViewBag.CurrentTimeZone;
+}
+
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail mdv2-wrapper" style="position: relative;">
+
+
+    <!-- Main content -->
+    <section class="mdv2 dash" data-tooltip-color="teal" data-tooltip-delay="300" data-tooltip-animate-function="spin" style="border-top: 1px solid #f1f1f1;">
+
+
+        <!-- App bar -->
+        <div class="mdv2-col-app" style="margin-bottom: 0;">
+
+            <div data-spy="affix" class="contained-sidebar">
+
+                <div class="activity-overview plain company-overview welcome-info" style="text-align: left !important; flex: none; margin: 0 0 30px 0; padding-top: 30px; padding-bottom: 0;">
+
+                    <div class="pull-left" style="margin-bottom: 15px;">
+                        <a href="#" onclick="QbicleSelected('@(setting != null && setting.SourceQbicle != null ? setting.SourceQbicle.Key : "0")', 'Dashboard');" class="btn btn-primary"><i class="fa fa-angle-up"></i> &nbsp; Qbicle</a>
+                        <a href="/SalesMarketing/SMEmail?id=@Model.Campaign.Id" class="btn btn-info"><i class="fa fa-eye"></i> &nbsp; View Campaign</a>
+                        @if (emailAproval.ApprovalStatus != SalesMktApprovalStatusEnum.Approved)
+                        {
+                            <a href="#app-marketing-email-post-edit" data-toggle="modal" class="btn btn-warning"><i class="fa fa-pencil"></i> &nbsp; Edit</a>
+                        }
+                    </div>
+                    <div class="clearfix"></div>
+
+                    <br />
+
+                    <h1 style="line-height: 1.2;">@Model.Title</h1>
+                    @if (emailAproval.ApprovalStatus == SalesMktApprovalStatusEnum.InReview)
+                    {
+                        <span class="label label-lg label-warning">Awaiting approval</span>
+                    }
+                    else
+                    {
+                        <span class="label label-lg label-success">Approved</span>
+                    }
+
+                    <br /><br /><br />
+                    <p style="color: rgba(0, 0, 0, 0.5);">@Model.EmailSubject</p>
+
+
+
+                    <br />
+                    <div class="row">
+                        <div class="col-xs-12">
+                            <label>Focus attributes</label><br />
+                            <p>@String.Join(", ", Model.Campaign.Attributes.Select(s => s.Name).ToArray())
+                        </div>
+                    </div>
+                    <br />
+                    <div class="row">
+                        <div class="col-xs-12">
+                            <label>Theme</label><br />
+                            <p>@(Model.Campaign.IdeaTheme != null ? Model.Campaign.IdeaTheme.Name : "")</p>
+                        </div>
+                    </div>
+
+
+                    <br />
+                    <a href="#discuss" style="margin: 15px 0;" class="btn btn-info community-button jump-to"><i class="fa fa-comments"></i> &nbsp; Discuss this post</a>
+
+                </div>
+
+
+                <h5 style="padding-left: 30px;">Segments targeted</h5>
+
+                <ul class="avatar-listing unstyled" style="margin-bottom: 40px !important;">
+                    @foreach (var item in Model.Segments)
+                    {
+                        <li>
+                            <a href="#">
+                                <div class="owner-avatar">
+                                    <div class="avatar-sm" style="background: url('@(api + item.FeaturedImageUri + "&size=T")');"></div>
+                                </div>
+                                <h5>@item.Name<br /><small>@String.Format(CultureInfo.InvariantCulture, "{0:0}", item.Contacts.Count) members</small></h5>
+                            </a>
+                        </li>
+                    }
+
+                </ul>
+
+            </div>
+        </div>
+        <!-- END App bar -->
+        <!-- Main area -->
+        <div class="mdv2-col-dash">
+
+            <div class="spacing-new" style="margin-top: @(emailAproval.ApprovalStatus == SalesMktApprovalStatusEnum.InReview? "0px": "-40px")">
+
+
+                <div class="text-center animated bounce" style="margin: 20px 0 60px 0; display: @(emailAproval.ApprovalStatus == SalesMktApprovalStatusEnum.InReview? "block": "none")">
+                    <div style="width: 400px; max-width: 100%; margin: 0 auto">
+                        <p>Is this post approved for submission?</p>
+
+                        <ul class="nav nav-pills nav-justified audit-choices">
+                            <li><a href="#" class="danger" data-value="No" data-toggle="modal" data-target="#app-marketing-discard-post">No</a></li>
+                            <li class="active"><a href="#" class="info" data-value="Not yet">Not yet</a></li>
+                            <li><a href="#" class="success" data-value="Yes" data-toggle="modal" data-target="#app-marketing-approve-post">Yes</a></li>
+                        </ul>
+                    </div>
+                </div>
+
+
+                <div class="tab-content">
+
+
+                    <!-- Discuss -->
+                    <div class="tab-pane fade in active" id="email-discuss">
+                        <iframe style="width: 100%; height: 800px;margin: 0; border: 0;" frameborder="0" src="/SalesMarketing/PreviewEmail/@Model.Id"></iframe>
+                        <br />
+                        <div id="discuss" class="app_topnav entity_adds" style="background: #fff; padding: 0;">
+                            <ul class="nav nav-pills app_main_nav">
+                                <li role="presentation" class="active">
+                                    <a href="#tab1" data-toggle="tab">
+                                        <i class="fa fa-comments"></i>
+                                        Comments
+                                    </a>
+                                </li>
+                                <li role="presentation">
+                                    <a href="#tab2" data-toggle="tab">
+                                        <i class="fa fa-folder-open"></i>
+                                        Files
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+                        <br />
+                        <br />
+                        <div class="row">
+                            <div class="col-xs-12">
+
+                                <div class="tab-content">
+                                    <div class="tab-pane fade in active" id="tab1">
+                                        <div class="row">
+                                            <div class="col-xs-12">
+                                                <div class="well" style="max-width: 800px;">
+                                                    <div class="form-group">
+                                                        <label for="add-comment">Add a comment</label>
+                                                        <textarea id="txt-comment-link" name="add-comment" class="form-control"></textarea>
+                                                        <label id="addcomment-error" class="error" for="addcomment" style="display: none;">Your post is longer than the 1,500 character limit. Please reduce the length, or split it across multiple posts</label>
+                                                    </div>
+
+                                                    <button class="btn btn-success" onclick="AddCommentToSocialPostApproval('@approReq.Key')">Submit</button>
+                                                </div>
+
+                                                <br>
+                                            </div>
+                                        </div>
+                                        <div id="list-comments-approval">
+                                            @if (Comments != null && count_Comments > 0)
+                                            {
+                                                foreach (var item in Comments)
+                                                {
+                                                    <!-- General post -->
+                                                    <article id="post-@item.Id" class="activity post">
+                                                        <div class="activity-avatar" style="background-image: url('@(api+item.CreatedBy.ProfilePic + "&size=T")');"></div>
+                                                        <div class="activity-detail">
+                                                            <div class="activity-meta">
+                                                                <h4>@HelperClass.GetFullNameOfUser(item.CreatedBy, CurrentUser.Id)</h4>
+                                                                <small>@item.StartedDate.ConvertTimeFromUtc(timeZone).ToString(dateFormat + ", hh:mmtt")</small>
+                                                            </div>
+
+                                                            <div class="activity-overview media-comment">
+                                                                <p>@Html.Raw(item.Message.Replace(Environment.NewLine, "<br/>"))</p>
+                                                            </div>
+                                                        </div>
+                                                        <div class="clearfix"></div>
+                                                    </article>
+                                                    <!-- END General post -->
+                                                }
+                                            }
+                                        </div>
+                                        @if (count_Comments > pageSize)
+                                        {
+                                            <button id="btnLoadPosts" onclick="LoadMorePostsApproval('@approReq.Key', @pageSize, 'list-comments-approval')" class="btn btn-info">Load older posts</button>
+                                        }
+                                    </div>
+                                    <div class="tab-pane fade " id="tab2">
+                                        <br>
+                                        @if (approReq.ClosedBy == null)
+                                        {
+                                            <a href="#" class="btn btn-success" data-toggle="modal" data-target="#create-media"><i class="fa fa-upload"></i> &nbsp; Upload a file</a>
+                                        }
+                                        <br><br>
+                                        <div id="list-medias">
+                                            @if (count_Medias > 0)
+                                            {
+                                                foreach (var item in approReq.SubActivities.OrderByDescending(x => x.Id).Take(pageSize))
+                                                {
+                                                    var med = (QbicleMedia)item;
+                                                    var createdByName = med.StartedBy.Id == CurrentUser.Id ? "Me" : HelperClass.GetFullNameOfUser(med.StartedBy);
+                                                    var createdDate = med.StartedDate.Date == DateTime.Now.Date ? "Today, " + med.StartedDate.ToString("h:mmtt").ToLower() : med.StartedDate.ToString(dateFormat + " hh:mmtt").ToLower();
+                                                    var lastUpdateFile = "";
+                                                    var mediaLastupdate = med.VersionedFiles.Where(e => !e.IsDeleted).OrderByDescending(x => x.UploadedDate).FirstOrDefault() ?? null;
+                                                    if (mediaLastupdate != null)
+                                                    {
+                                                        lastUpdateFile = mediaLastupdate?.UploadedDate.Date == DateTime.Now.Date ? "Today, " + mediaLastupdate.UploadedDate.ToString("h:mmtt").ToLower() : mediaLastupdate.UploadedDate.ToString(dateFormat + " hh:mmtt").ToLower();
+                                                    } //Media post
+                                                    <!-- Media post -->
+                                                    <article class="activity media">
+                                                        <div class="activity-avatar" style="background-image: url('@api@med.StartedBy.ProfilePic');"></div>
+                                                        <div class="activity-detail" style="width: 100%; max-width: 100%;">
+                                                            <div class="activity-meta">
+                                                                <h4>@createdByName</h4>
+                                                                <small>@createdDate</small>
+                                                                <br class="visible-xs">
+                                                            </div>
+
+                                                            <div class="activity-overview media">
+                                                                <div class="row">
+                                                                    <div class="col-xs-12 col-sm-5 col-lg-4">
+                                                                        <a href="javascript:void(0)" onclick="ShowMediaPage('@med.Key')">
+                                                                            @if (med.FileType.Type == "Image File")
+                                                                            {
+                                                                                <img id="media-@item.Id" class="img-responsive" src='@api@mediaLastupdate.Uri' />
+                                                                            }
+                                                                            else
+                                                                            {
+                                                                                <img src="@med.FileType.ImgPath" class="img-responsive">
+                                                                            }
+                                                                        </a>
+                                                                    </div>
+                                                                    <div class="col-xs-12 col-sm-7 col-lg-8 description" style="padding-top: 0;">
+                                                                        <h5>@med.Name</h5>
+                                                                        <p>
+                                                                            @med.Description
+                                                                        </p>
+                                                                        <small>@Utility.GetFileTypeDescription(med.FileType.Extension) | Update @lastUpdateFile</small>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div class="clearfix"></div>
+                                                    </article>
+                                                    <!-- END Media post -->
+                                                }
+                                            }
+                                            @if (count_Medias > pageSize)
+                                            {
+                                                <button id="btnLoadMedias" onclick="LoadMoreMediasApproval(@approReq.Id, @pageSize, 'list-medias')" class="btn btn-info">Load older medias</button>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+
+
+                            </div>
+                        </div>
+                        <br />
+                        <br />
+
+                        <br /><br /><br />
+                    </div>
+                    <!-- END Discuss -->
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </section>
+    <!-- ./content -->
+
+</div>
+<!-- /.content-wrapper -->
+<div class="modal fade" id="app-marketing-discard-post" role="dialog" aria-labelledby="app-marketing-discard-post" style="display: none;">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Post management</h5>
+            </div>
+            <div class="modal-body">
+
+                <div class="activity-overview alert-detail animated bounce" style="padding: 20px;">
+                    <h5>Warning!</h5>
+                    <br />
+
+                    <p>
+                        You're about to discard this post. This action is permanent and should only be used when the post is unsuitable for use. If you're unsure you can
+                        cancel this procedure below and return later. If you do delete the post, you will be automatically redirected to the Campaign this post belongs to.
+                    </p>
+
+                    <br />
+                    <button class="btn btn-danger community-button" onclick="DenyEmailPost(@emailAproval.Id,@Model.Campaign.Id);"><i class="fa fa-trash"></i> &nbsp; Delete the post</button>
+                </div>
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+<div class="modal fade" id="app-marketing-approve-post" role="dialog" aria-labelledby="app-marketing-approve-post" style="display: none;">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+                <h5 class="modal-title">Post management</h5>
+            </div>
+            <div class="modal-body">
+
+                <div class="activity-overview alert-detail animated bounce" style="padding: 20px;">
+                    <h5>Please confirm</h5>
+                    <br>
+
+                    <p>
+                        You're about to Approve this post, meaning it will be flagged as ready to post to the target networks. Once you hit Approve below you'll be automatically
+                        directed to the post in your Campaign queue manager. To cancel, simply dismiss this dialog.
+                    </p>
+
+                    <br>
+                    <button id="button-approval-post" class="btn btn-success community-button" onclick="ApproveEmailPost(@emailAproval.Id);"><i class="fa fa-check"></i> &nbsp; Approve the post</button>
+                </div>
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+@Html.Partial("_EmailPostEdit", Model@*, new ViewDataDictionary { { "VerifiedEmails", ViewBag.VerifiedEmails } }*@)
+@if (approReq.StartedBy.Id == CurrentUser.Id || CurrentUser.DomainAdministrators.Any(x => x.Id == currentDomainId))
+{
+    Html.RenderAction("GenerateModalMedia", "Qbicles");
+}
+
+<link href="~/Content/DesignStyle/css/quill.snow.css" rel="stylesheet">
+
+@{
+   
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Content/DesignStyle/js/bootstrap-multiselect.js"></script>
+        <script src="~/Content/DesignStyle/js/quill.js"></script>
+        <script src="~/Scripts/dev/salemarketing.socialcampaign.addedit.js"></script>
+        <script src="~/Scripts/dev/salesmarketing.socialpostinapp.js"></script>
+        <script src="~/Scripts/dev/salesmarketing.campaigndetail.js"></script>
+    }
+    else
+    {
+        <script src="~/Content/DesignStyle/js/bootstrap-multiselect.min.js"></script>
+        <script src="~/Content/DesignStyle/js/quill.js"></script>
+        <script src="~/Scripts/dev/salemarketing.socialcampaign.addedit.min.js"></script>
+        <script src="~/Scripts/dev/salesmarketing.socialpostinapp.min.js"></script>
+        <script src="~/Scripts/dev/salesmarketing.campaigndetail.js"></script>
+    }
+}
+
+<script>
+    var bodycontent = '@(Html.Raw(HttpUtility.UrlDecode(Model.BodyContent)))';
+    $(document).ready(function () {
+        $(".ql-editor").html(bodycontent);
+    });
+</script>
+

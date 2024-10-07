@@ -1,0 +1,86 @@
+﻿@using Qbicles.Models.Trader;
+@using Qbicles.Models.Trader.Movement;
+@model TraderSale
+@{
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var callBack = (bool)ViewBag.CallBack;
+    var dateFormat = (string)ViewBag.CurrentDateFormat;
+}
+<table id="app-trader-sale-transfer-table" class="datatable table-hover" style="background: #fff; width: 100%;" data-paging="false">
+    <thead>
+        <tr>
+            <th>#</th>
+            <th>From</th>
+            <th>To</th>
+            <th>Date</th>
+            <th>Status</th>
+            <th data-orderable="false">Options</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var transfer in Model.Transfer)
+        {
+            <tr>
+                <td>@(transfer.Reference?.FullRef??"")</td>
+                <td>@transfer.OriginatingLocation.Name</td>
+                <td>@transfer.Contact.Name</td>
+                <td>@transfer.CreatedDate.ToString(dateFormat)</td>
+                <td>
+                    @switch (transfer.Status)
+                    {
+                        case TransferStatus.Initiated:
+                            <span class="label label-lg label-info">Initiated</span>
+                            break;
+                        case TransferStatus.PendingPickup:
+                            <span class="label label-lg label-primary">Pending Pickup</span>
+                            break;
+                        case TransferStatus.PickedUp:
+                            <span class="label label-lg label-success">Picked up</span>
+                            break;
+                        case TransferStatus.Delivered:
+                            <span class="label label-lg label-success">Delivered</span>
+                            break;
+                        case TransferStatus.Draft:
+                            <span class="label label-lg label-primary">Draft</span>
+                            break;
+                        case TransferStatus.Denied:
+                            <span class="label label-lg label-danger">Denied</span>
+                            break;
+                        case TransferStatus.Discarded:
+                            <span class="label label-lg label-danger">Discarded</span>
+                            break;
+                    }
+                </td>
+                <td>
+                    @if (transfer.Status == TransferStatus.Draft)
+                    {
+                        <button class="btn btn-info" onclick="EditTransfer(@transfer.Id, '@Model.Key')" data-toggle="modal" data-target="#app-trader-sale-transfer"><i class="fa fa-pencil"></i> &nbsp; Continue</button>
+                    }
+                    else
+                    {
+                        <button class="btn btn-primary" onclick="window.location.href = '/TraderTransfers/TransferMaster?key=@transfer.Key';"><i class="fa fa-eye"></i> &nbsp; Manage</button>
+                    }
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+
+@if (callBack)
+{
+    <script>
+        $('#app-trader-sale-transfer-table').DataTable({
+            responsive: true,
+            "lengthChange": true,
+            "pageLength": 10,
+            "columnDefs": [{
+                "targets": 3,
+                "orderable": false
+            }],
+            "order": []
+        });
+
+        $('#app-trader-sale-transfer-table').show();
+    </script>
+}

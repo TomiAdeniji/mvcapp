@@ -1,0 +1,271 @@
+﻿@using Qbicles.Models.Trader
+@using Qbicles.BusinessRules;
+@model CashAccountTransaction
+@{
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var workGroupTransfer = (List<WorkGroup>)ViewBag.WorkgroupTransfer;
+    var traderCashAccount = (TraderCashAccount)ViewBag.TraderCashAccount;
+    var amounts = (decimal)ViewBag.Amounts;
+    var traderCashAccountDestination = (List<TraderCashAccount>)ViewBag.TraderCashAccountDestination;
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+}
+
+<div class="modal-dialog modal-xl" role="document">
+    <input id="workgroup-location-id" value="@(Model.Workgroup?.Location.Id??0)" type="hidden" />
+    <div class="modal-content">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <h5 class="modal-title">Transfer funds from @traderCashAccount.Name</h5>
+        </div>
+        <div class="modal-body">
+            <div class="row">
+                <div class="col-xs-12 col-md-4">
+                    <form id="form_workgroup">
+                        <div class="activity-overview generic" style="padding: 20px; margin-bottom: 30px;">
+                            <div class="form-group" style="margin: 0;">
+                                <label for="workgroup">Assign a Workgroup to this Payment</label>
+                                <select onchange="checkSendTransferToReviewCondition()" name="workgroup" id="transfer-workgroup-select" class="form-control select2" style="width: 100%;" onchange="WorkGroupSelectedChange()">
+                                    @foreach (var wg in workGroupTransfer)
+                                    {
+                                        if (Model.Workgroup != null && Model.Workgroup.Id == wg.Id)
+                                        {
+                                            <option value="@wg.Id" selected>@wg.Name</option>
+                                        }
+                                        else
+                                        {
+                                            <option value="@wg.Id">@wg.Name</option>
+                                        }
+                                    }
+                                </select>
+                            </div>
+                            @if (Model.Workgroup != null)
+                            {
+                                <div class="preview-workgroup" style="display: block;">
+                                    <br />
+                                    <table class="table app_specific" style="margin: 0;">
+                                        <tr>
+                                            <td><h5>Location</h5></td>
+                                            <td class="location_name">@Model.Workgroup.Location.Name</td>
+                                        </tr>
+                                        <tr>
+                                            <td><h5>Process</h5></td>
+                                            <td class="workgroup_process">
+                                                @{
+                                                    foreach (var name in Model.Workgroup.Processes.Select(n => n.Name))
+                                                    {
+                                                        @name <br />
+                                                    }
+                                                }
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td><h5>Qbicle</h5></td>
+                                            <td class="workgroup_qbicle">@Model.Workgroup.Qbicle.Name</td>
+                                        </tr>
+                                        <tr>
+                                            <td><h5>Members</h5></td>
+                                            <td class="workgroup_member"><button class="btn btn-info" onclick="ShowGroupMember()" data-toggle="modal" data-target="#app-trader-workgroup-preview"><i class="fa fa-user"></i> &nbsp; <span>@Model.Workgroup.Members.Count</span></button></td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="preview-workgroup" style="display: none;">
+                                    <br />
+                                    <table class="table app_specific" style="margin: 0;">
+                                        <tr>
+                                            <td><h5>Location</h5></td>
+                                            <td class="location_name">Location name</td>
+                                        </tr>
+                                        <tr>
+                                            <td><h5>Process</h5></td>
+                                            <td class="workgroup_process">Transfers</td>
+                                        </tr>
+                                        <tr>
+                                            <td><h5>Qbicle</h5></td>
+                                            <td class="workgroup_qbicle">Qblicle Name</td>
+                                        </tr>
+                                        <tr>
+                                            <td><h5>Members</h5></td>
+                                            <td class="workgroup_member"><button class="btn btn-info" onclick="ShowGroupMember()" data-toggle="modal" data-target="#app-trader-workgroup-preview"><i class="fa fa-user"></i> &nbsp; <span></span></button></td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            }
+
+                        </div>
+                    </form>
+                </div> <!-- ./div -->
+                <div class="col-xs-12 col-md-8">
+                    <div class="activity-overview generic" style="padding: 20px; margin-bottom: 15px;">
+                        <p style="margin: 0; padding: 0;">Available funds for transfer: <strong>@amounts.ToCurrencySymbol(currencySettings)</strong></p>
+                    </div>
+                    <input type="hidden" id="transfer_type" value="Transfer" />
+                    <input type="hidden" id="transfer_id" value="@Model.Id" />
+                    <input type="hidden" id="tradercashaccount_id" value="@traderCashAccount.Id" />
+                    <div class="activity-overview task labelled" style="padding: 30px 20px 20px 20px; margin-bottom: 25px;">
+                        <form id="form-create-transfer">
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-6">
+                                    <label for="reference">Reference <span>*</span></label>
+                                    <div style="padding-bottom: 20px">
+                                        <input type="text" onchange="checkSendTransferToReviewCondition()" class="form-control" id="reference" value="@(Model.Reference ?? "")" name="reference" required />
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-6">
+                                    <label for="amount">Amount</label>
+                                    <div class="input-group" style="padding-bottom: 20px;">
+                                        <span class="input-group-addon">@currencySettings.CurrencySymbol</span>
+                                        <input onchange="checkSendTransferToReviewCondition()" type="text" class="form-control isnumber" id="transfer_amount" value="@Model.Amount" name="amount">
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label for="bank">To <span>*</span></label>
+                                        <select name="bank" onchange="checkSendTransferToReviewCondition()" id="transfer_destination" class="form-control select2" style="width: 100%;">
+                                            <option value=""></option>
+                                            @foreach (var item in traderCashAccountDestination)
+                                            {
+                                                if (traderCashAccount != null && traderCashAccount.Id == item.Id)
+                                                {
+
+                                                }
+                                                else if (Model?.DestinationAccount != null && Model?.DestinationAccount?.Id == item.Id)
+                                                {
+                                                    <option selected value="@item.Id">@item.Name</option>
+                                                }
+                                                else
+                                                {
+                                                    <option value="@item.Id">@item.Name</option>
+                                                }
+                                            }
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-6">
+                                    <label for="amount">Charges</label>
+                                    <div class="input-group" style="padding-bottom: 20px;">
+                                        <span class="input-group-addon">@currencySettings.CurrencySymbol</span>
+                                        <input type="text" class="form-control isnumber" id="transfer_charges" value="@Model.Charges" name="charges">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-xs-12">
+                                    <div class="form-group">
+                                        <label for="description">Description</label>
+                                        <textarea name="description" id="transfer_desciption" value="@Model.Description" class="form-control">@Model.Description</textarea>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-xs-12">
+                                    <div class="form-group" style="margin: 0;">
+                                        <label for="description">Attachments</label><br />
+                                        <button type="button" class="btn btn-info" onclick="ShowTransactionAttachments(0)"><i class="fa fa-paperclip"></i> &nbsp; <span id="span-attachment-count">@Model.AssociatedFiles.Count</span> attachment</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    <button type="button" class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="saveTransfer('Draft')">Save draft</button>
+                    <button type="button" class="btn btn-success" id="sendToReviewBtn" onclick="saveTransfer('PendingReview')">Send to review</button>
+                </div>
+            </div>
+        </div>
+
+    </div><!-- /.modal-content -->
+</div><!-- /.modal-dialog -->
+<div class="modal fade" id="attachments-view-payment" role="dialog" aria-labelledby="attachments-view">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" onclick="CloseAddCashBankAttachment()" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Manage Attachments</h5>
+            </div>
+            <div class="modal-body">
+                <div id="transaction-attachments" class="row">
+                    <div class="col-xs-12 col-md-6">
+
+                        <div class="activity-overview task" style="margin-bottom: 40px;">
+
+                            <div name="add_attachment" class="attachments_0">
+
+                                <div class="repeater_wrap">
+                                    @foreach (var item in Model.AssociatedFiles)
+                                    {
+                                        <div class="row attachment_row att-id-@item.Id">
+                                            <div class="col-xs-12">
+                                                <div class="form-group">
+                                                    <label for="name">Name</label>
+                                                    <input id="file_id_@(Model.AssociatedFiles.IndexOf(item)+1)" type="hidden" value="@item.Id" />
+                                                    <input id="inputiconpath_edit@(Model.AssociatedFiles.IndexOf(item)+1)" type="hidden" value="@item.FileType.IconPath" />
+                                                    <input type="text" name="name" value="@item.Name" class="form-control inputfilename@(Model.AssociatedFiles.IndexOf(item) + 1)" />
+                                                </div>
+                                            </div>
+                                            <div class="col-xs-12">
+                                                <div class="form-group">
+                                                    <label for="file">File</label>
+                                                    <input type="file" disabled name="file" value="@item.MediaFolder.Name" onchange="ChangeFileCashBankAttachment(this, @(Model.AssociatedFiles.IndexOf(item) + 1), 0)" class="form-control inputfile">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+
+
+                                </div>
+                                <button type="button" onclick="AddCashBankAttachmentAnother(0)" class="btn btn-info"><i class="fa fa-plus"></i> &nbsp; Add another</button>
+                                <button type="button" onclick="ConfirmCashBankAttachmentAddViewer(0)" class="btn btn-success"><i class="fa fa-check"></i> &nbsp; Add selected files to list</button>
+                            </div>
+                        </div>
+
+                    </div>
+                    <div class="col-xs-12 col-md-6">
+
+                        <ul id="domain-change-list" class="domain-change-list unstyled" style="margin-top: 0;">
+                            @foreach (var item in Model.AssociatedFiles)
+                            {
+                                <li id="att-@item.Id">
+                                    <input type="hidden" class="file-id" value="@item.Id" />
+                                    <button class="btn btn-danger" onclick="RemoveCashBankAttachment(@item.Id)">
+                                        <i class="fa fa-trash"></i>
+                                    </button>
+                                    <a href="javascript:void(0)">
+                                        <img src="@item.VersionedFiles[0].FileType.IconPath"
+                                             style="max-width: 80px; height: auto; padding-right: 10px;">@(item.Name + "." + item.VersionedFiles[0].FileType.Extension)
+                                    </a>
+                                </li>
+                            }
+                        </ul>
+
+                    </div>
+                </div>
+                <br />
+                <button type="button" class="btn btn-danger" onclick="CloseCashBankAttachment()">Cancel</button>
+                <button type="button" class="btn btn-success" onclick="CloseCashBankAttachment()"><i class="fa fa-save"></i> &nbsp; Finish &amp; save</button>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+<script src="~/Scripts/dev/qbicle.formatnumber.min.js"></script>
+<script src="~/Scripts/dev/trader.cashbank.attachment.js"></script>
+@if (Model.AssociatedFiles != null && Model.AssociatedFiles.Count == 0)
+{
+    <script>
+        AddCashBankAttachmentAnother(0);
+    </script>
+}
+<script>
+    $('#transfer_destination, #transfer-workgroup-select').select2({
+        placeholder: 'Please select'
+    });
+    WorkGroupSelectedChange();
+    checkSendTransferToReviewCondition();
+</script>

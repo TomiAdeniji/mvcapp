@@ -1,0 +1,68 @@
+﻿@using Qbicles.Models;
+@using Qbicles.BusinessRules;
+@model List<QbicleMedia>
+@{
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var videoApi = ViewBag.VideoRetrievalUrl;
+    var videoScreenshotApi = ViewBag.VideoRetrievalScreenshotUrl;
+}
+@foreach (var media in Model)
+{
+    var mediaLastupdate = media.VersionedFiles.Where(e => !e.IsDeleted).OrderByDescending(x => x.UploadedDate).FirstOrDefault();
+
+    if (media.FileType.Type.Equals("Video File", StringComparison.OrdinalIgnoreCase))
+    {
+        <div class="col">
+            <div class="media-folder-item activity-overview task">
+                <a href="#embed-@media.Id" data-fancybox class="image-pop" title="@media.Name">
+                    <div class="preview" style="background-image: url('@videoScreenshotApi@mediaLastupdate.Uri');">
+                    </div>
+                </a>
+
+                <div class="meta_desc">
+                    <h5>@media.Name</h5>
+                    <small>@Utility.GetFileTypeDescription(media.FileType.Extension) &nbsp; | &nbsp; Updated @media.TimeLineDate.ToString("dd.MM.yyyy hh:mmtt").ToLower()</small>
+                </div>
+            </div>
+        </div>
+
+        <video width="640" height="320" controls="" id="embed-@media.Id" style="display:none;" class="fancybox-video">
+            <source src="@string.Format(videoApi, mediaLastupdate.Uri, "mp4")" type="video/mp4">
+            <source src="@string.Format(videoApi, mediaLastupdate.Uri, "webm")" type="video/webm">
+            <source src="@string.Format(videoApi, mediaLastupdate.Uri, "ogv")" type="video/ogv">
+        </video>
+    }
+    else
+    {
+        string attr = "";
+        string backgroundImg = "";
+        string href = "#";
+        if (media.FileType.Type.Equals("Image File", StringComparison.OrdinalIgnoreCase))
+        {
+            backgroundImg = api + mediaLastupdate.Uri + "&size = M";
+            href = backgroundImg;
+            attr = "data-fancybox=gallery";
+        }
+        else
+        {
+            attr = "download";
+            backgroundImg = media.FileType.ImgPath;
+            href = api + mediaLastupdate.Uri;
+        }
+
+        <div class="col">
+            <div class="media-folder-item activity-overview task">
+                <a href="@href" class="image-pop" @attr title="@media.Name">
+                    <div class="preview" style="background-image: url('@backgroundImg');">
+                    </div>
+                </a>
+                <div class="meta_desc">
+                    <h5>@media.Name</h5>
+                    <small>@Utility.GetFileTypeDescription(media.FileType.Extension) &nbsp; | &nbsp; Updated @media.TimeLineDate.ToString("dd.MM.yyyy hh:mmtt").ToLower()</small>
+                </div>
+            </div>
+        </div>
+
+    }
+}
+

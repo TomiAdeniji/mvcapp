@@ -1,0 +1,1127 @@
+﻿@using Qbicles.Models;
+@using Qbicles.Models.B2C_C2C;
+@using Qbicles.BusinessRules;
+@using Qbicles.BusinessRules.Model;
+@using System.Globalization;
+@{
+    var userRoleRights = (List<string>)ViewBag.UserRoleRights;
+    var currentDomain = (QbicleDomain)ViewBag.CurrentDomain;
+    //var currentUser = (ApplicationUser)ViewBag.CurrentUser;
+    var domainApps = currentDomain.SubscribedApps;
+    var domainRoles = (List<DomainRole>)ViewBag.Roles;
+    var applications = (List<QbicleApplication>)ViewBag.Applications;
+    var UsersNotExistInRole = (List<ApplicationUser>)ViewBag.UsersNotExistInRole;
+    var currentAccount = currentDomain.Account;
+    var listPackages = (List<AccountPackage>)ViewBag.Packages;
+    var listAdministrator = (List<AdministratorViewModal>)ViewBag.ListAdministrator;
+    var articleRequest = (DomainExtensionRequest)ViewBag.ArticleRequest;
+    var eventRequest = (DomainExtensionRequest)ViewBag.EventRequest;
+    var jobRequest = (DomainExtensionRequest)ViewBag.JobRequest;
+    var knowledgeRequest = (DomainExtensionRequest)ViewBag.KnowledgeRequest;
+    var newsRequest = (DomainExtensionRequest)ViewBag.NewsRequest;
+    var realEstateRequest = (DomainExtensionRequest)ViewBag.RealEstateRequest;
+    var lstExtensionRequestCreators = (List<ApplicationUser>)ViewBag.LstExtensionRequestCreators;
+    var hasUpgradeRequest = (bool)ViewBag.HasUpgradeRequest;
+
+    var domainPlan = (DomainPlan)ViewBag.domainPlan;
+    var domainSubscription = (Subscription)ViewBag.domainSubscription;
+    var domainPlanLevel = domainPlan?.Level?.Level ?? BusinessDomainLevelEnum.Free;
+
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var currencySettings = (CurrencySetting)ViewBag.CurrencySettings;
+    var paystackCurrency = domainPlan?.Level?.Currency ?? "";
+    var nextBillingDateStr = (string)ViewBag.NextBillingDateStr;
+
+    var subAccInfo = (SubAccountFetchingModel)ViewBag.SubAccountInfo ?? null;
+    var lstBanks = (List<PaystackBankModel>)ViewBag.ListBanks ?? new List<PaystackBankModel>();
+
+    var b2cOrderCharge = (B2COrderPaymentCharges)ViewBag.B2COrderCharge ?? null;
+}
+<div class="content-wrapper qbicle-detail" style="background: rgb(244, 246, 249); min-height: 366px;">
+    <!-- Main content -->
+    <section class="content" data-tooltip-animate-function="fadein" data-tooltip-delay="300" data-tooltip-stickto="top" data-tooltip-stickdistance="30">
+
+        <br>
+        <input hidden id="current-domain-key" value="@currentDomain.Key" />
+        <div class="app_topnav">
+            <ul class="nav nav-pills app_main_nav hidden-xs hidden-sm">
+                <li role="presentation" class="active">
+                    <a href="#AdminDomain" onclick="showTab('#AdminDomain',this);">
+                        <i class="fa fa-globe-africa"></i>
+                        Domain
+                    </a>
+                </li>
+                @if (domainPlanLevel >= BusinessDomainLevelEnum.Standard)
+                {
+                    <li role="presentation">
+                        <a href="#AdminPermissions" onclick="showTab('#AdminPermissions',this);">
+                            <i class="fa fa-lock"></i>
+                            Bolt-ons
+                        </a>
+                    </li>
+                }
+                <li role="presentation">
+                    <a href="#ExtensionRequest" onclick="showTab('#ExtensionRequest',this);">
+                        <i class="fa fa-puzzle-piece"></i>
+                        Extensions
+                    </a>
+                </li>
+
+                @*<li role="presentation">
+            <a href="admin_statement.php">
+                <i class="fa fa-file-invoice-dollar"></i>
+                Account statement
+            </a>
+        </li>*@
+            </ul>
+
+            <select name="app_tab" class="form-control visible-xs visible-sm" onchange="showTab($(this).val())">
+                <option value="#AdminDomain" selected="">Domain</option>
+                <option value="#AdminPermissions">Bolt-ons</option>
+                <option value="#ExtensionRequest">Extensions</option>
+            </select>
+        </div>
+
+        <br><br>
+
+        <div class="activity-overview generic help-text animated bounce">
+            <i class="fa fa-info-circle"></i>
+            <p style="margin-bottom: 10px;">
+                Please note that changes made to your account can take a few minutes to apply. If you want to manually refresh to speed things up, click the button
+                below...
+            </p>
+            <button type="button" onclick="location.reload();" class="btn btn-primary" style="margin-bottom: 5px;">Refresh now</button>
+        </div>
+
+
+        <div class="tab-content app_general admin">
+            <!-- Settings -->
+            <div id="AdminDomain" class="row tabcontent">
+
+                <div class="col-xs-12 col-sm-5">
+
+                    <div class="tab-content">
+
+
+                        <!-- Settings -->
+                        <div class="tab-pane fade in active" id="tab-settings">
+
+                            <div class="activity-overview plain rounded" style="padding-bottom: 20px;">
+                                <div class="titlezone">
+                                    <h5>Your Domain</h5>
+                                </div>
+
+
+                                <form id="form-domain-update" class="" style="padding-bottom: 5px;">
+                                    <div class="form-group">
+                                        <label for="dname">Domain title <span>*</span></label>
+                                        <input required type="text" id="domain-name" name="domainname" class="form-control" value="@currentDomain.Name" onchange="$('.tab-settings-button').removeAttr('disabled');">
+                                    </div>
+
+                                    <br />
+
+                                    <label>Domain image</label><br />
+                                    <div class="row">
+                                        <div class="col-xs-12 col-sm-6 col-md-4">
+                                            <img id="domain-logo-preview" src="@api@currentDomain.LogoUri" style="max-width: 100%; height: auto; margin-bottom: 15px;">
+                                        </div>
+                                        <div class="col-xs-12 col-sm-6 col-md-8">
+                                            <div class="form-group">
+                                                <label for="dimg">Change image</label>
+                                                <input type="file" class="form-control" id="domain-logo" name="domainLogo" data-target="#domain-logo-preview">
+                                            </div>
+                                        </div>
+
+                                    </div>
+
+                                </form>
+                                <input hidden id="domain-name-current" value="@currentDomain.Name" />
+                                <input hidden id="domain-logo-current" value="@currentDomain.LogoUri" />
+
+                                <br /><br />
+                                <div id="demo">
+                                    <button class="btn btn-danger tab-settings-button" disabled onclick="CancelChangeDomain()">Cancel</button>
+                                    <button class="btn btn-success tab-settings-button" onclick="UpdateDomain()" disabled>Confirm</button>
+                                </div>
+                            </div>
+
+                            @if (domainPlanLevel > BusinessDomainLevelEnum.Free)
+                            {
+                                <div class="activity-overview plain rounded">
+                                    <div class="titlezone">
+                                        <h5>Receiving payments</h5>
+                                    </div>
+
+                                    <p style="margin: 0; padding: 0; font-size: 13px; line-height: 1.5;">The information below is optional, but required if you would like your customers to make payments through the system for their orders. Qbicles will take @((b2cOrderCharge?.QbiclesPercentageCharge ?? 0) * 100)% of every order up to a maximum of @(b2cOrderCharge?.QbiclesFlatFee ?? 0)NGN. Additional payment provider charges are applicable - please refer to <a href="https://support.paystack.com/hc/en-us/articles/360009881920-What-are-Paystack-s-transaction-charges" target="_blank">Paystack's transaction charges</a> for more information.</p>
+
+                                    <br /><br />
+                                    <div class="row">
+                                        <div class="col-xs-12">
+                                            <div class="form-group">
+                                                <label for="bname">Business name</label>
+                                                <input type="text" id="subacc-business-name" class="form-control" name="bname" value="@(subAccInfo?.business_name ?? "")">
+                                            </div>
+                                        </div>
+                                        <div class="col-xs-12">
+                                            <div class="form-group">
+                                                <label for="bank">Bank</label>
+                                                <select name="bank" id="subacc-bank-code" class="form-control select2" style="width: 100%;">
+                                                    @foreach (var bankItem in lstBanks)
+                                                    {
+                                                        var isBankSelected = bankItem.name.ToLower() == (subAccInfo?.settlement_bank?.ToLower() ?? "");
+                                                        <option @(isBankSelected ? "selected" : "") value="@bankItem.code">@bankItem.name</option>
+                                                    }
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="col-xs-12">
+                                            <div class="form-group">
+                                                <label for="accnum">Account number</label>
+                                                <input id="subacc-account-number" value="@(subAccInfo?.account_number ?? "")" type="text" class="form-control" name="accnum">
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <br />
+                                    <button class="btn btn-success community-button sm w-auto" id="update-subacc-btn" onclick="updateSubAccInfo()">Confirm</button>
+                                </div>
+                            }
+
+                        </div>
+                        <!-- END Settings -->
+
+                    </div> <!-- END .tab-content -->
+                </div>
+
+                <!--Subscription-->
+                <div class="col-xs-12 col-sm-7">
+
+                    <div class="activity-overview plain rounded" style="padding-bottom: 20px;">
+                        <div class="titlezone">
+                            <h5>Your subscription plan</h5>
+                        </div>
+
+
+                        <table class="table table-hover table-borderless table-striped trestyle valignm" style="margin: 0; padding: 0;">
+                            <thead>
+                                <tr>
+                                    <th>Item</th>
+                                    <th>Quantity</th>
+                                    <th>Monthly cost</th>
+                                    <th>&nbsp;</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>@(domainPlan?.Level == null ? "Existing package" : domainPlan?.Level?.Name)</td>
+                                    <td>--</td>
+                                    <td>@(domainPlan == null || domainPlan.Level == null ? "0" : domainPlan.Level.Cost.ToDecimalPlace(currencySettings))@paystackCurrency</td>
+                                    <td><a href="/Administration/UpdateSubscriptionDetail" class="btn btn-warning"><i class="fa fa-pencil"></i></a></td>
+                                </tr>
+
+                                @if (domainPlan?.Level != null && domainPlan.Level.Level != BusinessDomainLevelEnum.Free && domainPlan.Level.Level != BusinessDomainLevelEnum.Existing)
+                                {
+                                    <tr>
+                                        <td>Included user slots</td>
+                                        <td>@(domainPlan.Level.NumberOfUsers)</td>
+                                        <td>0@(paystackCurrency)</td>
+                                        <td></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Additional user slot</td>
+                                        <td>@(domainPlan == null ? 0 : domainPlan.NumberOfExtraUsers)</td>
+                                        @{
+                                            decimal additionalCost = (domainPlan != null && domainPlan.Level != null && domainPlan.Level.Level != BusinessDomainLevelEnum.Free) ? ((domainPlan.NumberOfExtraUsers) * (domainPlan.Level.CostPerAdditionalUser ?? 0)) : 0;
+                                        }
+                                        <td>@(additionalCost.ToDecimalPlace(currencySettings))@paystackCurrency</td>
+                                        <td></td>
+                                    </tr>
+
+                                }
+                                <tr class="hidden">
+                                    <td>Sales &amp; Marketing Bolt-on</td>
+                                    <td>--</td>
+                                    <td>--</td>
+                                    <td></td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <br /><br />
+                        <div class="well custom rounded" style="max-width: 450px; margin: 0;">
+                            <table class="table table-condensed table-borderless trestyle" style="margin: 0; padding: 0;">
+                                <tbody>
+                                    <tr>
+                                        <td><strong>Next billing date</strong></td>
+                                        <td>@(nextBillingDateStr)</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Amount due</strong></td>
+                                        <td>@(domainPlan == null ? "0" : domainPlan.ActualCost.ToDecimalPlace(currencySettings))@paystackCurrency</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                </div>
+                <!--END Subscription-->
+
+            </div>
+            <!-- END Settings -->
+            <div id="AdminPermissions" class="row tabcontent" style="display:none">
+                <div class="col-xs-12 col-sm-4 col-md-3">
+
+                    <ul class="nav nav-stacked nav-pills nav-marketing" style="margin-bottom: 30px;">
+                        <li class="active">
+                            <a href="javascript:" data-toggle="tab" data-target="#tab-applications">App subscriptions</a>
+                        </li>
+                        <li>
+                            <a onclick="ManagePermission()" href="javascript:" data-toggle="tab" data-target="#tab-permissions">App permissions</a>
+                        </li>
+                    </ul>
+
+                </div>
+
+                <div class="col-xs-12 col-sm-8 col-lg-9">
+
+                    <div class="tab-content">
+
+
+                        <!-- Applications -->
+                        <div class="tab-pane fade in active" id="tab-applications">
+
+                            <div class="flex-grid-quarters-lg qbicles-dash-grid">
+                                @{
+                                    if (applications.Count <= 0)
+                                    {
+                                        <div class="activity-overview generic help-text animated bounce">
+                                            <i class="fa fa-info-circle"></i>
+                                            <p style="margin-bottom: 10px;">
+                                                <strong>The Domain has no Available App(s)</strong>
+                                            </p>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        foreach (var app in applications)
+                                        {
+                                            var isSubscribed = currentDomain.SubscribedApps.Any(acc => acc.Id == app.Id);
+                                            var appHref = "javascript:void(0)";
+                                            var onClick = $"onClick=LearnMoreApp({app.Id})";
+                                            if (app.Name == HelperClass.appTypeBookkeeping)
+                                            {
+                                                if (domainApps.All(e => e.Name != app.Name))
+                                                {
+                                                    onClick = $"onClick=LearnMoreApp({app.Id})";
+                                                }
+                                                else if (userRoleRights.Any(r => r == RightPermissions.BKBookkeepingView))
+                                                {
+                                                    appHref = "/Bookkeeping/BKApps";
+                                                }
+                                            }
+                                            else if (app.Name == HelperClass.appTypeTrader)
+                                            {
+                                                if (domainApps.All(e => e.Name != app.Name))
+                                                {
+                                                    onClick = $"onClick=LearnMoreApp({app.Id})";
+                                                }
+                                                else if (userRoleRights.Any(r => r == RightPermissions.TraderAccess))
+                                                {
+                                                    appHref = "javascript:void(0)";
+                                                    onClick = "onclick=OpenTraderFromAdministrator()";
+
+                                                }
+                                            }
+                                            else if (app.Name == HelperClass.appSalesMarketing)
+                                            {
+                                                if (domainApps.All(e => e.Name != app.Name))
+                                                {
+                                                    onClick = $"onClick=LearnMoreApp({app.Id})";
+                                                }
+                                                else if (userRoleRights.Any(r => r == RightPermissions.SalesAndMarketingAccess))
+                                                {
+                                                    appHref = "javascript:void(0)";
+                                                    onClick = "onclick=opensalesmarketing()";
+                                                }
+                                            }
+                                            else if (app.Name == HelperClass.appTypeCleanBooks)
+                                            {
+                                                if (domainApps.All(e => e.Name != app.Name))
+                                                {
+                                                    onClick = $"onClick=LearnMoreApp({app.Id})";
+                                                }
+                                                else if (userRoleRights.Any(r => r == RightPermissions.CleanBooksAccess))
+                                                {
+                                                    appHref = "/Apps/Accounts";
+                                                }
+                                            }
+                                            <article class="col">
+
+                                                @if (isSubscribed)
+                                                {
+                                                    <span id="subscribed-label-@app.Id" class="last-updated">Subscribed</span>
+                                                }
+                                                else
+                                                {
+                                                    <span style='display: none' id="subscribed-label-@app.Id" class="last-updated"></span>
+                                                }
+
+                                                <div class="qbicle-opts">
+                                                    <span hidden="" id="app-image-@app.Id">@app.AppImage</span>
+                                                    <span hidden="" id="app-name-@app.Id">@app.Name</span>
+                                                    <span hidden="" id="app-description-@app.Id">@app.Description</span>
+                                                    <span hidden="" id="app-adpage-@app.Id">@app.AdPage</span>
+                                                </div>
+                                                <a href="@appHref" @onClick>
+                                                    <div class="avatar" style="background-image: url('@app.AppImage');">&nbsp;</div>
+                                                    <h1 style="color: #333;">@app.Name</h1>
+                                                </a>
+                                                <p class="qbicle-detail" style="height: 50px">@app.Description</p>
+
+                                                <br />
+                                                @if (isSubscribed)
+                                                {
+                                                    <button id="manage-app-button-@app.Id" onclick="UnSubcribeApp(@app.Id)" class="btn btn-danger community-button">
+                                                        <span id="manage-app-title-@app.Id">Unsubscribe</span>
+                                                    </button>
+
+                                                }
+                                                else
+                                                {
+                                                    <button id="manage-app-button-@app.Id" onclick="SubcribeApp(@app.Id)" class="btn btn-success community-button">
+                                                        <span id="manage-app-title-@app.Id">Subscribe</span>
+                                                    </button>
+
+                                                }
+
+
+
+                                            </article>
+                                        }
+                                    }
+                                }
+
+
+
+
+                            </div>
+
+
+                        </div>
+                        <!-- END Applications -->
+                        <!-- App permissions -->
+                        <div class="tab-pane fade" id="tab-permissions">
+
+                            <ul class="nav nav-pills alt" style="margin: 0 0 30px 0;">
+                                <li class="active"><a href="#" data-toggle="tab" data-target="#tab-roles">Roles</a></li>
+                                <li><a href="#" data-toggle="tab" data-target="#tab-users" onclick="reloadUsersByRole();">Users</a></li>
+                            </ul>
+
+                            <div class="tab-content">
+
+                                <!-- Roles -->
+                                <div class="tab-pane fade in active" id="tab-roles">
+                                    <div class="activity-overview generic help-text animated bounce">
+                                        <i class="fa fa-info-circle"></i>
+                                        <p>Create Roles to allow fine control over permissions and App access rights for users. You can change the apps available to users in your Roles, and additionally fine tune the specific permissions granted in each app you've allowed them access to.</p>
+                                    </div>
+                                    <div class="well custom" style="padding-bottom: 5px;">
+                                        <div class="row">
+                                            <div class="col-xs-8 col-md-6">
+                                                <div class="form-group">
+                                                    <label for="role">Role to manage</label>
+                                                    <select style="width: 100%" class="form-control" id="selectRolesDomain">
+                                                        @foreach (var item in domainRoles.Where(r => r.Name != FixedRoles.QbiclesBusinessRole))
+                                                        {
+                                                            <option value="@item.Id">@item.Name</option>
+                                                        }
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="col-xs-4 col-md-6">
+                                                <label>Options</label><br />
+                                                <a href="javascript:void(0)" class="btn btn-success" data-toggle="modal" data-target="#add-role"><i class="fa fa-plus"></i> &nbsp; Add new role</a>
+                                                <button onclick="ChangeAvailableApps()" id="changeAvailableApps" class="btn btn-info"><i class="fa fa-gear"></i> &nbsp; Change available apps</button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+
+                                    <div class="row">
+                                        <div class="col-xs-12">
+                                            <br />
+
+                                            <table class="table app_specific valigntop" width="100%" cellspacing="0">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Application</th>
+                                                        <th>Permissions</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody style="background: #fff;" id="tbl-body-roles"></tbody>
+                                            </table>
+
+
+
+                                        </div>
+                                    </div>
+
+
+                                </div>
+                                <!-- END General -->
+                                <!-- Users -->
+                                <div class="tab-pane fade" id="tab-users">
+
+                                    <div class="well custom" style="padding-bottom: 5px;">
+                                        <div class="row">
+                                            <div class="col-xs-12 col-sm-6">
+                                                <div class="form-group">
+                                                    <label for="role">Role to manage</label>
+                                                    <select style="width: 100%" class="form-control" id="select-role-app-use">
+                                                        @foreach (var item in domainRoles)
+                                                        {
+                                                            <option value="@item.Id">@item.Name</option>
+                                                        }
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="col-xs-12 col-sm-6">
+                                                <div class="form-group">
+                                                    <label for="role">Options</label><br />
+                                                    <a href="javascript:void(0)" onclick="ClearUserSelect()" class="btn btn-success" data-toggle="modal" data-target="#add-user">
+                                                        <i class="fa fa-plus"></i>
+                                                        &nbsp; Add User to Role
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+
+                                    <div class="row">
+                                        <div class="col-xs-12">
+                                            <div class="row">
+                                                <div class="col-xs-12">
+                                                    <br />
+
+                                                    <table id="tblUsersByRole" class="datatable table table-hover t1style valignm" width="100%" cellspacing="0">
+                                                        <thead>
+                                                            <tr>
+                                                                <th data-priority="2" data-orderable="false"></th>
+                                                                <th data-priority="1">Name</th>
+                                                                <th data-priority="1">Role</th>
+                                                                <th data-priority="1" data-orderable="false">Options</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody style="background: #fff;"></tbody>
+                                                    </table>
+
+
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+
+
+                                </div>
+                                <!-- END Users -->
+
+                            </div>
+
+                        </div>
+                        <!-- END App permissions -->
+
+
+                    </div> <!-- END .tab-content -->
+
+                </div>
+            </div>
+            <div class="tabcontent app_general admin" id="ExtensionRequest" style="display:none">
+                <div class="row">
+                    <div class="col-xs-12 col-sm-4 col-md-3">
+                        <ul class="nav nav-stacked nav-pills nav-marketing" id="extension-navs" style="margin-bottom: 30px;">
+                            <li class="active"><a href="#" data-toggle="tab" data-target="#tab-extension-subscription">Subscriptions</a></li>
+                            <li><a href="#" data-toggle="tab" id="extension-history-nav" data-target="#tab-history">History</a></li>
+                        </ul>
+                    </div>
+                    <div class="col-xs-12 col-sm-8 col-lg-9">
+                        <div class="tab-content">
+                            <!-- Applications -->
+                            <div class="tab-pane fade in active" id="tab-extension-subscription">
+
+                                <div class="flex-grid-quarters-lg qbicles-dash-grid">
+
+                                    <article class="col" id="col-type-@((int)ExtensionRequestType.Articles)">
+                                        @if (articleRequest != null)
+                                        {
+                                            if (articleRequest.Status == ExtensionRequestStatus.Approved)
+                                            {
+                                                <span class="last-updated">Subscribed</span>
+                                            }
+                                            else if (articleRequest.Status == ExtensionRequestStatus.Pending)
+                                            {
+                                                <span class="last-updated" style="background: #f0ad4e;">Pending</span>
+                                            }
+                                        }
+                                        <div class="qbicle-opts">
+                                        </div>
+                                        <a href="#">
+                                            <div class="avatar" style="background-image: url('/Content/DesignStyle/img/hlarticle.png');">&nbsp;</div>
+                                            <h1 style="color: #333;">Articles</h1>
+                                        </a>
+                                        <p class="qbicle-detail">Create your own articles with WYSIWYG support for control over layout, images and text.</p>
+
+                                        <br />
+                                        @if (articleRequest != null && articleRequest.Status == ExtensionRequestStatus.Approved)
+                                        {
+                                            <button class="btn btn-danger community-button" onclick="updateExtensionRequestStatus(@(articleRequest?.Id ?? 0),
+                                                '@currentDomain.Key', @((int)ExtensionRequestStatus.None), @((int)ExtensionRequestType.Articles), '')">
+                                                Cancel
+                                            </button>
+                                        }
+                                        else if (articleRequest != null && articleRequest.Status == ExtensionRequestStatus.Pending)
+                                        {
+                                            <button class="btn btn-warning community-button" disabled>Pending</button>
+                                        }
+                                        else
+                                        {
+                                            <button class="btn btn-success community-button" onclick="updateExtensionRequestStatus(@(articleRequest?.Id ?? 0),
+                                                '@currentDomain.Key', @((int)ExtensionRequestStatus.Pending), @((int)ExtensionRequestType.Articles), '')">
+                                                Request
+                                            </button>
+                                        }
+                                    </article>
+
+                                    <article class="col" id="col-type-@((int)ExtensionRequestType.Events)">
+                                        @if (eventRequest != null)
+                                        {
+                                            if (eventRequest.Status == ExtensionRequestStatus.Approved)
+                                            {
+                                                <span class="last-updated">Subscribed</span>
+                                            }
+                                            else if (eventRequest.Status == ExtensionRequestStatus.Pending)
+                                            {
+                                                <span class="last-updated" style="background: #f0ad4e;">Pending</span>
+                                            }
+                                        }
+                                        <div class="qbicle-opts">
+                                        </div>
+                                        <a href="#">
+                                            <div class="avatar" style="background-image: url('/Content/DesignStyle/img/hlevent.png');">&nbsp;</div>
+                                            <h1 style="color: #333;">Events</h1>
+                                        </a>
+                                        <p class="qbicle-detail">Gain the ability to post Events in Highlights, and track who's interested in going.</p>
+
+                                        <br />
+                                        @if (eventRequest != null && eventRequest.Status == ExtensionRequestStatus.Approved)
+                                        {
+                                            <button class="btn btn-danger community-button" onclick="updateExtensionRequestStatus(@(eventRequest?.Id ?? 0),
+                                                '@currentDomain.Key', @((int)ExtensionRequestStatus.None), @((int)ExtensionRequestType.Events), '')">
+                                                Cancel
+                                            </button>
+                                        }
+                                        else if (eventRequest != null && eventRequest.Status == ExtensionRequestStatus.Pending)
+                                        {
+                                            <button class="btn btn-warning community-button" disabled>Pending</button>
+                                        }
+                                        else
+                                        {
+                                            <button class="btn btn-success community-button" onclick="updateExtensionRequestStatus(@(eventRequest?.Id ?? 0),
+                                                '@currentDomain.Key', @((int)ExtensionRequestStatus.Pending), @((int)ExtensionRequestType.Events), '')">
+                                                Request
+                                            </button>
+                                        }
+                                    </article>
+
+
+                                    <article class="col" id="col-type-@((int)ExtensionRequestType.Jobs)">
+                                        @if (jobRequest != null)
+                                        {
+                                            if (jobRequest.Status == ExtensionRequestStatus.Approved)
+                                            {
+                                                <span class="last-updated">Subscribed</span>
+                                            }
+                                            else if (jobRequest.Status == ExtensionRequestStatus.Pending)
+                                            {
+                                                <span class="last-updated" style="background: #f0ad4e;">Pending</span>
+                                            }
+                                        }
+                                        <div class="qbicle-opts">
+                                        </div>
+                                        <a href="#">
+                                            <div class="avatar" style="background-image: url('/Content/DesignStyle/img/hljobs.png');">&nbsp;</div>
+                                            <h1 style="color: #333;">Jobs</h1>
+                                        </a>
+                                        <p class="qbicle-detail">Gain the ability to post Job vacancies in Highlights, and begin the onboarding process.</p>
+
+                                        <br />
+                                        @if (jobRequest != null && jobRequest.Status == ExtensionRequestStatus.Approved)
+                                        {
+                                            <button class="btn btn-danger community-button" onclick="updateExtensionRequestStatus(@(jobRequest?.Id ?? 0),
+                                                '@currentDomain.Key', @((int)ExtensionRequestStatus.None), @((int)ExtensionRequestType.Jobs), '')">
+                                                Cancel
+                                            </button>
+                                        }
+                                        else if (jobRequest != null && jobRequest.Status == ExtensionRequestStatus.Pending)
+                                        {
+                                            <button class="btn btn-warning community-button" disabled>Pending</button>
+                                        }
+                                        else
+                                        {
+                                            <button class="btn btn-success community-button" onclick="updateExtensionRequestStatus(@(jobRequest?.Id ?? 0),
+                                                '@currentDomain.Key', @((int)ExtensionRequestStatus.Pending), @((int)ExtensionRequestType.Jobs), '')">
+                                                Request
+                                            </button>
+                                        }
+                                    </article>
+
+
+
+                                    <article class="col" id="col-type-@((int)ExtensionRequestType.Knowledge)">
+                                        @if (knowledgeRequest != null)
+                                        {
+                                            if (knowledgeRequest.Status == ExtensionRequestStatus.Approved)
+                                            {
+                                                <span class="last-updated">Subscribed</span>
+                                            }
+                                            else if (knowledgeRequest.Status == ExtensionRequestStatus.Pending)
+                                            {
+                                                <span class="last-updated" style="background: #f0ad4e;">Pending</span>
+                                            }
+                                        }
+                                        <div class="qbicle-opts">
+                                        </div>
+                                        <a href="#">
+                                            <div class="avatar" style="background-image: url('/Content/DesignStyle/img/hlknowledge.png');">&nbsp;</div>
+                                            <h1 style="color: #333;">Knowledge</h1>
+                                        </a>
+                                        <p class="qbicle-detail">Share knowledge with your audience, including support for specific industry verticals.</p>
+
+                                        <br />
+                                        @if (knowledgeRequest != null && knowledgeRequest.Status == ExtensionRequestStatus.Approved)
+                                        {
+                                            <button class="btn btn-danger community-button" onclick="updateExtensionRequestStatus(@(knowledgeRequest?.Id ?? 0),
+                                                '@currentDomain.Key', @((int)ExtensionRequestStatus.None), @((int)ExtensionRequestType.Knowledge), '')">
+                                                Cancel
+                                            </button>
+                                        }
+                                        else if (knowledgeRequest != null && knowledgeRequest.Status == ExtensionRequestStatus.Pending)
+                                        {
+                                            <button class="btn btn-warning community-button" disabled>Pending</button>
+                                        }
+                                        else
+                                        {
+                                            <button class="btn btn-success community-button" onclick="updateExtensionRequestStatus(@(knowledgeRequest?.Id ?? 0),
+                                                '@currentDomain.Key', @((int)ExtensionRequestStatus.Pending), @((int)ExtensionRequestType.Knowledge), '')">
+                                                Request
+                                            </button>
+                                        }
+                                    </article>
+
+
+
+                                    <article class="col" id="col-type-@((int)ExtensionRequestType.News)">
+                                        @if (newsRequest != null)
+                                        {
+                                            if (newsRequest.Status == ExtensionRequestStatus.Approved)
+                                            {
+                                                <span class="last-updated">Subscribed</span>
+                                            }
+                                            else if (newsRequest.Status == ExtensionRequestStatus.Pending)
+                                            {
+                                                <span class="last-updated" style="background: #f0ad4e;">Pending</span>
+                                            }
+                                        }
+                                        <div class="qbicle-opts">
+                                        </div>
+                                        <a href="#">
+                                            <div class="avatar" style="background-image: url('/Content/DesignStyle/img/hlnews.png');">&nbsp;</div>
+                                            <h1 style="color: #333;">News</h1>
+                                        </a>
+                                        <p class="qbicle-detail">Share external articles in your Highlights, with the ability to link to content outside Qbicles.</p>
+
+                                        <br />
+                                        @if (newsRequest != null && newsRequest.Status == ExtensionRequestStatus.Approved)
+                                        {
+                                            <button class="btn btn-danger community-button" onclick="updateExtensionRequestStatus(@(newsRequest?.Id ?? 0),
+                                                '@currentDomain.Key', @((int)ExtensionRequestStatus.None), @((int)ExtensionRequestType.News), '')">
+                                                Cancel
+                                            </button>
+                                        }
+                                        else if (newsRequest != null && newsRequest.Status == ExtensionRequestStatus.Pending)
+                                        {
+                                            <button class="btn btn-warning community-button" disabled>Pending</button>
+                                        }
+                                        else
+                                        {
+                                            <button class="btn btn-success community-button" onclick="updateExtensionRequestStatus(@(newsRequest?.Id ?? 0),
+                                                '@currentDomain.Key', @((int)ExtensionRequestStatus.Pending), @((int)ExtensionRequestType.News), '')">
+                                                Request
+                                            </button>
+                                        }
+                                    </article>
+
+
+                                    <article class="col" id="col-type-@((int)ExtensionRequestType.RealEstate)">
+                                        @if (realEstateRequest != null)
+                                        {
+                                            if (realEstateRequest.Status == ExtensionRequestStatus.Approved)
+                                            {
+                                                <span class="last-updated">Subscribed</span>
+                                            }
+                                            else if (realEstateRequest.Status == ExtensionRequestStatus.Pending)
+                                            {
+                                                <span class="last-updated" style="background: #f0ad4e;">Pending</span>
+                                            }
+                                        }
+                                        <div class="qbicle-opts">
+                                        </div>
+                                        <a href="#">
+                                            <div class="avatar" style="background-image: url('/Content/DesignStyle/img/hlrealestate.png');">&nbsp;</div>
+                                            <h1 style="color: #333;">Real estate</h1>
+                                        </a>
+                                        <p class="qbicle-detail">Post real estate listings in Highlights, with support for tracking interest and securing leads.</p>
+
+                                        <br />
+                                        @if (realEstateRequest != null && realEstateRequest.Status == ExtensionRequestStatus.Approved)
+                                        {
+                                            <button class="btn btn-danger community-button" onclick="updateExtensionRequestStatus(@(realEstateRequest?.Id ?? 0),
+                                                '@currentDomain.Key', @((int)ExtensionRequestStatus.None), @((int)ExtensionRequestType.RealEstate), '')">
+                                                Cancel
+                                            </button>
+                                        }
+                                        else if (realEstateRequest != null && realEstateRequest.Status == ExtensionRequestStatus.Pending)
+                                        {
+                                            <button class="btn btn-warning community-button" disabled>Pending</button>
+                                        }
+                                        else
+                                        {
+                                            <button class="btn btn-success community-button" onclick="updateExtensionRequestStatus(@(realEstateRequest?.Id ?? 0),
+                                                '@currentDomain.Key', @((int)ExtensionRequestStatus.Pending), @((int)ExtensionRequestType.RealEstate), '')">
+                                                Request
+                                            </button>
+                                        }
+                                    </article>
+
+
+                                    <article class="col" style="box-shadow: none; background: transparent;"></article>
+                                </div>
+
+
+                            </div>
+                            <!-- END Applications -->
+                            <!-- History -->
+                            <div class="tab-pane fade" id="tab-history">
+
+                                <div class="well custom" style="padding-bottom: 5px;">
+                                    <div class="row">
+                                        <div class="col-xs-12 col-sm-6 col-lg-3">
+                                            <div class="form-group">
+                                                <label for="search">Search</label>
+                                                <input type="text" id="extension-keysearch" name="bSearch" class="form-control">
+                                            </div>
+                                        </div>
+                                        <div class="col-xs-12 col-sm-6 col-lg-3">
+                                            <div class="form-group">
+                                                <label for="search">Users</label>
+                                                <select name="users" id="extension-usersearch" onchange='$("#extension-request-list").DataTable().ajax.reload();' class="form-control select2" style="width: 100%;">
+                                                    <option value=" " selected>Show all</option>
+                                                    @foreach (var creator in lstExtensionRequestCreators)
+                                                    {
+                                                        <option value="@creator.Id">@creator.GetFullName()</option>
+                                                    }
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="col-xs-12 col-sm-6 col-lg-3">
+                                            <label for="creator">Date range</label><br />
+                                            <div class="input-group" style="margin-bottom: 15px;">
+                                                <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                                                <input type="text" id="extension-datesearch" class="form-control daterange">
+                                            </div>
+                                        </div>
+                                        @*<div class="col-xs-12 col-sm-6 col-lg-3">
+                                                <div class="withselected" style="display: none;">
+                                                    <label>Options</label>
+                                                    <br>
+                                                    <div class="form-group">
+                                                        <div class="btn-group options">
+                                                            <button type="button" class="btn btn-success dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                                                With selected &nbsp; <i class="fa fa-angle-down"></i>
+                                                            </button>
+                                                            <ul class="dropdown-menu">
+                                                                <li><a href="#" data-toggle="modal" data-target="#app-trader-inventory-item-add">Bulk approve</a></li>
+                                                                <li><a href="#" data-toggle="modal" data-target="#app-trader-inventory-sellable-add">Bulk reject</a></li>
+                                                            </ul>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>*@
+                                    </div>
+                                </div>
+                                <br />
+
+                                <table class="datatable table-hover table-striped" data-order='[[0, "desc"]]' id="extension-request-list" style="width: 100%;">
+                                    <thead>
+                                        <tr>
+                                            <th data-priority="2">Date &amp; time</th>
+                                            <th data-priority="2">User</th>
+                                            <th data-priority="1">Request</th>
+                                            <th data-priority="1">Decision</th>
+                                            <th data-priority="3" data-orderable="false">Reason</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                    </tbody>
+                                </table>
+
+                            </div>
+                            <!-- END History -->
+
+
+                        </div> <!-- END .tab-content -->
+
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+    <!-- ./content -->
+
+</div>
+
+<div class="modal fade left" id="add-user" role="dialog" aria-labelledby="add-user">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Add User(s)</h5>
+            </div>
+            <div class="modal-body">
+
+                <div class="well tan">
+                    <div class="form-group">
+                        <label for="name">Name <span>*</span> </label>
+                        <select class="form-control chosen-multiple" style="width: 100%;" id="user-for-rules">
+                            @foreach (var item in UsersNotExistInRole)
+                            {
+                                <option value="@item.Id">@HelperClass.GetFullNameOfUser(item)</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+
+                <button type="button" onclick="AddUserToRoles()" class="btn btn-success"><i class="fa fa-plus"></i> &nbsp; Add user(s)</button>
+                <button class="btn btn-danger" data-dismiss="modal"><i class="fa fa-remove"></i> &nbsp; Cancel</button>
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div>
+    <!-- /.modal-dialog -->
+</div><!-- /.modal -->
+<!--Manage Available Apps modal-->
+<div class="modal fade left" id="add-app" role="dialog" aria-labelledby="add-app">
+
+</div>
+<!-- /.modal -->
+<!-- add-role -->
+<div class="modal fade left" id="add-role" role="dialog" aria-labelledby="add-role">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Add a Role</h5>
+            </div>
+            <div class="modal-body">
+                <form id="add-role-domain">
+                    <div class="well tan">
+                        <div class="form-group">
+                            <label for="name">Name <span>*</span> </label>
+                            <input type="text" required name="roleDomainName" id="txtRoleDomainName" class="form-control">
+                        </div>
+                    </div>
+
+                    <button type="button" onclick="AddRoleDomain()" class="btn btn-success"><i class="fa fa-plus"></i> &nbsp; Add role</button>
+                    <button type="button" class="btn btn-danger" data-dismiss="modal"><i class="fa fa-remove"></i> &nbsp; Cancel</button>
+                </form>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+<!--tag modal-->
+<div class="modal fade left" id="app-detail" role="dialog" aria-labelledby="app-detail">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title"></h5>
+            </div>
+            <div class="modal-body">
+
+                <img id="app-detail-image" src="" class="img-responsive center-sm" style="margin: 0 auto 30px auto;">
+
+                <div class="text-center">
+                    <h1 id="app-detail-name"></h1>
+                    <p id="app-detail-description" class="app-description" style="margin: 0 10%;">
+
+                    </p>
+
+
+                    <ul class="app-features">
+                        <li>
+                            <div class="img">
+                                <i class="fa fa-star"></i>
+                            </div>
+                            <div class="infotxt">
+                                <p id="app-detail-adpage">
+
+                                </p>
+                            </div>
+                        </li>
+
+                    </ul>
+
+
+                    <style>
+                        .app-description {
+                            list-style-type: none;
+                            margin: 0 10%;
+                            padding: 0;
+                            display: flex;
+                            flex-direction: row;
+                            flex-wrap: wrap;
+                            justify-content: space-between;
+                        }
+
+                        .app-features {
+                            list-style-type: none;
+                            margin: 60px 10% 0 10%;
+                            padding: 0;
+                        }
+
+                            .app-features li {
+                                display: flex;
+                                flex-direction: row;
+                                flex-wrap: wrap;
+                                justify-content: space-between;
+                                margin-bottom: 30px;
+                            }
+
+                                .app-features li .img {
+                                    align-self: center;
+                                    flex: 0 0 80px;
+                                }
+
+                                    .app-features li .img i {
+                                        color: rgba(0, 0, 0, 0.2);
+                                        font-size: 22px;
+                                    }
+
+                                .app-features li .infotxt {
+                                    text-align: left;
+                                    flex: 1;
+                                    align-self: center;
+                                }
+
+                                    .app-features li .infotxt p {
+                                        margin: 0;
+                                        padding: 0;
+                                    }
+                    </style>
+                    <br /><br />
+                    <button class="btn btn-info community-button" style="max-width: 140px;">Website</button>
+                    <button class="btn btn-primary community-button" style="max-width: 140px;">Contact Us</button>
+                    <br />
+                </div>
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+<div class="modal fade left" id="mbmaccount" role="dialog" aria-labelledby="mbmaccount" style="display: none;"></div>
+<div class="modal fade left" id="app-bookkeeping-treeview" role="dialog" aria-labelledby="app-bookkeeping-treeview"></div>
+<style>
+    .checkbox label .toggle, .checkbox-inline .toggle {
+        margin-left: -20px;
+        margin-right: 5px !important;
+    }
+</style>
+<script>
+    var apiDocRetrievalUrl = '@((string)ViewBag.DocRetrievalUrl)';
+    var domainStatusClose = @((int)QbicleDomain.DomainStatusEnum.Closed);
+    var domainStatusOpened = @((int)QbicleDomain.DomainStatusEnum.Open);
+    function showTab(tabId,elm){
+        $('ul.app_main_nav li').removeClass('active');
+        if(elm)
+        {
+            $(elm).parent().addClass('active');
+        }
+        $('.tabcontent').hide();
+
+        //update Active Tab
+        updateURL("tab", tabId.substring(1));
+
+        setTimeout(function(){
+            //$(window).scrollTop(0);
+            $(tabId).show();
+        },50);
+    }
+    $(document).ready(function (e) {
+        initExtensionRequestHistoryDtTable();
+
+        $('#extension-datesearch').on('apply.daterangepicker', function (ev, picker) {
+            $(this).val(picker.startDate.format($dateFormatByUser.toUpperCase()) + ' - ' + picker.endDate.format($dateFormatByUser.toUpperCase()));
+            $("#extension-request-list").DataTable().ajax.reload();
+        });
+        $('#extension-datesearch').on('cancel.daterangepicker', function (ev, picker) {
+            $(this).val('');
+            $("#extension-request-list").DataTable().ajax.reload();
+        });
+
+        $("#extension-keysearch").keyup(delay(function () {
+            $("#extension-request-list").DataTable().ajax.reload();
+        }, 1000));
+
+        //Check active Tab
+        var activeTab = '@Request["tab"]';
+        if (activeTab != "") {
+            $("li[role='presentation'] a[href='#" + activeTab + "']").trigger('click');
+        }
+
+        //Check to run into history section of Extension Request Tab
+        var currentTraderTab = '@Request["tabActive"]';
+        if (currentTraderTab.toLocaleLowerCase() == "extensionhistory") {
+            LoadingOverlay();
+            $('ul.app_main_nav li').removeClass('active');
+            var elm = $('li[role="presentation"] a[href="#ExtensionRequest"]');
+            if (elm) {
+                $(elm).parent().addClass('active');
+            }
+            $('.tabcontent').hide();
+            setTimeout(function () {
+                //$(window).scrollTop(0);
+                $("#ExtensionRequest").show();
+                $("#extension-history-nav").trigger('click');
+            }, 50);
+            LoadingOverlayEnd();
+        }
+    });
+</script>
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/qbicles.adminaccount.js"></script>
+        <script src="~/Scripts/dev/administration.admin.app.js"></script>
+        <script src="~/Scripts/dev/salesmarketing.app.valid.js"></script>
+
+    }
+    else
+    {
+        <script src="~/Scripts/dev/qbicles.adminaccount.js"></script>
+        <script src="~/Scripts/dev/administration.admin.app.js"></script>
+        <script src="~/Scripts/dev/salesmarketing.app.valid.min.js"></script>
+    }
+}

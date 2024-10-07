@@ -1,0 +1,745 @@
+﻿@using Qbicles.Models.Trader
+@using Qbicles.Models.Qbicles
+@using Qbicles.BusinessRules; 
+@model CashAccountTransaction
+@{
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var workGroupTransfer = (List<WorkGroup>)ViewBag.WorkgroupTransfer;
+    var traderCashAccount = (TraderCashAccount)ViewBag.TraderCashAccount;
+    var paymentMethods = (List<PaymentMethod>)ViewBag.PaymentMethods;
+    var contactGroups = (List<TraderContactGroup>)ViewBag.ContactGroups;
+    var countries = (List<Country>)ViewBag.Countries;
+    var locationId = ViewBag.LocationId;
+    var contacts = (List<TraderContact>)ViewBag.Contacts;
+    //var invoices = (List<Invoice>)ViewBag.Invoices ?? new List<Invoice>();
+    var invoiceTable = "block";
+    var invoiceSelect = "block";
+    if (Model.AssociatedInvoice == null)
+    {
+        invoiceTable = "block";
+        invoiceSelect = "none";
+    }
+    else
+    {
+        invoiceTable = "none";
+        invoiceSelect = "block";
+    }
+    var invoiceSelected = Model.AssociatedInvoice == null ? new Invoice() : Model.AssociatedInvoice;
+    var showAmount = "none";
+    var showInvoice = "none";
+    var showContact = "none";
+    if (Model.Id > 0)
+    {
+        showAmount = "block";
+        if (Model.AssociatedInvoice != null)
+        {
+            showContact = "none";
+            showInvoice = "block";
+        }
+        else if (Model.AssociatedInvoice == null && Model.Contact != null)
+        {
+            showContact = "block";
+            showInvoice = "none";
+        }
+        else if (Model.AssociatedInvoice == null && Model.Contact == null)
+        {
+            showContact = "none";
+            showInvoice = "none";
+            if (Model.Amount == 0 && string.IsNullOrEmpty(Model.Description) && Model.AssociatedFiles.Count == 0)
+            {
+                showAmount = "none";
+            }
+        }
+    }
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+
+
+}
+<style>
+    .valid-select + label.error {
+        position: absolute;
+        right: 15px;
+        top: 60px;
+    }
+
+        .valid-select + label.error + span {
+            border: 1px solid #B84C4C;
+        }
+</style>
+<div class="modal-dialog modal-xl" role="document">
+    <div class="modal-content">
+        <div class="modal-header">
+            <input id="tradercashaccount_id" value="@traderCashAccount.Id" type="hidden" />
+            <input id="destinationAccount_id" value="@(Model.DestinationAccount?.Id??0)" type="hidden" />
+            <input id="originatingAccount_id" value="@(Model.OriginatingAccount?.Id??0)" type="hidden" />
+            <input id="workgroup-location-id" value="@(Model.Workgroup?.Location.Id??0)"type="hidden"/>
+            <input id="cashaccounttransaction_id" value="@Model.Id" type="hidden" />
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            @if (Model.Id > 0)
+            {
+                <h5 class="modal-title">Edit a payment</h5>
+            }
+            else
+            {
+                <h5 class="modal-title">Add a payment</h5>
+            }
+        </div>
+        <div class="modal-body">
+
+            <div class="row">
+                <div class="col-xs-12 col-md-4">
+                    <form id="form_workgroup">
+                        <div class="activity-overview generic" style="padding: 20px; margin-bottom: 30px;">
+                            <div class="form-group" style="margin: 0;">
+                                <label for="workgroup">Assign a Workgroup to this Payment</label>
+                                <select name="workgroup" id="transfer-workgroup-select" class="form-control select2 select-modal" style="width: 100%;" onchange="WorkGroupSelectedChange()">
+                                    @foreach (var wg in workGroupTransfer)
+                                    {
+                                        if (Model.Workgroup != null && Model.Workgroup.Id == wg.Id)
+                                        {
+                                            <option value="@wg.Id" selected>@wg.Name</option>
+                                        }
+                                        else
+                                        {
+                                            <option value="@wg.Id">@wg.Name</option>
+                                        }
+                                    }
+                                </select>
+                            </div>
+                            @if (Model.Workgroup != null)
+                            {
+                                <div class="preview-workgroup" style="display: block;">
+                                    <br />
+                                    <table class="table app_specific" style="margin: 0;">
+                                        <tr>
+                                            <td><h5>Location</h5></td>
+                                            <td class="location_name">@Model.Workgroup.Location.Name</td>
+                                        </tr>
+                                        <tr>
+                                            <td><h5>Process</h5></td>
+                                            <td class="workgroup_process">
+                                                @{
+                                                    foreach (var name in Model.Workgroup.Processes.Select(n => n.Name))
+                                                    {
+                                                        @name <br />
+                                                    }
+                                                }
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td><h5>Qbicle</h5></td>
+                                            <td class="workgroup_qbicle">@Model.Workgroup.Qbicle.Name</td>
+                                        </tr>
+                                        <tr>
+                                            <td><h5>Members</h5></td>
+                                            <td class="workgroup_member"><button class="btn btn-info" onclick="ShowGroupMember()" data-toggle="modal" data-target="#app-trader-workgroup-preview"><i class="fa fa-user"></i> &nbsp; <span>@Model.Workgroup.Members.Count</span></button></td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="preview-workgroup" style="display: none;">
+                                    <br />
+                                    <table class="table app_specific" style="margin: 0;">
+                                        <tr>
+                                            <td><h5>Location</h5></td>
+                                            <td class="location_name">Location name</td>
+                                        </tr>
+                                        <tr>
+                                            <td><h5>Process</h5></td>
+                                            <td class="workgroup_process">Transfers</td>
+                                        </tr>
+                                        <tr>
+                                            <td><h5>Qbicle</h5></td>
+                                            <td class="workgroup_qbicle">Qblicle Name</td>
+                                        </tr>
+                                        <tr>
+                                            <td><h5>Members</h5></td>
+                                            <td class="workgroup_member"><button class="btn btn-info" onclick="ShowGroupMember()" data-toggle="modal" data-target="#app-trader-workgroup-preview"><i class="fa fa-user"></i> &nbsp; <span></span></button></td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            }
+
+                        </div>
+                    </form>
+                </div> <!-- ./div -->
+                <div class="col-xs-12 col-md-8">
+
+                    <div class="activity-overview generic help-text animated bounce">
+                        <i class="fa fa-info-circle"></i>
+                        <p>
+                            Make a payment on account here. If you want to make any other kind of payment (such as against an invoice or remittance), please navigate to the relevant
+                            invoice or remittance first.
+                        </p>
+                    </div>
+                    <form id="form_content">
+                        <div class="activity-overview task" style="padding: 20px 20px 10px 20px; margin-bottom: 25px;">
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label for="type">Type of payment</label>
+                                        <select name="type" id="payment_income" onchange="$('#payment-for').trigger('change');" class="form-control select2 select-modal" style="width: 100%;" data-placeholder="Income or expense?">
+
+                                            @if (Model.DestinationAccount != null && traderCashAccount.Id == Model.DestinationAccount.Id)
+                                            {
+                                                <option value="in" selected>Incoming</option>
+                                            }
+                                            else
+                                            {
+                                                <option value="in">Incoming</option>
+                                            }
+                                            @if (Model.OriginatingAccount != null && traderCashAccount.Id == Model.OriginatingAccount.Id)
+                                            {
+                                                <option value="out" selected>Outgoing</option>
+                                            }
+                                            else
+                                            {
+                                                <option value="out">Outgoing</option>
+                                            }
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label for="to">For</label>
+                                        @if (Model.Id > 0)
+                                        {
+                                            if (Model.AssociatedInvoice == null && Model.Contact != null)
+                                            {
+                                                <select name="for" class="form-control select2 select-modal" disabled onchange="paymentforChange(this)" style="width: 100%;" id="payment-for" data-placeholder="Please select">
+                                                    <option value=""></option>
+                                                    <option value="invoice">An invoice</option>
+                                                    <option value="poa" selected>A payment on account</option>
+                                                </select>
+                                            }
+                                            else if (Model.AssociatedInvoice != null && (Model.Contact == null || Model.Contact != null))
+                                            {
+                                                <select name="for" class="form-control select2 select-modal" disabled onchange="paymentforChange(this)" style="width: 100%;" id="payment-for" data-placeholder="Please select">
+                                                    <option value=""></option>
+                                                    <option value="invoice" selected>An invoice</option>
+                                                    <option value="poa">A payment on account</option>
+                                                </select>
+
+                                            }
+                                            else
+                                            {
+                                                <select name="for" class="form-control select2 select-modal" onchange="paymentforChange(this)" style="width: 100%;" id="payment-for" data-placeholder="Please select">
+                                                    <option value=""></option>
+                                                    <option value="invoice">An invoice</option>
+                                                    <option value="poa">A payment on account</option>
+                                                </select>
+                                            }
+
+                                        }
+                                        else
+                                        {
+                                            <select name="for" class="form-control select2 select-modal" onchange="paymentforChange(this)" style="width: 100%;" id="payment-for" data-placeholder="Please select">
+                                                <option value=""></option>
+                                                <option value="invoice">An invoice</option>
+                                                <option value="poa">A payment on account</option>
+                                            </select>
+                                        }
+
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label for="title">Payment method <span>*</span></label>
+                                        <select id="payment-method" class="form-control select2 select-modal" style="width: 100%;">
+                                            @foreach (var method in paymentMethods)
+                                            {
+                                                if (method.Id == Model.PaymentMethod?.Id)
+                                                {
+                                                    <option value="@method.Id" selected>@method.Name</option>
+                                                }
+                                                else
+                                                {
+                                                    <option value="@method.Id">@method.Name</option>
+                                                }
+                                            }
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label for="amount">Reference <span>*</span></label>
+                                        <input id="reference" required="" class="form-control" name="reference" value="@Model.Reference">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div id="contact-selector" style="display: @showContact;">
+
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="to">Choose a contact <span>*</span></label>
+                                            <select name="contact" id="payment_contact" class="form-control select2 select-modal valid-select" style="width: 100%;" data-placeholder="Choose an existing contact">
+                                                <option value=""></option>
+                                                @foreach (var item in contacts)
+                                                {
+                                                    if (Model.Contact != null && Model.Contact.Id == item.Id)
+                                                    {
+                                                        <option value="@item.Id" selected>@item.Name</option>
+                                                    }
+                                                    else
+                                                    {
+                                                        <option value="@item.Id">@item.Name</option>
+                                                    }
+                                                }
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+
+                        </div>
+
+
+
+                        <div id="invoice-selector" style="display: @showInvoice;">
+
+                            <div class="activity-overview generic" style="padding: 20px;">
+
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="search_dt">Search for an invoice</label>
+                                            <input type="text" name="search_dt" id="search_invoice" class="form-control" placeholder="Enter a sales ref, invoice # or contact">
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="daterange">Date range</label>
+                                            <input type="text" id="search_date_range" autocomplete="off" class="form-control daterange" value="" placeholder="Limit to a date range">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <br />
+                                <div class="invoice-select" style="display: @invoiceTable;">
+                                    <table class="datatable table-hover" id="tblInvoices" style="background: #fff; width: 100%;">
+                                        <thead>
+                                            <tr>
+                                                <th>Ref</th>
+                                                <th>Date</th>
+                                                <th>Contact</th>
+                                                <th>Amount <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                                <th>Payments</th>
+                                                <th data-orderable="false">Use</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @*@foreach (var item in invoices)
+                                            {
+                                                <tr class="tr_invoice_@item.Id">
+                                                    <td>#<span class="invoiceid">@item.Id</span></td>
+                                                    <td data-sort="@item.CreatedDate.ToString("yyyy-MM-dd")" class="invoicedate">@item.CreatedDate.ToString("dd/MM/yyyy")</td>
+                                                    <td class="invoicecontact">
+                                                        @if (item.Sale != null)
+                                                        {
+                                                            <a href="/TraderContact/ContactMaster?key=@(HttpUtility.UrlEncode(item.Sale.Purchaser.Key))">@item.Sale.Purchaser.Name</a>
+                                                        }
+                                                        else if (item.Purchase != null)
+                                                        {
+                                                            <a href="/TraderContact/ContactMaster?key=@(HttpUtility.UrlEncode(item.Purchase.Vendor.Key))">@item.Purchase.Vendor.Name</a>
+                                                        }
+                                                    </td>
+                                                    <td class="invoiceamount">@item.TotalInvoiceAmount.ToDecimalPlace(currencySettings)</td>
+                                                    <td class="invoicepayment">@item.Payments.Count</td>
+                                                    <td>
+                                                        <button type="button" class="btn btn-success" onclick="selectInvoice(@item.Id)"><i class="fa fa-check"></i></button>
+                                                    </td>
+                                                </tr>
+                                            }*@
+
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="selected-invoice" style="display: @invoiceSelect;">
+                                    <table class="datatable app_specific" id="community-list2-" style="background: #fff; width: 100%;" data-paging="false">
+                                        <thead>
+                                            <tr>
+                                                <th data-orderable="false">Ref</th>
+                                                <th data-orderable="false">Date</th>
+                                                <th data-orderable="false">Contact</th>
+                                                <th data-orderable="false">Amount <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                                <th data-orderable="false">Payments</th>
+                                                <th data-orderable="false">Options</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+
+                                            <tr>
+                                                <td>#<span id="invoice_id">@invoiceSelected.Id</span></td>
+                                                <td id="invoice_date" data-sort="@invoiceSelected.CreatedDate.ToString("yyyy-MM-dd")">@invoiceSelected.CreatedDate.ToString("dd/MM/yyyy")</td>
+                                                <td id="invoice_contact">
+                                                    @if (invoiceSelected.Sale != null)
+                                                    {
+                                                        <a href="/TraderContact/ContactMaster?key=@(HttpUtility.UrlEncode(invoiceSelected.Sale.Purchaser.Key))">@invoiceSelected.Sale.Purchaser.Name</a>
+                                                    }
+                                                    else if (invoiceSelected.Purchase != null)
+                                                    {
+                                                        <a href="/TraderContact/ContactMaster?key=@(HttpUtility.UrlEncode(invoiceSelected.Purchase.Vendor.Key))">@invoiceSelected.Purchase.Vendor.Name</a>
+                                                    }
+                                                </td>
+                                                <td id="invoice_amount">@invoiceSelected.TotalInvoiceAmount.ToDecimalPlace(currencySettings)</td>
+                                                <td id="invoice_paayment">@invoiceSelected.Payments.Count</td>
+                                                <td><button type="button" class="btn btn-warning" onclick="$('.selected-invoice').hide(); $('.invoice-select').show(); clearValue();"><i class="fa fa-pencil"></i> &nbsp; Change invoice</button></td>
+                                            </tr>
+
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <br />
+                        </div>
+
+
+
+
+                        <div class="activity-overview task" id="payment-specifics" style="display: @showAmount; padding: 20px;">
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-6">
+                                    <label for="amount">Amount</label>
+                                    <div class="input-group" style="padding-bottom: 20px;">
+                                        <span class="input-group-addon">@currencySettings.CurrencySymbol</span>
+                                        <input type="text" id="payment_amount" class="form-control isnumber" name="amount" value="@Model.Amount.ToDecimalPlace(currencySettings)">
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label for="description">Description</label>
+                                        <input type="text" name="description" id="payment_description" value="@Model.Description" class="form-control">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group" style="margin: 0;">
+                                        <label for="description">Attachments</label><br />
+                                        <button type="button" class="btn btn-info" onclick="ShowTransactionAttachments(@Model.Id)"><i class="fa fa-paperclip"></i> &nbsp; <span id="span-attachment-count">@Model.AssociatedFiles.Count</span> attachment</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </form>
+                    <br />
+                    <button type="button" class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="SaveCashBankPayment('Draft')">Save draft</button>
+                    <button type="button" class="btn btn-success" onclick="SaveCashBankPayment('PendingReview')">Send to review</button>
+
+                </div>
+            </div>
+
+
+        </div>
+
+    </div><!-- /.modal-content -->
+</div>
+<div class="modal fade" id="attachments-view-payment" role="dialog" aria-labelledby="attachments-view">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" onclick="CloseAddCashBankAttachment()" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Manage Attachments</h5>
+            </div>
+            <div class="modal-body">
+                <div id="transaction-attachments" class="row">
+                    <div class="col-xs-12 col-md-6">
+
+                        <div class="activity-overview task" style="margin-bottom: 40px;">
+
+                            <div name="add_attachment" class="attachments_0">
+
+                                <div class="repeater_wrap">
+                                    @foreach (var item in Model.AssociatedFiles)
+                                    {
+                                        <div class="row attachment_row att-id-@item.Id">
+                                            <div class="col-xs-12">
+                                                <div class="form-group">
+                                                    <label for="name">Name</label>
+                                                    <input id="file_id_@(Model.AssociatedFiles.IndexOf(item)+1)" type="hidden" value="@item.Id" />
+                                                    <input id="inputiconpath_edit@(Model.AssociatedFiles.IndexOf(item)+1)" type="hidden" value="@item.FileType.IconPath" />
+                                                    <input type="text" name="name" value="@item.Name" class="form-control inputfilename@(Model.AssociatedFiles.IndexOf(item) + 1)" />
+                                                </div>
+                                            </div>
+                                            <div class="col-xs-12">
+                                                <div class="form-group">
+                                                    <label for="file">File</label>
+                                                    <input type="file" disabled name="file" value="@item.MediaFolder.Name" onchange="ChangeFileCashBankAttachment(this, @(Model.AssociatedFiles.IndexOf(item) + 1), 0)" class="form-control inputfile">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+
+
+                                </div>
+                                <button type="button" onclick="AddCashBankAttachmentAnother(0)" class="btn btn-info"><i class="fa fa-plus"></i> &nbsp; Add another</button>
+                                <button type="button" onclick="ConfirmCashBankAttachmentAddViewer(0)" class="btn btn-success"><i class="fa fa-check"></i> &nbsp; Add selected files to list</button>
+                            </div>
+                        </div>
+
+                    </div>
+                    <div class="col-xs-12 col-md-6">
+
+                        <ul id="domain-change-list" class="domain-change-list unstyled" style="margin-top: 0;">
+                            @foreach (var item in Model.AssociatedFiles)
+                            {
+                                <li id="att-@item.Id">
+                                    <input type="hidden" class="file-id" value="@item.Id" />
+                                    <button class="btn btn-danger" onclick="RemoveCashBankAttachment(@item.Id)">
+                                        <i class="fa fa-trash"></i>
+                                    </button>
+                                    <a href="javascript:void(0)">
+                                        <img src="@item.VersionedFiles[0].FileType.IconPath"
+                                             style="max-width: 80px; height: auto; padding-right: 10px;">@(item.Name + "." + item.VersionedFiles[0].FileType.Extension)
+                                    </a>
+                                </li>
+                            }
+                        </ul>
+
+                    </div>
+                </div>
+                <br />
+                <button type="button" class="btn btn-danger" onclick="CloseCashBankAttachment()">Cancel</button>
+                <button type="button" class="btn btn-success" onclick="CloseCashBankAttachment()"><i class="fa fa-save"></i> &nbsp; Finish &amp; save</button>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+<div class="modal fade" id="app-trader-add-contact" role="dialog" aria-labelledby="app-trader-add-contact">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" onclick="CloseAddContact()" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+                <h5 class="modal-title">
+                    <span id="modal-title-contact">Add a contact</span>
+                </h5>
+            </div>
+            <div class="modal-body">
+
+                <form class="form-group" id="form_contact_add" enctype="multipart/form-data" novalidate="novalidate">
+                    <div class="activity-overview task" style="padding: 20px;">
+                        <input id="contact-id" name="Id" hidden="" />
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="group">Assign to a group</label>
+                                    <select id="group-contact-id" name="groupId" class="form-control select2 select-modal" style="width: 100%;">
+                                        @foreach (var group in contactGroups)
+                                        {
+                                            <option value="@group.Id">@group.Name</option>
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="name">Name <span>*</span></label>
+                                    <input id="contact-name" type="text" name="Name" required="" class="form-control">
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="avatar">Avatar</label>
+                                    <input type="hidden" id="trader-contact-object-key" name="mediaObjectKey" />
+                                    <input type="hidden" id="trader-contact-object-name" name="mediaObjectName" />
+                                    <input type="hidden" id="trader-contact-object-size" name="mediaObjectSize" />
+                                    <input id="trader-contact-avatar-upload" type="file" name="contactAvatar" class="form-control">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="company">Company</label>
+                                    <input id="contact-company" type="text" name="CompanyName" class="form-control">
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="job">Job title </label>
+                                    <input id="contact-job" type="text" name="JobTitle" class="form-control">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="phone">Phone</label>
+                                    <input id="contact-phone" type="text" name="PhoneNumber" class="form-control">
+                                </div>
+                                <input id="contact-address-id" name="addressId" value="0" hidden="" />
+                            </div>
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="email">Email <span>*</span></label>
+                                    <input id="contact-email" type="email" name="Email" required="" class="form-control">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="address1">Address line 1<span>*</span></label>
+                                    <input type="text" id="AddressLine1" name="AddressLine1" required="" class="form-control">
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="address2">Address line 2</label>
+                                    <input type="text" id="AddressLine2" name="AddressLine2" class="form-control">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="city">City</label>
+                                    <input type="text" id="City" name="City" class="form-control">
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="state">State</label>
+                                    <input type="text" id="State" name="State" class="form-control">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="country">Country</label>
+                                    <select id="CountryName" name="CountryName" class="form-control select2 select-modal" style="width: 100%;">
+                                        @foreach (var c in countries)
+                                        {
+                                            if (c.CommonName == "Nigeria")
+                                            {
+                                                <option value="@c.CommonName" selected>@c.CommonName</option>
+                                            }
+                                            else
+                                            {
+                                                <option value="@c.CommonName">@c.CommonName</option>
+                                            }
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="postcode">Postcode</label>
+                                    <input type="text" id="PostCode" name="PostCode" class="form-control">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <div class="form-group" style="margin: 0;">
+                                    <label for="customer-account">Select customer account</label><br />
+                                    <br />
+                                    <input id="accountId" name="accountId" hidden="" />
+                                    <button class="btn btn-info addbtnaccount" onclick="LoadAccountTree()" data-toggle="modal" data-target="#app-bookkeeping-treeview"><i class="fa fa-plus"></i> &nbsp; Choose account</button>
+                                    <p class="accountInfo" style="display: inline-block; font-family: 'Roboto', Arial, sans-serif; font-size: 12px; padding: 0 10px 0 0;"></p>
+                                    <button class="btn btn-small btn-warning editbtnaccount" style="display: none;" data-toggle="modal" onclick="LoadAccountTree()" data-target="#app-bookkeeping-treeview">
+                                        <i class="fa fa-pencil"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </form>
+
+
+                <br />
+                <a href="javascript:void(0);" onclick="CloseAddContact()" class="btn btn-danger"><i class="fa fa-remove"></i> &nbsp; Cancel</a>
+                <a class="btn btn-success" onclick="SaveCashBankContactAdd()"><i class="fa fa-save"></i> &nbsp;Finish & Save</a>
+
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+    <!-- /.modal-dialog -->
+</div>
+<div class="modal fade left" id="app-bookkeeping-treeview" role="dialog" aria-labelledby="app-bookkeeping-treeview">
+    
+</div>
+<script src="~/Scripts/dev/qbicle.formatnumber.min.js"></script>
+<script src="~/Scripts/dev/trader.cashbank.attachment.js"></script>
+@if (Model.AssociatedFiles != null && Model.AssociatedFiles.Count == 0)
+{
+    <script>
+        AddCashBankAttachmentAnother(0);
+    </script>
+}
+<script>
+    initModalAddPayment();
+    $(".select-modal").select2();
+    // filter date
+    //$.fn.dataTable.ext.search.push(
+    //    function (settings, data, dataIndex) {
+    //        if ($('#search_date_range').val().toString().trim() === '') return true;
+    //        var min = moment(($('#search_date_range').val().split('-')[0] + '').trim(), "DD/MM/YYYY");;
+    //        var max = moment(($('#search_date_range').val().split('-')[1] + '').trim(), "DD/MM/YYYY");;
+    //        var startDate = moment((data[1] + '').trim(), "DD/MM/YYYY");
+    //        if (min == null && max == null) { return true; }
+    //        if (min == null && startDate <= max) { return true; }
+    //        if (max == null && startDate >= min) { return true; }
+    //        if (startDate <= max && startDate >= min) { return true; }
+    //        return false;
+    //    }
+    //);
+
+    //$("#community-list1-").DataTable().draw();
+    //$("#community-list2-").DataTable().draw();
+    
+    //initJsTree();
+    
+    
+
+
+    
+
+
+
+
+</script>
+<style>
+    input[type='number'] {
+        -moz-appearance: textfield;
+    }
+
+    #community-list1-_length label > span > span > span {
+        padding-top: 3px;
+        margin-top: 10px;
+    }
+
+    #community-list2-_length label > span > span > span {
+        padding-top: 3px;
+        margin-top: 10px;
+    }
+
+    #community-list1_filter, .dataTables_filter {
+        display: none;
+    }
+
+    input::-webkit-outer-spin-button,
+    input::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+    }
+</style>

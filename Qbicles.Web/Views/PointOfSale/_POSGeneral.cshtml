@@ -1,0 +1,239 @@
+﻿@using Qbicles.Models
+@using Qbicles.BusinessRules
+@using Qbicles.Models.Trader;
+@using Qbicles.Models.Trader.SalesChannel;
+@using Qbicles.Models.Trader.ODS;
+@model PosSettings
+@{
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var currentDomain = (QbicleDomain)ViewBag.CurrentDomain;
+    var posStatus = Qbicles.BusinessRules.HelperClass.EnumModel.GetEnumValuesAndDescriptions<PrepQueueStatus>();
+
+    var workgroups = (List<WorkGroup>)ViewBag.Workgroups ?? new List<WorkGroup>();
+    var contacts = (List<TraderContact>)ViewBag.Contacts ?? new List<TraderContact>();
+    var lstCurrencies = Enum.GetValues(typeof(MoneyCurrency)).Cast<MoneyCurrency>().ToList();
+
+    if (Model.DefaultWalkinCustomer == null)
+    {
+        Model.DefaultWalkinCustomer = new TraderContact();
+    }
+    if (Model.DefaultWorkGroup == null)
+    {
+        Model.DefaultWorkGroup = new WorkGroup();
+    }
+    var type = (string)ViewBag.SettingType;// = "GeneralChannel";
+    var display = "";
+    var css1 = "";
+    var css2 = "";
+    if (type == "General")
+    {
+        display = "none";
+        css1 = "";
+        css2 = "col-xs-12 col-sm-12 col-lg-12";
+    }
+    else
+    {
+        display = "block";
+        css1 = "col-xs-12 col-sm-4 col-md-3";
+        css2 = "col-xs-12 col-sm-8 col-lg-9";
+    }
+}
+
+<!-- General -->
+
+
+<div class="@css1" style="display:@display">
+    <div class="flex-grid qbicles-dash-grid theme-labels">
+
+        <article class="col">
+            <div class="qbicle-opts">
+            </div>
+            <a href="#">
+                <div class="avatar" style="background-image: url('@Url.Content("~/Content/DesignStyle/img/icon_pospayments.png")');">&nbsp;</div>
+                <h1 style="color: #333;">Point of Sale</h1>
+            </a>
+
+            <br>
+            <ul id="tabB2cConfig" class="nav nav-stacked nav-pills nav-marketing" style="margin-bottom: 0;">
+                <li class="active"><a href="#tab-pos-general" data-toggle="tab">General</a></li>
+            </ul>
+
+        </article>
+
+    </div>
+</div>
+<div class="@css2">
+
+    <div class="tab-content mdv2-col-dash">
+
+
+        <!-- General -->
+        <div class="tab-pane fade in active" id="tab-pos-general">
+
+            <div class="tab-pane fade in active" id="tab-general">
+
+                <div class="well custom" style="padding-bottom: 10px;">
+                    <form id="pos_general_form">
+                        <input type="hidden" id="setting_id" value="@Model.Id" />
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="qbicles">Default initial status of POS order</label>
+                                    <select id="pos-order" class="form-control select2Pos" style="width: 100%;" tabindex="-1" aria-hidden="true">
+                                        @foreach (var item in posStatus.ToList())
+                                        {
+                                            <option @((int)Model.OrderStatusWhenAddedToQueue == item.Key ? "selected" : "") value="@item.Key">@item.Value</option>
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label>Rollover time</label>
+                                            <input id="rollover-time" type="time" name="rollover" class="form-control singletime" value="@Model.RolloverTime">
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label>Max number of POS Contact results</label>
+                                            <input type="number" min="1" max="100" id="max-contact-result" class="form-control" value="@Model.MaxContactResult">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="">Order Management Workgroup</label>
+                                    <select id="setting_workgroup" class="form-control select2Pos" style="width: 100%;">
+                                        <option value=""></option>
+                                        @foreach (var item in workgroups)
+                                        {
+                                            if (item.Id == Model.DefaultWorkGroup.Id)
+                                            {
+                                                <option value="@item.Id" selected>@item.Name</option>
+                                            }
+                                            else
+                                            {
+                                                <option value="@item.Id">@item.Name</option>
+                                            }
+                                        }
+
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="">Sales Order Customer</label><br />
+                                    <select id="setting_contact" class="form-control select2Pos" style="width: 100%;">
+                                        @if (Model.DefaultWalkinCustomer != null)
+                                        {
+                                            <option value="@Model.DefaultWalkinCustomer.Id" selected>@Model.DefaultWalkinCustomer.Name</option>
+                                        }
+                                        else
+                                        {
+                                            <option value=""></option>
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="currency">Currency symbol</label>
+                                    <select name="currency" id="pos_monney_currency" class="form-control select2Pos" style="width: 100%;">
+                                        <option value=""></option>
+                                        @{
+                                            foreach (var currency in lstCurrencies)
+                                            {
+                                                if (Model.MoneyCurrency == currency.GetDescription())
+                                                {
+                                                    <option value="@currency.GetDescription()" selected>@currency.ToString() @currency.GetDescription()</option>
+                                                }
+                                                else
+                                                {
+                                                    <option value="@currency.GetDescription()">@currency.ToString() @currency.GetDescription()</option>
+                                                }
+                                            }
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="decimal">Decimal places</label>
+                                    <select name="decimal" id="pos_decimal_place" class="form-control select2Pos" style="width: 100%;">
+                                        <option value="0" @(Model != null && Model.MoneyDecimalPlaces == (int)CurrencySetting.DecimalPlaceEnum.None ? "selected" : "")>None</option>
+                                        <option value="1" @(Model != null && Model.MoneyDecimalPlaces == (int)CurrencySetting.DecimalPlaceEnum.One ? "selected" : "")>1 (1,000.0)</option>
+                                        <option value="2" @(Model != null && Model.MoneyDecimalPlaces == (int)CurrencySetting.DecimalPlaceEnum.Two ? "selected" : "")>2 (1,000.00)</option>
+                                        <option value="3" @(Model != null && Model.MoneyDecimalPlaces == (int)CurrencySetting.DecimalPlaceEnum.Three ? "selected" : "")>3 (1,000.000)</option>
+
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group validate-control">
+                                    <label for="rhead">Receipt header</label>
+                                    <textarea name="rhead" class="form-control" id="pos_receipt_header" style="max-width: 100%; height: 80px;">@Html.Raw(Model.ReceiptHeader)</textarea>
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group validate-control">
+                                    <label for="rfoot">Receipt footer</label>
+                                    <textarea name="rfoot" class="form-control" id="pos_receipt_footer" style="max-width: 100%; height: 80px;">@Html.Raw(Model.ReceiptFooter)</textarea>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="rhead">Product placeholder image</label>
+
+                                    <img src="@api@Model.ProductPlaceholderImage" class="img-responsive preview-feature" style="max-width: 180px; height: auto;">
+                                    <input hidden id="pos_placeholder_image_key" />
+                                    <input id="pos_placeholder_image" type="file" class="form-control" name="fileFeaturedImage" accept=".jpg,.jpeg,.png,.webp" data-target=".preview-feature">
+
+                                </div>
+                            </div>
+                        </div>
+                        <button type="reset" id="resetbutton" onclick="initForm()" class="btn btn-danger">Cancel</button>
+                        <button type="button" class="btn btn-success" onclick="SettingChanged()">Confirm</button>
+                    </form>
+                </div>
+
+            </div>
+        </div>
+        <!-- END General -->
+    </div>
+
+</div>
+
+<!-- END General -->
+
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/pos.general.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/pos.general.js"></script>
+    }
+}
+<script>
+    function initForm() {
+        setTimeout(function () {
+            $('.select2Pos').select2({ placeholder: 'Please select' });
+            $('.checkbox.toggle input').bootstrapToggle();
+        }, 100);
+    }
+    $(document).ready(function () {
+        initSelect2MethodAJAX('setting_contact', '/Select2Data/GetTraderContact');
+    })
+</script>

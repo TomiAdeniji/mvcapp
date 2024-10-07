@@ -1,0 +1,112 @@
+@using Qbicles.Models.SalesMkt;
+@model SocialCampaignPost
+@{ var docUrl = ViewBag.DocRetrievalUrl;
+    var account = (SocialNetworkAccount)Model.SharingAccount.FirstOrDefault();
+    var facebookAccount = (FaceBookAccount)Model.SharingAccount.FirstOrDefault(a => account.Type.Name.Equals("FaceBook"));
+    var twitterAccount = (TwitterAccount)Model.SharingAccount.FirstOrDefault(a => account.Type.Name.Equals("Twitter"));
+    var type = ViewBag.Type;
+    var id = ViewBag.Id;
+    var queuePostId = ViewBag.IdQueuePost;
+    var versionFile = Model.ImageOrVideo.VersionedFiles.FirstOrDefault();
+}
+<input type="hidden" id="id" value="@id" />
+<input type="hidden" id="type" value="@type" />
+<div class="modal-dialog" role="document">
+    <div class="modal-content">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <h5 class="modal-title">&nbsp;</h5>
+        </div>
+        <div class="modal-body text-center" style="padding-bottom: 15px;">
+
+            <div style="display: none;" class="preparing">
+                <h1 class="ro" style="margin-top: 60px;">Preparing your post</h1>
+                <p style="margin-bottom: 0;">Please wait while we gather all the assets for your post...</p>
+                <img src="@Url.Content("/Content/DesignStyle/img/loading-new.gif")" style="width: 200px; height: auto; margin-bottom: 30px;">
+            </div>
+            <div class="download-post text-left fadeIn" @*style="display: none;"*@>
+                <div class="social-post" style="margin: 0 0 30px 0; border: 1px solid #e1e1e1; max-width: 800px;">
+                    <div class="social-heading">
+                        @*@if (facebookAccount != null)
+                            {
+                                <div class="social-avatar" style="background-image: url('@facebookAccount.AvatarUrl');"></div>
+                                <div class="social-content">
+                                    <small><strong style="color: #14171a;">@facebookAccount.DisplayName</strong><br />@facebookAccount.UserName</small>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="social-avatar" style="background-image: url('@twitterAccount.AvatarUrl');"></div>
+                                <div class="social-content">
+                                    <small><strong style="color: #14171a;">@twitterAccount.DisplayName</strong><br />@twitterAccount.UserName</small>
+                                </div>
+                            }*@
+                    </div>
+                    <div class="thepost">
+                        <p id="postcontent">@Model.Content</p>
+                        <button class="btn btn-success clipcopy" data-clipboard-action="copy" data-clipboard-target="#postcontent"><i class="fa fa-paste"></i> &nbsp; Copy to clipboard</button>
+                        <br /><br />
+                        @if (@Model.ImageOrVideo.FileType.Type.Equals("Image File"))
+                        {
+                            <img width="640" height="320" controls="" id="embed" style="display: inline-block;" class="fancybox-video" src="@(docUrl + versionFile.Uri)" />
+
+                        }
+                        else if (@Model.ImageOrVideo.FileType.Type.Equals("Video File"))
+                        {
+                            <video width="640" height="320" controls="" id="embed" style="display: inline-block;" class="fancybox-video">
+                                <source src="@(docUrl + versionFile.Uri)" type="video/mp4">
+                            </video>
+
+                        }
+
+                        <button class="btn btn-success"
+                                onclick="DownloadMedia('@versionFile.Uri','@versionFile.FileType.Extension')" style="margin-top: 10px;">
+                            <i class="fa fa-download"></i> &nbsp; Download @Model.ImageOrVideo.FileType.Type
+                        </button>
+                        <br /><br />
+                    </div>
+                </div>
+                @if (type == "approved")
+                {
+                    <button class="btn btn-primary community-button" onclick="DownloadSocialPost(1);">Download all assets in a ZIP</button>
+                }
+                else
+                {
+                    <button class="btn btn-primary community-button" onclick="DownloadSocialPost(2);">Download all assets in a ZIP</button>
+                }
+
+            </div>
+            <script>
+
+                function DownloadSocialPost(type) {
+                    $('.preparing').show();
+                    $('.download-post').hide();
+                    $.getJSON("/SalesMarketing/GetZipFile", { id: $("#id").val(), type: $("#type").val() }, function (data) {
+                        DownloadMedia(data.Object, 'zip')
+                        $('.preparing').hide();
+                        $('.download-post').fadeIn();
+                        if (type == 1)
+                            ChangePostInApprovedToSent($('#id').val());
+                        else
+                            ChangePostInQueueToSent($('#id').val());
+
+                        $('#download-post').modal("hide");
+                    });
+                }
+
+                $(document).ready(function () {
+                    var clipboard = new ClipboardJS('.clipcopy');
+                    clipboard.on('success', function (e) {
+                        e.clearSelection();
+                        window.alert("Text copied to your clipboard");
+                    });
+
+                    clipboard.on('error', function (e) {
+                        console.error('Action:', e.action);
+                        console.error('Trigger:', e.trigger);
+                    });
+                });
+            </script>
+        </div>
+    </div><!-- /.modal-content -->
+</div><!-- /.modal-dialog -->

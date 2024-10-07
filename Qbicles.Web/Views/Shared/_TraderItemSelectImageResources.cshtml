@@ -1,0 +1,120 @@
+﻿@using Qbicles.Models.Trader;
+@using Qbicles.Models.Trader.Resources
+@model List<ResourceImage>
+@{
+    var categoryResources = (List<ResourceCategory>)ViewBag.ResourceCategorys;
+    var api = (string)ViewBag.DocRetrievalUrl;
+}
+
+<div class="modal-dialog modal-xl" role="document">
+    <div class="modal-content">
+        <div class="modal-header">
+            <button type="button" class="close" onclick="$('#app-trader-resources-image-select').modal('toggle');" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <h5 class="modal-title">Choose an image Resource</h5>
+        </div>
+        <div class="modal-body">
+
+            <div class="well custom" style="padding-bottom: 5px;">
+                <div class="row">
+                    <div class="col-xs-12 col-sm-6 col-lg-4">
+                        <div class="form-group">
+                            <label for="search">Search images</label>
+                            <input type="text" name="search" onkeyup="searchOnImagesResource()" id="selected_reimage_search_dt" class="form-control" placeholder="Search for...">
+                        </div>
+                    </div>
+                    <div class="col-xs-12 col-sm-6 col-lg-3">
+                        <div class="form-group">
+                            <label for="search">Filter by Category</label>
+                            <select name="category" onchange="searchOnImagesResource()" id="selected_category_search_dt" class="form-control select2" style="width: 100%;">
+                                <option value="">Show all</option>
+                                @foreach (var item in categoryResources)
+                                {
+                                    <option value="@item.Name">@item.Name</option>
+
+                                }
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+            <br />
+
+            <table class="datatable table-striped table-hover" id="resource_image_dataselected" style="width: 100%;" data-order='[[1, "asc"]]'>
+                <thead>
+                    <tr>
+                        <th data-orderable="false" style="width: 80px;">Image</th>
+                        <th>Name</th>
+                        <th>Category</th>
+                        <th>Type</th>
+                        <th>Description</th>
+                        <th>Uploaded</th>
+                        <th>Choose image</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model)
+                    {
+                        <tr>
+                            <td>
+                                <a href="@api@item.FileUri" class="table-avatar image-pop" rel="resources" style="display: block;
+                        background-image: url('@api@item.FileUri&size=t');">&nbsp;</a>
+                            </td>
+                            <td>@item.Name</td>
+                            <td>@item.Category.Name</td>
+                            <td>@item.Type.Extension.ToUpper()</td>
+                            <td>@item.Description</td>
+                            <td>@item.CreatedDate.ToString("dd/MM/yyyy")</td>
+                            <td><button class="btn btn-success" onclick="selectResourceImage('@item.FileUri', '@item.Name', '@item.Type.Extension')"><i class="fa fa-check"></i></button></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            <br />
+            <a href="#" class="btn btn-danger" onclick="$('#app-trader-resources-image-select').modal('toggle');">Cancel</a>
+            <a href="#" class="btn btn-success" onclick="$('#app-trader-resources-image-select').modal('toggle');">Confirm</a>
+        </div>
+    </div><!-- /.modal-content -->
+</div><!-- /.modal-dialog -->
+
+
+<script>
+    var oTable = $("#resource_image_dataselected");
+    var listKey = [];
+    function searchOnImagesResource() {
+        debugger;
+        listKey = [];
+        if ($('#selected_category_search_dt').val() !== " " && $('#selected_category_search_dt').val() !== "" && $('#selected_category_search_dt').val() !== null) {
+            listKey.push($('#selected_category_search_dt').val());
+        }
+
+        var keys = $('#selected_reimage_search_dt').val();
+        if ($('#selected_reimage_search_dt').val() !== "" && $('#selected_reimage_search_dt').val() !== null && keys.length > 0) {
+            listKey.push(keys);
+        }
+        oTable.DataTable().search(listKey.join("|"), true, false, true).draw();
+    }
+
+
+    oTable.DataTable().search(listKey.join("|"), true, false, true).draw();
+    $('#selected_category_search_dt').select2();
+
+    if (jQuery().fancybox) {
+        $(".image-pop").fancybox({
+            beforeLoad: function () {
+                var el, id = $(this.element).data('title-id');
+
+                if (id) {
+                    el = $('#' + id);
+
+                    if (el.length) {
+                        this.title = el.html();
+                    }
+                }
+            },
+            padding: 0
+        });
+    }
+</script>
+

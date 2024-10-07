@@ -1,0 +1,142 @@
+﻿@using Qbicles.Models.Trader.Pricing;
+@using Qbicles.BusinessRules;
+@model List<PriceBookPrice>
+@{
+    var groupId = (int)ViewBag.groupId;
+    var isPriceCalWithAvgCost = Model.FirstOrDefault()?.ParentPriceBookInstance.IsPriceCalWithAvgCost ?? false;
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+}
+
+<table class="datatable table-striped table-hover price-book-prices-table" id="table-info-@groupId" style="width: 100%;">
+    <thead>
+        <tr>
+            <th data-priority="1">Item</th>
+            <th id="th-avg-cost" data-priority="2">Avg cost <strong>(@currencySettings.CurrencySymbol)</strong></th>
+            <th id="th-latest-cost" data-priority="2">Latest cost <strong>(@currencySettings.CurrencySymbol)</strong></th>
+            <th data-priority="1" data-orderable="false">Markup</th>
+            <th data-priority="1" data-orderable="false">Discount <strong>(@currencySettings.CurrencySymbol)</strong></th>
+            <th data-priority="3">Calculated price <strong>(@currencySettings.CurrencySymbol)</strong></th>
+            <th data-priority="1">Override price <strong>(@currencySettings.CurrencySymbol)</strong></th>
+            <th data-priority="2">Tax</th>
+            <th data-priority="1">Price inc tax <strong>(@currencySettings.CurrencySymbol)</strong></th>
+        </tr>
+    </thead>
+    <tbody>
+        @{
+            foreach (var pbPrice in Model)
+            {
+                string markupPercentage = currencySettings.CurrencySymbol, discountPercentage = currencySettings.CurrencySymbol;
+                <tr>
+                    <td>@pbPrice.Item.Name</td>
+                    <td>@pbPrice.AverageCost.ToDecimalPlace(currencySettings)</td>
+                    <td>@pbPrice.LatestCost.ToDecimalPlace(currencySettings)</td>
+                    <td>
+                        <div class="input-group" style="width: 100%;">
+                            <input type="hidden" class="price-book-price-id" value="@pbPrice.Id" />
+                            <input id="markup-value-@pbPrice.Id" type="number" class="form-control markup-value" name="markup" value="@pbPrice.MarkUp" onchange="ReCalculatePriceRow('@pbPrice.Id')">
+                            <div class="input-group-btn">
+                                <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                    <span id="info-markup-item-@pbPrice.Id" class="markup-percentage">
+                                        @{
+                                            if (pbPrice.IsMarkupPercentage)
+                                            {
+                                                markupPercentage = "%";
+                                            }
+                                        }
+                                        @markupPercentage
+                                    </span> &nbsp; <i class="fa fa-angle-down"></i>
+                                </button>
+                                <ul class="dropdown-menu primary dropdown-menu-right">
+                                    <li><a href="javascript:void(0)" onclick="MarkUpTableChange('%',@pbPrice.Id)">%</a></li>
+                                    <li><a href="javascript:void(0)" onclick="MarkUpTableChange('@currencySettings.CurrencySymbol',@pbPrice.Id)">@currencySettings.CurrencySymbol</a></li>
+                                </ul>
+                            </div>
+                            <!-- /btn-group -->
+                        </div>
+                    </td>
+                    <td>
+                        <div class="input-group" style="width: 100%;">
+                            <input id="discount-value-@pbPrice.Id" type="number" class="form-control user-edited discount-value" name="discount" value="@pbPrice.Discount" onchange="ReCalculatePriceRow('@pbPrice.Id')">
+                            <div class="input-group-btn">
+                                <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                    <span id="info-discount-item-@pbPrice.Id" class="discount-percentage">
+                                        @{
+                                            if (pbPrice.IsDiscountPercentage)
+                                            {
+                                                discountPercentage = "%";
+                                            }
+                                        }
+                                        @discountPercentage
+                                    </span> &nbsp; <i class="fa fa-angle-down"></i>
+                                </button>
+                                <ul class="dropdown-menu primary dropdown-menu-right">
+                                    <li><a href="javascript:void(0)" onclick="DiscountTableChange('%',@pbPrice.Id)">%</a></li>
+                                    <li><a href="javascript:void(0)" onclick="DiscountTableChange('@currencySettings.CurrencySymbol',@pbPrice.Id)">@currencySettings.CurrencySymbol</a></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </td>
+                    <td><span id="calculated-price-@pbPrice.Id">@pbPrice.CalculatedPrice.ToDecimalPlace(currencySettings)</span></td>
+                    <td>
+                        @{
+                            decimal price = 0;
+                            if (pbPrice.IsPriceManuallyUpdated)
+                            {
+                                price = pbPrice.Price;
+                            }
+                        }
+                        <div class="input-group" style="width: 100%;">
+                            <span class="input-group-addon">@currencySettings.CurrencySymbol</span>
+                            <input onchange="ReCalculatePriceRow('@pbPrice.Id')" id="price-value-@pbPrice.Id" type="number" name="fixed" class="form-control price-value" value="@price">
+                        </div>
+                    </td>
+                    <td>
+                        @{
+                            <span id="price-tax-@pbPrice.Id">@pbPrice.TaxValue.ToDecimalPlace(currencySettings)</span>
+                        }
+                    </td>
+                    <td>
+                        <div class="input-group" style="width: 100%;">
+                            <span class="input-group-addon">@currencySettings.CurrencySymbol</span>
+                            <input id="full-price-@pbPrice.Id" onchange="ReCalculatePriceRow('@pbPrice.Id',true)" type="number" name="fixed" class="form-control price-inc-value" value="@pbPrice.FullPrice.ToInputNumberFormat(currencySettings)">
+                        </div>
+                    </td>
+                </tr>
+            }
+        }
+    </tbody>
+</table>
+
+<script>
+
+
+
+    // A $( document ).ready() block.
+    $(document).ready(function() {
+        var $table = $(".price-book-prices-table").DataTable();
+        $table.destroy();
+
+        $(".price-book-prices-table").DataTable({
+            responsive: true,
+            "lengthChange": true,
+            "pageLength": 10,
+            "columnDefs": [
+                {
+                    "targets": 3,
+                    "orderable": false
+                }
+            ],
+            "order": []
+        });
+
+        $(".price-book-prices-table").show();
+
+
+        if ('@isPriceCalWithAvgCost' === "True" && document.getElementById('th-avg-cost') != null)
+            document.getElementById('th-avg-cost').style.background = '#63b9d5';
+        else if (document.getElementById('th-latest-cost') != null)
+            document.getElementById('th-latest-cost').style.background = '#63b9d5';
+
+    });
+</script>

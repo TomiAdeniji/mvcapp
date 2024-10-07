@@ -1,0 +1,117 @@
+﻿@using Qbicles.Models.Trader.Inventory;
+@using Qbicles.BusinessRules;
+@model List<StockAudit>
+@{
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var callBack = (bool)(ViewBag.CallBack ?? false);
+    var dateFormat = (string)ViewBag.CurrentDateFormat;
+    string currentTimeZone = ViewBag.currentTimeZone;
+}
+<table class="datatable table-striped table-hover" style="width: 100%;" id="stockaudit-list">
+    <thead>
+        <tr>
+            <th data-priority="1">Name</th>
+            <th data-priority="2">Workgroup</th>
+            <th data-priority="1">Start</th>
+            <th data-priority="1">End</th>
+            <th data-priority="3">Items</th>
+            <th data-priority="3">Status</th>
+            <th data-priority="1" data-orderable="false">Options</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@item.Name</td>
+                <td>@item.WorkGroup.Name</td>
+                <td>
+                    @if (item.StartedDate > DateTime.MinValue)
+                    {
+                        @item.StartedDate.ConvertTimeFromUtc(currentTimeZone).ToString(dateFormat + ", HH:mm")
+                    }
+                </td>
+                <td>
+                    @if (item.FinishedDate > DateTime.MinValue)
+                    {
+                        @item.FinishedDate.ConvertTimeFromUtc(currentTimeZone).ToString(dateFormat + ", HH:mm")
+                    }
+
+                </td>
+                @if (item.ProductList != null)
+                {
+                    <td>
+                        @item.ProductList.Count
+                    </td>
+                }
+                else
+                {
+                    <td>0</td>
+                }
+                <td>
+                    @switch (item.Status)
+                    {
+                        case ShiftAuditStatus.Draft:
+                            <span class="label label-lg label-primary">Draft</span>
+                            break;
+                        case ShiftAuditStatus.Approved:
+                            <span class="label label-lg label-success">Approved</span>
+                            break;
+                        case ShiftAuditStatus.Denied:
+                            <span class="label label-lg label-warning">Denied</span>
+                            break;
+                        case ShiftAuditStatus.Discarded:
+                            <span class="label label-lg label-info">Discarded</span>
+                            break;
+                        case ShiftAuditStatus.Reviewed:
+                            <span class="label label-lg label-warning">Reviewed</span>
+                            break;
+                        case ShiftAuditStatus.Pending:
+                            <span class="label label-lg label-warning">Pending</span>
+                            break;
+                    }
+                </td>
+                <td>
+                    @if (item.Status == ShiftAuditStatus.Draft)
+                    {
+                        <button class="btn btn-info" data-toggle="modal" onclick="addStockAudit(@item.Id)" data-target="#app-trader-inventory-stock-audit"><i class="fa fa-pencil"></i> &nbsp; Continue</button>
+                    }                    
+                    else
+                    {
+                        <button class="btn btn-primary" onclick="location = '/TraderStockAudits/ShiftAuditMaster?id=@item.Id'"><i class="fa fa-eye"></i> &nbsp; Manage</button>
+                    }
+                </td>
+            </tr>
+        }
+
+    </tbody>
+</table>
+<script>
+
+    $("#search_stockaudit").keyup(function () {
+        $("#stockaudit-list").DataTable().search($(this).val()).draw();
+    });
+    $("#stockaudit-workgroup-filter").on("change",
+        function () {
+            $("#stockaudit-list").DataTable().search($(this).val(), true, false, true).draw();
+        });
+    $("#stockaudit-list").DataTable().search($("#search_stockaudit").val()).draw();
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</script>

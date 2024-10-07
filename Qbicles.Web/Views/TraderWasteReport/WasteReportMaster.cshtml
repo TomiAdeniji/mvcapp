@@ -1,0 +1,446 @@
+﻿@using Qbicles.BusinessRules;
+@using Qbicles.Models.Trader.Inventory;
+@model WasteReport
+@{
+    ViewBag.Title = "Trader - Waste Report #" + Model.Id;
+    var api = (string)ViewBag.DocRetrievalUrl;
+
+    var today = (DateTime)ViewBag.Today;
+    var timeline = (List<ApprovalStatusTimeline>)ViewBag.Timeline;
+    var timelineDate = (List<DateTime>)ViewBag.TimelineDate;
+
+    var wasteStatus = Model.Status;
+    var disabled = Model.Status == WasteReportStatus.StockAdjusted ? "disabled" : "";
+    var wasteStatusString = "Count Started";
+    var wasteStatusLabel = "";
+
+    var timeZone = (string)ViewBag.CurrentTimeZone;
+    switch (Model.Status)
+    {
+        case WasteReportStatus.Started:
+            wasteStatusString = StatusLabelName.Started;
+            wasteStatusLabel = StatusLabelStyle.Pending;
+            break;
+        case WasteReportStatus.Completed:
+            wasteStatusString = StatusLabelName.Completed;
+            wasteStatusLabel = StatusLabelStyle.Reviewed;
+            break;
+        case WasteReportStatus.StockAdjusted:
+            wasteStatusString = StatusLabelName.StockAdjusted;
+            wasteStatusLabel = StatusLabelStyle.Approved;
+            break;
+        case WasteReportStatus.Discarded:
+            wasteStatusString = StatusLabelName.Discarded;
+            wasteStatusLabel = StatusLabelStyle.Discarded;
+            //editValue = false;
+            break;
+    }
+
+    //Export
+    var createdDate2 = DateTime.Now;
+    var user = (Qbicles.Models.ApplicationUser)ViewBag.CurrentUser;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+    var defaultLocation = (Qbicles.Models.Trader.TraderLocation)ViewBag.DefaultLocation;
+    var logoBase64 = (string)ViewBag.DomainLogoBase64;
+}
+@{
+    <style>
+        .transfer .content-block-upper p {
+            text-align: left !important;
+        }
+    </style>
+}
+<input type="hidden" value="@api" id="api_url" />
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail" id="discussion-thread">
+    <div class="tabnav-spacer hidden-xs"></div>
+    <input hidden="" id="trader-waste-id" value="@Model.Id" />
+    <input id="wasteReport_status" type="hidden" value="@Model.Status.ToString()" />
+    <!-- Main content -->
+    <section class="content">
+
+        <div class="row">
+            <div class="col-xs-12 item_detail" style="padding-left: 15px;">
+
+
+                <div class="item_titling">
+                    <span class="item_type">Trader - Waste Report Request</span>
+                    <h3>@Model.Name</h3>
+                    <span class="label label-lg @wasteStatusLabel">@wasteStatusString</span>
+                </div>
+                <div class="clearfix"></div>
+
+                <br />
+
+                <div class="row">
+                    <div class="col-xs-12">
+                        <div class="app_filter">
+                            <div class="row">
+                                <div class="col-xs-12">
+                                    <a href="/Trader/AppTrader" onclick="setTabTrader('itemsproducts','waste-report-tab')" class="btn btn-primary"><i class="fa fa-angle-left"></i> &nbsp; Waste Reports</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+            <div class="col-xs-12">
+
+                <br /><br />
+
+                <div class="row">
+                    <div class="col-xs-12 col-md-8">
+
+
+                        <div class="app_upper_dash text-center">
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-6 col-lg-4">
+                                    <div class="stat_label">
+                                        <span>Submitted</span>
+                                        <h3>@Model.WasteApprovalProcess.StartedDate.ConvertTimeFromUtc(timeZone).ToString("dd.MM.yyyy htt")</h3>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-6 col-lg-4">
+                                    <div class="stat_label">
+                                        <span>Requested by</span>
+                                        <h3>@HelperClass.GetFullNameOfUser(Model.CreatedBy)</h3>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-6 col-lg-4">
+                                    <div class="stat_label" style="padding-bottom: 10px;">
+                                        <span>Items affected</span>
+                                        <h3>@Model.ProductList.Count</h3>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <ul class="app_subnav">
+                                    <li class="active"><a href="#overview" data-toggle="tab">Overview</a></li>
+                                    <li><a href="#items" data-toggle="tab">Wasted stock</a></li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <br /><br />
+
+                        <div class="tab-content">
+
+                            <!-- Overview -->
+                            <div class="tab-pane fade in active" id="overview">
+
+                                <div class="activity-overview task" style="padding: 20px;">
+                                    <div class="row">
+                                        <div class="col-xs-12 col-sm-8">
+
+                                            <h5>Description</h5>
+                                            <p>
+                                                @Model.Description
+                                            </p>
+
+                                        </div>
+                                        <div class="col-xs-12 col-sm-4">
+
+                                            <h5>Workgroup</h5>
+                                            <p>
+                                                <button class="btn btn-info" data-toggle="modal" data-target="#app-trader-workgroup-preview">
+                                                    <i class="fa fa-eye"></i> &nbsp; @Model.Workgroup.Name
+                                                </button>
+                                            </p>
+
+                                        </div>
+
+                                    </div>
+                                </div>
+                                <br /><br />
+                            </div>
+                            <!-- END Overview -->
+                            <!-- Items &amp; products -->
+                            <div class="tab-pane fade" id="items">
+
+                                <!-- Export -->
+                                <div class="btn-group options" style="float: right;">
+                                    <button type="button" class="btn btn-warning dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                        <i class="fa fa-download"></i> &nbsp; Export
+                                    </button>
+                                    <div class="dropdown-menu" id="kt_datatable_example_export_menu" aria-labelledby="dropdownMenuButton" style="background-color: #a37a41;">
+                                        <li>
+                                            <a class="dropdown-item data-qb-excel" href="javascript:void(0)" onclick="GetDataTableContentExport()">Excel</a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item data-qb-csv" href="javascript:void(0)" onclick="GetDataTableContentExport(2)">CSV</a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item data-qb-pdf" href="javascript:void(0)" onclick="GetDataTableContentExport(3)">PDF</a>
+                                        </li>
+                                    </div>
+                                </div>
+
+                                <!--begin::Hide default export buttons-->
+                                <div id="kt_datatable_example_buttons" style="display: none;"></div>
+                                <!--end::Hide default export buttons-->
+
+                                <br />
+
+                                <table class="datatable table-striped table-hover" style="width: 100%;" id="community-list">
+                                    <thead>
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>SKU</th>
+                                            <th>Unit</th>
+                                            <th style="width: 90px;">Observed Inventory</th>
+                                            <th style="width: 90px;">Wasted</th>
+                                            <th style="width: 30%;">Notes</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var item in Model.ProductList)
+                                        {
+                                            <tr class="tr_waste_item_@item.Id">
+                                                <td class="td_waste_name">
+                                                    <span>@item.Product.Name</span>
+                                                    <input type="hidden" value="@item.Id" class="waste_id" />
+                                                </td>
+                                                <td class="td_waste_sku">
+                                                    <span>@item.Product.SKU</span>
+                                                    <input type="hidden" value="@item.Product.Id" class="waste_item_id" />
+                                                </td>
+                                                @{
+                                                    if (wasteStatus == WasteReportStatus.Started)
+                                                    {
+                                                        @*5*@
+                                                        <td>
+                                                            <select id="select-@item.Id" class="form-control" onchange="UpdateWasteItems(@item.Id)" style="width: 100%;">
+                                                                @foreach (var unit in item.Product.Units)
+                                                                {
+                                                                    if (item.CountUnit != null && unit.Id == item.CountUnit.Id)
+                                                                    {
+                                                                        <option selected value="@unit.Id">@unit.Name</option>
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <option value="@unit.Id">@unit.Name</option>
+                                                                    }
+
+                                                                }
+                                                            </select>
+                                                        </td>
+                                                        @*6*@
+                                                        <td>
+                                                            @{
+                                                                var inventory = item.Product.InventoryDetails.FirstOrDefault(q => q.Location.Id == Model.Location.Id)?.CurrentInventoryLevel ?? 0;
+                                                            }
+                                                            @inventory
+                                                        </td>
+                                                        @*7*@
+                                                        <td>
+                                                            <input class="form-control" onchange="UpdateWasteItems(@item.Id)" type="number" id="waste-@item.Id" value="@item.WasteCountValue" />
+                                                        </td>
+                                                    }
+                                                    else
+                                                    {
+                                                        @*5*@
+                                                        <td>
+                                                            <select id="select-@item.Id" disabled class="form-control disabled" style="width: 100%;">
+                                                                @foreach (var unit in item.Product.Units)
+                                                                {
+                                                                    if (item.CountUnit != null && unit.Id == item.CountUnit.Id)
+                                                                    {
+                                                                        <option selected value="@unit.Id">@unit.Name</option>
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <option value="@unit.Id">@unit.Name</option>
+                                                                    }
+
+                                                                }
+                                                            </select>
+                                                        </td>
+                                                        @*6*@
+                                                        <td>
+                                                            @{
+                                                                var inventory = item.Product.InventoryDetails.FirstOrDefault(q => q.Location.Id == Model.Location.Id)?.CurrentInventoryLevel ?? 0;
+                                                            }
+                                                            @inventory
+                                                        </td>
+                                                        @*7*@
+                                                        <td>
+                                                            <input class="form-control disabled" disabled type="number" id="waste-@item.Id" value="@item.WasteCountValue" />
+                                                        </td>
+                                                    }
+                                                }
+
+                                                @*8*@
+                                                <td>
+                                                    @if (wasteStatus == WasteReportStatus.Started)
+                                                    {
+                                                        <input @disabled onchange="UpdateWasteItems(@item.Id)" type="text" id="note-@item.Id" value="@item.Notes" class="form-control" style="width: 100%;">
+                                                    }
+                                                    else
+                                                    {
+
+                                                        <input disabled onchange="UpdateWasteItems(@item.Id)" type="text" id="note-@item.Id" value="@item.Notes" class="form-control disabled" style="width: 100%;">
+                                                    }
+
+                                                </td>
+
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                            <!-- END Items & Products -->
+
+
+                        </div> <!-- ./tab-content -->
+
+
+                    </div>
+                    <div class="col-xs-12 col-md-4">
+
+                        <br class="visible-xs">
+                        <br class="visible-xs">
+
+                        <ul class="timeline">
+
+                            @foreach (var date in timelineDate)
+                            {
+                                var dateStart = HelperClass.DatetimeToOrdinal(date);
+                                var dateStr = date.Date == today.Date ? "Today" : dateStart;
+
+                                <li class="time-label">
+                                    <span class="label label-lg label-primary">
+                                        @dateStr
+                                    </span>
+                                </li>
+                                foreach (var tl in timeline.Where(d => d.LogDate.Date == date.Date))
+                                {
+                                    <li>
+                                        <i class="@tl.Icon"></i>
+                                        <div class="timeline-item">
+                                            <span class="time"><i class="fa fa-clock-o"></i> @tl.Time</span>
+                                            <h4 class="timeline-header">@tl.Status</h4>
+                                        </div>
+                                    </li>
+                                }
+                                <br />
+                            }
+
+                        </ul>
+
+                    </div>
+                </div>
+
+
+            </div>
+        </div>
+
+    </section>
+    <!-- ./content -->
+
+</div>
+<!-- /.content-wrapper -->
+
+<div class="modal fade" id="app-trader-workgroup-preview" role="dialog" aria-labelledby="app-trader-workgroup-preview">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Workgroup @Model.Workgroup.Members.Count members</h5>
+            </div>
+            <div class="modal-body">
+
+                <table class="datatable table-striped table-hover" id="workgroup_members_table" style="width:100%">
+                    <thead>
+                        <tr>
+                            <th data-priority="2" data-orderable="false" style="width: 60px;"></th>
+                            <th data-priority="1">Name</th>
+                            <th data-priority="1">Role</th>
+                        </tr>
+                    </thead>
+                    <tbody style="background: #fff;">
+                        @foreach (var item in Model.Workgroup.Members)
+                        {
+                            <tr>
+                                <td>
+                                    <div class="table-avatar mini" style="background-image: url(@api@item.ProfilePic);"></div>
+                                </td>
+                                <td>@HelperClass.GetFullNameOfUser(item)</td>
+                                <td>
+                                    @if (item.Roles != null && item.Roles.Count > 0)
+                                    {
+                                        <span class="label label-lg label-success">Approver</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="label label-lg label-warning">Reviewer</span>
+                                    }
+
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div>
+</div>
+<!-- /.modal -->
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/trader.waste.manage.js"></script>
+        <script src="~/Scripts/dev/trader.domain.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/trader.waste.manage.min.js"></script>
+        <script src="~/Scripts/dev/trader.domain.min.js"></script>
+    }
+}
+<script>
+    //setTimeout(function () { $('#items table tbody select').select2(); }, 2000);
+
+    // ----------------------------------------
+    //         EXPORT FUNCTIONALITY
+    // ----------------------------------------
+    function GetDataTableContentExport(exportType = 1) {
+        $.LoadingOverlay("show");
+
+        //Get table params
+        var params = $('#community-list').DataTable().ajax.params();
+        console.log(params, "params");
+
+        //init params
+        var _parameter = {
+            ...params,
+            "id": @Model.Id,
+            "export": exportType
+        };
+
+        $.ajax({
+            type: 'POST',
+            url: '/Report/GetWasteReportTableContentExport',
+            dataType: 'json',
+            data: _parameter,
+            success: function (response) {
+                if (response.result == true) {
+                    console.log(response, 'response');
+                    window.location.href = response.Object;
+                    cleanBookNotification.success("Export downloaded successfully!", "Qbicles");
+                }
+                $.LoadingOverlay("hide");
+            },
+            error: function (err) {
+                console.log(err, 'error');
+                $.LoadingOverlay("hide");
+            }
+        });
+    }
+
+</script>

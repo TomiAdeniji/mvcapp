@@ -1,0 +1,965 @@
+﻿@using Qbicles.Models.Bookkeeping;
+@using Qbicles.BusinessRules.Helper;
+@using Qbicles.Models.Trader.SalesChannel;
+@using Qbicles.Models.Catalogs;
+@model Catalog
+@{
+    ViewBag.Title = "Trader Config > PoS Menu > " + Model.Name;
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var dimensions = (List<TransactionDimension>)ViewBag.Dimensions ?? new List<TransactionDimension>();
+    
+    var status = "";
+    var menuStatus = Model.Devices.Any(e => !e.Archived);
+    var lstDimension = "";
+
+    var defaultImage = ConfigManager.DefaultProductPlaceholderImageUrl;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+
+    if (Model.OrderItemDimensions != null && Model.OrderItemDimensions.Count > 0)
+    {
+        lstDimension = string.Join(", ", Model.OrderItemDimensions.Select(q => q.Name));
+    }
+    if (menuStatus)
+    {
+        status = "Activated";
+    }
+    else
+    {
+        status = "Inactive";
+    }
+    var goBackPage = (string)ViewBag.GoBackPage;
+
+    var updateProcessing = Model.IsPOSSqliteDbBeingProcessed;
+    var refreshProcessing = Model.IsRefreshPricesDbBeingProcessed;
+}
+
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail mdv2-wrapper" style="position: relative;">
+    <input id="img-api" value="@api" type="hidden" />
+    <input id="menu_id" value="@Model.Id" type="hidden" />
+    <input id="location-manager" type="hidden" value="@(Model.Location?.Id ?? 0)" />
+    <input id="menu_salechannel" type="hidden" value="@Model.SalesChannel" />
+    <input id="catalog_status" type="hidden" value="@status" />
+    <input id="catalog_type" type="hidden" value="@((int)Model.Type)" />
+    <input id="catalog-key" type="hidden" value="@(Model?.Key ?? "")" />
+    <!-- Main content -->
+    <section class="mdv2 dash" data-tooltip-color="teal" data-tooltip-delay="300" data-tooltip-animate-function="spin" style="border-top: 1px solid #f1f1f1;">
+
+
+        <!-- App bar -->
+        <div class="mdv2-col-app" style="margin-bottom: 0;">
+
+            <div data-spy="affix" class="contained-sidebar">
+
+                <div class="activity-overview plain company-overview welcome-info" style="text-align: left !important; flex: none; margin: 0; padding-top: 30px; padding-bottom: 0;">
+
+                    <div class="pull-left" style="margin-bottom: 15px;">
+                        @if (!string.IsNullOrEmpty(goBackPage) && goBackPage == "BusinessProfile")
+                        {
+                            var goBackTab = "items-catalogues";
+                            if (Model.Type == CatalogType.Distribution)
+                            {
+                                goBackTab = "items-catalogues-distribution";
+                            }
+                            <a href="/Commerce/BusinessProfileTrading?tab=@goBackTab" class="btn btn-primary"><i class="fa fa-angle-left"></i> &nbsp; All Product Catalogs</a>
+                        }
+                        else
+                        {
+                            <a href="/Trader/AppTrader" class="btn btn-primary"><i class="fa fa-angle-left"></i> &nbsp; All Product Catalogs</a>
+                        }
+                    <a href="javascript:" onclick="UpdateMenu(@Model.Id)" class="btn btn-warning"><i class="fa fa-pencil"></i> &nbsp; Edit</a>
+                    </div>
+                    <div class="clearfix"></div>
+
+                    <br />
+
+                    <h1 id="menu-name-title" style="line-height: 1.2;">@Model.Name</h1>
+                    <br />
+
+                    <span class="label label-lg label-primary txtsalechannel">@Model.SalesChannel.ToString() @Model.Type.ToString() Catalog</span>
+
+                    <br /><br /><br />
+                    <p id="menu-name-description" style="color: rgba(0, 0, 0, 0.5);white-space: pre-wrap !important;">@Model.Description</p>
+                    <br />
+
+                    @if (Model.Type != CatalogType.Distribution)
+                    {
+                        <div class="well custom">
+                            <label>Location</label><br />
+                            <p>@Model.Location.Name</p><br />
+                            <label>Reporting Filters</label><br />
+                            <p id="lstDimension">@lstDimension</p>
+                            @if (Model.Devices.All(e => e.Archived))
+                            {
+                                <button class="btn btn-info hidden" data-toggle="modal" onclick="ManagerDimension()" data-target="#app-trader-pos-menu-dimensions"><i class="fa fa-list"></i> &nbsp; Manage</button>
+                            }
+                            <div id="location-id-domain" class="hidden">@Model.Location.Id</div>
+                        </div>
+                    }
+
+                    <br />
+
+                    <button class="btn btn-success community-button" onclick="AddAnItem2ProductCatalog('@defaultImage')" style="margin-bottom: 10px;" data-toggle="modal" data-target="#app-trader-pos-item-add">
+                        <i class="fa fa-plus"></i> &nbsp; Add an item
+                    </button>
+
+                    <button class="btn btn-info community-button" data-toggle="modal" data-target="#posmenuadvanced" style="margin-bottom: 30px;">
+                        <i class="fa fa-cog"></i> &nbsp; Advanced
+                    </button>
+
+                    @if (Model.Type != CatalogType.Distribution || Model.SalesChannel != SalesChannelEnum.B2B)
+                    {
+
+                        if (Model.SalesChannel == SalesChannelEnum.POS)
+                        {
+                            if (!updateProcessing && !refreshProcessing)
+                            {
+                                <button id="btnUpdatePosmenu" class="btn btn-primary community-button" style="margin-bottom: 30px;" data-toggle="modal" data-target="#pos-menu-updadte-pos-menu-modal">
+                                    <i id="icon-UpdatePosmenu" class="fa fa-refresh"></i> &nbsp; <span id="spanUpdatePosmenu">Update POS Menu</span>
+                                </button>
+                            }
+                            else if (!updateProcessing || refreshProcessing)
+                            {
+                                <button disabled id="btnUpdatePosmenu" class="btn btn-primary community-button" style="margin-bottom: 30px;" data-toggle="modal">
+                                    <i id="icon-UpdatePosmenu" class="fa fa-refresh"></i> &nbsp; <span id="spanUpdatePosmenu">Update POS Menu</span>
+                                </button>
+                            }
+                            else if (updateProcessing)
+                            {
+                                <button disabled id="btnUpdatePosmenu" class="btn btn-primary community-button" style="margin-bottom: 30px;" data-toggle="modal">
+                                    <i id="icon-UpdatePosmenu" class="fa fa-spinner fa-spin"></i> &nbsp; <span id="spanUpdatePosmenu">Update POS Menu processing</span>
+                                </button>
+                            }
+                        }
+                    }
+
+
+
+                    <div class="well custom" style="padding: 30px 20px; margin-bottom: 40px;">
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label for="search-qbicles">Search for items</label>
+                                    <input type="text" id="search-item-list" class="form-control" placeholder="Search by name or SKU">
+                                </div>
+                            </div>
+                            <div class="col-xs-12">
+                                <div class="form-group" style="margin: 0;">
+                                    <label for="filter-cat">Filter by category</label>
+                                    <select id="subfilter-group" class="form-control select2" style="width: 100%;" aria-hidden="true">
+                                        <option value="0">Show all</option>
+                                        @foreach (var category in Model.Categories)
+                                        {
+                                            <option value="@category.Id">@category.Name</option>
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+
+
+
+            </div>
+        </div>
+        <!-- END App bar -->
+        <!-- Main area -->
+        <div class="mdv2-col-dash" style="background: #f5f5f5;">
+
+            <div class="spacing">
+
+                <div class="tab-content">
+
+
+                    <!-- Items list -->
+                    <div class="tab-pane fade in no-search" id="items-list" style="display:block">
+
+                        <div class="tab-content mydesk" style="min-height: 0; display: block;">
+
+
+
+                            <div class="row">
+                                <div class="col-xs-12">
+                                    <ul class="app_subnav admintabs" style="padding-top: 0; margin-top: -15px;">
+                                        <li id="li-items" class="active"><a href="#itemlist-items" data-toggle="tab">Items</a></li>
+                                        <li id="li-categories"><a href="#itemlist-categories" data-toggle="tab">Categories</a></li>
+                                        <li id="li-prices"><a href="#itemlist-prices" onclick="showCatalogPriceTabContent()" data-toggle="tab">Prices</a></li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <br /><br />
+
+
+                            <div class="tab-content">
+
+
+
+                                <!-- Item list -->
+                                <div class="tab-pane fade in active" id="itemlist-items">
+
+                                    <div class="activity-overview plain nopad">
+                                        <div class="block-header">
+                                            <h4>Items</h4>
+                                        </div>
+                                        <div id="dataTable-categoryitem" style="padding: 15px;">
+
+                                            <table class="datatable table-hover" id="item-list" style="width: 100%; background: #fff;" data-order='[[ 1, "asc" ]]'>
+                                                <thead>
+                                                    <tr>
+                                                        <th data-priority="3" data-orderable="false" style="width: 80px;"></th>
+                                                        <th data-priority="1">Item name</th>
+                                                        <th data-priority="2">SKU</th>
+                                                        <th data-priority="1">Category</th>
+                                                        <th data-priority="2">Price</th>
+                                                        <th data-priority="1">In stock</th>
+                                                        <th data-priority="1" data-orderable="false"></th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                </tbody>
+                                            </table>
+
+                                        </div>
+                                    </div>
+
+                                </div>
+                                <!-- END Item list -->
+                                <!-- Categories -->
+                                <div class="tab-pane fade" id="itemlist-categories">
+
+                                    <div class="activity-overview plain nopad">
+                                        <div class="block-header">
+                                            <h4>Categories</h4>
+                                        </div>
+                                        <div style="padding: 15px;">
+
+                                            <div id="table_category_categoryitem">
+
+                                            </div>
+
+                                            <br />
+
+                                            <div class="addcat">
+                                                <button class="btn btn-success" onclick="$('.newcat').toggle();$('.addcat').toggle();$('#item_category_add_name').val('');">
+                                                    <i class="fa fa-plus"></i> &nbsp; Add a Category
+                                                </button>
+                                            </div>
+                                            <div class="newcat" style="display: none;">
+                                                <div class="well custom">
+                                                    <div class="form-group">
+                                                        <label for="newcat">New Category title</label>
+                                                        <input type="text" id="item_category_add_name" name="newcat" class="form-control">
+                                                    </div>
+                                                    <button class="btn btn-danger" onclick="$('.newcat').toggle();$('.addcat').toggle();">Cancel</button>
+                                                    <button class="btn btn-success" onclick="addCategory()">Confirm</button>
+                                                </div>
+                                            </div>
+
+                                        </div>
+                                    </div>
+
+                                </div>
+                                <!-- END Categories -->
+                                <!-- Prices -->
+                                <div class="tab-pane fade" id="itemlist-prices">
+
+                                </div>
+                                <!-- END Prices -->
+                            </div>
+
+                        </div>
+
+                    </div>
+                    <!-- END Items list -->
+                    <!-- Item detail (basic) -->
+                    <div class="tab-pane fade" id="item-detail-basic" style="display: none">
+
+                    </div>
+                    <!-- END Item detail (basic) -->
+
+
+                </div>
+
+
+            </div>
+
+        </div>
+        <!-- END Main area -->
+
+
+    </section>
+    <!-- ./content -->
+
+</div>
+<!-- /.content-wrapper -->
+<div class="modal fade left" id="app-trader-pos-menu-dimensions" role="dialog" aria-labelledby="app-trader-pos-menu-dimensions">
+
+</div> <!-- /.modal -->
+
+<div class="modal fade left" id="app-trader-pos-item-add" role="dialog" aria-labelledby="app-trader-pos-item-add">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Add an Item</h5>
+            </div>
+            <div class="modal-body">
+
+                @{
+                    var isSliderHidden = "";
+                    if (Model.SalesChannel == SalesChannelEnum.B2B)
+                    {
+                        isSliderHidden = @"style=display:none";
+                    }
+                }
+                <div class="row" @isSliderHidden>
+                    <div class="col-xs-12">
+                        <div class="activity-overview generic help-text animated bounce">
+                            <i class="fa fa-info-circle"></i>
+                            <label for="selling">Is this item sold without variants?</label><br />
+                            <p>
+                                If variants are required, this will be treated as a <em>container item</em> which groups variants together but doesn't have its own SKU.
+                                Otherwise it's a <em>basic item</em> which has its own SKU and can have extras added, but <strong>not</strong> variants.
+                            </p>
+
+                            <div class="checkbox toggle">
+                                <label>
+                                    <input data-toggle="toggle" id="item_novariant" data-onstyle="success" type="checkbox" data-on="Yes" data-off="No" checked onchange="ChangeItemVariant('@defaultImage');">
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+
+                <div class="well custom">
+                    <form id="form_additem">
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="name">Item name</label>
+                                    <input type="text" id="item_name" name="categoryitem_add_name" class="form-control" value="">
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="name">Category</label>
+                                    <select name="categoryitem_add_category" id="item_category" onchange="categorychanged()" class="form-control select2 taginput" style="width: 100%;">
+                                        @foreach (var item in Model.Categories)
+                                        {
+                                            <option value="@item.Id">@item.Name</option>
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-6 onlysold">
+                                <label>Item SKU</label><br />
+                                <div class="input-group" style="margin-bottom: 15px;">
+                                    <input type="hidden" name="categoryitem_add_nameItem" id="traderitem" class="form-control" value="0">
+                                    <input type="text" name="categoryitem_sku" id="item_sku" class="form-control" value="">
+                                    <div class="input-group-btn" style="vertical-align: top;">
+                                        <button class="btn btn-info" data-toggle="modal" onclick="FindSKU()" data-target="#app-trader-pos-itemlist">
+                                            <i class="fa fa-search"></i> &nbsp; Find
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <div class="row" id="itemextras" style="display: none;">
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="unit">Product unit</label>
+                                    <select name="categoryitem_add_unit" id="item_product_unit" class="form-control select2" style="width: 100%;" onchange="SelectProductUnitChanged()"></select>
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="unit">Price</label>
+                                    <input type="hidden" id="priceDefault" value="0" />
+                                    <input type="hidden" id="price_id" value="0" />
+                                    <input type="text" name="categoryitem_add_price" class="form-control" id="unitprice" value="">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group" style="margin: 0;">
+                            <label for="name">Featured image</label>
+
+                            <input type="file" id="item_featuredimg" class="form-control previewimg" name="categoryitem_add_featuredimg" data-target='.newpreview'>
+                        </div>
+
+                        <div class="row description-div">
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label for="description">Description</label><br>
+                                    <button type="button" class="btn btn-primary onlysold" style="margin: 1px 0 15px 0;" onclick="ImportDescriptionAdd()">Import Trader description</button>
+                                    <textarea rows="3" name="description" id="item_description" class="form-control tinymce-description" style="height: 80px;" spellcheck="false"></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-xs-12">
+
+                                <input type="hidden" value="@defaultImage" id="image-default" />
+                                <img src="@api@defaultImage" alt="Your image" class="newpreview img-responsive" style="display: none; max-width: 100%; margin-top: 20px; height: auto;" />
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
+
+
+                <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                <button class="btn btn-success" onclick="SaveProcessdCategoryitem()" data-toggle="tab">Save &amp; proceed</button>
+
+
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+
+<div class="modal fade left" id="app-trader-pos-itemlist" role="dialog" aria-labelledby="app-trader-pos-itemlist" style="z-index: 9999; width:100%">
+
+</div><!-- /.modal -->
+
+<div class="modal fade left" id="app-trader-pos-property-add" role="dialog" aria-labelledby="app-trader-pos-property-add">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Add a Variant Property</h5>
+            </div>
+            <div class="modal-body">
+
+                <div class="activity-overview generic help-text animated bounce">
+                    <i class="fa fa-info-circle"></i>
+                    <h5 style="margin: 0; padding: 0 0 8px 0;">Warning</h5>
+                    <p>
+                        Adding Properties requires the existing table of Variants to be reset. This means you will lose any variants you currently have configured.
+                        To add new properties and options type your new titles into the the input boxes below and hit enter, or select from existing ones.
+                        Once you're happy, confirm your addition and you can begin selecting the items associated with the generated variants.
+                    </p>
+                </div>
+
+                <div class="well custom">
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-4">
+                            <div class="form-group" style="margin: 0;">
+                                <label for="name">Property</label>
+                                <input name="name" id="posPropertyAdd_name" class="form-control" type="text" style="width: 100%;" />
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-sm-8">
+                            <div class="form-group" style="margin: 0;">
+                                <label for="name">Options</label>
+                                <select name="name" id="posPropertyAdd_options" class="form-control select2 taginput" data-placeholder="Select or type new" style="width: 100%;" multiple></select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+
+                <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                <button class="btn btn-success" onclick="confirmAddProperty()">Confirm</button>
+
+
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+
+
+
+<div class="modal fade left" id="app-trader-pos-menu-modal" role="dialog" aria-labelledby="app-trader-pos-menu-modal">
+    <input type="hidden" id="catalog-type-value" value="" />
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 id="menu-modal-title" class="modal-title">Add a Catalog</h5>
+            </div>
+            <div class="modal-body">
+
+                <div class="well custom">
+
+                    <form id="pos-menu-form" class="row">
+                        <div class="col-xs-12">
+                            <div class="form-group">
+                                <label for="name">Catalog name <span>*</span></label>
+                                <input type="text" id="menu-name" name="menuname" class="form-control" required="">
+                            </div>
+                        </div>
+                        <div class="col-xs-12">
+                            <div class="form-group">
+                                <label for="fimg">Featured image (optional)</label>
+                                <input type="file" name="fimg" id="expert-catalog-img" accept=".jpeg,.jpg,.png,.webp" class="form-control">
+                            </div>
+                        </div>
+                        <div class="col-xs-12">
+                            <div class="form-group">
+                                <label for="name">Sales channel <span class="red">*</span></label>
+                                <select name="salechanel" id="menu-salechannel" class="form-control select2" style="width: 100%;">
+                                    <option value="@SalesChannelEnum.B2B.ToString()">B2B</option>
+                                    <option value="@SalesChannelEnum.B2C.ToString()">B2C</option>
+                                    <option value="@SalesChannelEnum.POS.ToString()" selected>POS</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-xs-12 display-report-filters">
+                            <div class="form-group validate-control">
+                                <label for="name">Reporting filter(s) <span class="red">*</span></label>
+                                <select name="filters" id="report_filters" class="form-control select2" multiple style="width: 100%;">
+                                    @if (dimensions != null && dimensions.Count > 0)
+                                    {
+                                        foreach (var transactionDimension in dimensions)
+                                        {
+                                            <option value="@transactionDimension.Id">@transactionDimension.Name</option>
+
+                                        }
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-xs-12">
+                            <div class="form-group" style="margin: 0;">
+                                <label for="name">Catalog summary</label>
+                                <textarea id="menu-summary" class="form-control"></textarea>
+                            </div>
+                        </div>
+                    </form>
+
+                </div>
+
+
+                <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                <button class="btn btn-success" onclick="SavePosMenu()">Save</button>
+
+
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+
+
+<div class="modal fade" id="pos-menu-updadte-pos-menu-modal" role="dialog" aria-labelledby="pos-menu-updadte-pos-menu-modal" style="display: none;">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+                <h5 class="modal-title">Confirm Update POS Catalog</h5>
+            </div>
+            <div class="modal-body">
+
+                <div class="activity-overview alert-detail animated bounce" style="padding: 20px;">
+                    <h5>Warning!</h5>
+                    <p>
+                        Are you sure you want to update the POS catalog from the <b>@Model.Name</b> catalog?
+                    </p>
+
+                </div>
+                <br />
+                <div class="text-right">
+                    <button class="btn btn-success" onclick="UpdatePosMenuProduct()"><i class="fa fa-refresh"></i> &nbsp; Update</button>
+                    <button class="btn btn-danger" data-dismiss="modal"><i class="fa fa-close"></i> &nbsp; Cancel</button>
+                </div>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+
+<div class="modal fade left" id="pricing-margin-discount" role="dialog" aria-labelledby="pricing-margin-discount">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Apply a bulk margin or discount</h5>
+            </div>
+            <div class="modal-body">
+
+                <div class="activity-overview generic help-text animated bounce">
+                    <i class="fa fa-info-circle"></i>
+                    <p><strong><span class="itemcount"></span> items</strong> will be affected by any changes made here. Tap the button below to see the full list.</p>
+                    <button class="btn btn-info" onclick="LoadListAffectedPriceModal()">Show items</button>
+                </div>
+
+                <div id="mord" style="margin-bottom: 30px;">
+                    <div class="form-group" style="margin: 0;">
+                        <label for="name">Are you applying a margin, or a discount?</label>
+                        <ul class="nav nav-pills nav-justified audit-choices">
+                            <li id="margin-tab"><a href="javascript:void(0)" class="primary" onclick="toggleMarginTab()">Margin</a></li>
+                            <li id="discount-tab"><a href="javascript:void(0)" class="primary" onclick="toggleDiscountTab()">Discount</a></li>
+                        </ul>
+                    </div>
+                </div>
+
+
+                <div id="tmargin" class="tmeth animated fadeIn" style="display: none;">
+                    <div class="well custom">
+
+                        <label>Apply to</label><br />
+                        <label class="radio-inline" style="margin-right: 10px;"><input id="margin-average-cost" type="radio" name="optradio" style="position: relative; top: 2px; margin-right: 8px;">Average cost</label>
+                        <label class="radio-inline"><input id="margin-latest-cost" type="radio" name="optradio" style="position: relative; top: 2px; margin-right: 8px;">Latest cost</label>
+
+                        <br /><br />
+
+                        <label>Apply a margin of</label><br />
+                        <div class="input-group">
+                            <input type="number" id="margin-value" class="form-control" min="0" name="margin">
+                            <span class="input-group-btn">
+                                <select name="mod" id="margin-unit" class="form-control select2" style="width: 80px;">
+                                    <option value="1" selected>%</option>
+                                    <option value="2">@currencySettings.CurrencySymbol</option>
+                                </select>
+                            </span>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                    <button class="btn btn-success" onclick="bulkApplyMargin()" data-dismiss="modal">Confirm</button>
+                </div>
+                <!-- END Margin -->
+                <!-- Discount -->
+                <div id="tdiscount" class="tmeth animated fadeIn" style="display: none;">
+                    <div class="well custom">
+
+                        <label>Apply to</label><br />
+                        <label class="radio-inline" style="margin-right: 10px;"><input id="discount-average-cost" type="radio" name="optradio" style="position: relative; top: 2px; margin-right: 8px;">Average cost</label>
+                        <label class="radio-inline"><input id="discount-latest-cost" type="radio" name="optradio" style="position: relative; top: 2px; margin-right: 8px;">Latest cost</label>
+
+                        <br /><br />
+
+                        <label>Apply a discount of</label><br />
+                        <div class="input-group">
+                            <input type="number" id="discount-value" min="0" class="form-control" name="margin">
+                            <span class="input-group-btn">
+                                <select name="mod" id="discount-unit" class="form-control select2" style="width: 80px;">
+                                    <option value="1" selected>%</option>
+                                    <option value="2">@currencySettings.CurrencySymbol</option>
+                                </select>
+                            </span>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                    <button class="btn btn-success" onclick="bulkApplyMargin()" data-dismiss="modal">Confirm</button>
+                </div>
+                <!-- END Margin -->
+
+
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+
+
+<div class="modal fade left" id="pricing-affected" role="dialog" aria-labelledby="pricing-affected">
+    <div class="modal-dialog modal-xl cx" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Items that will be affected</h5>
+            </div>
+            <div class="modal-body">
+
+                <div class="well custom" style="padding-bottom: 5px;">
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-6 col-md-4">
+                            <div class="form-group">
+                                <label for="search">Search</label>
+                                <input type="text" id="affected-price-keysearch" class="form-control">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <br />
+
+                <table class="datatable table-striped table-hover nosearch" id="catalog-price-affected-table" data-searching="false" style="width: 100%;">
+                    <thead>
+                        <tr>
+                            <th data-priority="1">SKU</th>
+                            <th data-priority="1">Category</th>
+                            <th data-priority="1">Category item</th>
+                            <th data-priority="2">Variants / extras</th>
+                            <th data-priority="3" data-orderable="false">Net price (&#8358;)</th>
+                            <th data-priority="2" data-orderable="false">Tax (&#8358;)</th>
+                            <th data-priority="1" data-orderable="false">Price inc. tax (&#8358;)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                </table>
+
+            </div>
+        </div><!-- /.modal-dialog -->
+    </div><!-- /.modal -->
+</div><!-- /.modal -->
+
+<div class="modal fade left" id="posmenuadvanced" role="dialog" aria-labelledby="posmenuadvanced">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content" style="background: #f5f5f5;">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Advanced options</h5>
+            </div>
+            <div class="modal-body">
+                @if (Model.Type != CatalogType.Distribution || Model.SalesChannel != SalesChannelEnum.B2B)
+                {
+                    if (!refreshProcessing)
+                    {
+                        <div class="activity-overview plain rounded">
+                            <h5>Refresh prices</h5>
+                            <p>Refresh prices using the pricing pool, to ensure you have the latest pricing data.</p>
+                            <br />
+                            <button id="btnRefreshPrice" class="btn btn-primary community-button" data-dismiss="modal" onclick='OpenPriceAdvance("refresh","refresh-prices-modal");'>
+                                <span id="spanRefreshPrice">Refresh prices</span>
+                            </button>
+                        </div>
+                    }
+                    else if (refreshProcessing)
+                    {
+                        <div class="activity-overview plain rounded">
+                            <h5>Refresh prices</h5>
+                            <p>Refresh prices using the pricing pool, to ensure you have the latest pricing data.</p>
+                            <br />
+                            <button disabled id="btnRefreshPrice" class="btn btn-primary community-button">
+                                <i id="icon-RefreshPrice" class="fa fa-spinner fa-spin"></i> &nbsp; <span id="spanRefreshPrice">Refresh prices processing</span>
+                            </button>
+                        </div>
+                    }
+
+                }
+
+                <div class="activity-overview plain rounded">
+                    <h5>Push prices to pricing pool</h5>
+                    <p>Update the pricing pool with this catalogue's pricing information.</p>
+                    <br />
+                    <button id="btnRefreshPrice" class="btn btn-primary community-button" data-dismiss="modal" onclick='OpenPriceAdvance("push","push-prices-modal");'>Push prices to pricing pool.</button>
+                </div>
+
+                <div class="activity-overview plain rounded">
+                    <h5>Import new items</h5>
+                    <p>Map product groups to catalogue categories for simple importing of items.</p>
+                    <br />
+                    <button id="btnImportProduct" class="btn btn-primary community-button" data-toggle="modal" data-target="#posmenuimport" onclick='OpenPriceAdvance("import","posmenu-import-modal");'>Import</button>
+                </div>
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+
+
+<div class="modal fade" id="menu-item-delete-confirm" role="dialog" aria-labelledby="menu-item-delete-confirm">
+    <div class="modal-dialog modal-xs" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Delete item</h5>
+            </div>
+            <div class="modal-body">
+                <div class="col-xs-12 col-sm-12" style="margin-bottom: 30px;">
+                    Are you sure you want to delete the <b><span id="label-confirm-item-delete"></span></b> item?
+                    <input class="hidden" id="id-item-delete" />
+                </div>
+                <div class="text-center">
+                    <button class="btn btn-success" data-dismiss="modal" onclick="deleteCategoryItem()"><i class="fa fa-check"></i> &nbsp; Yes</button>
+                    <button class="btn btn-danger" data-dismiss="modal"><i class="fa fa-remove"></i> &nbsp; No</button>
+                </div>
+                
+
+            </div>
+        </div> <!-- /.modal-content -->
+    </div> <!-- /.modal-dialog -->
+</div>
+
+<div id="refresh-prices-modal" class="modal fade left" role="dialog" aria-labelledby="pull-prices">
+    
+</div><!-- /.modal -->
+<div class="modal fade left" id="push-prices-modal" role="dialog" aria-labelledby="push-prices">
+    
+</div><!-- /.modal -->
+
+<div class="modal fade left" id="posmenu-import-modal" role="dialog" aria-labelledby="posmenu-import">
+    
+</div><!-- /.modal -->
+<script src="https://cdn.tiny.cloud/1/ppfa9ubyahapmcpxedac4yuyhojva0q9bm41rip6a351qegu/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
+
+
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/pos.menu.js"></script>
+        <link href="~/Content/DesignStyle/css/bootstrap-multiselect.css" rel="stylesheet" />
+        <script src="~/Content/DesignStyle/js/bootstrap-multiselect.js"></script>
+        <script src="~/Content/DesignStyle/js/dataTables.checkboxes.js"></script>
+        <link href="~/Content/DesignStyle/css/dataTables.checkboxes.min.css" rel="stylesheet" />
+    }
+    else
+    {
+        <script src="~/Scripts/dev/pos.menu.js"></script>
+        <link href="~/Content/DesignStyle/css/bootstrap-multiselect.css" rel="stylesheet" />
+        <script src="~/Content/DesignStyle/js/bootstrap-multiselect.js"></script>
+        <script src="~/Content/DesignStyle/js/dataTables.checkboxes.min.js"></script>
+        <link href="~/Content/DesignStyle/css/dataTables.checkboxes.min.css" rel="stylesheet" />
+    }
+    <script>
+        $(document).ready(function (e) {
+            initItemTable();
+
+            $menuId = $("#menu_id").val();
+            if ('@updateProcessing'=="True")
+                StartVerifyCatalogStatus($menuId, 'Database');
+            if ('@refreshProcessing' == "True")
+                StartVerifyCatalogStatus($menuId, 'Price');
+
+            $(".checkmulti").multiselect({
+                includeSelectAllOption: true,
+                selectAllJustVisible: true,
+                includeResetOption: false,
+                enableFiltering: false,
+                buttonWidth: '100%',
+                maxHeight: 400,
+                enableClickableOptGroups: true,
+                enableFiltering: true,
+                enableCaseInsensitiveFiltering: true
+            });
+
+            $('.filtering').bind('click', function (e) {
+                $('.reset').show();
+            });
+
+            //$('#theform').LoadingOverlay("show");
+            initDescription();
+        });
+
+        function initDescription() {
+            $('.description-div').LoadingOverlay("show");
+            tinymce.remove();
+            setTimeout(function () {
+                tinymce.init({
+                    selector: 'textarea#item_description',
+                    setup: function (ed) {
+                        ed.on('change', function (e) {
+                            $("#item_description").val(ed.getContent());
+                            $("#item_description").text(ed.getContent());
+                        });
+                    },
+                    menubar: false,
+                    plugins: 'link',
+                    toolbar: 'undo redo | bold italic underline | alignleft aligncenter alignright alignjustify |' +
+                        'bullist numlist checklist | removeformat'
+                });
+                tinymce.init({
+                    selector: 'textarea#poscategoryitem_detail_category_description',
+                    setup: function (ed) {
+                        ed.on('change', function (e) {
+                            //$("#poscategoryitem_detail_category_description").val(ed.getContent());
+                            $("#poscategoryitem_detail_category_description").text(ed.getContent());
+                            ChangeDetailItem();
+                        });
+                    },
+                    menubar: false,
+                    plugins: 'link',
+                    toolbar: 'undo redo | bold italic underline | alignleft aligncenter alignright alignjustify |' +
+                        'bullist numlist checklist | removeformat'
+                });
+                $("#item_description").val('');
+                tinymce.get('item_description').setContent('');
+
+                $('.description-div').LoadingOverlay("hide", true);
+            }, 1000);
+        }
+
+
+
+
+        var $api = '@api';
+        categorys = @Html.Raw(Json.Encode(Model.Categories.Select(x => new
+               {
+                   Id = x.Id,
+                   Name = x.Name,
+                   Description = x.Description,
+                   PosCategoryItems = x.PosCategoryItems.Select(p=> new { p.Id, p.Name }).ToList(),
+                   Menu = new { Id = x.Menu.Id, Name = x.Menu.Name}
+               })));
+
+        $("#search-active").select2();
+        LoadCategoryTable(true);
+
+        function showCatalogPriceTabContent() {
+            var params = {
+                catalogId: $("#menu_id").val()
+            };
+            var _url = "/PointOfSale/ShowCatalogPriceTab";
+            $('#itemlist-prices').load(_url, params, function () {
+                LoadCatalogPriceDataTable();
+            });
+        }
+
+        function ImportDescriptionAdd() {
+            if ($('#traderitem').val() == 0) {
+                tinymce.get('item_description').setContent("");
+                $("#item_description").val('');
+                $("#item_description").text('');
+                return;
+            }
+            $.ajax({
+                url: "/PointOfSaleMenu/GetTraderItemDescriptionById?id=" + $('#traderitem').val(),
+                type: "get",
+                dataType: "json",
+                success: function (rs) {
+                    if (!rs.result) {
+                        cleanBookNotification.error(rs.msg, "Qbicles");
+                    }
+                    tinymce.get('item_description').setContent(rs.Object);
+                    $("#item_description").val(rs.Object);
+                    $("#item_description").text(rs.Object);
+                }
+            });
+
+        }
+
+        function AddAnItem2ProductCatalog(defaultImage) {
+            $('#item_featuredimg + label.error').remove();
+            $('#item_name + label.error').remove();
+            $('#item_category + label.error').remove();
+            $('#item_name').val('');
+            $('#item_category').val('');
+            $('#item_category').select2({
+                placeholder: 'Please select',
+                tags: true
+            });
+            $('#item_sku').val('');
+            $('#item_product_unit').val('');
+            $('#item_product_unit').select2();
+            $('#unitprice').val('');
+            $('#item_featuredimg').val(null);
+            $('#itemextras').hide();
+            $('#image-default').val(defaultImage);
+            $('.newpreview').attr("src", $api + defaultImage);
+            $("#item_description").val('');
+            $("#item_description").text("");
+            $("#item_description").html("");
+            initDescription();
+
+            //tinymce.get('item_description').setContent("");
+            //$('.newpreview').attr("style", "display:none");
+            //$('#item_featuredimg').val("");
+
+            GetListCategoryByMenu(refershCategorySelect, 'item_category', "");
+        }
+    </script>
+}

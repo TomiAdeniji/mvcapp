@@ -1,0 +1,345 @@
+﻿@using Qbicles.Models.Community;
+@using Qbicles.BusinessRules;
+@model DomainProfile
+@{
+    ViewBag.Title = "Qbicle Community | Domain profile";
+
+    var pages = (List<CommunityPage>)ViewBag.CommunityPages;
+    var tags = (List<Tag>)ViewBag.Tags;
+    var locations = (List<Location>)ViewBag.Locations;
+    var api = (string)ViewBag.DocRetrievalUrl;
+
+    var UserRoleRights = (List<string>)ViewBag.UserRoleRights;
+    var rightAddEditCommuntyPage = UserRoleRights.Any(r => r == RightPermissions.CMAddEditCommunityPage) == true ? "" : "a-btn-disabled";
+    var rightDeleteCommuntyPage = UserRoleRights.Any(r => r == RightPermissions.CMDeleteCommunityPage) == true ? "" : "a-btn-disabled";
+    var imgAcceptedFile = (string)ViewBag.ImageAcceptedExtensions;
+}
+
+
+<div class="community-profile-upper editProfile" style="background-image: url('@api@Model.StoredFeaturedImageName');">
+    <div class="form-group">
+        <label for="feature_image">Featured image</label>
+        <input type="file" id="image_featured" accept="@imgAcceptedFile" onchange="changeImageCover(this)" name="feature_image" class="form-control">
+    </div>
+</div>
+<div class="community-profile-upper previewDomainProfile hidden" style="background-image: url('@api@Model.StoredFeaturedImageName');">
+</div>
+
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail">
+
+    <div class="alert_matches active editProfile" style="padding: 15px;">
+        <a onclick="previewDomainProfile()" class="btn btn-info">Preview changes</a>
+        <a onclick="saveAndFinish()" class="btn btn-success trigger_load" style="margin: 0;">Save and finish</a>
+    </div>
+    <div class="alert_matches active previewDomainProfile hidden" style="padding: 15px;">
+        <a class="btn btn-warning" onclick="returnEdit()" style="margin: 0;">Return to editing</a>
+    </div>
+
+    <!-- Main content -->
+    <section class="content nopad">
+        <input id="domain-profile-id" value="@Model.Id" class="hidden" />
+
+        <form id="form-domain-profile" action="" novalidate="novalidate" class="row">
+            <div class="col-xs-12 col-md-4 col-lg-3 community-side">
+                <div class="community-avatar" style="background-image: url('@api@Model.StoredLogoName');"></div>
+                <div class="visible-xs visible-sm text-center">
+                    <h2>@Model.Domain.Name</h2>
+                </div>
+
+                <div class="form-group editProfile" style="margin: 20px 0 10px 0;">
+                    <label for="logo">Logo</label>
+                    <input type="file" id="upload_image_logo" accept="@imgAcceptedFile" onchange="changeImageLogo(this)" class="form-control" name="logo">
+                    <a disabled onclick="CommunityUpdateLogo()" class="btn btn-success button-update" style="margin-top: 5px;">Update logo</a>
+                </div>
+
+                <br />
+                <div class="editProfile">
+                    <h6>Tags</h6>
+                    <select id="domain-tag" name="tags" class="form-control chosen-select" multiple style="width: 100%;">
+                        @foreach (var tag in tags)
+                        {
+                            if (Model.Tags != null && Model.Tags.Any(q => q.Id == tag.Id))
+                            {
+                                <option selected value="@tag.Id">@tag.Name</option>
+                            }
+                            else
+                            {
+                                <option value="@tag.Id">@tag.Name</option>
+                            }
+                        }
+                    </select>
+                </div>
+
+                <div id="profile_preview_tags" class="text-center community-profile-pad previewDomainProfile hidden">
+
+                </div>
+                <br /><br />
+
+                <h6>Profile <span class="editProfile" style="color:red">*</span></h6>
+
+                @{if (Model.ProfileText != null)
+                    {
+                        <textarea id="domain-profile" name="domainprofile" rows="7" class="form-control editProfile">@Model.ProfileText.Trim()</textarea>
+                    }
+                    else
+                    {
+                        <textarea id="domain-profile" name="domainprofile" rows="7" class="form-control editProfile"></textarea>
+                    }
+                }
+                <a onclick="updateProfileText()" disabled class="btn btn-success button-update editProfile" style="margin-top: 5px;">Update profile</a>
+                <p class="previewDomainProfile hidden">
+                    <span id="profile-preview">
+                        @if (Model.ProfileText != null)
+                        {
+                            @Model.ProfileText.TrimStart()
+                        }
+                    </span>
+                </p>
+
+            </div>
+            <div class="col-xs-12 col-md-8 col-lg-9 community-profile">
+
+                <div class="top editProfile">
+                    <div class="row">
+                        <div class="col-xs-12">
+                            <h1>@Model.Domain.Name</h1>
+                            <br />
+                            <div class="activity-overview generic editProfile" style="padding: 30px 30px 15px 30px;">
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-12">
+                                        <div class="form-group">
+                                            <label for="strapline">Strapline <span>*</span></label>
+                                            <input id="profile_strapline" type="text" value="@Model.StrapLine" name="strapline" class="form-control" placeholder="Briefly describe your business">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="inline-details hidden previewDomainProfile">
+                                <h5 id="strapline-preview-1"></h5>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="hidden-xs hidden-sm previewDomainProfile hidden">
+
+                    <div class="top" style="padding: 30px 0 10px 0;">
+                        <h1>@Model.Domain.Name</h1>
+                        <div class="inline-details">
+                            <h5>
+                                <span id="strapline-preview-2">
+                                    @Model.StrapLine
+                                </span>
+                            </h5>
+                        </div>
+                    </div>
+
+                </div>
+
+
+                <div style="padding: 5px 20px 20px 20px;">
+                    <div class="row profile-view" data-tooltip-delay="0" data-tooltip-maxwidth="200" data-tooltip-color="slate">
+                        <div class="col-xs-12 col-lg-7">
+
+                            <h4>Pages</h4>
+                            <div class="activity-overview alert-detail editProfile">
+                                <p style="margin: 0; padding: 0;">Your current pages are listed below. You can drag and drop to change the order in which they appear to users...</p>
+                            </div>
+
+                            <br />
+
+                            <div class="portlets editProfile page-community">
+                                <div class="column">
+                                    @foreach (var page in pages)
+                                    {
+                                        <div id="page-community-@page.Id" class="portlet">
+                                            <input class="page_id hidden" value="@page.Id" />
+                                            <input class="visible_page hidden" id="visible-value-@page.Id" value="@page.IsDisplayedOnDomainProfile.ToString().ToLower()" />
+                                            <div class="portlet-header">@page.Title</div>
+                                            <div class="portlet-content">
+                                                <div class="row">
+                                                    <div class="col-xs-6 associated-mini">
+                                                        <p>@page.Followers.Count followers</p>
+                                                        <small>Last updated @HelperClass.DatetimeToOrdinal(page.LastUpdated)</small>
+                                                    </div>
+                                                    <div class="col-xs-6 text-right">
+
+                                                        @{
+                                                            if (page.IsDisplayedOnDomainProfile)
+                                                            {
+                                                                <div class="checkbox toggle inline">
+                                                                    <label>
+                                                                        <input id="page-display-@page.Id" data-toggle="toggle" data-size="small" data-onstyle="success" data-on="Shown" data-off="Hidden" type="checkbox" checked>
+                                                                    </label>
+                                                                </div>
+                                                            }
+                                                            else
+                                                            {
+                                                                <div class="checkbox toggle inline">
+                                                                    <label>
+                                                                        <input id="page-display-@page.Id" data-toggle="toggle" data-size="small" data-onstyle="success" data-on="Shown" data-off="Hidden" type="checkbox">
+                                                                    </label>
+                                                                </div>
+                                                            }
+                                                        }
+
+
+                                                        <div class="btn-group options">
+                                                            <a class="btn btn-info dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                                                <i class="fa fa-cog"></i>
+                                                            </a>
+                                                            <ul class="dropdown-menu dropdown-menu-right">
+                                                                <li><a href="/Community/EditPage?edit=@page.Id" class="@rightAddEditCommuntyPage">Edit page</a></li>
+                                                                <li><a href="javascript:void(0);" class="@rightDeleteCommuntyPage" onclick="DeletePage('@page.Id')">Delete page</a></li>
+                                                            </ul>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+
+                                </div>
+                            </div>
+
+                            <div class="community-carousel owl-theme hidden previewDomainProfile">
+
+                                @foreach (var page in pages)
+                                {
+                                    var css = "";
+                                    if (page.IsDisplayedOnDomainProfile == false)
+                                    {
+                                        css = "hidden";
+                                    }
+
+                                    <div class="item @css" id="preview-page-@page.Id">
+                                        <div class="community-card">
+                                            <a href="javascript:void(0);">
+                                                <div class="upper" style="background-image: url('@api@page.FeaturedImage');">
+                                                    &nbsp;
+                                                </div>
+                                            </a>
+                                            <section class="info">
+                                                <a href="javascript:void(0);">
+                                                    <h2>@page.Title</h2>
+                                                </a>
+                                                <span>@page.Followers.Count followers</span>
+                                            </section>
+                                            <section class="meta">
+                                                @foreach (var tag in page.Tags)
+                                                {
+                                                    <a href="javascript:void(0);" class="topic-label">
+                                                        <span class="label label-info">@tag.Name</span>
+                                                    </a>
+                                                }
+                                            </section>
+                                        </div>
+                                    </div>
+                                }
+                                <br /><br />
+                            </div>
+
+
+                        </div>
+                        <div class="col-xs-12 col-lg-5 reviews">
+
+                            <h4>Business locations</h4>
+                            <hr />
+                            <div id="listLocations">
+                                @foreach (var location in locations)
+                                {
+                                    <div id="location-@location.Id" class="office-location">
+                                        <div class="edit_entry editProfile">
+                                            <a class="btn btn-warning" onclick="editLocation('@location.Id')">
+                                                <i class="fa fa-pencil"></i>
+                                            </a>
+                                            <a class="btn btn-danger" onclick="deleteLocation('@location.Id')">
+                                                <i class="fa fa-trash"></i>
+                                            </a>
+                                        </div>
+                                        <i class="fa fa-map-marker"></i>
+                                        <input class="location_id" value="@location.Id" hidden />
+                                        <p>
+                                            <strong class='location_name' id="name-@location.Id">@location.Name</strong>
+                                        </p><br /><br />
+                                        <p class='location_address' id='address-@location.Id' style="margin: 0px 0 0 10px;">@Html.Raw(location.Address.Replace("\n", "<br/>"))</p>
+                                    </div>
+                                    <div class="clearfix"></div><br />
+                                }
+                            </div><br />
+
+
+
+                            <div class="activity-overview task editProfile" style="padding: 15px;">
+                                <div class="form-group">
+                                    <label for="business-address-title">Name <span>*</span></label>
+                                    <input type="text" id="form_location_name" name="locationName" class="form-control">
+                                </div>
+                                <div class="form-group">
+                                    <label for="business-address">Address <span>*</span></label>
+                                    <textarea rows="7" id="form_location_address" name="locationAddress" class="form-control"></textarea>
+                                </div>
+
+                                <a class="btn btn-success" onclick="addLocation()">Add location</a>
+                            </div>
+
+                            <br /><br />
+
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+        </form>
+
+    </section>
+    <!-- ./content -->
+
+</div>
+<!-- /.content-wrapper -->
+
+<div class="modal fade" id="app-community-edit-location" role="dialog" aria-labelledby="app-community-edit-location">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <a class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </a>
+                <h5 class="modal-title">Edit business location</h5>
+            </div>
+            <div class="modal-body">
+
+                <div class="well">
+                    <div class="form-group">
+                        <label for="business-address-title">Name</label>
+                        <input type="text" id="location_name" name="business-address-title" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label for="business-address">Address</label>
+                        <textarea rows="5" id="location_address" name="business-address" class="form-control"></textarea>
+                    </div>
+
+                </div>
+
+
+                <a class="btn btn-danger" onclick="cancelChangeLocation()">Cancel</a>
+                <a class="btn btn-success" onclick="locationConfirmChange()">Confirm changes</a>
+
+
+            </div>
+        </div> <!-- /.modal-content -->
+    </div> <!-- /.modal-dialog -->
+</div> <!-- /.modal -->
+
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/community.domainprofilesetup.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/community.domainprofilesetup.min.js"></script>
+
+    }
+}

@@ -1,0 +1,596 @@
+﻿@using System.Diagnostics
+@using Qbicles.BusinessRules
+@using Qbicles.Models
+@model Qbicles.Models.SalesMkt.Settings
+@{
+    var smSetupInit = (SMSetupInit)ViewBag.SMSetupInit;
+
+    var domainRoles = (List<DomainRole>)ViewBag.DomainRoles;
+    var domain = (QbicleDomain)ViewBag.CurrentDomain;
+    var api = (string)ViewBag.DocRetrievalUrl;
+    ViewBag.Title = "SalesMarketing - Setup";
+
+}
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail" style="background: #f5f5f5;">
+
+
+    <!-- Main content -->
+    <section class="content setup-ui">
+
+        <br /><br />
+
+        <div class="mod_title">
+            <h5>Sales &amp; Marketing</h5>
+            <h4>Initial Setup</h4>
+        </div>
+
+        <a href="/Apps/AppManagement" class="btn btn-info"><i class="fa fa-th"></i> &nbsp; All apps</a>
+
+
+        <br /><br /><br />
+
+        <div class="row">
+
+            <div class="col-xs-12 col-sm-5 col-md-4">
+
+                <div class="activity-overview plain" id="setup-wizard">
+                    <h3>Getting started</h3>
+                    <p>This setup wizard will walk you through setting up everything you need to get started with your Sales &amp; Marketing app.</p>
+                    <input hidden="" id="contactsCompleted" value="@smSetupInit.ContactsCompleted.ToString()" />
+                    <input hidden="" id="traderContactsCompleted" value="@smSetupInit.TraderContactsCompleted.ToString()" />
+                    <input hidden="" id="qbileCompleted" value="@smSetupInit.QbileCompleted.ToString()" />
+                    <input hidden="" id="workgroupCompleted" value="@smSetupInit.WorkgroupCompleted.ToString()" />
+                    <ul class="wizard-steps sm_setup_ul">
+                        <li class="smsetup_contacts @smSetupInit.ContactsClass cursor-pointer" onclick="SelectContacts('contacts')">
+                            <div class="step-circle"><i class="fa fa-exclamation"></i></div>
+                            <a href="#" data-form="#show-contacts" disabled><h6>Configure <span>Contacts</span></h6></a>
+                        </li>
+                        <li class="smsetup_tradercontacts @smSetupInit.TraderContactsClass cursor-pointer" onclick="SelectTraderContacts('tradercontacts')">
+                            <div class="step-circle"><i class="fa fa-exclamation"></i></div>
+                            <a href="#" data-form="#show-import" disabled><h6>Import <span>Trader Contacts</span></h6></a>
+                        </li>
+                        <li class="smsetup_qbicle @smSetupInit.QbileClass cursor-pointer" onclick="SelectQbicle('qbicle')">
+                            <div class="step-circle"><i class="fa fa-exclamation"></i></div>
+                            <a href="#" data-form="#show-qbicle" disabled><h6>Link to a <span>Qbicle</span></h6></a>
+                        </li>
+                        <li class="smsetup_workgroup @smSetupInit.WorkgroupClass cursor-pointer" onclick="SelectWorkgroup('workgroup')">
+                            <div class="step-circle"><i class="fa fa-exclamation"></i></div>
+                            <a href="#" data-form="#show-workgroup" disabled><h6>Add a <span>Workgroup</span></h6></a>
+                        </li>
+                        <li class="smsetup_complete @smSetupInit.SetupCompleteClass cursor-pointer" onclick="SelectCompleteSM('complete')" id="step-success">
+                            <div class="step-circle"><i class="fa fa-check"></i></div>
+                            <a href="#" data-form="#show-success" disabled><h6>Setup <span>Complete</span></h6></a>
+                        </li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div id="show_content" class="col-xs-12 col-sm-7 col-md-8">
+                @{
+                    if (smSetupInit != null)
+                    {
+                        if (smSetupInit.ContactsClass.Contains("active"))
+                        {
+                            Html.RenderAction("ShowContacts", "SalesMarketingSetup");
+                        }
+                        else if (smSetupInit.TraderContactsClass.Contains("active"))
+                        {
+                            Html.RenderAction("ShowTraderContacts", "SalesMarketingSetup");
+                        }
+                        else if (smSetupInit.QbileClass.Contains("active"))
+                        {
+                            Html.RenderAction("ShowQbicle", "SalesMarketingSetup");
+                        }
+                        else if (smSetupInit.WorkgroupClass.Contains("active"))
+                        {
+                            Html.RenderAction("ShowWorkgroup", "SalesMarketingSetup");
+                        }
+                        else if (smSetupInit.SetupCompleteClass != null && smSetupInit.SetupCompleteClass.Contains("active"))
+                        {
+                            Html.RenderAction("ShowComplete", "SalesMarketingSetup");
+                        }
+                    }
+                    else
+                    {
+                        Html.RenderAction("ShowContacts", "SalesMarketingSetup");
+                    }
+                }
+            </div>
+
+        </div>
+
+    </section>
+    <!-- ./content -->
+
+</div>
+<!-- /.content-wrapper -->
+<!-- Modals -->
+<div class="modal left fade" id="domain-change" tabindex="-1" role="dialog" aria-labelledby="domain-change">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Change active domain</h5>
+            </div>
+            <div class="modal-body" style="padding: 0;">
+
+                <ul class="domain-change-list unstyled">
+                    <li class="active"><a href="#" data-dismiss="modal">RoadChef</a></li>
+                    <li><a href="#" data-dismiss="modal">Cleanbooks</a></li>
+                </ul>
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+<!-- /.modal -->
+<div class="modal fade" id="filtering-options" tabindex="-1" role="dialog" aria-labelledby="filtering-options">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Filtering options</h5>
+            </div>
+            <div class="modal-body">
+
+                <form name="filtering_options" class="modal-form">
+
+                    <div class="form-group">
+                        <label for="filter">Order by:</label>
+                        <select name="filter" class="form-control">
+                            <option value="">Latest activity</option>
+                            <option value="">Open Qbicles</option>
+                            <option value="">Closed Qbicles</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="search">Search for:</label>
+                        <input type="text" name="search" class="form-control">
+                    </div>
+                    <a href="#" class="btn btn-success" data-dismiss="modal">Update</a>
+                    <a href="#" class="btn btn-danger" data-dismiss="modal">Cancel</a>
+                </form>
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+<!-- /.modal -->
+<div class="modal fade" id="search-mini" tabindex="-1" role="dialog" aria-labelledby="search-mini">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Search this Qbicle</h5>
+            </div>
+            <div class="modal-body">
+
+                <form name="search" method="post" action="#" class="modal-form">
+                    <div class="form-group">
+                        <label for="search">Search for...</label>
+                        <input type="text" name="search" class="form-control">
+                    </div>
+                    <a href="#" class="btn btn-success" data-dismiss="modal">Search now</a>
+                    <a href="#" class="btn btn-danger" data-dismiss="modal">Cancel</a>
+                </form>
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+<!-- /.modal -->
+<div class="modal fade" id="app-group-generic-add" tabindex="-1" role="dialog" aria-labelledby="app-group-generic-add">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Add a Group</h5>
+            </div>
+            <div class="modal-body">
+
+                <div class="activity-overview task" style="padding: 20px;">
+                    <div class="form-group" style="margin: 0;">
+                        <label for="title">Title</label>
+                        <input type="text" class="form-control" name="title">
+                    </div>
+                </div>
+
+                <br />
+                <button type="submit" class="btn btn-success"><i class="fa fa-save"></i> &nbsp; Finish &amp; save</button>
+                <button class="btn btn-danger" data-dismiss="modal"><i class="fa fa-remove"></i> &nbsp; Cancel</button>
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+<!-- /.modal -->
+<div class="modal fade" id="app-group-edit" tabindex="-1" role="dialog" aria-labelledby="app-group-edit">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Edit Group</h5>
+            </div>
+            <div class="modal-body">
+
+                <div class="well">
+                    <div class="form-group">
+                        <label for="title">Title</label>
+                        <input type="text" class="form-control" name="title" value="Bank Accounts">
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-success"><i class="fa fa-check"></i> &nbsp; Confirm</button>
+                <button class="btn btn-danger" data-dismiss="modal"><i class="fa fa-remove"></i> &nbsp; Cancel</button>
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+<!-- /.modal -->
+<div class="modal fade left" id="app-marketing-workgroup-add" role="dialog" aria-labelledby="app-marketing-workgroup-add" style="display: none;"></div>
+<div class="modal fade" id="app-marketing-delete-workgroup" role="dialog" aria-labelledby="app-marketing-delete-workgroup" style="display: none;">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+                <h5 class="modal-title">Confirm delete</h5>
+            </div>
+            <div class="modal-body">
+
+                <div class="activity-overview alert-detail animated bounce" style="padding: 20px;">
+                    <h5>Warning!</h5>
+                    <br>
+                    <input id="wg-delete-id" type="hidden" value="0" />
+                    <p>
+                        Are you sure you want to delete this Workgroup?
+                    </p>
+
+                    <br>
+                    <div class="text-right">
+                        <button class="btn btn-success" onclick="DeleteWorkgroup();"><i class="fa fa-trash"></i> &nbsp; Delete</button>
+                        <button class="btn btn-danger" data-dismiss="modal"><i class="fa fa-close"></i> &nbsp; Cancel</button>
+                    </div>
+                </div>
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+<!-- /.modal -->
+<div class="modal fade left" id="app-marketing-workgroup-edit" role="dialog" aria-labelledby="app-marketing-workgroup-edit">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Edit Workgroup</h5>
+            </div>
+            <div class="modal-body">
+
+                <div class="row">
+                    <div class="col-xs-12">
+                        <ul class="app_subnav" style="list-style-type: none;">
+                            <li class="active"><a href="#edit-specifics" data-toggle="tab">Specifics</a></li>
+                            <li><a href="#edit-members" data-toggle="tab">Members &amp; roles</a></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <br />
+
+
+
+                <div class="tab-content">
+
+                    <!-- Specifics -->
+                    <div class="tab-pane fade in active" id="edit-specifics">
+                        <div class="well custom" style="padding-bottom: 10px;">
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label for="name">Workgroup name</label>
+                                        <input type="text" name="name" class="form-control" value="Content Manager">
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label for="qbicle">Qbicle</label>
+                                        <select name="qbicle" class="form-control select2" onchange="$('#default-topic').attr('disabled', false);" style="width: 100%;" disabled>
+                                            <option value=""></option>
+                                            <option value="1" selected>Daily Opening Checklist</option>
+                                            <option value="2">RoadChef</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label for="qbicle">Default topic</label>
+                                        <select name="qbicle" id="default-topic" class="form-control select2" style="width: 100%;" disabled>
+                                            <option value="0" selected>Default</option>
+                                            <option value="1">System topic 2</option>
+                                            <option value="2">System topic 3</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label for="process">Associated processes (check all that apply)</label>
+                                        <select name="process" class="form-control checkmulti" style="width: 100%;" multiple>
+                                            <option value="0">Approve Social Media Posts</option>
+                                            <option value="1">Create Social Media Campaigns</option>
+                                            <option value="2" selected>Create Social Media Posts</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                        <a href="#edit-members" data-toggle="tab" class="btn btn-success btnNext">Next &nbsp; <i class="fa fa-angle-right"></i></a>
+                    </div>
+                    <!-- END Specifics -->
+                    <!-- Members -->
+                    <div class="tab-pane fade" id="edit-members">
+
+                        <div class="contact-list" style="margin: 0 15px;">
+
+                            <div class="well custom">
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-8">
+                                        <div class="form-group" style="margin: 0;">
+                                            <label for="search">Search Domain users</label>
+                                            <input type="text" name="search" class="form-control">
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-4">
+                                        <div class="form-group" style="margin: 0;">
+                                            <label for="search">Show</label>
+                                            <select name="show" class="form-control select2" style="width: 100%;">
+                                                <option value="0" selected>All Domain users</option>
+                                                <option value="1">Workgroup members</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style="margin: 25px 0 60px 0;">
+
+                                <div>
+                                    <ul class="widget-contacts">
+                                        <li class="letters" style="padding-top: 0;">F</li>
+                                        <li>
+                                            <a href="#">
+                                                <div class="contact-avatar">
+                                                    <div style="background-image: url('dist/img/contact-5.jpg');">&nbsp;</div>
+                                                </div>
+                                                <div class="contact-info">
+                                                    <h5>Boba Fett</h5>
+                                                </div>
+
+                                                <div class="contact-sideoptions">
+                                                    <button class="btn btn-success contact1-add" style="margin-top: 12px;" onclick="$(this).toggle(); $('.contact1-remove').toggle();"><i class="fa fa-plus"></i> &nbsp; Add to Workgroup</button>
+                                                    <button class="btn btn-danger contact1-remove" style="display: none; margin-top: 12px;" onclick="$(this).toggle(); $('.contact1-add').toggle();"><i class="fa fa-trash"></i> &nbsp; Remove</button>
+                                                </div>
+                                            </a>
+                                        </li>
+                                        <li class="letters">S</li>
+                                        <li>
+                                            <a href="#">
+                                                <div class="contact-avatar">
+                                                    <div style="background-image: url('dist/img/contact-2.jpg');">&nbsp;</div>
+                                                </div>
+                                                <div class="contact-info">
+                                                    <h5>Luke Skywalker</h5>
+                                                </div>
+
+                                                <div class="contact-sideoptions">
+                                                    <button class="btn btn-success contact2-add" style="display: none; margin-top: 12px;" onclick="$(this).toggle(); $('.contact2-remove').toggle();"><i class="fa fa-plus"></i> &nbsp; Add to Workgroup</button>
+                                                    <button class="btn btn-danger contact2-remove" style="margin-top: 12px;" onclick="$(this).toggle(); $('.contact2-add').toggle();"><i class="fa fa-trash"></i> &nbsp; Remove</button>
+                                                </div>
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a href="#">
+                                                <div class="contact-avatar">
+                                                    <div style="background-image: url('dist/img/contact-4.jpg');">&nbsp;</div>
+                                                </div>
+                                                <div class="contact-info">
+                                                    <h5>Han Solo</h5>
+                                                </div>
+
+                                                <div class="contact-sideoptions">
+                                                    <button class="btn btn-success contact3-add" style="display: none; margin-top: 12px;" onclick="$(this).toggle(); $('.contact3-remove').toggle();"><i class="fa fa-plus"></i> &nbsp; Add to Workgroup</button>
+                                                    <button class="btn btn-danger contact3-remove" style="margin-top: 12px;" onclick="$(this).toggle(); $('.contact3-add').toggle();"><i class="fa fa-trash"></i> &nbsp; Remove</button>
+                                                </div>
+                                            </a>
+                                        </li>
+                                        <li class="letters">V</li>
+                                        <li>
+                                            <a href="#">
+                                                <div class="contact-avatar">
+                                                    <div style="background-image: url('dist/img/contact-1.jpg');">&nbsp;</div>
+                                                </div>
+                                                <div class="contact-info">
+                                                    <h5>Darth Vader</h5>
+                                                </div>
+
+                                                <div class="contact-sideoptions">
+                                                    <button class="btn btn-success contact4-add" style="margin-top: 12px;" onclick="$(this).toggle(); $('.contact4-remove').toggle();"><i class="fa fa-plus"></i> &nbsp; Add to Workgroup</button>
+                                                    <button class="btn btn-danger contact4-remove" style="display: none; margin-top: 12px;" onclick="$(this).toggle(); $('.contact4-add').toggle();"><i class="fa fa-trash"></i> &nbsp; Remove</button>
+                                                </div>
+                                            </a>
+                                        </li>
+                                        <li class="letters">Y</li>
+                                        <li>
+                                            <a href="#">
+                                                <div class="contact-avatar">
+                                                    <div style="background-image: url('dist/img/contact-3.jpg');">&nbsp;</div>
+                                                </div>
+                                                <div class="contact-info">
+                                                    <h5>Yoda</h5>
+                                                </div>
+
+                                                <div class="contact-sideoptions">
+                                                    <button class="btn btn-success contact5-add" style="margin-top: 12px;" onclick="$(this).toggle(); $('.contact5-remove').toggle();"><i class="fa fa-plus"></i> &nbsp; Add to Workgroup</button>
+                                                    <button class="btn btn-danger contact5-remove" style="display: none; margin-top: 12px;" onclick="$(this).toggle(); $('.contact5-add').toggle();"><i class="fa fa-trash"></i> &nbsp; Remove</button>
+                                                </div>
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </div>
+
+                            </div>
+
+                        </div>
+
+
+                        <br />
+                        <a href="#add-specifics" data-toggle="tab" class="btn btn-warning btnPrevious"><i class="fa fa-angle-left"></i> &nbsp; Previous</a>
+                        <a href="#" data-dismiss="modal" class="btn btn-success">Confirm</a>
+
+                    </div>
+                    <!-- END Members -->
+
+                </div>
+
+
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+<!-- /.modal -->
+<div class="modal right fade" id="notifications" role="dialog" aria-labelledby="notifications">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">My Notifications</h5>
+            </div>
+            <div class="modal-body">
+
+                <div class="row">
+                    <div class="col-xs-12">
+
+                        <div class="activity-overview task" style="padding: 20px 20px 10px 20px;">
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label for="order">Order</label>
+                                        <select name="order" class="form-control select2" style="width: 100%;">
+                                            <option value="desc">Latest first</option>
+                                            <option value="asc">Oldest first</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label>Options</label><br />
+                                        <button class="btn btn-primary checkall" data-checked="false">Check visible</button>
+                                        <button class="btn btn-warning removeall" disabled>Delete selected</button>
+                                        <button class="btn btn-<button class=" btn btn-danger">Delete all</button> removeall" disabled>Delete selected</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <br />
+                    </div>
+
+
+                    <div class="col-xs-12">
+
+                        <div class="notifications_overview">
+
+                            <ul>
+                                <li>
+                                    <input type="checkbox" class="cb-element" name="notifications[]">
+                                    <div class="notify_avatar hidden-xs" style="background-image: url('dist/img/user4-160x160.jpg');"></div>
+                                    <div class="notify_detail">
+                                        <a href="#" class="seen"><i class="fa fa-trash"></i></a>
+                                        <p><strong>Mila Kunis</strong> added a media item to the task <a href="task.php">Task Title Here</a></p>
+                                        <small>13 minutes ago in RoadChef / Daily Opening Check List</small>
+                                    </div>
+                                    <div class="clearfix"></div>
+                                </li>
+                                <li>
+                                    <input type="checkbox" class="cb-element" name="notifications[]">
+                                    <div class="notify_avatar hidden-xs" style="background-image: url('dist/img/user1-160x160.jpg');"></div>
+                                    <div class="notify_detail">
+                                        <a href="#" class="seen"><i class="fa fa-trash"></i></a>
+                                        <p><strong>Tim Cook</strong> commented on the task <a href="task-cb.php">Bank Account vs Nominal Ledger</a></p>
+                                        <small>24 minutes ago in Cleanbooks / Transaction Analysis</small>
+                                    </div>
+                                    <div class="clearfix"></div>
+                                </li>
+                                <li>
+                                    <input type="checkbox" class="cb-element" name="notifications[]">
+                                    <div class="notify_avatar hidden-xs" style="background-image: url('dist/img/user4-160x160.jpg');"></div>
+                                    <div class="notify_detail">
+                                        <a href="#" class="seen"><i class="fa fa-trash"></i></a>
+                                        <p><strong>Mila Kunis</strong> added a media item to the task <a href="task.php">Task Title Here</a></p>
+                                        <small>13 minutes ago in RoadChef / Daily Opening Check List</small>
+                                    </div>
+                                    <div class="clearfix"></div>
+                                </li>
+                                <li>
+                                    <input type="checkbox" class="cb-element" name="notifications[]">
+                                    <div class="notify_avatar hidden-xs" style="background-image: url('dist/img/user1-160x160.jpg');"></div>
+                                    <div class="notify_detail">
+                                        <a href="#" class="seen"><i class="fa fa-trash"></i></a>
+                                        <p><strong>Tim Cook</strong> commented on the task <a href="task-cb.php">Bank Account vs Nominal Ledger</a></p>
+                                        <small>24 minutes ago in Cleanbooks / Transaction Analysis</small>
+                                    </div>
+                                    <div class="clearfix"></div>
+                                </li>
+                                <li>
+                                    <input type="checkbox" class="cb-element" name="notifications[]">
+                                    <div class="notify_avatar hidden-xs" style="background-image: url('dist/img/user4-160x160.jpg');"></div>
+                                    <div class="notify_detail">
+                                        <a href="#" class="seen"><i class="fa fa-trash"></i></a>
+                                        <p><strong>Mila Kunis</strong> added a media item to the task <a href="task.php">Task Title Here</a></p>
+                                        <small>13 minutes ago in RoadChef / Daily Opening Check List</small>
+                                    </div>
+                                    <div class="clearfix"></div>
+                                </li>
+                                <li>
+                                    <input type="checkbox" class="cb-element" name="notifications[]">
+                                    <div class="notify_avatar hidden-xs" style="background-image: url('dist/img/user4-160x160.jpg');"></div>
+                                    <div class="notify_detail">
+                                        <a href="#" class="seen"><i class="fa fa-trash"></i></a>
+                                        <p><strong>Mila Kunis</strong> added a media item to the task <a href="task.php">Task Title Here</a></p>
+                                        <small>13 minutes ago in RoadChef / Daily Opening Check List</small>
+                                    </div>
+                                    <div class="clearfix"></div>
+                                </li>
+                            </ul>
+
+                        </div>
+
+                    </div>
+                </div>
+
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+<!-- /.modal -->
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Content/DesignStyle/js/bootstrap-multiselect.js"></script>
+        <script src="~/Scripts/dev/salesmarketing.setup.js"></script>
+    }
+    else
+    {
+        <script src="~/Content/DesignStyle/js/bootstrap-multiselect.min.js"></script>
+        <script src="~/Scripts/dev/salesmarketing.setup.min.js"></script>
+    }
+
+}

@@ -1,0 +1,127 @@
+﻿@using System.Diagnostics
+@{
+    ViewBag.Title = "Device";
+    var showButton = (bool)ViewBag.ShowButtonQuere;
+}
+<style>
+    #Content_pos ul li a {
+        padding: 15px;
+    }
+</style>
+
+<div class="activity-overview generic help-text animated bounce">
+    <i class="fa fa-info-circle"></i>
+    <p>
+        Before you can configure your Devices you need go to generate Queues. Click the button below to do this, and we'll create everything you need to get started.
+    </p>
+    @if (!showButton)
+    {
+        <button class="btn btn-primary" id="add-queue-delivery" onClick="QueueAdd()">&nbsp; Generate Queues</button>
+    }
+</div>
+
+<div id="device_tab">
+    <div id="Content_pos" style="padding-bottom: 30px">
+        <ul class="nav nav-pills nav-marketing" style="margin-bottom: 0;">
+            <li class="active"><a href="#Users" onclick="showTabDevice('Users')">User Pool</a></li>
+            <li><a href="#subCM" onclick="showTabDevice('subCM')">Cash Management</a></li>
+            <li><a href="#subPOS" onclick="showTabDevice('subPOS')">Point of sale</a></li>
+            <li><a href="#subOD" onclick="showTabDevice('subOD')">Order Display</a></li>
+            <li><a href="#subDD" onclick="showTabDevice('subDD')">Delivery Display</a></li>
+        </ul>
+
+        <br />
+    </div>
+    <div class="row">
+
+        <div class="col-xs-12 col-sm-12 col-lg-12">
+            <div id="device-content" class="tab-content mdv2-col-dash">
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade left" id="app-trader-ods-queue-add-edit" role="dialog" aria-labelledby="app-trader-ods-queue-edit">
+
+</div><!-- /.modal -->
+
+@{
+
+    if (Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/trader.domain.js"></script>
+        <script src="~/Content/DesignStyle/js/bootstrap-multiselect.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/trader.domain.min.js"></script>
+        <script src="~/Content/DesignStyle/js/bootstrap-multiselect.min.js"></script>
+    }
+}
+
+<script>
+    $(function () {
+        var tabPointSale = getTabTrader().TraderTab;
+        $('.nav-marketing a').click(function () {
+            $(this).parent().addClass('active').siblings().removeClass('active');
+        });
+        showTabDevice = function (settingVal) {
+            $('a[href="#' + settingVal + '"]').tab('show');
+            setTabTrader(tabPointSale, settingVal);
+            var ajaxUri = '/PointOfSale/PointOfSaleContent?value=' + settingVal;
+            if (settingVal === "subPOS") {
+                ajaxUri = '/Trader/DevicePOSContent';
+            } else if (settingVal === "subOD") {
+                ajaxUri = '/Trader/DeviceODContent';
+            } else if (settingVal === "subDD") {
+                ajaxUri = '/Trader/DeviceDDContent';
+            } else if (settingVal === "subCM") {
+                ajaxUri = '/Trader/DeviceCMContent';
+            }
+            $('#device-content').LoadingOverlay("show");
+            $('#device-content').empty();
+            $('#device-content').load(ajaxUri, function () {
+                $('#device-content').LoadingOverlay("hide");
+            });
+        };
+        var url = window.location.href;
+        url = url.substr(url.indexOf('#') + 1, url.length).split('#');
+        var activeTab = getTabTrader().SubTraderTab;
+        if (url[1]) {
+            activeTab = url[1];
+        }
+        switch (activeTab) {
+            case "Users":
+            case "subPOS":
+            case "subCM":
+            case "subOD":
+            case "subDD":
+                break;
+            default:
+                activeTab = "Users";
+                break;
+        }
+        showTabDevice(activeTab);
+    });
+    function QueueAdd() {
+        var url = "/PDS/CreatePrepDeliveryQueue";
+        LoadingOverlay();
+        $.ajax({
+            url: url,
+            type: "post",
+            dataType: "json",
+            success: function (rs) {
+                window.location.reload();
+            },
+            error: function (err) {
+                cleanBookNotification.error(err, "Qbicles");
+            }
+        }).always(function () {
+            LoadingOverlayEnd();
+        });
+    }
+
+
+
+</script>

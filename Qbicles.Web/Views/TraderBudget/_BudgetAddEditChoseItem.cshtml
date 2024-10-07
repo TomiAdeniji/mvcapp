@@ -1,0 +1,211 @@
+﻿@using Qbicles.BusinessRules
+@using Qbicles.Models.Trader.Budgets
+@model Qbicles.Models.Trader.Budgets.BudgetScenarioItemGroup
+@{
+
+    var itemType = (ItemGroupType)ViewBag.ItemGroupType;
+    var itemTypeId = (int)itemType;
+    var traderItems = (List<BudgetItemModel>)ViewBag.TraderItems;
+    var budgetScenarioItems = (bool)ViewBag.BudgetScenarioItems;
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+}
+
+@{
+    switch (itemType)
+    {
+        case ItemGroupType.ItemsIBuy:
+            <div class="dynamic-budget">
+
+                <div class="row">
+                    <div class="col-xs-12 col-sm-6">
+                        <div class="form-group">
+                            <label for="item-buy">Item</label>
+                            <select id="item-select" class="form-control select2 itemprop" style="width: 100%;" onchange="ItemSelected();">
+                                <option value=""></option>
+                                @foreach (var item in traderItems)
+                                {
+                                    <option itemId="@item.Id" itemName="@item.Name" itemImage="@item.ImageUri" itemUnit="@item.Unit" value="@item.Id">@item.Name</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-xs-12 col-sm-6 unitextra" style="display: none;">
+                        <div class="form-group">
+                            <label for="unit-buy-1">Unit</label><br />
+                            <p id="item-unit-name"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row unitextra" style="display: none;">
+                    <div class="col-xs-12 col-sm-4">
+                        <div class="form-group">
+                            <label for="qty-buy-1">Purchase quantity</label>
+                            <input onchange="ValuePurchaseOnChange()" id="item-purchase-quantity" type="number" class="form-control" min="0">
+                        </div>
+                    </div>
+                    <div class="col-xs-12 col-sm-4">
+                        <label for="avg-cost-1">Average cost</label>
+                        <div class="input-group">
+                            <span class="input-group-addon">@currencySettings.CurrencySymbol</span>
+                            <input onchange="ValuePurchaseOnChange()" id="item-purchase-average-cost" type="number" class="form-control">
+                        </div>
+                    </div>
+                    <div class="col-xs-12 col-sm-4">
+                        <label for="qty-buy-1">Amount</label>
+                        <div class="input-group" style="margin-bottom: 15px;">
+                            <span class="input-group-addon">@currencySettings.CurrencySymbol</span>
+                            <input type="number" id="item-purchase-amount" class="form-control" disabled>
+                        </div>
+                    </div>
+                </div>
+
+                <br />
+                <button style="display: none;" class="btn btn-info unitextra" onclick="PeriodBreakdownItem(0,1)"><i class="fa fa-calendar state"></i> &nbsp; Period breakdown</button>
+                <button style="display: none;" class="btn btn-success unitextra" onclick="BudgetItemAddNow(@itemTypeId,true)">
+                    <i class="fa fa-plus"></i> &nbsp; Add now
+                </button>
+
+            </div>
+            break;
+        case ItemGroupType.ItemsISell:
+            <div class="dynamic-budget">
+
+                <div class="row">
+                    <div class="col-xs-12 col-sm-6">
+                        <div class="form-group">
+                            <label for="item-buy-1">Item</label>
+                            <select id="item-select" class="form-control select2 itemprop" style="width: 100%;" onchange="ItemSelected();">
+                                <option value=""></option>
+                                @foreach (var item in traderItems)
+                                {
+                                    <option itemId="@item.Id" itemName="@item.Name" itemImage="@item.ImageUri" itemUnit="@item.Unit" value="@item.Id">@item.Name</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-xs-12 col-sm-6">
+                        <div class="form-group">
+                            <label for="unit-buy-1">Unit</label><br />
+                            <p id="item-unit-name"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row unitextra" style="display: none;">
+                    <div class="col-xs-12 col-sm-4">
+                        <div class="form-group">
+                            <label for="qty-buy-1">Sale quantity</label>
+                            <input onchange="ValueSaleOnChange()" id="item-sale-quantity" type="number" class="form-control" min="0">
+                        </div>
+                    </div>
+                    <div class="col-xs-12 col-sm-4">
+                        <label for="avg-cost-1">Average price</label>
+                        <div class="input-group">
+                            <span class="input-group-addon">@currencySettings.CurrencySymbol</span>
+                            <input onchange="ValueSaleOnChange()" id="item-sale-average-price" type="number" class="form-control">
+                        </div>
+                    </div>
+                    <div class="col-xs-12 col-sm-4">
+                        <label for="qty-buy-1">Amount</label>
+                        <div class="input-group" style="margin-bottom: 15px;">
+                            <span class="input-group-addon">@currencySettings.CurrencySymbol</span>
+                            <input id="item-sale-amount" class="form-control" disabled>
+                        </div>
+                    </div>
+                </div>
+
+                <br />
+                <button style="display: none;" class="btn btn-info unitextra" onclick="PeriodBreakdownItem(0,2)"><i class="fa fa-calendar state"></i> &nbsp; Period breakdown</button>
+                <button style="display: none;" class="btn btn-success unitextra" onclick="BudgetItemAddNow(@itemTypeId,true)"><i class="fa fa-plus"></i> &nbsp; Add now</button>
+
+            </div>
+            break;
+        case ItemGroupType.ItemsIBuyAndSell:
+            <div class="dynamic-budget">
+
+                <div class="row">
+                    <div class="col-xs-12 col-sm-6">
+                        <div class="form-group">
+                            <label for="item-buy-1">Item</label>
+                            <select id="item-select" class="form-control select2 itemprop" style="width: 100%;" onchange="ItemSelected();">
+                                <option value=""></option>
+                                @foreach (var item in traderItems)
+                                {
+                                    <option itemId="@item.Id" itemName="@item.Name" itemImage="@item.ImageUri" itemUnit="@item.Unit" value="@item.Id">@item.Name</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-xs-12 col-sm-6">
+                        <div class="form-group">
+                            <label for="unit-buy-1">Unit</label><br />
+                            <p id="item-unit-name"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-xs-12 col-sm-4">
+                        <div class="form-group">
+                            <label for="qty-buy-1">Sale quantity per period</label>
+                            <input onchange="ValueSaleOnChange()" id="item-sale-quantity" type="number" class="form-control" min="0">
+                        </div>
+                    </div>
+                    <div class="col-xs-12 col-sm-4">
+                        <label for="avg-price-1">Average price</label>
+                        <div class="input-group">
+                            <span class="input-group-addon">@currencySettings.CurrencySymbol</span>
+                            <input onchange="ValueSaleOnChange()" id="item-sale-average-price" type="number" class="form-control">
+                        </div>
+                    </div>
+                    <div class="col-xs-12 col-sm-4">
+                        <label for="qty-buy-1">Amount</label>
+                        <div class="input-group" style="margin-bottom: 15px;">
+                            <span class="input-group-addon">@currencySettings.CurrencySymbol</span>
+                            <input id="item-sale-amount" class="form-control" disabled>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-xs-12 col-sm-4">
+                        <div class="form-group">
+                            <label for="qty-buy-1">Purchase quantity per period</label>
+                            <input onchange="ValuePurchaseOnChange()" id="item-purchase-quantity" type="number" class="form-control" min="0">
+                        </div>
+                    </div>
+                    <div class="col-xs-12 col-sm-4">
+                        <label for="avg-cost-1">Average cost</label>
+                        <div class="input-group">
+                            <span class="input-group-addon">@currencySettings.CurrencySymbol</span>
+                            <input onchange="ValuePurchaseOnChange()" id="item-purchase-average-cost" type="number" class="form-control">
+                        </div>
+                    </div>
+                    <div class="col-xs-12 col-sm-4">
+                        <label for="qty-buy-1">Amount</label>
+                        <div class="input-group" style="margin-bottom: 15px;">
+                            <span class="input-group-addon">@currencySettings.CurrencySymbol</span>
+                            <input type="number" id="item-purchase-amount" class="form-control" disabled>
+                        </div>
+                    </div>
+                </div>
+
+
+                <br />
+                <button class="btn btn-info" data-toggle="modal" onclick="PeriodBreakdownItem(0,3)"><i class="fa fa-calendar state"></i> &nbsp; Period breakdown</button>
+                <button class="btn btn-success unitextra" onclick="BudgetItemAddNow(@itemTypeId,true)"><i class="fa fa-plus"></i> &nbsp; Add now</button>
+            </div>
+            break;
+    }
+}
+
+@*<script src="~/Scripts/dev/qbicle.formatnumber.js"></script>*@
+<script>
+    $("#item-select").select2();
+    lstTraderItems = @Html.Raw(Json.Encode(traderItems));
+    if ('@budgetScenarioItems'==="True") {
+        ResetBudgetItemSelected('budget-item-table', 'item-select');
+    }
+</script>

@@ -1,0 +1,1783 @@
+﻿@using Qbicles.BusinessRules;
+@using Qbicles.Models.Trader;
+@using Qbicles.Models.Trader.Product;
+@using Qbicles.BusinessRules.Helper;
+@using Qbicles.Models.Trader.Resources;
+@{
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var type = (string)ViewBag.TradingType;
+    var isProduct = (bool)ViewBag.IsProduct;
+    //var workGroups = (List<WorkGroup>)ViewBag.Workgroups;
+    var groups = (List<TraderGroup>)ViewBag.Groups;
+    var purchaseTaxRates = (List<TaxRate>)ViewBag.PurchaseTaxRates;
+    var saleTaxRates = (List<TaxRate>)ViewBag.SaleTaxRates;
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+    var traderItemSubs = (List<TraderItem>)ViewBag.TraderItems;
+    var locations = (List<TraderLocation>)ViewBag.Locations;
+    var lstProductTags = (List<AdditionalInfo>)ViewBag.ListProductTags ?? new List<AdditionalInfo>();
+    var lstBrands = (List<AdditionalInfo>)ViewBag.ListBrands ?? new List<AdditionalInfo>();
+    var lstProductTagNames = Html.Raw(lstProductTags.Select(p => new
+    {
+        id = p.Id,
+        value = p.Name
+    }).ToList().ToJson());
+
+    var galeryImages = new List<ProductGalleryItem>();
+    var maxTagItems = lstProductTags.Count;
+
+}
+<form id="frmTradingItem">
+    <input type="hidden" value="0" id="traderItem_id">
+    <input type="hidden" value="" id="form_specifics_description_text">
+
+    @if (type == "ibuy")
+    {
+        <div class="row">
+            <div class="col-xs-12">
+                <ul class="app_subnav admintabs" style="padding-top: 0;">
+                    <li class="active"><a href="#item-details" data-toggle="tab">Item details</a></li>
+                    <li><a href="#sale-item-gallery" data-toggle="tab">Gallery</a></li>
+                    @if (isProduct)
+                    {
+                        <li class="inventorytab"><a href="#buy-inventory" data-toggle="tab">Inventory</a></li>
+                    }
+                </ul>
+            </div>
+        </div>
+        <br />
+        <!-- Main content -->
+        <section class="setup-ui">
+
+            <div class="row">
+
+                <div class="col-xs-12">
+
+                    <div class="tab-content">
+
+
+                        <!-- Item specifics -->
+                        <div class="tab-pane fade in active" id="item-details">
+
+                            <div class="well custom">
+
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="name">Name</label>
+                                            <input type="text" class="form-control" required name="name">
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="groups">Category/group</label>
+                                            <select name="groups" class="form-control select2" onchange="$(this).valid()" required style="width: 100%;">
+                                                <option value=""></option>
+                                                @foreach (var item in groups)
+                                                {
+                                                    <option value="@item.Id">@item.Name</option>
+                                                }
+                                            </select>
+                                            <label id="groups-error" class="error" for="groups" style="display:none">This field is required.</label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="sku">SKU</label>
+                                            <input type="text" name="sku" required maxlength="50" class="form-control">
+                                        </div>
+                                    </div>
+                                    @if (isProduct)
+                                    {
+                                        <div class="col-xs-12 col-sm-6 barcode">
+                                            <div class="form-group">
+                                                <label for="barcode">Barcode</label>
+                                                <input type="text" name="barcode" maxlength="50" class="form-control">
+                                            </div>
+                                        </div>
+                                    }
+
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="brand">Brand</label>
+                                            <select id="item_brand" name="brand" class="form-control select2" style="width: 100%;">
+                                                <option value=""></option>
+                                                @foreach (var brandItem in lstBrands)
+                                                {
+                                                    <option value="@brandItem.Id">@brandItem.Name</option>
+                                                }
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <br />
+                                <div class="row">
+                                    <div class="col-xs-12">
+                                        <div class="form-group">
+                                            <label for="tags">Product tags</label>
+                                            <p class="formhelp">
+                                                Choose one or more tags (to a maximum of 10) to help classify your item. 
+                                                If the tag you desire isn't in the list, you can freely add new ones in your Trading Item Resources section and return here to apply them.
+                                            </p>
+                                            <textarea required rows="3" name="extratags" id="item_protags" placeholder='Additional tags...' class="form-control input-lg"></textarea>
+                                        </div>
+                                    </div>
+                                </div>
+                                <br />
+
+                                <div class="row description-class">
+                                    <div class="col-xs-12">
+                                        <div class="form-group">
+                                            <label for="type">Description</label>
+                                            <textarea required name="description" id="form_specifics_description"></textarea>
+                                        </div>
+                                    </div>
+                                </div>
+                                <br />
+
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="image-type">Product image</label>
+                                            <input type="hidden" id="itemimg-object-key" value="@ConfigManager.DefaultProductPlaceholderImageUrl">
+                                            <input type="file" id="form_specifics_icon" filesize="true" name="specifics_icon" class="form-control">
+                                        </div>
+                                    </div>
+
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="active">Purchase tax rate</label>
+                                            <select id="sl_taxrate_purchase" name="taxaccountpurchase" class="form-control checkmulti" multiple>
+                                                @foreach (var item in purchaseTaxRates)
+                                                {
+                                                    var nameAcc = "";
+                                                    if (item.AssociatedAccount != null) { nameAcc = item.AssociatedAccount.Name; }
+                                                    <option value="@item.Id">@item.Name (linked account: @nameAcc)</option>
+                                                }
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+
+                                <br />
+                                <label>Item units</label><br />
+                                <div class="row no-search">
+                                    <div class="col-xs-12">
+
+                                        <table id="unit_conversions" class="datatable no-search table-hover" style="background: #fff; width: 100%;"
+                                               data-ordering="false" data-info="false" data-paging="false" searching="false">
+                                            <thead>
+                                                <tr>
+                                                    <th data-priority="1">Unit</th>
+                                                    <th data-priority="2">Quantity</th>
+                                                    <th data-priority="1">Component unit</th>
+                                                    <th data-priority="3" style="display:none">Primary</th>
+                                                    <th data-priority="2">Active</th>
+                                                    <th data-priority="1" style="min-width:100px"></th>
+                                                </tr>
+                                            </thead>
+                                            <tbody></tbody>
+                                        </table>
+
+                                        <br />
+                                        <button type="button" id="btn_addNewUnitConversion" class="btn btn-success" onclick="addNewUnitConversion()"><i class="fa fa-plus"></i> &nbsp; Add unit</button>
+                                    </div>
+                                </div>
+
+                            </div>
+
+
+
+                            <br />
+                            @if (isProduct)
+                            {
+                                <div class="normalfinish">
+                                    <a href="#" class="btn btn-warning" onclick="$('#theform').hide(); $('#wizard').fadeIn();"><i class="fa fa-angle-left"></i> &nbsp; Previous</a>
+                                    <a href="#sale-item-gallery" data-toggle="tab" class="btn btn-success btnNext">Next &nbsp; <i class="fa fa-angle-right"></i></a>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="finishonfirst">
+                                    <a href="#" class="btn btn-warning" onclick="$('#theform').hide(); $('#wizard').fadeIn();"><i class="fa fa-angle-left"></i> &nbsp; Previous</a>
+                                    <a href="#sale-item-gallery" data-toggle="tab" class="btn btn-success btnNext">Next &nbsp; <i class="fa fa-angle-right"></i></a>
+                                </div>
+                            }
+                        </div>
+                        <!-- END #item-1 -->
+                        <!-- Gallery -->
+                        <div class="tab-pane fade" id="sale-item-gallery">
+
+                            <div class="well custom rounded" style="padding: 30px 35px;">
+                                <h5>Add a gallery</h5>
+                                <p>
+                                    Optionally add one or more images to introduce a gallery to your item display. You can drag and drop the images
+                                    to change the order in which they're displayed.
+                                </p>
+                                <br />
+
+                                <div onclick="AddImage()" class="btn btn-success community-button sm w-auto fileUpload blue-btn btn width100">
+                                    <span> <i class="fa fa-plus"></i> &nbsp; Add image</span>
+                                </div>
+                                <input type="file" id="image-galery-edit" accept="image/*" style="display:none" onchange="ChangeImageGalery()">
+                                <input id="image-galery-input" onchange="AddImageGalery()" style="display:none" type="file" class="uploadlogo" accept="image/*" />
+                                @if (isProduct)
+                                {
+                                    <a href="#buy-inventory" data-toggle="tab" class="btn btn-info community-button sm w-auto">Skip step &nbsp; <i class="fa fa-angle-right"></i></a>
+                                }
+                            </div>
+
+                            @{
+                                var displayImgEmpty = "none;";
+                                if (galeryImages.Count() == 0)
+                                {
+                                    displayImgEmpty = "block;";
+                                }
+
+                            }
+                            <div class="gallerynone text-center" style="display: @displayImgEmpty">
+                                <p>Looks like you haven't added any gallery images for this item yet. If you want to, tap the button above to begin adding.</p>
+                            </div>
+
+
+                            @{
+                                var displayImgList = "none;";
+                                if (galeryImages.Any())
+                                {
+                                    displayImgList = "block;";
+                                }
+                            }
+
+                            <div class="gallerystart" style="display=@displayImgList">
+                                <div id="itemgalerylist" class="item-galery-list" style="margin-top: 20px; background: #f5f5f5; border-radius: 5px; padding: 15px;">
+
+                                    @foreach (var image in galeryImages)
+                                    {
+                                        <figure id="figure-@image.FileUri">
+                                            <div id="@image.FileUri" class="flex-contain">
+                                                <div class="col img">
+                                                    <div style="background-image: url('@api@image.FileUri');"></div>
+                                                </div>
+                                                <div class="col options">
+                                                    <span class="image_row" style="display:none">@image.FileUri</span>
+                                                    <div class="dropdown contactoptside">
+                                                        <button class="btn btn-primary dropdown-toggle" type="button" data-toggle="dropdown">
+                                                            <i class="fa fa-ellipsis-h"></i>
+                                                        </button>
+                                                        <ul class="dropdown-menu dropdown-menu-right">
+                                                            <li><a style="cursor: pointer !important;" onclick="ItemGaleryEdit('@image.FileUri')">Edit</a></li>
+                                                            <li><a style="cursor: pointer !important;" onclick="ItemGaleryDelete('@image.FileUri')">Delete</a></li>
+                                                        </ul>
+                                                    </div>
+
+                                                </div>
+                                            </div>
+                                        </figure>
+
+                                    }
+
+                                </div>
+
+                            </div>
+
+
+                            <br /><br />
+
+                            @if (isProduct)
+                            {
+                                <div class="normalfinish">
+                                    <a href="#item-details" data-toggle="tab" class="btn btn-warning"><i class="fa fa-angle-left"></i> &nbsp; Previous</a>
+                                    <a href="#buy-inventory" data-toggle="tab" class="btn btn-success btnNext">Next &nbsp; <i class="fa fa-angle-right"></i></a>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="finishonfirst">
+                                    <a href="#item-details" data-toggle="tab" class="btn btn-warning"><i class="fa fa-angle-left"></i> &nbsp; Previous</a>
+                                    <button class="btn btn-success" type="submit">Confirm</button>
+                                </div>
+                            }
+
+                        </div>
+                        <!-- END Gallery -->
+                        <!-- Inventory -->
+                        @if (isProduct)
+                        {
+                            <div class="tab-pane fade" id="buy-inventory">
+
+                                <div class="inventory-options" style="margin-top: 10px;">
+
+                                    <div class="activity-overview generic help-text animated bounce">
+                                        <i class="fa fa-info-circle"></i>
+                                        <p>
+                                            <strong>NOTE:</strong> Your current inventory count will not be directly editable once your item is added. Please be sure the count you
+                                            provide below is accurate, as any changes you may require later will have to be made through stock adjustments.
+                                        </p>
+                                    </div>
+
+
+                                    <div class="well custom" style="padding-bottom: 5px;">
+                                        <div class="row">
+                                            <div class="col-xs-12 col-sm-6" style="margin-bottom: 15px;">
+                                                <label for="location">Current location</label>
+                                                <select id="local-manage-select" name="location" required onchange="checkInventoryChooseBP(this)" class="form-control select2" style="width: 100%;">
+                                                    <option value=""></option>
+                                                    @foreach (var item in locations)
+                                                    {
+                                                        <option value="@item.Id">@item.Name</option>
+                                                    }
+                                                </select>
+                                                <label id="local-manage-select-error" class="error" for="local-manage-select" style="display:none">This field is required.</label>
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-xs-12 col-sm-6">
+                                                <label for="instock">Current inventory</label>
+                                                <div class="input-group" style="margin-bottom: 15px;">
+                                                    <input type="text" value="@(((decimal)0).ToInputNumberFormat(currencySettings))" id="form_inventory_instock" name="instock" class="form-control" disabled="">
+                                                    <span class="input-group-btn"><button type="button" disabled class="btn btn-primary btnaddinventory" onclick="initIVCreateModal()"><i class="fa fa-plus"></i> &nbsp; Create inventory</button></span>
+                                                </div>
+                                            </div>
+                                            <div class="col-xs-12 col-sm-3">
+                                                <div class="form-group">
+                                                    <label for="mininv">Min inventory</label>
+                                                    <input type="text" value="0" name="mininv" id="form_inventory_mininv" class="form-control isnumber">
+                                                </div>
+                                            </div>
+                                            <div class="col-xs-12 col-sm-3">
+                                                <div class="form-group">
+                                                    <label for="maxinv">Max inventory</label>
+                                                    <input type="text" value="0" id="form_inventory_maxinv" name="maxinv" class="form-control isnumber">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-xs-12 col-sm-3">
+                                                <div class="form-group">
+                                                    <label for="avgcost">Average cost</label>
+                                                    <p>@(((decimal)0).ToCurrencySymbol(currencySettings))</p>
+                                                </div>
+                                            </div>
+                                            <div class="col-xs-12 col-sm-3">
+                                                <div class="form-group">
+                                                    <label for="latestcost">Latest cost</label>
+                                                    <p>@(((decimal)0).ToCurrencySymbol(currencySettings))</p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                    </div>
+
+                                </div>
+                                <br />
+                                <a href="#sale-item-gallery" data-toggle="tab" class="btn btn-warning btnPrevious"><i class="fa fa-angle-left"></i> &nbsp; Previous</a>
+                                <button class="btn btn-success" type="submit">Confirm</button>
+                            </div>
+                        }
+                        <!-- END Inventory -->
+                    </div> <!-- ./tab-content -->
+
+                </div> <!-- /.col -->
+            </div> <!-- /.row -->
+
+        </section>
+    }
+    else if (type == "isell")
+    {
+        <div class="row">
+            <div class="col-xs-12">
+                <ul class="app_subnav admintabs" style="padding-top: 0;">
+                    <li class="active"><a href="#item-details" data-toggle="tab">Item details</a></li>
+                    <li><a href="#sale-item-gallery" data-toggle="tab">Gallery</a></li>
+                    @if (isProduct)
+                    {
+                        <li class="inventorytab"><a href="#sell-inventory" data-toggle="tab">Inventory</a></li>
+                    }
+                </ul>
+            </div>
+        </div>
+        <br />
+        <!-- Main content -->
+        <section class="setup-ui">
+            <div class="row">
+                <div class="col-xs-12">
+                    <div class="tab-content">
+                        <!-- Item specifics -->
+                        <div class="tab-pane fade in active" id="item-details">
+
+                            <div class="well custom">
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="groups">Category/group</label>
+                                            <select name="groups" class="form-control select2" onchange="$(this).valid()" required style="width: 100%;">
+                                                <option value=""></option>
+                                                @foreach (var item in groups)
+                                                {
+                                                    <option value="@item.Id">@item.Name</option>
+                                                }
+                                            </select>
+                                            <label id="groups-error" class="error" for="groups" style="display:none">This field is required.</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="name">Name</label>
+                                            <input type="text" class="form-control" name="name" required>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="sku">SKU</label>
+                                            <input type="text" name="sku" class="form-control" required>
+                                        </div>
+                                    </div>
+                                    @if (isProduct)
+                                    {
+                                        <div class="col-xs-12 col-sm-6 barcode">
+                                            <div class="form-group">
+                                                <label for="barcode">Barcode</label>
+                                                <input type="text" name="barcode" class="form-control">
+                                            </div>
+                                        </div>
+                                    }
+
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="brand">Brand</label>
+                                            <select id="item_brand" name="brand" class="form-control select2" style="width: 100%;">
+                                                <option value=""></option>
+                                                @foreach (var brandItem in lstBrands)
+                                                {
+                                                    <option value="@brandItem.Id">@brandItem.Name</option>
+                                                }
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                <br />
+                                <div class="row">
+                                    <div class="col-xs-12">
+                                        <div class="form-group">
+                                            <label for="tags">Product tags</label>
+                                            <p class="formhelp">
+                                                Choose one or more tags (to a maximum of 10) to help classify your item.
+                                                If the tag you desire isn't in the list, you can freely add new ones in your Trading Item Resources section and return here to apply them.
+                                            </p>
+                                            <textarea required name="extratags" id="item_protags" placeholder='Additional tags...' class="form-control input-lg"></textarea>
+                                        </div>
+                                    </div>
+                                </div>
+                                <br />
+
+                                <div class="row description-class">
+                                    <div class="col-xs-12">
+                                        <div class="form-group">
+                                            <label for="type">Description</label>
+                                            <textarea required name="description" id="form_specifics_description"></textarea>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="image-type">Product image</label>
+                                            <input type="hidden" id="itemimg-object-key" value="@ConfigManager.DefaultProductPlaceholderImageUrl">
+                                            <input type="file" id="form_specifics_icon" filesize="true" name="specifics_icon" class="form-control">
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="active">Sale tax rate</label>
+                                            <select id="sl_taxrate_sale" name="taxaccount" class="form-control checkmulti" multiple>
+                                                @foreach (var item in saleTaxRates)
+                                                {
+                                                    var nameAcc = "";
+                                                    if (item.AssociatedAccount != null) { nameAcc = item.AssociatedAccount.Name; }
+                                                    <option value="@item.Id">@item.Name (linked account: @nameAcc)</option>
+                                                }
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+
+                                <br />
+                                <label>Item units</label><br />
+                                <div class="row no-search">
+                                    <div class="col-xs-12">
+
+                                        <table id="unit_conversions" class="datatable no-search table-hover" style="background: #fff; width: 100%;"
+                                               data-ordering="false" data-info="false" data-paging="false" searching="false">
+                                            <thead>
+                                                <tr>
+                                                    <th data-priority="1">Unit</th>
+                                                    <th data-priority="2">Quantity</th>
+                                                    <th data-priority="1">Component unit</th>
+                                                    <th data-priority="3" style="display:none">Primary</th>
+                                                    <th data-priority="2">Active</th>
+                                                    <th data-priority="1" style="min-width:100px"></th>
+                                                </tr>
+                                            </thead>
+                                            <tbody></tbody>
+                                        </table>
+
+                                        <br />
+                                        <button type="button" id="btn_addNewUnitConversion" class="btn btn-success" onclick="addNewUnitConversion()"><i class="fa fa-plus"></i> &nbsp; Add unit</button>
+                                    </div>
+                                </div>
+
+                            </div>
+                            <br />
+                            @if (isProduct)
+                            {
+                                <div class="normalfinish">
+                                    <a href="#" class="btn btn-warning" onclick="$('#theform').hide(); $('#wizard').fadeIn();"><i class="fa fa-angle-left"></i> &nbsp; Previous</a>
+                                    <a href="#sale-item-gallery" data-toggle="tab" class="btn btn-success btnNext">Next &nbsp; <i class="fa fa-angle-right"></i></a>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="finishonfirst">
+                                    <a href="#" class="btn btn-warning" onclick="$('#theform').hide(); $('#wizard').fadeIn();"><i class="fa fa-angle-left"></i> &nbsp; Previous</a>
+                                    <a href="#sale-item-gallery" data-toggle="tab" class="btn btn-success btnNext">Next &nbsp; <i class="fa fa-angle-right"></i></a>
+                                </div>
+                            }
+                        </div>
+                        <!-- END #item-1 -->
+                        <!-- Gallery -->
+                        <div class="tab-pane fade" id="sale-item-gallery">
+
+                            <div class="well custom rounded" style="padding: 30px 35px;">
+                                <h5>Add a gallery</h5>
+                                <p>
+                                    Optionally add one or more images to introduce a gallery to your item display. You can drag and drop the images
+                                    to change the order in which they're displayed.
+                                </p>
+                                <br />
+
+                                <div onclick="AddImage()" class="btn btn-success community-button sm w-auto fileUpload blue-btn btn width100">
+                                    <span> <i class="fa fa-plus"></i> &nbsp; Add image</span>
+                                </div>
+
+                                <input type="file" id="image-galery-edit" accept="image/*" style="display:none" onchange="ChangeImageGalery()">
+                                <input id="image-galery-input" onchange="AddImageGalery()" style="display:none" type="file" class="uploadlogo" accept="image/*" />
+                                @if (isProduct)
+                                {
+                                    <a href="#sell-inventory" data-toggle="tab" class="btn btn-info community-button sm w-auto">Skip step &nbsp; <i class="fa fa-angle-right"></i></a>
+                                }
+                            </div>
+
+                            @{
+                                var displayImgEmpty = "none;";
+                                if (galeryImages.Count() == 0)
+                                {
+                                    displayImgEmpty = "block;";
+                                }
+
+                            }
+                            <div class="gallerynone text-center" style="display: @displayImgEmpty">
+                                <p>Looks like you haven't added any gallery images for this item yet. If you want to, tap the button above to begin adding.</p>
+                            </div>
+
+
+                            @{
+                                var displayImgList = "none;";
+                                if (galeryImages.Any())
+                                {
+                                    displayImgList = "block;";
+                                }
+                            }
+
+                            <div class="gallerystart" style="display:@displayImgList">
+                                <div id="itemgalerylist" class="item-galery-list" style="margin-top: 20px; background: #f5f5f5; border-radius: 5px; padding: 15px;">
+
+                                    @foreach (var image in galeryImages)
+                                    {
+                                        <figure id="figure-@image.FileUri">
+                                            <div id="@image.FileUri" class="flex-contain">
+                                                <div class="col img">
+                                                    <div style="background-image: url('@api@image.FileUri');"></div>
+                                                </div>
+                                                <div class="col options">
+                                                    <span class="image_row" style="display:none">@image.FileUri</span>
+                                                    <div class="dropdown contactoptside">
+                                                        <button class="btn btn-primary dropdown-toggle" type="button" data-toggle="dropdown">
+                                                            <i class="fa fa-ellipsis-h"></i>
+                                                        </button>
+                                                        <ul class="dropdown-menu dropdown-menu-right">
+                                                            <li><a style="cursor: pointer !important;" onclick="ItemGaleryEdit('@image.FileUri')">Edit</a></li>
+                                                            <li><a style="cursor: pointer !important;" onclick="ItemGaleryDelete('@image.FileUri')">Delete</a></li>
+                                                        </ul>
+                                                    </div>
+
+                                                </div>
+                                            </div>
+                                        </figure>
+
+                                    }
+
+                                </div>
+
+                            </div>
+
+
+                            <br /><br />
+
+                            @if (isProduct)
+                            {
+                                <div class="normalfinish">
+                                    <a href="#item-details" data-toggle="tab" class="btn btn-warning"><i class="fa fa-angle-left"></i> &nbsp; Previous</a>
+                                    <a href="#sell-inventory" data-toggle="tab" class="btn btn-success btnNext">Next &nbsp; <i class="fa fa-angle-right"></i></a>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="finishonfirst">
+                                    <a href="#item-details" data-toggle="tab" class="btn btn-warning"><i class="fa fa-angle-left"></i> &nbsp; Previous</a>
+                                    <button class="btn btn-success" type="submit">Confirm</button>
+                                </div>
+                            }
+
+                        </div>
+                        <!-- END Gallery -->
+                        <!-- Inventory -->
+                        @if (isProduct)
+                        {
+                            <div class="tab-pane fade" id="sell-inventory">
+
+                                <div class="inventory-options" style="margin-top: 10px;">
+
+                                    <div class="activity-overview generic help-text animated bounce">
+                                        <i class="fa fa-info-circle"></i>
+                                        <p>
+                                            <strong>NOTE:</strong> Your current inventory count will not be directly editable once your item is added. Please be sure the count you
+                                            provide below is accurate, as any changes you may require later will have to be made through stock adjustments.
+                                        </p>
+                                    </div>
+
+
+                                    <div class="well custom" style="padding-bottom: 5px;">
+                                        <div class="row">
+                                            <div class="col-xs-12 col-sm-6" style="margin-bottom: 15px;">
+                                                <label for="location">Current location</label>
+                                                <select id="local-manage-select" name="location" onchange="checkInventoryChooseBP(this)" class="form-control select2" style="width: 100%;">
+                                                    <option value=""></option>
+                                                    @foreach (var item in locations)
+                                                    {
+                                                        <option value="@item.Id">@item.Name</option>
+                                                    }
+                                                </select>
+                                                <label id="local-manage-select-error" class="error" for="local-manage-select" style="display:none">This field is required.</label>
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-xs-12 col-sm-6">
+                                                <label for="instock">Current inventory</label>
+                                                <div class="input-group" style="margin-bottom: 15px;">
+                                                    <input type="text" value="@(((decimal)0).ToInputNumberFormat(currencySettings))" id="form_inventory_instock" name="instock" class="form-control" disabled="">
+                                                    <span class="input-group-btn"><button type="button" disabled class="btn btn-primary btnaddinventory" onclick="initIVCreateModal()"><i class="fa fa-plus"></i> &nbsp; Create inventory</button></span>
+                                                </div>
+                                            </div>
+                                            <div class="col-xs-12 col-sm-3">
+                                                <div class="form-group">
+                                                    <label for="mininv">Min inventory</label>
+                                                    <input type="text" value="0" name="mininv" id="form_inventory_mininv" class="form-control isnumber">
+                                                </div>
+                                            </div>
+                                            <div class="col-xs-12 col-sm-3">
+                                                <div class="form-group">
+                                                    <label for="maxinv">Max inventory</label>
+                                                    <input type="text" value="0" id="form_inventory_maxinv" name="maxinv" class="form-control isnumber">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-xs-12 col-sm-3">
+                                                <div class="form-group">
+                                                    <label for="avgcost">Average cost</label>
+                                                    <p>@(((decimal)0).ToCurrencySymbol(currencySettings))</p>
+                                                </div>
+                                            </div>
+                                            <div class="col-xs-12 col-sm-3">
+                                                <div class="form-group">
+                                                    <label for="latestcost">Latest cost</label>
+                                                    <p>@(((decimal)0).ToCurrencySymbol(currencySettings))</p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                    </div>
+
+                                </div>
+                                <br />
+                                <a href="#sale-item-gallery" data-toggle="tab" class="btn btn-warning btnPrevious"><i class="fa fa-angle-left"></i> &nbsp; Previous</a>
+                                <button class="btn btn-success" type="submit">Confirm</button>
+                            </div>
+                        }
+                        <!-- END Inventory -->
+                    </div> <!-- ./tab-content -->
+                </div> <!-- /.col -->
+            </div> <!-- /.row -->
+
+        </section>
+    }
+    else if (type == "ibuysell")
+    {
+        <div class="row">
+            <div class="col-xs-12">
+                <ul class="app_subnav admintabs" style="padding-top: 0;">
+                    <li class="active"><a href="#item-details" data-toggle="tab">Item details</a></li>
+                    <li><a href="#sale-item-gallery" data-toggle="tab">Gallery</a></li>
+                    @if (isProduct)
+                    {
+                        <li class="inventorytab"><a href="#sell-inventory" data-toggle="tab">Inventory</a></li>
+                    }
+                </ul>
+            </div>
+        </div>
+        <br />
+        <!-- Main content -->
+        <section class="setup-ui">
+            <div class="row">
+                <div class="col-xs-12">
+                    <div class="tab-content">
+                        <!-- Item specifics -->
+                        <div class="tab-pane fade in active" id="item-details">
+
+                            <div class="well custom">
+
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="groups">Category/group</label>
+                                            <select name="groups" class="form-control select2" onchange="$(this).valid()" required style="width: 100%;">
+                                                <option value=""></option>
+                                                @foreach (var item in groups)
+                                                {
+                                                    <option value="@item.Id">@item.Name</option>
+                                                }
+                                            </select>
+                                            <label id="groups-error" class="error" for="groups" style="display:none">This field is required.</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="name">Name</label>
+                                            <input type="text" class="form-control" name="name" required>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="sku">SKU</label>
+                                            <input type="text" name="sku" required class="form-control">
+                                        </div>
+                                    </div>
+                                    @if (isProduct)
+                                    {
+                                        <div class="col-xs-12 col-sm-6 barcode">
+                                            <div class="form-group">
+                                                <label for="barcode">Barcode</label>
+                                                <input type="text" name="barcode" class="form-control">
+                                            </div>
+                                        </div>
+                                    }
+
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="brand">Brand</label>
+                                            <select id="item_brand" name="brand" class="form-control select2" style="width: 100%;">
+                                                <option value=""></option>
+                                                @foreach (var brandItem in lstBrands)
+                                                {
+                                                    <option value="@brandItem.Id">@brandItem.Name</option>
+                                                }
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <br />
+                                <div class="row">
+                                    <div class="col-xs-12">
+                                        <div class="form-group">
+                                            <label for="tags">Product tags</label>
+                                            <p class="formhelp">
+                                                Choose one or more tags (to a maximum of 10) to help classify your item.
+                                                If the tag you desire isn't in the list, you can freely add new ones in your Trading Item Resources section and return here to apply them.
+                                            </p>
+                                            <textarea required name="extratags" id="item_protags" placeholder='Additional tags...' class="form-control input-lg"></textarea>
+                                        </div>
+                                    </div>
+                                </div>
+                                <br />
+
+                                <div class="row description-class">
+                                    <div class="col-xs-12">
+                                        <div class="form-group">
+                                            <label for="type">Description</label>
+                                            <textarea required name="description" id="form_specifics_description"></textarea>
+                                        </div>
+                                    </div>
+                                </div>
+                                <br />
+                                <div class="row">
+                                    <div class="col-xs-12">
+                                        <div class="form-group">
+                                            <label for="image-type">Product image</label>
+                                            <input type="hidden" id="itemimg-object-key" value="@ConfigManager.DefaultProductPlaceholderImageUrl">
+                                            <input type="file" id="form_specifics_icon" filesize="true" name="specifics_icon" class="form-control">
+                                        </div>
+                                    </div>
+                                </div>
+
+
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="active">Sale tax rate</label>
+                                            <select id="sl_taxrate_sale" name="taxaccountsale" class="form-control checkmulti" multiple>
+                                                @foreach (var item in saleTaxRates)
+                                                {
+                                                    var nameAcc = "";
+                                                    if (item.AssociatedAccount != null) { nameAcc = item.AssociatedAccount.Name; }
+                                                    <option value="@item.Id">@item.Name (linked account: @nameAcc)</option>
+                                                }
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="active">Purchase tax rate</label>
+                                            <select id="sl_taxrate_purchase" name="taxaccountpurchase" class="form-control checkmulti" multiple>
+                                                @foreach (var item in purchaseTaxRates)
+                                                {
+                                                    var nameAcc = "";
+                                                    if (item.AssociatedAccount != null) { nameAcc = item.AssociatedAccount.Name; }
+                                                    <option value="@item.Id">@item.Name (linked account: @nameAcc)</option>
+                                                }
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+
+                                <br />
+                                <label>Item units</label><br />
+                                <div class="row no-search">
+                                    <div class="col-xs-12">
+
+                                        <table id="unit_conversions" class="datatable no-search table-hover" style="background: #fff; width: 100%;"
+                                               data-ordering="false" data-info="false" data-paging="false" searching="false">
+                                            <thead>
+                                                <tr>
+                                                    <th data-priority="2">Unit</th>
+                                                    <th data-priority="2">Quantity</th>
+                                                    <th data-priority="1">Component unit</th>
+                                                    <th data-priority="3" style="display:none">Primary</th>
+                                                    <th data-priority="2">Active</th>
+                                                    <th data-priority="1" style="min-width:100px"></th>
+                                                </tr>
+                                            </thead>
+                                            <tbody></tbody>
+                                        </table>
+
+                                        <br />
+                                        <button type="button" id="btn_addNewUnitConversion" class="btn btn-success" onclick="addNewUnitConversion()"><i class="fa fa-plus"></i> &nbsp; Add unit</button>
+                                    </div>
+                                </div>
+
+                            </div>
+
+                            <br />
+                            @if (isProduct)
+                            {
+                                <div class="normalfinish">
+                                    <a href="#" class="btn btn-warning" onclick="$('#theform').hide(); $('#wizard').fadeIn();"><i class="fa fa-angle-left"></i> &nbsp; Previous</a>
+                                    <a href="#sale-item-gallery" data-toggle="tab" class="btn btn-success btnNext">Next &nbsp; <i class="fa fa-angle-right"></i></a>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="finishonfirst">
+                                    <a href="#" class="btn btn-warning" onclick="$('#theform').hide(); $('#wizard').fadeIn();"><i class="fa fa-angle-left"></i> &nbsp; Previous</a>
+                                    <a href="#sale-item-gallery" data-toggle="tab" class="btn btn-success btnNext">Next &nbsp; <i class="fa fa-angle-right"></i></a>
+                                </div>
+                            }
+                        </div>
+                        <!-- END #item-1 -->
+                        <!-- Gallery -->
+                        <div class="tab-pane fade" id="sale-item-gallery">
+
+                            <div class="well custom rounded" style="padding: 30px 35px;">
+                                <h5>Add a gallery</h5>
+                                <p>
+                                    Optionally add one or more images to introduce a gallery to your item display. You can drag and drop the images
+                                    to change the order in which they're displayed.
+                                </p>
+                                <br />
+
+                                <div onclick="AddImage()" class="btn btn-success community-button sm w-auto fileUpload blue-btn btn width100">
+                                    <span> <i class="fa fa-plus"></i> &nbsp; Add image</span>
+                                </div>
+
+                                <input type="file" id="image-galery-edit" accept="image/*" style="display:none" onchange="ChangeImageGalery()">
+                                <input id="image-galery-input" onchange="AddImageGalery()" style="display:none" type="file" class="uploadlogo" accept="image/*" />
+
+                                @if (isProduct)
+                                {
+                                    <a href="#sell-inventory" data-toggle="tab" class="btn btn-info community-button sm w-auto">Skip step &nbsp; <i class="fa fa-angle-right"></i></a>
+                                }
+                            </div>
+
+                            @{
+                                var displayImgEmpty = "none;";
+                                if (galeryImages.Count() == 0)
+                                {
+                                    displayImgEmpty = "block;";
+                                }
+
+                            }
+                            <div class="gallerynone text-center" style="display: @displayImgEmpty">
+                                <p>Looks like you haven't added any gallery images for this item yet. If you want to, tap the button above to begin adding.</p>
+                            </div>
+
+
+                            @{
+                                var displayImgList = "none;";
+                                if (galeryImages.Any())
+                                {
+                                    displayImgList = "block;";
+                                }
+                            }
+
+                            <div class="gallerystart" style="display=@displayImgList">
+                                <div id="itemgalerylist" class="item-galery-list" style="margin-top: 20px; background: #f5f5f5; border-radius: 5px; padding: 15px;">
+
+                                    @foreach (var image in galeryImages)
+                                    {
+                                        <figure id="figure-@image.FileUri">
+                                            <div id="@image.FileUri" class="flex-contain">
+                                                <div class="col img">
+                                                    <div style="background-image: url('@api@image.FileUri');"></div>
+                                                </div>
+                                                <div class="col options">
+                                                    <span class="image_row" style="display:none">@image.FileUri</span>
+                                                    <div class="dropdown contactoptside">
+                                                        <button class="btn btn-primary dropdown-toggle" type="button" data-toggle="dropdown">
+                                                            <i class="fa fa-ellipsis-h"></i>
+                                                        </button>
+                                                        <ul class="dropdown-menu dropdown-menu-right">
+                                                            <li><a style="cursor: pointer !important;" onclick="ItemGaleryEdit('@image.FileUri')">Edit</a></li>
+                                                            <li><a style="cursor: pointer !important;" onclick="ItemGaleryDelete('@image.FileUri')">Delete</a></li>
+                                                        </ul>
+                                                    </div>
+
+                                                </div>
+                                            </div>
+                                        </figure>
+
+                                    }
+
+                                </div>
+
+                            </div>
+
+
+                            <br /><br />
+
+                            @if (isProduct)
+                            {
+                                <div class="normalfinish">
+                                    <a href="#item-details" data-toggle="tab" class="btn btn-warning"><i class="fa fa-angle-left"></i> &nbsp; Previous</a>
+                                    <a href="#sell-inventory" data-toggle="tab" class="btn btn-success btnNext">Next &nbsp; <i class="fa fa-angle-right"></i></a>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="finishonfirst">
+                                    <a href="#item-details" data-toggle="tab" class="btn btn-warning"><i class="fa fa-angle-left"></i> &nbsp; Previous</a>
+                                    <button class="btn btn-success" type="submit">Confirm</button>
+                                </div>
+                            }
+
+                        </div>
+                        <!-- END Gallery -->
+
+                        @if (isProduct)
+                        {
+                            <!-- Inventory -->
+                            <div class="tab-pane fade" id="sell-inventory">
+
+                                <div class="inventory-options" style="margin-top: 10px;">
+
+                                    <div class="activity-overview generic help-text animated bounce">
+                                        <i class="fa fa-info-circle"></i>
+                                        <p>
+                                            <strong>NOTE:</strong> Your current inventory count will not be directly editable once your item is added. Please be sure the count you
+                                            provide below is accurate, as any changes you may require later will have to be made through stock adjustments.
+                                        </p>
+                                    </div>
+
+
+                                    <div class="well custom" style="padding-bottom: 5px;">
+                                        <div class="row">
+                                            <div class="col-xs-12 col-sm-6" style="margin-bottom: 15px;">
+                                                <label for="location">Current location</label>
+                                                <select id="local-manage-select" name="location" onchange="checkInventoryChooseBP(this)" class="form-control select2" style="width: 100%;">
+                                                    <option value=""></option>
+                                                    @foreach (var item in locations)
+                                                    {
+                                                        <option value="@item.Id">@item.Name</option>
+                                                    }
+                                                </select>
+                                                <label id="local-manage-select-error" class="error" for="local-manage-select" style="display:none">This field is required.</label>
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-xs-12 col-sm-6">
+                                                <label for="instock">Current inventory</label>
+                                                <div class="input-group" style="margin-bottom: 15px;">
+                                                    <input type="text" value="@(((decimal)0).ToInputNumberFormat(currencySettings))" id="form_inventory_instock" name="instock" class="form-control" disabled="">
+                                                    <span class="input-group-btn"><button type="button" disabled class="btn btn-primary btnaddinventory" onclick="initIVCreateModal()"><i class="fa fa-plus"></i> &nbsp; Create inventory</button></span>
+                                                </div>
+                                            </div>
+                                            <div class="col-xs-12 col-sm-3">
+                                                <div class="form-group">
+                                                    <label for="mininv">Min inventory</label>
+                                                    <input type="text" value="0" name="mininv" id="form_inventory_mininv" class="form-control isnumber">
+                                                </div>
+                                            </div>
+                                            <div class="col-xs-12 col-sm-3">
+                                                <div class="form-group">
+                                                    <label for="maxinv">Max inventory</label>
+                                                    <input type="text" value="0" id="form_inventory_maxinv" name="maxinv" class="form-control isnumber">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-xs-12 col-sm-3">
+                                                <div class="form-group">
+                                                    <label for="avgcost">Average cost</label>
+                                                    <p>@(((decimal)0).ToCurrencySymbol(currencySettings))</p>
+                                                </div>
+                                            </div>
+                                            <div class="col-xs-12 col-sm-3">
+                                                <div class="form-group">
+                                                    <label for="latestcost">Latest cost</label>
+                                                    <p>@(((decimal)0).ToCurrencySymbol(currencySettings))</p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                    </div>
+
+                                </div>
+                                <br />
+                                <a href="#sale-item-gallery" data-toggle="tab" class="btn btn-warning btnPrevious"><i class="fa fa-angle-left"></i> &nbsp; Previous</a>
+                                <button class="btn btn-success" type="submit">Confirm</button>
+                            </div>
+                        }
+                        <!-- END Inventory -->
+                    </div> <!-- ./tab-content -->
+                </div> <!-- /.col -->
+            </div> <!-- /.row -->
+        </section>
+    }
+    else if (type == "icompound")
+    {
+        <div class="row">
+            <div class="col-xs-12">
+                <ul class="app_subnav admintabs" style="padding-top: 0;">
+                    <li class="active"><a href="#item-details" data-toggle="tab">Item details</a></li>
+                    <li><a href="#sale-item-gallery" data-toggle="tab">Gallery</a></li>
+                    <li><a href="#comp-recipe" data-toggle="tab">Recipe</a></li>
+                    <li class="inventorytab"><a href="#comp-inventory" data-toggle="tab">Inventory</a></li>
+                </ul>
+            </div>
+        </div>
+        <br />
+        <!-- Main content -->
+        <section class="setup-ui">
+            <div class="row">
+                <div class="col-xs-12">
+                    <div class="tab-content">
+                        <!-- Item specifics -->
+                        <div class="tab-pane fade in active" id="item-details">
+
+                            <div class="well custom">
+
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="groups">Category/group</label>
+                                            <select name="groups" class="form-control select2" onchange="$(this).valid()" required style="width: 100%;">
+                                                <option value=""></option>
+                                                @foreach (var item in groups)
+                                                {
+                                                    <option value="@item.Id">@item.Name</option>
+                                                }
+                                            </select>
+                                            <label id="groups-error" class="error" for="groups" style="display:none">This field is required.</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="name">Name</label>
+                                            <input type="text" class="form-control" required name="name">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="sku">SKU</label>
+                                            <input type="text" name="sku" required class="form-control">
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-6 barcode">
+                                        <div class="form-group">
+                                            <label for="barcode">Barcode</label>
+                                            <input type="text" name="barcode" class="form-control">
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="brand">Brand</label>
+                                            <select id="item_brand" name="brand" class="form-control select2" style="width: 100%;">
+                                                <option value=""></option>
+                                                @foreach (var brandItem in lstBrands)
+                                                {
+                                                    <option value="@brandItem.Id">@brandItem.Name</option>
+                                                }
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                <br />
+                                <div class="row">
+                                    <div class="col-xs-12">
+                                        <div class="form-group">
+                                            <label for="tags">Product tags</label>
+                                            <p class="formhelp">
+                                                Choose one or more tags (to a maximum of 10) to help classify your item.
+                                                If the tag you desire isn't in the list, you can freely add new ones in your Trading Item Resources section and return here to apply them.
+                                            </p>
+                                            <textarea required name="extratags" id="item_protags" placeholder='Additional tags...' class="form-control input-lg"></textarea>
+                                        </div>
+                                    </div>
+                                </div>
+                                <br />
+
+                                <div class="row description-class">
+                                    <div class="col-xs-12">
+                                        <div class="form-group">
+                                            <label for="type">Description</label>
+                                            <textarea required name="description" id="form_specifics_description"></textarea>
+                                        </div>
+                                    </div>
+                                </div>
+                                <br />
+
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="image-type">Product image</label>
+                                            <input type="hidden" id="itemimg-object-key" value="@ConfigManager.DefaultProductPlaceholderImageUrl">
+                                            <input type="file" id="form_specifics_icon" filesize="true" name="specifics_icon" class="form-control">
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="active">Sale tax rate</label>
+                                            <select id="sl_taxrate_sale" name="taxaccountsale" class="form-control checkmulti" multiple>
+                                                @foreach (var item in saleTaxRates)
+                                                {
+                                                    var nameAcc = "";
+                                                    if (item.AssociatedAccount != null) { nameAcc = item.AssociatedAccount.Name; }
+                                                    <option value="@item.Id">@item.Name (linked account: @nameAcc)</option>
+                                                }
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+
+                                <br />
+                                <label>Item units</label><br />
+                                <div class="row no-search">
+                                    <div class="col-xs-12">
+
+                                        <table id="unit_conversions" class="datatable no-search table-hover" style="background: #fff; width: 100%;"
+                                               data-ordering="false" data-info="false" data-paging="false" searching="false">
+                                            <thead>
+                                                <tr>
+                                                    <th data-priority="1">Unit</th>
+                                                    <th data-priority="2">Quantity</th>
+                                                    <th data-priority="1">Component unit</th>
+                                                    <th data-priority="3" style="display:none">Primary</th>
+                                                    <th data-priority="2">Active</th>
+                                                    <th data-priority="1" style="min-width:100px"></th>
+                                                </tr>
+                                            </thead>
+                                            <tbody></tbody>
+                                        </table>
+
+                                        <br />
+                                        <button type="button" id="btn_addNewUnitConversion" class="btn btn-success" onclick="addNewUnitConversion()"><i class="fa fa-plus"></i> &nbsp; Add unit</button>
+                                    </div>
+                                </div>
+
+                            </div>
+
+                            <br />
+                            <a href="#" class="btn btn-warning" onclick="$('#theform').hide(); $('#wizard').fadeIn();"><i class="fa fa-angle-left"></i> &nbsp; Previous</a>
+                            <a href="#sale-item-gallery" data-toggle="tab" class="btn btn-success btnNext">Next &nbsp; <i class="fa fa-angle-right"></i></a>
+
+                        </div>
+                        <!-- END #item-1 -->
+                        <!-- Gallery -->
+                        <div class="tab-pane fade" id="sale-item-gallery">
+
+                            <div class="well custom rounded" style="padding: 30px 35px;">
+                                <h5>Add a gallery</h5>
+                                <p>
+                                    Optionally add one or more images to introduce a gallery to your item display. You can drag and drop the images
+                                    to change the order in which they're displayed.
+                                </p>
+                                <br />
+
+                                <div onclick="AddImage()" class="btn btn-success community-button sm w-auto fileUpload blue-btn btn width100">
+                                    <span> <i class="fa fa-plus"></i> &nbsp; Add image</span>
+                                </div>
+                                <input type="file" id="image-galery-edit" accept="image/*" style="display:none" onchange="ChangeImageGalery()">
+                                <input id="image-galery-input" onchange="AddImageGalery()" style="display:none" type="file" class="uploadlogo" accept="image/*" />
+                                <a href="#comp-recipe" data-toggle="tab" class="btn btn-info community-button sm w-auto">Skip step &nbsp; <i class="fa fa-angle-right"></i></a>
+                            </div>
+
+                            @{
+                                var displayImgEmpty = "none;";
+                                if (galeryImages.Count() == 0)
+                                {
+                                    displayImgEmpty = "block;";
+                                }
+
+                            }
+                            <div class="gallerynone text-center" style="display: @displayImgEmpty">
+                                <p>Looks like you haven't added any gallery images for this item yet. If you want to, tap the button above to begin adding.</p>
+                            </div>
+
+                            @{
+                                var displayImgList = "none;";
+                                if (galeryImages.Any())
+                                {
+                                    displayImgList = "block;";
+                                }
+                            }
+
+                            <div class="gallerystart" style="display=@displayImgList">
+                                <div id="itemgalerylist" class="item-galery-list" style="margin-top: 20px; background: #f5f5f5; border-radius: 5px; padding: 15px;">
+
+                                    @foreach (var image in galeryImages)
+                                    {
+                                        <figure id="figure-@image.FileUri">
+                                            <div id="@image.FileUri" class="flex-contain">
+                                                <div class="col img">
+                                                    <div style="background-image: url('@api@image.FileUri');"></div>
+                                                </div>
+                                                <div class="col options">
+                                                    <span class="image_row" style="display:none">@image.FileUri</span>
+                                                    <div class="dropdown contactoptside">
+                                                        <button class="btn btn-primary dropdown-toggle" type="button" data-toggle="dropdown">
+                                                            <i class="fa fa-ellipsis-h"></i>
+                                                        </button>
+                                                        <ul class="dropdown-menu dropdown-menu-right">
+                                                            <li><a style="cursor: pointer !important;" onclick="ItemGaleryEdit('@image.FileUri')">Edit</a></li>
+                                                            <li><a style="cursor: pointer !important;" onclick="ItemGaleryDelete('@image.FileUri')">Delete</a></li>
+                                                        </ul>
+                                                    </div>
+
+                                                </div>
+                                            </div>
+                                        </figure>
+
+                                    }
+
+                                </div>
+
+                            </div>
+
+
+                            <br /><br />
+                            <div class="normalfinish">
+                                <a href="#item-details" data-toggle="tab" class="btn btn-warning"><i class="fa fa-angle-left"></i> &nbsp; Previous</a>
+                                <a href="#comp-recipe" data-toggle="tab" class="btn btn-success btnNext">Next &nbsp; <i class="fa fa-angle-right"></i></a>
+                            </div>
+
+                        </div>
+                        <!-- END Gallery -->
+                        <!-- Recipe -->
+                        <div class="tab-pane fade" id="comp-recipe">
+
+                            <div class="no-search">
+
+                                <table id="tb_main_recipe" class="datatable table-striped table-hover" style="background: #fff; width: 100%;" data-ordering="false" data-info="false" data-paging="false">
+                                    <thead>
+                                        <tr>
+                                            <th>Recipe</th>
+                                            <th>Active</th>
+                                            <th>Is Current</th>
+                                            <th>Options</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+
+                                <br />
+                                <button type="button" class="btn btn-success" onclick="addRecipes()"><i class="fa fa-plus"></i> &nbsp; Create new recipe</button>
+                            </div>
+
+
+                            <br />
+
+
+                            <!-- Create new recipe -->
+                            <div class="no-search well custom" id="newrecipe" style="display: none; padding: 20px 20px 0 20px; margin-bottom: 10px;">
+                                <div class="row">
+                                    <div class="col-xs-12 col-md-6">
+                                        <div class="form-group">
+                                            <label for="recipe-name">Recipe name</label>
+                                            <input type="text" id="form_add_recipe_name" name="recipe_name" class="form-control">
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-md-6">
+                                        <div class="form-group">
+                                            <label for="recipe-name" style="display:block">Is currrent</label>
+                                            <input type="radio" id="form_add_recipe_iscurrent" style="margin-top: 12px;" name="recipe_iscurrent" class="">
+                                        </div>
+                                    </div>
+                                </div>
+                                <table id="tb_add_recipe" class="datatable table-striped table-hover" style="background: #fff; width: 100%;" data-ordering="false" data-info="false" data-paging="false">
+                                    <thead>
+                                        <tr>
+                                            <th>Item</th>
+                                            <th>Quantity</th>
+                                            <th>Unit</th>
+                                            <th style="display:none">Average Cost</th>
+                                            <th style="display:none">Latest Cost</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                                <br />
+                                <button type="button" class="btn btn-success" onclick="addNewRowRecipe('tb_add_recipe')"><i class="fa fa-plus"></i> &nbsp; Add another item</button>
+                                <button type="button" onclick="saveOverNewRecipe('tb_add_recipe')" class="btn btn-primary"><i class="fa fa-save"></i> &nbsp; Save recipe</button>
+                                <br /><br />
+                            </div>
+                            <table id="table_template" class="table-hover hidden">
+                                <tbody>
+                                    <tr class="new_row_recipe">
+                                        <td class="item_name">
+                                            <select name="item" onchange="onSelectItem(this)" class="recipe-ingredient-add" style="width: 100%;" id="" data-placeholder="Choose an ingredient">
+                                                <option value="" data-unitcost="0"></option>
+                                                @foreach (var item in traderItemSubs)
+                                                {
+                                                    <option value="@item.Id" average-cost="0" latest-cost="0" data-unitcost="0">@item.Name</option>
+                                                }
+                                            </select>
+                                            <input type="hidden" value="0" />
+                                        </td>
+                                        <td class="item_quantity">
+                                            <input type="number" min="1" step=".001" data-unitcost="0" class="form-control" value="0">
+                                        </td>
+                                        <td class="item_selected">
+                                            <select name="selectUnit" class="form-control select2"></select>
+                                        </td>
+                                        <td class="item_averagecost" style="display:none"><span>0</span></td>
+                                        <td class="item_latestcost" style="display:none"><span>0</span></td>
+                                        <td><a href="javascript:void(0)" onclick="removeRowRecipe(this.parentElement.parentElement)" class="btn btn-danger pull-right"><i class="fa fa-trash" style="color: #fff;"></i></a></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+                            <!-- END Create new recipe -->
+                            <!-- Edit existing recipe -->
+                            <div class="no-search well custom" id="editrecipe" style="display: none; padding: 20px 20px 0 20px; margin-bottom: 10px;">
+                                <div class="row">
+                                    <div class="col-xs-12 col-md-6">
+                                        <div class="form-group">
+                                            <label for="recipe-name">Recipe name</label>
+                                            <input type="text" id="edit_recipe_name" name="recipe_name_edit" class="form-control" value="RoadChef Burger v1">
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-md-6">
+                                        <div class="form-group">
+                                            <label for="recipe-name" style="display: block">Is current</label>
+                                            <input type="radio" id="edit_recipe_iscurrent" style="margin-top: 12px;" name="recipe_iscurrent_edit" class="">
+                                        </div>
+                                    </div>
+                                </div>
+                                <input type="hidden" id="edit_recipe_form_id" />
+                                <table id="tb_edit_recipe" class="datatable table-striped table-hover" style="background: #fff; width: 100%;" data-ordering="false" data-info="false" data-paging="false">
+                                    <thead>
+                                        <tr>
+                                            <th>Item</th>
+                                            <th>Quantity</th>
+                                            <th>Unit</th>
+                                            <th style="display:none">Average Cost</th>
+                                            <th style="display:none">Latest Cost</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                                <br />
+                                <button type="button" class="btn btn-success" onclick="addNewRowRecipe('tb_edit_recipe')"><i class="fa fa-plus"></i> &nbsp; Add another item</button>
+                                <button type="button" class="btn btn-primary" onclick="saveOverNewRecipe('tb_edit_recipe')"><i class="fa fa-save"></i> &nbsp; Save recipe</button>
+
+                                <br /><br />
+
+                            </div>
+                            <!-- END Edit exiting recipe -->
+
+                            <br />
+                            <a href="#sale-item-gallery" class="btn btn-warning btnPrevious" data-toggle="tab"><i class="fa fa-angle-left"></i> &nbsp; Previous</a>
+                            <a href="#comp-inventory" data-toggle="tab" class="btn btn-success btnNext">Next &nbsp; <i class="fa fa-angle-right"></i></a>
+
+
+                        </div>
+                        <!-- END Recipe -->
+                        <!-- Inventory -->
+                        <div class="tab-pane fade" id="comp-inventory">
+
+                            <div class="inventory-options" style="margin-top: 10px;">
+
+                                <div class="activity-overview generic help-text animated bounce">
+                                    <i class="fa fa-info-circle"></i>
+                                    <p>
+                                        <strong>NOTE:</strong> Your current inventory count will not be directly editable once your item is added. Please be sure the count you
+                                        provide below is accurate, as any changes you may require later will have to be made through stock adjustments.
+                                    </p>
+                                </div>
+
+
+                                <div class="well custom" style="padding-bottom: 5px;">
+                                    <div class="row">
+                                        <div class="col-xs-12 col-sm-6" style="margin-bottom: 15px;">
+                                            <label for="location">Current location</label>
+                                            <select id="local-manage-select" name="location" onchange="checkInventoryChooseBP(this)" class="form-control select2" style="width: 100%;">
+                                                <option value=""></option>
+                                                @foreach (var item in locations)
+                                                {
+                                                    <option value="@item.Id">@item.Name</option>
+                                                }
+                                            </select>
+                                            <label id="local-manage-select-error" class="error" for="local-manage-select" style="display:none">This field is required.</label>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-xs-12 col-sm-6">
+                                            <label for="instock">Current inventory</label>
+                                            <div class="input-group" style="margin-bottom: 15px;">
+                                                <input type="text" value="@(((decimal)0).ToInputNumberFormat(currencySettings))" id="form_inventory_instock" name="instock" class="form-control" disabled="">
+                                                <span class="input-group-btn"><button type="button" disabled class="btn btn-primary btnaddinventory" onclick="initIVCreateModal()"><i class="fa fa-plus"></i> &nbsp; Create inventory</button></span>
+                                            </div>
+                                        </div>
+                                        <div class="col-xs-12 col-sm-3">
+                                            <div class="form-group">
+                                                <label for="mininv">Min inventory</label>
+                                                <input type="text" value="0" name="mininv" id="form_inventory_mininv" class="form-control isnumber">
+                                            </div>
+                                        </div>
+                                        <div class="col-xs-12 col-sm-3">
+                                            <div class="form-group">
+                                                <label for="maxinv">Max inventory</label>
+                                                <input type="text" value="0" id="form_inventory_maxinv" name="maxinv" class="form-control isnumber">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-xs-12 col-sm-3">
+                                            <div class="form-group">
+                                                <label for="avgcost">Average cost</label>
+                                                <p>@(((decimal)0).ToCurrencySymbol(currencySettings))</p>
+                                            </div>
+                                        </div>
+                                        <div class="col-xs-12 col-sm-3">
+                                            <div class="form-group">
+                                                <label for="latestcost">Latest cost</label>
+                                                <p>@(((decimal)0).ToCurrencySymbol(currencySettings))</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                </div>
+
+                            </div>
+                            <br />
+                            <a href="#comp-recipe" data-toggle="tab" class="btn btn-warning btnPrevious"><i class="fa fa-angle-left"></i> &nbsp; Previous</a>
+                            <button class="btn btn-success" type="submit">Confirm</button>
+                        </div>
+                        <!-- END Inventory -->
+                    </div> <!-- ./tab-content -->
+
+                </div> <!-- /.col -->
+            </div> <!-- /.row -->
+
+        </section>
+    }
+</form>
+@if (isProduct || type == "icompound")
+{
+    <div class="modal fade left" id="app-trader-inventory-create" role="dialog" aria-labelledby="app-trader-inventory-create">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" onclick="$('#app-trader-inventory-create').modal('hide')" aria-label="Close"><span aria-hidden="true">×</span></button>
+                    <h5 class="modal-title">Create inventory</h5>
+                </div>
+                <div class="modal-body">
+                    <form id="frmCreateInventory">
+                        <table class="table table-striped table-hover app_specific">
+                            <thead>
+                                <tr>
+                                    <th>Item</th>
+                                    <th>Unit</th>
+                                    <th>Location</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td class="iv-item-name"></td>
+                                    <td class="iv-unit-base-name"></td>
+                                    <td class="iv-locations"></td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <br>
+                        <div class="well custom">
+                            <div class="form-group">
+                                <label for="quantity">Quantity</label>
+                                <input type="number" class="form-control" required id="ivquantity" name="ivquantity">
+                            </div>
+                            <label for="ivunitcost">Unit cost</label>
+                            <div class="input-group">
+                                <span class="input-group-addon">@currencySettings.CurrencySymbol</span>
+                                <input type="number" class="form-control" required id="ivunitcost" name="ivunitcost">
+                            </div>
+                            <label id="ivunitcost-error" class="error" for="ivunitcost" style="display: none;"></label>
+                        </div>
+                        <br>
+                        <button type="button" class="btn btn-danger" onclick="$('#app-trader-inventory-create').modal('hide')">Cancel</button>
+                        <button type="submit" class="btn btn-success">Confirm</button>
+                    </form>
+                </div>
+            </div><!-- /.modal-content -->
+        </div><!-- /.modal-dialog -->
+    </div>
+}
+
+<link href="~/Content/DesignStyle/css/tagify.css" rel="stylesheet" />
+<script src="~/Content/DesignStyle/js/tagify.js"></script>
+<script src="https://cdn.tiny.cloud/1/ppfa9ubyahapmcpxedac4yuyhojva0q9bm41rip6a351qegu/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
+<script src="~/Content/DesignStyle/js/Sortable.min.js"></script>
+
+<script>
+    function initProductTagElement() {
+
+
+        var input = document.querySelector('textarea[name="extratags"]'),
+            // init Tagify script on the above inputs
+            tagify = new Tagify(input, {
+                whitelist: @(lstProductTagNames),
+                maxTags: 10,
+                contenteditable: false,
+                editTags: false,
+                enforceWhitelist: true,
+                dropdown: {
+                    maxItems: 10,//@maxTagItems, // <- mixumum allowed rendered suggestions
+                    classname: "tags-look", // <- custom classname for this dropdown, so it could be targeted
+                    enabled: 0, // <- show suggestions on focus
+                    closeOnSelect: false // <- do not hide the suggestions dropdown once an item has been selected
+                },
+                callbacks: {                    
+                    "change": (e) => {                         
+                        //$("#item_protags").val(e.detail.value);
+                        //$("#item_protags").text(e.detail.value);
+                        if (e.detail.value != "")
+                            $("#item_protags-error").hide();
+                        else
+                            $("#item_protags-error").show();
+                    }//,
+                    //"dropdown:show": (e) => console.log(e.detail)
+                }
+            });
+
+
+    }
+
+    function initTinyDescriptionElement() {
+        $('.description-class').LoadingOverlay("show");
+        setTimeout(function () {
+            tinymce.init({
+                selector: '#form_specifics_description',
+                setup: function (ed) {
+                    ed.on('change', function (e) {
+
+                        if ((ed.getContent({ format: 'text' })) != "")
+                            $("#form_specifics_description-error").hide();
+                        else
+                            $("#form_specifics_description-error").show();
+
+                        $("#form_specifics_description_text").val(ed.getContent({ format: 'text' }));
+
+                        $("#form_specifics_description").val(ed.getContent());
+                        $("#form_specifics_description").text(ed.getContent());
+                    });
+                },
+                menubar: false,
+                plugins: 'link',
+                toolbar: 'undo redo | bold italic underline | alignleft aligncenter alignright alignjustify |' +
+                    'bullist numlist checklist | removeformat'
+            });
+
+            $('.description-class').LoadingOverlay("hide", true);
+        }, 1000);
+    }
+
+    $(document).ready(function () {
+        initProductTagElement();
+        initTinyDescriptionElement();
+    })
+</script>
+<style>
+    /*.fileUpload {
+        position: relative;
+        overflow: hidden;
+        height: 43px;
+        margin-top: 0;
+    }
+
+        .fileUpload input.uploadlogo {
+            position: absolute;
+            top: 0;
+            right: 0;
+            margin: 0;
+            padding: 0;
+            font-size: 20px;
+            cursor: pointer;
+            opacity: 0;
+            filter: alpha(opacity=0);
+            width: 100%;
+            height: 42px;
+        }*/
+
+    /*Chrome fix*/
+   /* input::-webkit-file-upload-button {
+        cursor: pointer !important;
+        height: 42px;
+        width: 100%;
+    }*/
+
+
+    .gallerynone {
+        padding: 80px 30px;
+        border: 1px dashed rgba(0, 0, 0, 0.08);
+        border-radius: 10px;
+        margin: 30px 0;
+    }
+
+        .gallerynone p {
+            margin: 0;
+            padding: 0;
+        }
+
+    .item-galery-list {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        grid-gap: 10px;
+    }
+
+        .item-galery-list figure {
+            display: block;
+            width: 100%;
+            padding: 13px;
+            border-radius: 10px;
+            background: #fff;
+            cursor: move;
+        }
+
+            .item-galery-list figure .col.caption p {
+                padding-left: 30px;
+                margin: 0;
+                font-size: 13px;
+            }
+
+    .flex-contain {
+        display: flex;
+        flex-direction: row;
+        align-content: center;
+        align-items: center;
+    }
+
+        .flex-contain .col {
+            flex: 1;
+        }
+
+            .flex-contain .col.img {
+                flex: 1;
+            }
+
+            .flex-contain .col.options {
+                position: relative;
+                flex: 0 1 80px;
+            }
+
+                .flex-contain .col.options .dropdown {
+                    bottom: -8px;
+                }
+
+            .flex-contain .col.img div {
+                width: 100%;
+                max-width: 340px;
+                height: 210px;
+                background-size: cover;
+                border-radius: 5px;
+                overflow: hidden;
+                background-position: center center;
+            }
+
+    .tagify {
+        width: 100%;
+        height: auto;
+        /*max-width: 700px;*/
+    }
+    #form_specifics_description-error.error {
+        float: none !important;
+    }
+/*    #item_protags-error.error {
+        float: none !important;
+    }*/
+
+    .mod-css { 
+    word-break: break-word;
+    }
+    #unit_conversions input[type="checkbox"] 
+    {
+    width: auto;
+    }
+    .row_componentUnit{
+    width: 50%;
+    }
+</style>

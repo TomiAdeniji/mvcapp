@@ -1,0 +1,188 @@
+﻿@using Qbicles.Models.Bookkeeping
+@using Qbicles.Models.Trader
+@using Qbicles.Models.Trader.Pricing
+@using Qbicles.BusinessRules
+@using Qbicles.Models.Trader.SalesChannel
+@{
+    var listLocations = (List<TraderLocation>)ViewBag.lstLocation;
+    var listDimensions = (List<TransactionDimension>)ViewBag.lstDimensions;
+    var catalogType = (int)ViewBag.catalogType;
+
+    var lstTraderGroup = (List<TraderGroup>)ViewBag.lstTraderGroups;
+}
+<input type="hidden" value="@catalogType" id="catalog-type" />
+<div class="modal-dialog" role="document">
+    <div class="modal-content">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <h5 class="modal-title">Add a Catalog</h5>
+        </div>
+
+        <form id="catalogue-quickadd-form">
+            <div class="modal-body">
+
+                <div class="activity-overview generic help-text animated bounce">
+                    <i class="fa fa-info-circle"></i>
+                    <p>Use Quick mode to create a catalogue using your existing product categories. Note that no variants or extras will be included, but you'll be able to add/manage everything from the catalogue you create here.</p>
+                    <br />
+                    <p>Only Trader items that are active at the chosen location, with a price based on the selected location and sales channel will be added to the catalogue.</p>
+                </div>
+
+
+                <div class="well custom">
+
+                    <div class="row">
+                        <div class="col-xs-12">
+                            <div class="form-group">
+                                <label for="name">Catalogue name <span class="red">*</span></label>
+                                <input type="text" name="name" id="catalogue-name" class="form-control">
+                            </div>
+                        </div>
+
+                        <div class="col-xs-12">
+                            <div class="form-group">
+                                <label for="fimg">Featured image (optional)</label>
+                                <input type="file" name="fimg" id="quick-catalog-img" accept=".jpeg,.jpg,.png,.webp" class="form-control">
+                            </div>
+                        </div>
+
+                        @if (catalogType != 1)
+                        {
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label for="location">Location <span class="red">*</span></label>
+                                    <select name="location" id="catalogue-locationid" onchange="$(this).valid();loadTraderGroupsByLocationId(this)" class="form-control select2" style="width: 100%;">
+                                        <option value=""></option>
+                                        @foreach (var locationItem in listLocations)
+                                        {
+                                            <option value="@locationItem.Id">@locationItem.Name</option>
+                                        }
+                                    </select>
+                                    <label id="catalogue-locationid-error" style="display:none" class="error" for="catalogue-locationid">This field is required.</label>
+                                </div>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="col-xs-12" style="display:none">
+                                <div class="form-group">
+                                    <label for="location">Location <span class="red">*</span></label>
+                                    <select name="location" id="catalogue-locationid" onchange="$(this).valid();loadTraderGroupsByLocationId(this)" class="form-control select2" style="width: 100%;">
+                                        @{
+                                            var locationItem = listLocations.FirstOrDefault();
+                                            <option value="@locationItem.Id" selected>@locationItem.Name</option>
+                                        }
+                                    </select>
+                                    <label id="catalogue-locationid-error" style="display:none" class="error" for="catalogue-locationid">This field is required.</label>
+                                </div>
+                            </div>
+                        }
+
+                        @if (catalogType != 1)
+                        {
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label for="pgroups">Product Groups to include (check all that apply) <span class="red">*</span></label>
+                                    <select name="pgroups" id="catalogue-groupIds" onchange="$(this).valid();" class="form-control checkmulti" multiple>
+                                    </select>
+                                    <label id="catalogue-groupIds-error" style="display:none" class="error" for="catalogue-groupIds">This field is required.</label>
+                                </div>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label for="pgroups">Product Groups to include (check all that apply) <span class="red">*</span></label>
+                                    <select name="pgroups" id="catalogue-groupIds" onchange="$(this).valid();" class="form-control checkmulti" multiple>
+                                        @foreach (var group in lstTraderGroup)
+                                        {
+                                            <option value="@group.Id">@group.Name</option>
+                                        }
+                                    </select>
+                                    <label id="catalogue-groupIds-error" style="display:none" class="error" for="catalogue-groupIds">This field is required.</label>
+                                </div>
+                            </div>
+                        }
+                        <div class="col-xs-12">
+                            <div class="form-group">
+                                <label for="channel">Sales channel <span class="red">*</span></label>
+                                @{
+                                    var isDisabled = catalogType == (int)CatalogType.Distribution ? "disabled" : "";
+                                }
+                                <select name="channel" id="catalogue-channelid" @isDisabled class="form-control select2" style="width: 100%;" onchange="$('#redirect').attr('href', $(this).val());">
+                                    <option value=""></option>
+                                    @foreach (SalesChannelEnum channelItem in (SalesChannelEnum[])Enum.GetValues(typeof(SalesChannelEnum)))
+                                    {
+                                        var isSelected = "";
+                                        if (catalogType == (int)CatalogType.Distribution && channelItem == SalesChannelEnum.B2B)
+                                        {
+                                            isSelected = "selected";
+                                        }
+                                        <option value="@((int)channelItem)" @isSelected>@(channelItem.GetDescription())</option>
+                                    }
+                                </select>
+                                <label id="catalogue-channelid-error" class="error" style="display:none" for="catalogue-channelid">This field is required.</label>
+                            </div>
+                        </div>
+                        @if (catalogType != 1)
+                        {
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label for="name">Reporting filter(s) <span class="red">*</span></label>
+                                    <select name="filters" id="catalogue-dimensionIds" class="form-control checkmulti" multiple>
+                                        @foreach (var dimensionItem in listDimensions)
+                                        {
+                                            <option value="@dimensionItem.Id">@dimensionItem.Name</option>
+                                        }
+                                    </select>
+                                    <label id="catalogue-dimensionIds-error" style="display:none" class="error" for="catalogue-dimensionIds">This field is required.</label>
+                                </div>
+                            </div>
+                        }
+                        <div class="col-xs-12">
+                            <div class="form-group" style="margin: 0;">
+                                <label for="summary">Catalogue summary <span class="red">*</span></label>
+                                <textarea name="summary" id="catalogue-summary" style="max-width: 100%; height: 80px;" class="form-control"></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+
+                <br />
+                <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                <button class="btn btn-success" type="submit">Confirm</button>
+
+            </div>
+        </form>
+    </div><!-- /.modal-content -->
+</div><!-- /.modal-dialog -->
+<script src="~/Content/DesignStyle/js/bootstrap-multiselect.min.js"></script>
+<link href="~/Content/DesignStyle/css/bootstrap-multiselect.css" rel="stylesheet" />
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/pos.products.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/pos.devices.js"></script>
+        <script src="~/Scripts/dev/pos.devices.js"></script>
+    }
+}
+<script>
+    $('.select2').select2({ placeholder: 'Please select' });
+    $(".checkmulti").multiselect({
+        includeSelectAllOption: true,
+        enableFiltering: true,
+        buttonWidth: '100%',
+        maxHeight: 400,
+        enableClickableOptGroups: true,
+        enableCaseInsensitiveFiltering: true
+    });
+    $(document).ready(function (e) {
+        initQuickAddCatalogueForm();
+    })
+</script>

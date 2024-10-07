@@ -1,0 +1,410 @@
+﻿@using Qbicles.Models.Loyalty
+@using Qbicles.Models.Trader
+@using Qbicles.BusinessRules
+@using Qbicles.Models
+@using Qbicles.BusinessRules.Model
+@using Qbicles.BusinessRules
+@model LoyaltyPromotionAndTypeModel
+@{
+    ViewBag.Title = "Sales &amp; Marketing &gt; Loyalty &gt; Promotions &gt; #8373";
+
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var currencySettings = (CurrencySetting)ViewBag.CurrencySetting;
+    var dateformat = (string)ViewBag.CurrentDateFormat;
+    var timezone = (string)ViewBag.CurrentTimeZone;
+    var item = (TraderItem)ViewBag.Item;
+}
+
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail mdv2-wrapper" style="position: relative;">
+
+
+    <!-- Main content -->
+    <section class="mdv2 dash" data-tooltip-color="teal" data-tooltip-delay="300" data-tooltip-animate-function="spin" style="border-top: 1px solid #f1f1f1;">
+
+
+        <!-- App bar -->
+        <div class="mdv2-col-app" style="margin-bottom: 0;">
+
+            <div data-spy="affix" class="contained-sidebar">
+
+                <div class="activity-overview plain company-overview welcome-info" style="text-align: left !important; flex: none; margin: 0; padding-top: 30px; padding-bottom: 0;">
+
+                    <div class="pull-left" style="margin-bottom: 15px;">
+                        <a href="/Commerce/BusinessProfileTrading#profile-vouchers" class="btn btn-primary"><i class="fa fa-angle-left"></i> &nbsp; All Promotions</a>
+                    </div>
+                    <div class="clearfix"></div>
+
+                    <br />
+                    <img src="@Model.LoyaltyPromotion.FeaturedImageUri.ToUri()" class="img-responsive" style="margin-bottom: 25px;">
+
+                    <h1 style="line-height: 1.4;">@Model.LoyaltyPromotion.Name</h1>
+                    <span class="label label-lg label-soft">Promotion</span>
+                    <span class="label label-lg label-primary">@Model.LoyaltyPromotion.VoucherInfo.Type.GetDescription()</span>
+                    @{
+
+                        var status = ""; var statusCss = ""; var currentDate = DateTime.UtcNow;
+                        if (Model.LoyaltyPromotion.StartDate <= currentDate && Model.LoyaltyPromotion.EndDate >= currentDate && !Model.LoyaltyPromotion.IsHalted && !Model.LoyaltyPromotion.IsArchived)
+                        {
+                            status = "Active"; statusCss = "success";
+                        }
+                        if (Model.LoyaltyPromotion.StartDate > currentDate)
+                        {
+                            status = "Pending"; statusCss = "info";
+                        }
+                        if (Model.LoyaltyPromotion.EndDate < currentDate || Model.LoyaltyPromotion.IsHalted)
+                        {
+                            status = "Ended"; statusCss = "danger";
+                        }
+                        if (Model.LoyaltyPromotion.IsHalted)
+                        {
+                            status = "Stopped"; statusCss = "danger";
+                        }
+                        if (Model.LoyaltyPromotion.IsArchived)
+                        {
+                            status = "Archived"; statusCss = "warning";
+                        }
+                    }
+                    <span class="label label-lg label-@statusCss">@status</span>
+
+                    <div class="clearfix"></div>
+                    <br /><br />
+
+                    <p class="text-detail" style="color: rgba(0, 0, 0, 0.5);">@Model.LoyaltyPromotion.Description</p>
+
+                    <br />
+
+
+                    <br />
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-6">
+                            <label>Starts</label>
+                            <p>@(Model.LoyaltyPromotion.StartDate.ConvertTimeFromUtc(timezone).ToString(dateformat + " hh:mmtt"))</p>
+                        </div>
+                        <div class="col-xs-12 col-sm-6">
+                            <label>Ends</label>
+                            <p>@(Model.LoyaltyPromotion.EndDate.ConvertTimeFromUtc(timezone).ToString(dateformat + " hh:mmtt"))</p>
+                        </div>
+                    </div>
+                    <br />
+                    <div class="row">
+                        <div class="col-xs-12">
+                            <label>Scheduled for display</label>
+                            <p>@(Model.LoyaltyPromotion.DisplayDate.ConvertTimeFromUtc(timezone).ToString(dateformat + " hh:mmtt"))</p>
+                        </div>
+                    </div>
+
+
+
+                </div>
+
+
+                <div class="spacing" style="padding-top: 0;">
+
+                </div>
+
+
+            </div>
+        </div>
+        <!-- END App bar -->
+        <!-- Main area -->
+        <div class="mdv2-col-dash">
+
+            <div class="spacing">
+
+
+                <ul class="nav nav-pills traderv2" style="padding-top: 0;">
+                    <li class="active"><a href="#vouchers" data-toggle="tab" aria-expanded="true">Vouchers</a></li>
+                    <li><a href="#rewards" data-toggle="tab" aria-expanded="false">Rewards</a></li>
+                </ul>
+
+                <br /><br />
+
+                <div class="tab-content">
+
+
+                    <!-- Rewards -->
+                    <div class="tab-pane fade" id="rewards">
+                        @{
+                            if (Model.LoyaltyPromotion.VoucherInfo.Type == VoucherType.ItemDiscount)
+                            {
+                                var iVoucher = Model.LoyaltyPromotion.VoucherInfo as ItemDiscountVoucherInfo;
+
+                                <table class="datatable table-striped table-hover" id="community-list" style="width: 100%;">
+                                    <thead>
+                                        <tr>
+                                            <th>Item</th>
+                                            <th>SKU</th>
+                                            <th>Product group</th>
+                                            <th>Discount by</th>
+                                            <th>Max items per order</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>@(item?.Name)</td>
+                                            <td>@iVoucher.ItemSKU</td>
+                                            <td>@(item?.Group.Name)</td>
+                                            <td>@iVoucher.ItemDiscount.ToString("N0")%</td>
+                                            <td>@iVoucher.MaxNumberOfItemsPerOrder</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            }
+                            else
+                            {
+                                var oVoucher = Model.LoyaltyPromotion.VoucherInfo as OrderDiscountVoucherInfo;
+                                <table class="datatable table-striped table-hover" id="community-list" style="width: 100%;">
+                                    <thead>
+                                        <tr>
+                                            <th>Item</th>
+                                            <th>Discount by</th>
+                                            <th>Max discount value (@currencySettings.CurrencySymbol)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>Full order</td>
+                                            <td>@oVoucher.OrderDiscount.ToString("N0")%</td>
+                                            <td>@(oVoucher?.MaxDiscountValue.ToString().Contains("-1") == true?"":oVoucher.MaxDiscountValue.ToString())</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            }
+                        }
+
+
+                    </div>
+                    <!-- END Rewards -->
+                    <!-- Vouchers -->
+                    <div class="tab-pane fade in active" id="vouchers">
+
+                        <div class="row">
+
+                            <div class="col-xs-12 col-sm-6">
+
+                                <table class="table table-borderless table-striped valigntop table-hover app_specific">
+                                    <tbody>
+                                        <tr>
+                                            <td><strong>Max voucher count</strong></td>
+                                            <td>@(Model.LoyaltyPromotion.VoucherInfo?.MaxVoucherCount.ToString().Replace("-1","")??"") </td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Per customer</strong></td>
+                                            <td>@Model.LoyaltyPromotion.VoucherInfo.MaxVoucherCountPerCustomer</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Expires after Promotion end</strong></td>
+                                            <td>@(Model.LoyaltyPromotion.VoucherInfo.VoucherExpiryDate == null?"No":"Yes")</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Specific times</strong></td>
+                                            <td>
+                                                <ul style="margin: 0 0 0 15px;">
+                                                    @{
+                                                        var startTime = Model.LoyaltyPromotion.VoucherInfo?.StartTime.ToString(@"hh\:mm");
+                                                        var endTime = Model.LoyaltyPromotion.VoucherInfo?.EndTime.ToString(@"hh\:mm");
+                                                        foreach (var day in Model.LoyaltyPromotion.VoucherInfo.DaysAllowed)
+                                                        {
+                                                            <li>@day.Day @startTime - @endTime</li>
+
+                                                        }
+                                                    }
+                                                </ul>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Specific locations</strong></td>
+                                            <td>
+                                                <ul style="margin: 0 0 0 15px;">
+                                                    @foreach (var location in Model.LoyaltyPromotion.VoucherInfo.Locations)
+                                                    {
+                                                        <li>@location.Name</li>
+                                                    }
+                                                </ul>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+
+                            </div>
+                            <div class="col-xs-12 col-sm-6">
+
+                                <label>Terms &amp; conditions</label><br />
+                                <p class="text-detail">@Model.LoyaltyPromotion.VoucherInfo.TermsAndConditions</p>
+
+                            </div>
+                        </div>
+
+
+                        <br /><br />
+                        <div class="well custom" style="padding-bottom: 5px;">
+                            <div class="row">
+                                <div class="col-xs-12 col-md-4">
+                                    <div class="form-group">
+                                        <label for="search">Search</label>
+                                        <input id="filter-text" type="text" value="" class="form-control">
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-md-4">
+                                    <label for="date">Claim date</label>
+                                    <div class="input-group" style="margin-bottom: 15px;">
+                                        <input id="daterange-voucher" type="text" class="form-control daterange">
+                                        <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-md-4">
+                                    <div class="form-group">
+                                        <label for="source">Redeemed</label>
+                                        <select id="filter-status" name="source" class="form-control select2" style="width: 100%;" onchange="ReloadVouchers()">
+                                            <option value="0" selected>Show all</option>
+                                            <option value="Yes">Yes</option>
+                                            <option value="No">No</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        @*<table class="datatable table-striped table-hover" id="promotion-voucher-list" style="width: 100%;" data-tooltip-stickto="left" data-tooltip-maxwidth="200" data-tooltip-color="teal">*@
+                        <table class="datatable table-striped table-hover" id="promotion-voucher-list" style="width: 100%; background: #fff;">
+                            <thead>
+                                <tr>
+                                    <th>Reference</th>
+                                    <th>Claimed</th>
+                                    <th>By</th>
+                                    <th style="width:100px">Redeemed</th>
+                                    <th style="width:150px">Redemption date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            </tbody>
+                        </table>
+
+                    </div>
+                    <!-- END Vouchers -->
+
+                </div> <!-- ./tab-content -->
+
+
+            </div>
+
+
+        </div>
+        <!-- END Main area -->
+
+
+    </section>
+    <!-- ./content -->
+
+</div>
+<!-- /.content-wrapper -->
+
+<script>
+
+    $(document).ready(function () {
+            $('#daterange-voucher').daterangepicker({
+                autoUpdateInput: false,
+                timePicker: true,
+                cancelClass: "btn-danger",
+                opens: "right",
+                //startDate: new Date($("#fromDateTime").val()),
+                //endDate: new Date($("#toDateTime").val()),
+                locale: {
+                    cancelLabel: 'Clear',
+                    format: $dateTimeFormatByUser
+                }
+            });
+        $('#daterange-voucher').on('apply.daterangepicker', function (ev, picker) {
+                $(this).val(picker.startDate.format($dateTimeFormatByUser) + ' - ' + picker.endDate.format($dateTimeFormatByUser));
+                $('#daterange-voucher').html(picker.startDate.format($dateTimeFormatByUser) + ' - ' + picker.endDate.format($dateTimeFormatByUser));
+                //filter.DateRange = $("#daterange-voucher").val();
+                ReloadVouchers();
+            });
+        $('#daterange-voucher').on('cancel.daterangepicker', function (ev, picker) {
+                $(this).val(null);
+                //filter.DateRange = $("#daterange-voucher").val();
+                $('#daterange-voucher').html('full history');
+                ReloadVouchers();
+            });
+
+        $("#filter-text").keyup(delay(function () {
+            ReloadVouchers();
+        }, 1000));
+        loadPromotionVouchers();
+
+
+    });
+    loadPromotionVouchers = function () {
+        $("#promotion-voucher-list")
+            .on('processing.dt', function (e, settings, processing) {
+                if (processing) {
+                    $('#promotion-voucher-list').LoadingOverlay("show");
+                } else {
+                    $('#promotion-voucher-list').LoadingOverlay("hide", true);
+                }
+            })
+            .DataTable({
+                "destroy": true,
+                "serverSide": true,
+                "paging": true,
+                "searching": false,
+                "responsive": true,
+                "lengthMenu": [[10, 20, 50, 100], [10, 20, 50, 100]],
+                "pageLength": 10,
+                "ajax": {
+                    "url": '/Commerce/PromotionVoucches',
+                    "type": 'POST',
+                    "data": function (d) {
+                        return $.extend({}, d, {
+                            "key": '@Model.LoyaltyPromotion.Key',
+                            "search": $("#filter-text").val(),
+                            "status": $("#filter-status").val(),
+                            "dates": $("#daterange-voucher").val()
+                        });
+                    },
+                    "dataSrc": function (data) {
+                        //$("#total-journals").text(data.recordsTotal);
+                        return data.data;
+                    }
+                },
+                "columns": [
+                    {
+                        data: "Code",
+                        orderable: true
+                    },
+                    {
+                        data: "Claimed",
+                        orderable: true
+                    },
+                    {
+                        data: "By",
+                        orderable: true
+                    },
+                    {
+                        name: "Redeemed",
+                        data: "Redeemed",
+                        orderable: true,
+                        render: function (value, type, row) {
+                            var strStatus = '<span class="label label-lg label-' + row.StatusCss + '">' + row.Redeemed + '</span>';
+                            return strStatus;
+                        }
+                    },
+                    {
+                        data: "Redemption",
+                        orderable: true
+                    }
+                ],
+                "drawCallback": function (settings) {
+                },
+                "initComplete": function (settings, json) {
+                    $('#promotion-voucher-list').DataTable().ajax.reload();
+                },
+                "order": [[1, "desc"]]
+            });
+    };
+
+    function ReloadVouchers() {
+        $("#promotion-voucher-list").DataTable().ajax.reload(null, false);
+    }
+</script>

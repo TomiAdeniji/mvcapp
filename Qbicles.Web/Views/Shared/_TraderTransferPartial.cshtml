@@ -1,0 +1,347 @@
+﻿@using Qbicles.Models.Trader.Movement
+@using Qbicles.BusinessRules
+@using Qbicles.Models.Trader;
+@model TraderTransfer
+@{
+    int locationId = (int)ViewBag.LocationId;
+    var workgroups = (List<WorkGroup>)ViewBag.Workgroups;
+    var locations = (List<TraderLocation>)ViewBag.Locations;
+    var onPage = ViewBag.OnPage;
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+}
+
+
+
+
+<div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            @if (Model.Id > 0)
+            {
+                <h5 class="modal-title">Edit transfer</h5>
+            }
+            else
+            {
+                <h5 class="modal-title">Add a transfer</h5>
+            }
+            <input type="hidden" value="@Model.Id" id="tranfer_form_id" />
+        </div>
+        <div class="modal-body">
+
+            <div class="activity-overview generic hidden-xs hidden-sm" style="padding: 20px; margin-bottom: 15px;">
+                <div class="row">
+                    <div class="col-xs-12 col-sm-6">
+                        <div class="form-group" style="margin: 0;">
+                            <label for="workgroup">Choose associated Workgroup <span>*</span></label>
+                            <select id="trader-group-select" class="form-control select2" style="width: 100%;" onchange="EditTransferChangeGroup()">
+                                @foreach (var g in workgroups)
+                                {
+                                    if (Model.Workgroup != null && Model.Workgroup.Id == g.Id)
+                                    {
+                                        <option value="@g.Id" selected>@g.Name</option>
+
+                                    }
+                                    else
+                                    {
+                                        <option value="@g.Id">@g.Name</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+            </div>
+
+
+            <div class="row">
+                <div class="col-xs-12">
+                    <ul class="app_subnav admintabs" style="padding-top: 0;">
+                        <li class="active disabled">
+                            <a href="#transfer-1" data-toggle="tab">Specifics</a>
+                        </li>
+                        <li class="disabled">
+                            <a href="#transfer-2" data-toggle="tab">Items</a>
+                        </li>
+                        <li class="disabled">
+                            <a href="#transfer-3" data-toggle="tab">Confirm</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <br />
+
+
+            <div class="tab-content">
+                <!-- Specifics -->
+                <div class="tab-pane fade in active" id="transfer-1">
+                    <div class="activity-overview task" style="padding: 20px;">
+                        <div class="row">
+                            @{
+
+                                if (Model.Id > 0)
+                                {
+                                    var oDisable = "";
+                                    var dDisable = "";
+                                    var transfer_type = "";
+                                    if (Model.DestinationLocation?.Id == locationId)
+                                    {
+                                        dDisable = "disabled";
+                                        transfer_type = "#inbound";
+                                    }
+                                    else if (Model.OriginatingLocation?.Id == locationId)
+                                    {
+                                        oDisable = "disabled";
+                                        transfer_type = "#outbound";
+                                    }
+                                    <div class="col-xs-12 col-sm-6" id="source">
+                                        <div class="form-group">
+                                            <label for="source">Source location</label>
+                                            <select id="originating-location-select" class="form-control select2" style="width: 100%;" data-placeholder="Choose a location" @oDisable>
+                                                @foreach (var l in locations)
+                                                {
+                                                    if (Model.OriginatingLocation?.Id == l.Id)
+                                                    {
+                                                        <option value="@l.Id" selected="">@l.Name</option>
+                                                    }
+                                                    else
+                                                    {
+                                                        <option value="@l.Id">@l.Name</option>
+
+                                                    }
+                                                }
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-6" id="destination">
+                                        <div class="form-group" style="margin: 0;">
+                                            <label for="destination">Destination</label>
+                                            <input type="hidden" id="transfer_type_add" value="@transfer_type" />
+                                            <select id="destination-location-select" class="form-control select2" style="width: 100%;" data-placeholder="Choose a location" @dDisable>
+                                                @foreach (var l in locations)
+                                                {
+                                                    if (Model.DestinationLocation.Id == l.Id)
+                                                    {
+                                                        <option value="@l.Id" selected="">@l.Name</option>
+                                                    }
+                                                    else
+                                                    {
+                                                        <option value="@l.Id">@l.Name</option>
+
+                                                    }
+                                                }
+                                            </select>
+                                        </div>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group" style="margin: 0;">
+                                            <label for="type">Transfer type</label>
+                                            <select name="type" id="transfer_type_add" onchange="TransferTypeChange()" class="form-control select2" style="width: 100%;">
+                                                <option value="#inbound">Inbound</option>
+                                                <option value="#outbound">Outbound</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group" style="margin: 0;">
+                                            <label id="inbound">Where are the items coming from?</label>
+                                            <label id="outbound" style="display: none;">Where are the items going to?</label>
+                                            <select id="in-out-location" class="form-control select2" style="width: 100%;" data-placeholder="Choose a location">
+                                                @foreach (var l in locations)
+                                                {
+                                                    <option value="@l.Id">@l.Name</option>
+                                                }
+                                            </select>
+                                        </div>
+                                    </div>
+                                }
+                            }
+
+
+
+                        </div>
+                    </div>
+
+                    <br />
+                    <a onclick="nextToItemsTransfer()" href="#transfer-2" data-toggle="tab" class="btn btn-success btnNext">Next &nbsp; <i class="fa fa-angle-right"></i></a>
+                </div>
+                <!-- END Specifics -->
+                <!-- Items -->
+                <div class="tab-pane fade" id="transfer-2">
+
+                    <div class="activity-overview task" style="padding: 20px;">
+                        <form id="form_add_transaction">
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label for="item">Add item to order <span>*</span></label>
+                                        <select name="item" onchange="ChangeSelectedUnit()" class="form-control select2 group-item-select" style="width: 100%;" id="item-select">
+                                            <option value=""></option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-3">
+                                    <div class="form-group">
+                                        <label for="unit">Unit <span>*</span></label>
+                                        <div id="item_selected">
+                                            <select class="form-control select2">
+                                                <option></option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-3">
+                                    <div class="form-group">
+                                        <label for="tax">Quantity <span>*</span></label><br />
+                                        <input id="form_item_quantity" name="itemquantity" onkeypress="decimalKeyPress(this, event)" onpaste="decimalOnPaste(this, event)" maxlength="15" type="text" required="" class="form-control" min="1">
+                                    </div>
+                                </div>
+                            </div>
+
+                        </form>
+
+                        <button onclick="addRowTransferItem()" class="btn btn-success"><i class="fa fa-plus"></i> &nbsp; Add now</button>
+                    </div>
+
+
+                    <br /><br />
+                    <table id="tb_form_item" class="datatable table-hover" style="width: 100%; background: #fff;" data-order='[[1, "asc"]]'>
+                        <thead>
+                            <tr>
+                                <th data-orderable="false"></th>
+                                <th>Name</th>
+                                <th>Unit</th>
+                                <th>Quantity</th>
+                                <th data-orderable="false"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody-item-add">
+                            @foreach (var item in Model.TransferItems)
+                            {
+                                <tr class="tr_id_@item.Id">
+                                    <td class="row_image">
+                                        <div class="table-avatar" style="background-image: url('@(api+item.TraderItem.ImageUri)&size=T');"></div>
+                                    </td>
+                                    <td class="row_name">@item.TraderItem.Name</td>
+                                    <td class="row_unit">
+                                        @{Html.RenderAction("UnitsSelectByTransferItem", "TraderTransfers", new { transferItemId = item.Id, idLocation = locationId });}
+                                    </td>
+                                    <td class="row_quantity">
+                                        <input onkeypress="decimalKeyPress(this, event)" onpaste="decimalOnPaste(this, event)" maxlength="15" type="text" name="item-1-qty" class="form-control" onchange="checkQuantityTransItem(this, @item.TraderItem.Id)" style="width: 80px;" step="1" min="1" value="@item.QuantityAtPickup.ToDecimalPlace(currencySettings)">
+                                    </td>
+                                    <td class="row_button">
+                                        <button class="btn btn-danger" onclick="removeRowItem(@item.Id)"><i class="fa fa-trash"></i></button>
+                                        <input type="hidden" class="traderItem" value="@item.TraderItem.Id:@item.TraderItem.ImageUri" />
+                                        <input type="hidden" class="row_id" value="@item.Id" />
+                                    </td>
+                                </tr>
+                            }
+
+
+                        </tbody>
+                    </table>
+
+
+                    <br />
+                    <a href="#transfer-1" data-toggle="tab" class="btn btn-warning btnPrevious"><i class="fa fa-angle-left"></i> &nbsp; Previous</a>
+                    <a href="#transfer-3" data-toggle="tab" class="btn btn-success btnNext" onclick="nextToConfirmP2PEdit()">Next &nbsp; <i class="fa fa-angle-right"></i></a>
+                </div>
+                <!-- END Items -->
+                <!-- Confirm -->
+                <div class="tab-pane fade" id="transfer-3">
+                    <div id="p-confirm-message" class="activity-overview task hidden" style="padding: 20px 20px 10px 20px;">
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <div class="form-group" style="margin: 0;">
+                                    <label for="type">Transfer type</label><br />
+                                    <p>Outbound, transferring from <strong id="span-from"></strong> to <strong id="span-to"></strong></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <br /><br />
+                    <div id="div-confirm" class="activity-overview task" style="padding: 20px;">
+
+                    </div>
+                    <br />
+                    <a href="#transfer-2" data-toggle="tab" class="btn btn-warning btnPrevious"><i class="fa fa-angle-left"></i> &nbsp; Previous</a>
+
+                    @{
+                        if (Model.Id > 0 && onPage == "review")
+                        {
+                            <a href="javascript:void(0)" onclick="SaveTransfer('@Model.Status')" class="btn btn-success"><i class="fa fa-thumbs-up"></i> &nbsp; Save</a>
+                        }
+                        else if (onPage != "review")
+                        {
+                            <a href="javascript:void(0)" onclick="SaveTransfer('Draft')" class="btn btn-primary"><i class="fa fa-save"></i> &nbsp; Save draft</a>
+                            <a href="javascript:void(0)" onclick="SaveTransfer('PendingPickup')" class="btn btn-success"><i class="fa fa-thumbs-up"></i> &nbsp; Send to pickup</a>
+                        }
+                    }
+                </div>
+
+
+            </div> <!-- ./tab-content -->
+
+
+
+        </div>
+    </div><!-- /.modal-content -->
+</div>
+
+<table id="tb_form_template" class="datatable table-hover hidden" style="width: 100%; background: #fff;">
+    <thead>
+        <tr>
+            <th data-orderable="false"></th>
+            <th>Name</th>
+            <th>Unit</th>
+            <th>Quantity</th>
+            <th data-orderable="false"></th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td class="row_image">
+                <div class="table-avatar" style="background-image: url('');">
+                </div>
+            </td>
+            <td class="row_name"></td>
+            <td class="row_unit">
+                @{Html.RenderAction("UnitsSelectByItem", "TraderTransfers", new { idLocation = locationId });}
+            </td>
+            <td class="row_quantity">
+                <input onkeypress="decimalKeyPress(this, event)" onpaste="decimalOnPaste(this, event)" maxlength="15" type="text" name="item-1-qty" class="form-control" style="width: 80px;" value="0">
+            </td>
+            <td class="row_button">
+                <button class="btn btn-danger" onclick="removeRowItem(0)"><i class="fa fa-trash"></i></button>
+                <input type="hidden" class="traderItem" value="" />
+                <input type="hidden" class="row_id" value="0" />
+            </td>
+        </tr>
+    </tbody>
+</table>
+<script>
+    //ResetItemSelected('tb_form_item', 'item-select');
+    $('.btnNext').click(function () {
+        $('.modal .app_subnav > .active').next('li').find('a').trigger('click');
+    });
+    $('.btnPrevious').click(function () {
+        $('.modal .app_subnav > .active').prev('li').find('a').trigger('click');
+    });
+    $('#trader-group-select').not('.multi-select').select2({ placeholder: "Please select"});
+    $('#transfer-1 select').not('.multi-select').select2({ placeholder: "Please select"});
+    $('.group-item-select').not('.multi-select').select2({ placeholder: "Please select"});
+    $('#tb_form_item select').not('.multi-select').select2({ placeholder: "Please select"});
+    ChangeSelectedUnit();
+    validateItemsInTable();
+
+</script>

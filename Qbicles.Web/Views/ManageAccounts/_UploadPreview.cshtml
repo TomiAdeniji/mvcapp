@@ -1,0 +1,115 @@
+﻿@using CleanBooksData;
+@using Qbicles.BusinessRules;
+@using System.Globalization;
+
+@model List<upload>
+
+@{ 
+    var rightDeleteHistory = (string)ViewBag.rightDeleteHistory;
+}
+
+@{
+
+    <table class="table table-striped table-hover app_specific" style="width: 100%;" aria-describedby="table_info">
+        <thead>
+            <tr role="row">
+                <th style="width: 45%;" class="sorting_disabled" rowspan="1" colspan="1">Name</th>
+                <th class="sorting_disabled" rowspan="1" colspan="1">Uploaded By</th>
+                <th class="sorting_disabled" rowspan="1" colspan="1">Uploaded On</th>
+                <th class="sorting_disabled" rowspan="1" colspan="1">Admin</th>
+            </tr>
+        </thead>
+        @foreach (var upload in Model.OrderByDescending(d=>d.CreatedDate))
+        {
+            <tbody>
+                <tr id="upload-preview-tr-@upload.Id" role="row" class="odd">
+                    <td>
+                        <input hidden="" id="create-date-@upload.Id" value="@upload.CreatedDate.Value" />
+                        <input hidden="" id="account-id-@upload.Id" value="@upload.account.Id" />
+                        <input hidden="" id="account-name-@upload.Id" value="@upload.account.Name" />
+                        <input hidden="" id="upload-name-@upload.Id" value="@upload.Name" />
+                        <input hidden="" id="UploadFormatId-@upload.Id" value="@upload.UploadFormatId" />
+                        @upload.Name
+                    </td>
+                    <td><a href="mailto:@upload.user.Email">@upload.user.Forename @upload.user.Surname</a></td>
+                    <td>@upload.CreatedDate.Value.ToString()</td>
+                    <td>
+                        <a href="javascript:void(0)" class="showme" onclick="showPreviewDetail('upload_preview-@upload.Id')">Preview</a>
+                        |
+                        <a href="javascript:void(0)" class="@rightDeleteHistory"
+                           onclick="DeleteAccountUploadImportTransaction('@upload.Id',this)">Delete</a>
+                    </td>
+                </tr>
+            </tbody>
+        }
+    </table>
+
+    foreach (var upload in Model)
+    {
+        <div id="upload_preview-@upload.Id" style="display: none;">
+            <div class="well" style="height: 500px; overflow-y: scroll;">
+
+                <a href="javascript:void(0)" class="upload_preview_close_css" onclick="hidePreviewDetail('upload_preview-@upload.Id')"><i class="fa fa-remove"></i></a>
+                <p style="font-weight: 500;">Preview of @upload.Name</p>
+                <br />
+
+                <table id="tablePreview-@upload.Id" class="history-table table table-striped table-hover table-bordered custome-table" aria-describedby="tablePreview_info" style="width: 100%; background: #fff;">
+                    <thead>
+                        <tr role="row">
+                            <th class="sorting_disabled" rowspan="1" colspan="1" style="width: 0px;">Date</th>
+                            <th class="sorting_disabled" rowspan="1" colspan="1" style="width: 0px;">Reference</th>
+                            <th class="sorting_disabled" rowspan="1" colspan="1" style="width: 0px;">Description</th>
+                            <th class="sorting_disabled" rowspan="1" colspan="1" style="width: 0px;">Debit</th>
+                            <th class="sorting_disabled" rowspan="1" colspan="1" style="width: 0px;">Credit</th>
+                            <th class="sorting_disabled" rowspan="1" colspan="1" style="width: 0px;">Balance</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var transaction in upload.transactions)
+                        {
+                            <tr role="row" class="even">
+                                <td class="Date" date-value="@transaction.Date">@transaction.Date.ToString("dd/MM/yyyy HH:mm:ss")</td>
+                                <td class="Reference" reference-value="@transaction.Reference">@transaction.Reference</td>
+                                <td class="Description" description-value="@transaction.Description">@transaction.Description</td>
+                                <td class="Debit" debit-value="@transaction.Debit">@(HelperClass.Converter.Obj2Decimal(transaction.Debit).ToString("#,###.##", CultureInfo.InvariantCulture.NumberFormat))</td>
+                                <td class="Credit" credit-value="@transaction.Credit">@(HelperClass.Converter.Obj2Decimal(transaction.Credit).ToString("#,###.##", CultureInfo.InvariantCulture.NumberFormat))</td>
+                                <td class="Balance" balance-value="@transaction.Balance">@(HelperClass.Converter.Obj2Decimal(transaction.Balance).ToString("#,###.##", CultureInfo.InvariantCulture.NumberFormat))</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+    
+}
+
+
+
+<script>
+
+    $(document).ready(function () {
+        $('.history-table').DataTable({
+            responsive: true,
+            "lengthChange": false,
+            "pageLength": 10,
+            "order": []
+        });
+
+        $('.history-table').show();
+    });
+    function showPreviewDetail(id) {
+        var x = document.getElementById(id);
+        if (x.style.display === "none") {
+            x.style.display = "block";
+        } else {
+            x.style.display = "none";
+        }
+    }
+
+    function hidePreviewDetail(id) {      
+        $('#' + id).hide();
+    }
+
+</script>
+

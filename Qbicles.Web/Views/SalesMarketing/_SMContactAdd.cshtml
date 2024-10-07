@@ -1,0 +1,227 @@
+﻿@using Qbicles.Models.SalesMkt;
+@{
+    var areas = (List<Area>)ViewBag.Areas;
+    var criterias = (List<CustomCriteriaDefinition>)ViewBag.Criterias;
+    var customCriterias = criterias.Where(c => c.IsAgeRange == false && c.Status == CustomCriteriaStatus.Active).ToList();
+    var ageRanges = (List<CustomOption>)ViewBag.AgeRange;
+    var imgAcceptedFile = (string)ViewBag.ImageAcceptedExtensions;
+}
+<div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <h5 class="modal-title">Add a General Contact</h5>
+        </div>
+        <div class="modal-body">
+            <form id="frm-smcontact-add" enctype="multipart/form-data">
+                <label>General information</label><br />
+                <div class="well custom" style="padding-bottom: 5px;">
+
+                    <input type="hidden" id="sm-contact-object-key" name="mediaObjectKey" />
+                    <input type="hidden" id="sm-contact-object-name" name="mediaObjectName" />
+                    <input type="hidden" id="sm-contact-object-size" name="mediaObjectSize" />
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group">
+                                <label for="avatar">Avatar <span class="red">*</span></label>
+                                <input id="sm-contact-upload-media" type="file" class="form-control" accept="@imgAcceptedFile" onchange="showImageFromInputFile(this, '#img_avatar')" required>
+                            </div>
+                        </div>
+                        <img id="img_avatar" src="" alt="Your image" style="display: none; width: 100%; height: auto; margin-bottom: 30px;" />
+                    </div>
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group">
+                                <label for="Name">Name <span class="red">*</span></label>
+                                <input required type="text" name="Name" class="form-control">
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group">
+                                <label for="Email">Email <span class="red">*</span></label>
+                                <input required type="text" name="Email" class="form-control">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group">
+                                <label for="DateOfBirth">Date of birth</label>
+                                <input type="text" id="DateOfBirth" name="DateOfBirth" onchange="changeBirthDay()" class="form-control" placeholder="Select a date">
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group">
+                                <label for="AgeRanges">Age range</label>
+                                <select id="AgeRanges" name="AgeRanges" class="form-control select2" style="width: 100%;">
+                                    <option value=""></option>
+                                    @if (ageRanges != null)
+                                    {
+                                        foreach (var range in ageRanges)
+                                        {
+                                            <option value="@(range.CustomCriteriaDefinition.Id+"_"+range.Id)">@range.Label</option>
+                                        }
+                                    }
+
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group">
+                                <label for="Phone">Phone</label>
+                                <input type="text" name="Phone" class="form-control">
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group">
+                                <label for="Source">Source</label>
+                                <select name="Source" class="form-control select2" style="width: 100%;" onchange="if ($(this).val() == '4') { $('.description').show();$('#description').val(''); } else { $('.description').hide(); $('#description').val('');}">
+                                    <option value=""></option>
+                                    <option value="0">Customer</option>
+                                    <option value="1">Trader</option>
+                                    <option value="2">Enquiry form</option>
+                                    <option value="3">Sales call</option>
+                                    <option value="4">Other</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-6 place">
+                            <div class="form-group">
+                                <label for="Places">Place(s) of interest</label>
+                                <select name="Places" id="Places" class="form-control checkmulti" multiple style="width: 100%; display: none">
+                                    @if (areas.Any())
+                                    {
+                                        foreach (var area in areas)
+                                        {
+                                            if (area.Places.Any())
+                                            {
+                                                <optgroup label="@area.Name">
+                                                    @foreach (var place in area.Places)
+                                                    {
+                                                        <option value="@place.Id">@place.Name</option>
+                                                    }
+                                                </optgroup>
+                                            }
+                                        }
+                                    }
+
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-sm-6 description" style="display: none;">
+                            <div class="form-group">
+                                <label for="SourceDescription">Please specify</label>
+                                <input type="text" id="description" name="SourceDescription" class="form-control" placeholder="e.g. Business card">
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+
+                <br />
+
+                @if (customCriterias.Any())
+                {
+                    var numberOfRowEven = customCriterias.Count() / 2;
+                    var maximumRow = numberOfRowEven + customCriterias.Count() % 2;
+
+                    <select id="Options" name="Options" class="form-control" style="width: 100%;display:none" multiple>
+                        @foreach (var criteria in customCriterias)
+                        {
+                            if (criteria.CustomOptions.Any())
+                            {
+                                foreach (var option in criteria.CustomOptions)
+                                {
+                                    <option value="@(option.CustomCriteriaDefinition.Id+"_"+ option.Id)">@option.Label</option>
+                                }
+                            }
+                        }
+                    </select>
+
+                    <label>Custom criteria</label><br />
+                    <div class="well custom" style="padding-bottom: 5px;">
+                        @for (var i = 0; i < numberOfRowEven * 2; i += 2)
+                        {
+                            <div class="row">
+                                @{
+                                    var cc1 = customCriterias[i].CustomOptions;
+                                    var cc2 = customCriterias[i + 1].CustomOptions;
+                                }
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label>@customCriterias[i].Label</label>
+                                        <select class="form-control criteria select2" onchange="changeCustomCriteria()" style="width: 100%;">
+                                            <option value=""></option>
+                                            @foreach (var option in cc1)
+                                            {
+                                                <option value="@(option.CustomCriteriaDefinition.Id+"_"+ option.Id)">@option.Label</option>
+                                            }
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label>@customCriterias[i + 1].Label</label>
+                                        <select class="form-control criteria select2" onchange="changeCustomCriteria()" style="width: 100%;">
+                                            <option value=""></option>
+                                            @foreach (var option in cc2)
+                                            {
+                                                <option value="@(option.CustomCriteriaDefinition.Id+"_"+ option.Id)">@option.Label</option>
+                                            }
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                        @if (maximumRow > numberOfRowEven)
+                        {
+                            <div class="row">
+                                @{
+                                    var cc1 = customCriterias[numberOfRowEven * 2].CustomOptions;
+                                }
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label>@customCriterias[numberOfRowEven * 2].Label</label>
+                                        <select class="form-control criteria select2" onchange="changeCustomCriteria()" style="width: 100%;">
+                                            <option value=""></option>
+                                            @foreach (var option in cc1)
+                                            {
+                                                <option value="@(option.CustomCriteriaDefinition.Id+"_"+ option.Id)">@option.Label</option>
+                                            }
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+
+                <br />
+                <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                <a class="btn btn-success" onclick="ProcessContact()">Save changes</a>
+            </form>
+
+        </div>
+    </div><!-- /.modal-content -->
+</div><!-- /.modal-dialog -->
+<script>
+    $('#DateOfBirth').daterangepicker({
+        singleDatePicker: true,
+        timePicker: false,
+        showDropdowns: true,
+        autoUpdateInput: true,
+        cancelClass: "btn-danger",
+        opens: "left",
+        minDate: '@ViewBag.MinDate',
+        maxDate: '@ViewBag.MaxDate',
+        locale: {
+            cancelLabel: 'Clear',
+            format: 'DD-MM-YYYY'
+        }
+    });
+</script>

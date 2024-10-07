@@ -1,0 +1,164 @@
+﻿@using Qbicles.Models.SalesMkt;
+@using Qbicles.Models;
+@model IdeaTheme
+@{
+    var mediaFolders = (List<MediaFolder>)ViewBag.MediaFolders;
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var imgPreview = Model != null && Model.Id > 0 && !string.IsNullOrEmpty(Model.FeaturedImageUri) ? (api + Model.FeaturedImageUri) : "";
+    var ideatypes=(List<IdeaThemeType>)ViewBag.IdeaTypes;
+    var countlinks = Model!=null&&Model.Links != null ? Model.Links.Count : 0;
+}
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+                <h5 class="modal-title">@(Model!=null&&Model.Id>0?"Edit Theme Idea": "Add a Theme Idea")</h5>
+            </div>
+            <div class="modal-body">
+                <form id="frm-idea-theme" enctype="multipart/form-data">
+                    @if (Model == null)
+                    {
+                        <div class="activity-overview generic help-text animated bounce">
+                            <i class="fa fa-info-circle"></i>
+                            <h5 style="margin: 0; padding: 0 0 10px 0;">Collaborate</h5>
+                            <p>
+                                Your Theme will be ready to use once you provide the information below. Once you're in your new Theme you can optionally start a Theme Discussion. This
+                                will create an entry in the Qbicle that allows you and your team to discuss and refine your ideas.
+                            </p>
+                        </div>
+                    }
+                    <div class="well custom">
+                        @if (Model != null)
+                        {
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-6">
+                                    <label>Active theme (can be used in Campaigns etc)</label><br />
+                                    <div class="checkbox toggle">
+                                        <label>
+                                            <input data-toggle="toggle" name="Active" value="true" data-onstyle="success" type="checkbox" @(Model.IsActive ? "checked" : "")>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            <br />
+                        }
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="brandname">Theme name <span class="red">*</span></label>
+                                    <input type="text" name="Name" value="@(Model!=null?Model.Name:"")" class="form-control">
+                                    <input type="hidden" name="Id" value="@(Model!=null?Model.Id:0)" />
+                                    <input type="hidden" id="sm-idea-object-key" name="mediaObjectKey" />
+                                    <input type="hidden" id="sm-idea-object-name" name="mediaObjectName" />
+                                    <input type="hidden" id="sm-idea-object-size" name="mediaObjectSize" />
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="Type">What kind of idea/theme is it? <span class="red">*</span></label>
+                                    <select name="Type" class="form-control select2" onchange="if ($(this).val() != '') { $('#frm-idea-theme select[name=Type]').valid(); }" required style="width: 100%;" tabindex="-1" aria-hidden="true">
+                                        <option value=""></option>
+                                        @foreach (var item in ideatypes)
+                                        {
+                                            <option value="@item.Id" @(Model != null && Model.Type != null && item.Id == Model.Type.Id ? "selected" : "")>@item.Name</option>
+                                        }
+                                    </select>
+                                    <label id="Type-error" class="error" for="Type" style="display: none;"></label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="ResourcesFolder">Resource folder (for storing and retrieving your files) <span class="red">*</span></label>
+                                    <select name="ResourcesFolder" class="form-control select2" style="width: 100%;" onchange="if ($(this).val() == 0) { $('.foldername').show(); SocialIdeaAutoGenerateFolderName(); } else { $('.foldername').hide(); }" tabindex="-1" aria-hidden="true">
+                                        <option value=""></option>
+                                        <option value="0">Create a new folder</option>
+                                        @foreach (var item in mediaFolders)
+                                        {
+                                            <option value="@item.Id.ToString()" @(Model != null && Model.ResourceFolder.Id == item.Id ? "selected" : "")>@item.Name</option>
+                                        }
+                                    </select>
+                                    <label id="ResourcesFolder-error" class="error" for="ResourcesFolder" style="display: none;"></label>
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group foldername" style="display: none;">
+                                    <label for="FolderName">Enter a name for your new folder <span class="red">*</span></label>
+                                    <input type="text" id="ideaFolderName" name="FolderName" class="form-control" value="">
+                                    <label id="FolderName-error" class="error" for="FolderName" style="display: none;"></label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label for="account_number">Featured image <span class="red">*</span></label>
+                                    <input id="sm-idea-upload-media" type="file" class="form-control previewimgidea" @(Model != null ? "" : "required") data-target="#imgideapreview">
+                                    <label id="sm-idea-upload-media-error" style="display: none; float: left" class="error" for="sm-idea-upload-media">This field is required.</label>
+                                </div>
+
+                                <img id="imgideapreview" src="@imgPreview" alt="Your image" style="display: @(imgPreview!=""?"block":"none"); width: 100%; height: auto; margin-bottom: 30px;">
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label for="Explanation">Briefly explain your idea <span class="red">*</span></label>
+                                    <textarea name="Explanation" class="form-control" style="height: 80px;">@(Model!=null?Model.Explanation:"")</textarea>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <label for="url">Link to external content</label>
+                                <div class="form-group" style="margin-bottom: 10px;">
+                                    <input type="text" name="Url" class="form-control">
+                                </div>
+
+                                <button class="btn btn-info" type="button" onclick="SocialIdeaAddLink();"><i class="fa fa-plus"></i> &nbsp; Add another link</button>
+                            </div>
+                        </div>
+                        <div class="row links-associate" style="display:@(countlinks>0?"block":"none")">
+                            <div class="col-xs-12">
+                                <table id="ideaLinks" class="table table-striped table-hover app_specific" style="margin: 30px 0 0 0;">
+                                    <thead>
+                                        <tr>
+                                            <th>URL</th>
+                                            <th>Options</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @if (countlinks > 0)
+                                        {
+                                            foreach (var item in Model.Links)
+                                            {
+                                                <tr lnkUrl="@item.URL">
+                                                    <td>
+                                                        <a href="@item.URL" target="_blank"><i class="fa fa-external-link"></i> &nbsp; @item.URL</a>
+                                                    </td>
+                                                    <td>
+                                                        <button class="btn btn-danger" onclick="SocialIdeaRemoveLink(this)">
+                                                            <i class="fa fa-trash"></i>
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            }
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <br>
+                    <button class="btn btn-danger" type="button" data-dismiss="modal">Cancel</button>
+                    <a class="btn btn-success" onclick="ProcessSMIdea()">Confirm</a>
+                </form>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+
+<script>
+    $("select[name='Type'], select[name='ResourcesFolder']").select2();
+</script>

@@ -1,0 +1,384 @@
+﻿@using Qbicles.Models;
+@using Qbicles.BusinessRules;
+@{
+    var topics = (List<Topic>)ViewBag.Topics;
+
+
+    ViewBag.Title = ViewBag.PageTitle;
+
+    var media = (QbicleMedia)ViewBag.Media;
+    var listMediaFolders = (List<MediaFolder>)ViewBag.ListMediaFolders;
+
+    var listFileType = (List<string>)ViewBag.listFileType;
+    string fileAccept = listFileType.Count() > 0 ? ("." + string.Join(",.", listFileType)) : "";
+
+    var currentDomainId = (int)ViewBag.CurrentDomainId;
+    var currentUser = (ApplicationUser)ViewBag.CurrentUser;
+
+
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var pageSize = HelperClass.activitiesPageSize;
+
+    var isMember = ViewBag.IsMember;
+
+    var b2cMember = (bool)ViewBag.B2CMember;
+
+    var count_Medias = media.SubActivities.Count();
+    var dateFormat = (string)ViewBag.CurrentDateFormat;
+    var timeZone = (string)ViewBag.CurrentTimeZone;
+}
+
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail mdv2-wrapper" style="position: relative;">
+
+
+    <!-- Main content -->
+    <section class="mdv2 dash" data-tooltip-color="teal" data-tooltip-delay="300" data-tooltip-animate-function="spin" style="border-top: 1px solid #f1f1f1;">
+
+
+        <!-- App bar -->
+        <div class="mdv2-col-app" style="margin-bottom: 0;">
+            <div data-spy="affix" class="contained-sidebar">
+                <div class="activity-overview plain company-overview welcome-info" style="text-align: left !important; flex: none; margin: 0; padding-top: 30px; padding-bottom: 0;">
+                    <div class="pull-left" style="margin-bottom: 15px;">
+                        <a href="/Qbicles/Dashboard" class="btn btn-info"><i class="fa fa-angle-up"></i> &nbsp; Qbicle</a>
+                        <a href="#media-edit" data-toggle="modal" class="btn btn-warning"><i class="fa fa-pencil"></i> &nbsp; Edit</a>
+                    </div>
+                    <div class="clearfix"></div>
+                    <br />
+                    <h1 style="line-height: 1.2;">@(media?.Name)</h1>
+                    <br />
+                    <span class="label label-lg label-primary">@media.Topic.Name</span>
+                    <br /><br /><br />
+                    <p style="color: rgba(0, 0, 0, 0.5);">@media.Description</p>
+                    <br />
+                    <a href="#discuss-position" style="margin: 15px 0;" class="btn btn-info community-button jump-to"><i class="fa fa-comments"></i> &nbsp; Discuss this post</a>
+                    <br />
+                    <div class="row">
+                        <div class="col-xs-6">
+                            <label>Type</label>
+                            <p><span id="file-type"></span>, <span id="fileZise"></span></p>
+                        </div>
+                        <div class="col-xs-6">
+                            <label>Versions</label>
+                            <p id="media-vs-count">@(media.VersionedFiles != null ? media.VersionedFiles.Count() : 0)</p>
+                        </div>
+                    </div>
+                    <div class="well custom" style="margin-top: 30px;">
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label for="in_folder">Folder</label>
+                                    <select name="in_folder" class="form-control select2" id="in-folder" onchange="updateFolderForMedia('@media.Key')" style="width: 100%;">
+                                        @foreach (var mFolder in listMediaFolders)
+                                        {
+                                            <option value="@mFolder.Id" @(media.MediaFolder.Id == mFolder.Id ? "selected" : "" )>@mFolder.Name</option>
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label for="active_version">Versions</label>
+                                    <select id="version-file" onchange="SelectVersion()" name="active_version" class="form-control select2" style="width: 100%;">
+                                        @foreach (var version in media.VersionedFiles.BusinessMapping(timeZone).OrderByDescending(x => x.UploadedDate))
+                                        {
+                                            <option id="version-@version.Id" value="@version.Id">@version.UploadedDate.ToString("MMMM dd,yyyy HH:mm")</option>
+                                        }
+                                    </select>
+                                </div>
+
+                                <div class="btn-group options">
+                                    <button type="button" class="btn btn-success dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                        Options &nbsp; <i class="fa fa-angle-down"></i>
+                                    </button>
+                                    <ul class="dropdown-menu">
+                                        <li><a id="download-this" href="javascript:void(DownloadVersion())"><i class="fa fa-download"></i> &nbsp; Download version</a></li>
+                                        @if (isMember == null)
+                                        {
+                                            <li><a id="upload-new" href="javascript:void(uploadVersion())"><i class="fa fa-upload"></i> &nbsp; Add new version</a></li>
+                                            <li><a id="remove-version" href="javascript:void(removeVersion())"><i class="fa fa-remove"></i> &nbsp; Delete version</a></li>
+                                        }
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- END App bar -->
+        <!-- Main area -->
+        <div class="mdv2-col-dash">
+
+            <div class="tab-content">
+
+                <div class="spacing-new" style="padding: 30px;">
+
+
+                    <!-- Preview -->
+                    <div class="tab-pane fade in active" id="preview">
+
+                        <div class="spacing-new" style="padding: 20px 30px;">
+                        </div>
+
+
+                        <br /><br />
+                        <a id="discuss-position"></a>
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <ul class="app_subnav admintabs" style="padding-top: 0;">
+                                    <li class="active"><a href="#task-comments" data-toggle="tab">Comments</a></li>
+                                    <li><a href="#task-files" data-toggle="tab">Files</a></li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <br />
+
+                        <div class="tab-content">
+
+
+                            <!-- Comments -->
+                            <div class="tab-pane fade in active" id="task-comments">
+
+                                <div class="well custom" style="margin-bottom: 60px;">
+                                    <div class="row">
+                                        <div class="col-xs-12">
+                                            <div class="form-group">
+                                                <label for="add-comment">Add a comment</label>
+                                                <textarea id="comment-media" name="addcomment" onkeyup="validateAddComment()" class="form-control"></textarea>
+                                                <label id="addcomment-error" class="error" for="addcomment" style="display: none;">Your post is longer than the 1,500 character limit. Please reduce the length, or split it across multiple posts</label>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <button type="button" onclick="addCommentToMedia('@media.Key')" class="btn btn-success">Submit</button>
+                                </div>
+
+
+                                <!-- General post -->
+                                <div id="list-comments-media">
+                                    @foreach (var post in media.Posts.OrderByDescending(x => x.Id).Take(pageSize))
+                                    {
+                                        <article id="post-@post.Id" class="activity post">
+                                            <div class="activity-avatar" style="background-image: url('@api@(post.CreatedBy.ProfilePic)&size=T')"></div>
+
+                                            <div class="activity-detail">
+                                                <div class="activity-meta">
+                                                    <h4>@(post.CreatedBy.Id == currentUser.Id ? "Me" : HelperClass.GetFullNameOfUser(post.CreatedBy))</h4>
+                                                    <small>@post.StartedDate.ConvertTimeFromUtc(timeZone).ToString(dateFormat + ", hh:mmtt")</small>
+                                                </div>
+
+                                                <div class="activity-overview media-comment">
+                                                    <p>
+                                                        @Html.Raw(post.Message.Replace(Environment.NewLine, "<br/>"))
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div class="clearfix"></div>
+                                        </article>
+                                    }
+                                </div>
+                                <!-- END General post -->
+                                @if (media.Posts.Count() > pageSize)
+                                {
+                                    <button id="btnLoadPosts" onclick="LoadMorePosts('@media.Key', @pageSize,'list-comments-media')" class="btn btn-info trigger_load">Load older posts</button>
+                                }
+                            </div>
+                            <!-- END Comments -->
+                            <!-- Files -->
+                            <div class="tab-pane fade" id="task-files">
+                                @if (media.ClosedBy == null && (media.StartedBy.Id == currentUser.Id || currentUser.DomainAdministrators.Any(x => x.Id == @currentDomainId) || b2cMember))
+                                {
+                                    <button class="btn btn-success community-button" data-toggle="modal" data-target="#create-media" style="max-width: 230px; margin: 15px 0 30px 0;">
+                                        <i class="fa fa-upload"></i> &nbsp; Add a file
+                                    </button>
+                                }
+
+                                <!-- Media post -->
+                                <div id="list-medias">
+                                    @if (count_Medias > 0)
+                                    {
+                                        foreach (var item in media.SubActivities.OrderByDescending(x => x.Id).Take(pageSize))
+                                        {
+                                            var md = (QbicleMedia)item;
+                                            var createdByName = media.StartedBy.Id == currentUser.Id ? "Me" : HelperClass.GetFullNameOfUser(md.StartedBy);
+                                            var createdDate = media.StartedDate.Date == DateTime.Now.Date ? "Today, " + md.StartedDate.ToString("hh:mmtt").ToLower() : md.StartedDate.ToString(dateFormat + " hh:mmtt").ToLower();
+                                            var lastUpdateFile = "";
+                                            var mediaLastupdate = md.VersionedFiles.Where(e => !e.IsDeleted).OrderByDescending(x => x.UploadedDate).FirstOrDefault() ?? null;
+                                            if (mediaLastupdate != null)
+                                            {
+                                                lastUpdateFile = mediaLastupdate?.UploadedDate.Date == DateTime.Now.Date ? "Today, " + mediaLastupdate.UploadedDate.ToString("hh:mmtt").ToLower() : mediaLastupdate.UploadedDate.ToString(dateFormat + " hh:mmtt").ToLower();
+                                            } //Media post
+                                            <!-- Media post -->
+                                            <article class="activity media">
+                                                <div class="activity-avatar" style="background-image: url('@(api+md.StartedBy.ProfilePic)&size=T');"></div>
+                                                <div class="activity-detail" style="width: 100%; max-width: 100%;">
+                                                    <div class="activity-meta">
+                                                        <h4>@createdByName</h4>
+                                                        <small>@createdDate</small>
+                                                        <br class="visible-xs">
+                                                    </div>
+
+                                                    <div class="activity-overview media">
+                                                        <div class="row">
+                                                            <div class="col-xs-12 col-sm-5 col-lg-4">
+                                                                <a href="javascript:void(0)" onclick="ShowMediaPage('@md.Key')">
+                                                                    @if (media.FileType.Type == "Image File")
+                                                                    {
+                                                                        <img id="media-@item.Id" class="img-responsive" src='@api@(mediaLastupdate.Uri)&size=M' />
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <img src="@md.FileType.IconPath" class="img-responsive">
+                                                                    }
+                                                                </a>
+                                                            </div>
+                                                            <div class="col-xs-12 col-sm-7 col-lg-8 description" style="padding-top: 0;">
+                                                                <h5>@md.Name</h5>
+                                                                <p>
+                                                                    @md.Description
+                                                                </p>
+                                                                <small>@Utility.GetFileTypeDescription(md.FileType.Extension) | Update @lastUpdateFile</small>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="clearfix"></div>
+                                            </article>
+                                            <!-- END Media post -->
+                                        }
+                                    }
+                                    @if (count_Medias > pageSize)
+                                    {
+                                        <button id="btnLoadMedias" onclick="lkFunc.LoadMoreMedias(@media.Id, @pageSize, 'list-medias')" class="btn btn-info trigger_load">Load older medias</button>
+                                    }
+                                </div>
+                                <!-- END Media post -->
+
+                            </div>
+                            <!-- END Files -->
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+            </div>
+
+
+        </div>
+
+
+    </section>
+    <!-- ./content -->
+
+</div>
+<!-- /.content-wrapper -->
+@*Create media Modal*@
+<div id="create-file-version" class="modal fade" role="dialog" aria-labelledby="lblcreate-media" data-focus-on="input:first" data-keyboard="true" data-backdrop="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Upload media file</h5>
+            </div>
+            <div class="modal-body">
+                <div class="well">
+                    <form id="form_file_version" enctype="multipart/form-data">
+                        <input id="mediaId" type="hidden" name="mediaKey" value="@media.Key" />
+                        <input type="hidden" id="media-version-object-key" name="mediaObjectKey" />
+                        <input type="hidden" id="media-version-object-name" name="mediaObjectName" />
+                        <input type="hidden" id="media-version-object-size" name="mediaObjectSize" />
+                        <div class="form-group"><label for="process_owner">Upload file</label></div>
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <div class="pull-left" style="max-width: 65px; max-height: 65px; margin-right: 15px;">
+                                <img src="https://via.placeholder.com/300x250?text=no+image+selected (300x250)" style="float: left;" id="processPicture" class="img-responsive">
+                            </div>
+                            <div class="pull-left" style="margin: 15px 0 0 0;">
+                                <input id="processImageUrl" hidden />
+                                <input type="file" id="inputFileVersion" name="versionFileUpload" class="form-control" required accept="@fileAccept" onchange="pictureChange(this)" />
+                            </div>
+                            <div style="clear: both;"></div>
+                        </div>
+                    </form>
+                </div>
+                <a class="btn btn-success" onclick="SaveFileVersion()"><i class="fa fa-check"></i>&nbsp; Upload</a>
+                <a href="#" class="btn btn-danger" onclick="ClearFileVersion()" data-dismiss="modal">Cancel</a>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+<!--End modal create media-->
+<div class="modal fade left" id="media-edit" role="dialog" aria-labelledby="edit-media" style="display: none;">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+                <h5 class="modal-title">Edit media item</h5>
+            </div>
+            <div class="modal-body">
+                <form id="form_media_edit">
+                    <input type="hidden" value="@media.Key" id="media_edit_key" />
+                    <div class="activity-overview task" style="padding: 20px;">
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label for="name">Title <span>*</span></label>
+                                    <input type="text" id="media_edit_name" name="title" class="form-control" placeholder="Existing title here" value="@media.Name">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label for="topic">Choose a topic</label>
+                                    <select id="media-edit-topic" name="topicId" class="form-control select2 select2-hidden-accessible" style="width: 100%;" tabindex="-1" aria-hidden="true">
+                                        @if (topics != null)
+                                        {
+                                            foreach (var item in topics)
+                                            {
+                                                <option value="@item.Id">@item.Name</option>
+                                            }
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label for="name">Description <span>*</span></label>
+                                    <textarea name="Description" id="media_edit_description" class="form-control">@media.Description</textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <br>
+                    <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                    <button type="button" onclick="updateMedia()" class="btn btn-success">Confirm </button>
+                </form>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+
+
+@if (media.StartedBy.Id == currentUser.Id || currentUser.DomainAdministrators.Any(x => x.Id == @currentDomainId) || b2cMember)
+{
+    Html.RenderAction("GenerateModalMedia", "Qbicles");
+}
+@{
+
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/qbicle.media.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/qbicle.media.min.js"></script>
+    }
+}

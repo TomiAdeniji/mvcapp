@@ -1,0 +1,236 @@
+﻿@using Qbicles.BusinessRules
+@model Qbicles.Models.Trader.Budgets.BudgetScenarioItemGroup
+@{
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var budgetScenarioId = (int)ViewBag.BudgetScenarioId;
+    var workGroups = ViewBag.Workgroups;
+    var itemGroupTypes = (ICollection<HelperClass.EnumModel>)ViewBag.GroupTypes;
+    var oView = ViewBag.oView;
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+}
+
+<div class="modal-dialog modal-xl" role="document">
+    <div class="modal-content">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <h5 class="modal-title">Add item(s) to Budget</h5>
+        </div>
+        <div class="modal-body">
+
+            <input hidden="" id="work-group-id" value="@(Model.WorkGroup?.Id??0)" />
+
+            <div class="row">
+                <div id="budget-workgroup-manage" class="col-xs-12 col-sm-4 col-lg-3">
+
+                    <div class="activity-overview generic" style="padding: 20px; margin-bottom: 30px;">
+                        <div class="form-group" style="margin: 0;">
+                            <label for="workgroup">Assign a Workgroup to this Budget <span>*</span></label>
+                            <select id="budget-workgroup-select" name="workgroup" class="form-control select2" style="width: 100%;" onchange="WorkGroupSelectedChange()">
+                                <option value=""></option>
+                                @foreach (var wg in workGroups)
+                                {
+                                    if (wg.Id == Model.WorkGroup?.Id)
+                                    {
+                                        <option selected="" value="@wg.Id">@wg.Name</option>
+                                    }
+                                    else
+                                    {
+                                        <option value="@wg.Id">@wg.Name</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+
+                        <div class="preview-workgroup" style="display: none;">
+                            <br />
+                            <table class="table app_specific" style="margin: 0;">
+                                <tr>
+                                    <td><h5>Location</h5></td>
+                                    <td class="location_name">Location name</td>
+                                </tr>
+                                <tr>
+                                    <td><h5>Process</h5></td>
+                                    <td class="workgroup_process">Transfers</td>
+                                </tr>
+                                <tr>
+                                    <td><h5>Qbicle</h5></td>
+                                    <td class="workgroup_qbicle">Qblicle Name</td>
+                                </tr>
+                                <tr>
+                                    <td><h5>Members</h5></td>
+                                    <td class="workgroup_member"><button class="btn btn-info" onclick="ShowGroupMember()" data-toggle="modal" data-target="#app-trader-workgroup-preview"><i class="fa fa-user"></i> &nbsp; <span></span></button></td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+
+                </div>
+                <div class="col-xs-12 col-sm-8 col-lg-9">
+
+                    <div class="well custom">
+
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="budgettype">Type <span>*</span></label>
+                                    <select name="budgettype" id="budget-type" class="form-control select2" style="width: 100%;" onchange="BudgetGroupTypeSelected($(this).val(),@budgetScenarioId);">
+                                        <option value=""></option>
+                                        @foreach (var type in itemGroupTypes)
+                                        {
+                                            if (type.Key == (int)Model.Type)
+                                            {
+                                                <option selected="" value="@type.Key">@type.Value</option>
+                                            }
+                                            else
+                                            {
+                                                <option value="@type.Key">@type.Value</option>
+                                            }
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Item I Buy & Sell -->
+                        <div id="dynamic-budget-add-item" style="display: none;">
+                        </div>
+
+
+                    </div>
+                </div>
+            </div>
+            <br />
+
+            <div class="dynamic-budget-item-table" style="display: none;">
+                <table id="budget-item-table" class="datatable table-striped table-hover" style="width: 100%;" data-order='[[1, "asc"]]'>
+                    <thead>
+                        <tr>
+                            <th data-orderable="false" data-priority="2" style="width: 40px;"></th>
+                            <th data-priority="1">Name</th>
+                            <th data-priority="1">Unit</th>
+                            <th class="purchase-col-qty" data-priority="1">Purchase qty</th>
+                            <th class="purchase-col-cost" data-priority="1">Average purchase cost <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                            <th class="sale-col-qty" data-priority="1">Sale qty</th>
+                            <th class="sale-col-price" data-priority="1">Average sale price <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                            <th class="row_total" data-priority="1">Total <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                            <th data-priority="1" data-orderable="false"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model.BudgetScenarioItems)
+                        {
+                            var type = (int)item.BudgetScenarioItemGroup.Type;
+                            <tr class="tr_id_@item.Item.Id" id="tr_id_@item.Item.Id">
+                                <td class="row_image">
+                                    <div class="table-avatar mini" style="background-image: url('@api@item.Item.ImageUri');"></div>
+                                </td>
+                                <td class="row_name">@item.Item.SKU - @item.Item.Name</td>
+                                <td class="row_unit">@(item.StartingQuantity?.Unit?.Name ?? "")</td>
+                                <td class="purchase-col-qty">@item.PurchaseQuantity.ToDecimalPlace(currencySettings)</td>
+                                <td class="purchase-col-cost">@item.AveragePurchaseCost.ToDecimalPlace(currencySettings)</td>
+                                <td class="sale-col-qty">@item.SaleQuantity.ToDecimalPlace(currencySettings)</td>
+                                <td class="sale-col-price">@item.AverageSalePrice.ToDecimalPlace(currencySettings)</td>
+                                <td class="row_total">
+                                    @{
+                                        var total = (item.PurchaseQuantity * item.AveragePurchaseCost + item.SaleQuantity * item.AverageSalePrice).ToDecimalPlace(currencySettings);
+                                    }
+                                    @total
+                                </td>
+                                <td class="row_button">
+                                    <input type="hidden" class="traderItem" value="@item.Item.Id" />
+                                    <button class="btn btn-info period" onclick="PeriodBreakdownItemOnTable(@item.Id,@type)"><i class="fa fa-calendar"></i></button>
+                                    <button onclick="ConfirmRemoveRowItem(@item.Item.Id)" class="btn btn-danger remove" data-toggle="modal" data-target="#confirm-delete"><i class="fa fa-trash"></i></button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+
+            </div>
+
+
+            <br />
+            @if (oView == "M")
+            {
+                <button id="budget-draft" onclick="SaveDraft()" data-dismiss="modal" class="btn btn-primary">Update</button>
+            }
+            else
+            {
+                <button id="budget-draft" onclick="SaveDraft()" class="btn btn-primary" data-dismiss="modal" style="display: none;">Save as Draft</button>
+                <button class="btn btn-success" onclick="SendToReview()" id="budget-ready" style="display: none;">Send to Review</button>
+            }
+
+
+
+        </div>
+    </div><!-- /.modal-content -->
+</div>
+
+
+
+<table id="tb_form_template" class="datatable table-hover hidden" style="width: 100%; background: #fff;">
+
+    <tbody>
+        <tr>
+            <td class="row_image">
+                <div class="table-avatar mini" style="background-image: url('');"></div>
+            </td>
+            <td class="row_name"></td>
+            <td class="row_unit"></td>
+            <td class="purchase-col-qty"></td>
+            <td class="purchase-col-cost"></td>
+            <td class="sale-col-qty"></td>
+            <td class="sale-col-price"></td>
+            <td class="row_total"></td>
+            <td class="row_button">
+                <input type="hidden" class="traderItem" value="" />
+                <button class="btn btn-info period" onclick="PeriodBreakdownItemOnTable(0,0)"><i class="fa fa-calendar"></i></button>
+                <button onclick="ConfirmRemoveRowItem(0)" class="btn btn-danger remove" data-toggle="modal" data-target="#confirm-delete"><i class="fa fa-trash"></i></button>
+            </td>
+        </tr>
+    </tbody>
+</table>
+<script>
+    $('#budget-workgroup-select').select2({
+        placeholder: 'Please select'
+    });
+    $('#budget-type').select2({
+        placeholder: 'Please select'
+    });
+    if (@Model.Id > 0) {
+        var type = $("#budget-type").val();
+        DisplayBudgetItemInput(type);
+        $workgroupId = $("#work-group-id").val();
+        $("#budget-type").attr("disabled", true);
+        $("#budget-workgroup-select").attr("disabled", true);
+        if ('@oView' === "M")
+        $("#budget-workgroup-manage").hide();
+
+
+
+        if (type === "1") {
+            $('.sale-col-qty').hide();
+            $('.sale-col-price').hide();
+            $('.purchase-col-qty').show();
+            $('.purchase-col-cost').show();
+        }
+        else if (type === "2") {
+            $('.purchase-col-qty').hide();
+            $('.purchase-col-cost').hide();
+            $('.sale-col-qty').show();
+            $('.sale-col-price').show();
+        }
+        else {
+            $('.sale-col-qty').show();
+            $('.sale-col-price').show();
+            $('.purchase-col-qty').show();
+            $('.purchase-col-cost').show();
+        }
+        $('.preview-workgroup').show();
+        $("#dynamic-budget-add-item").show();
+        $('.dynamic-budget-item-table').show();
+        $('#budget-ready').show();
+        $('#budget-draft').show();
+    };
+</script>

@@ -1,0 +1,245 @@
+﻿@{
+    var timezone = (string)ViewBag.CurrentTimeZone;
+    var datetimeFormat = (string)ViewBag.CurrentDateTimeFormat;
+}
+<button id="btn-close-order-list" class="btn btn-danger pull-right" onclick="CloseManagementInfo(true)">Close</button>
+<div class="clearfix"></div>
+<br />
+<br />
+<h1 style="line-height: 1.2;">Add order to Delivery</h1>
+
+<div class="order-list">
+
+    <br />
+    <div class="form-group">
+        <input id="orer-ref-search" type="text" class="form-control" placeholder="Search (order ref)">
+    </div>
+
+    <br />
+
+    <div id="items-container" class="flex-grid-thirds-lg gridfix mydeskmarket mdogrid mydeskmarketitems" style="width: 100%; padding: 0;">
+
+    </div>
+    <div id="pagiation-items" style="float: right;"></div>
+
+
+</div>
+
+<div class="order-spec" style="display: none;">
+
+    <br />
+    <div class="activity-overview plain company-overview welcome-info" style="text-align: left !important; flex: none; margin: 0; padding: 15px;">
+        <br />
+        <div id="order-detail-info"></div>
+
+        <br /><br />
+        <button onclick="BackToListOrder()" class="btn btn-warning"><i class="fa fa-angle-left"></i>&nbsp;Back</button>
+        <button onclick="AddOrderToDelivery();$('.calculator').show();$('.plus').hide();" class="btn btn-primary plus"><i class="fa fa-plus"></i>&nbsp;&nbsp;Add to delivery</button>
+        <button style="display:none;" onclick="CaculateRoute();$('.calculator').hide();$('.check').show();" class="btn btn-success calculator"><i class="fa fa-calculator"></i>&nbsp;&nbsp;Caculate route</button>
+        <button onclick="ConfirmOrderToDelivery()" class="btn btn-success check" style="display:none"><i class="fa fa-check"></i>&nbsp;&nbsp;Confirm</button>
+        <br /><br />
+    </div>
+
+</div>
+
+
+<script>
+
+    $(document).ready(function () {
+        GetOrdersAvailable();
+        $('#orer-ref-search').keyup(delay(function () {
+            GetOrdersAvailable();
+        }, 500));
+    });
+
+    var $itemInfoes = null;
+    var $customerLongitude = null;
+    var $customerLatitude = null;
+    var $customerTitle = '';
+
+    function GetOrdersAvailable() {
+        var $data_container_items = $('#items-container');
+        var $pagination_container = $('#pagiation-items');
+        $pagination_container.pagination({
+            dataSource: '/Delivery/GetOrdersAvailable',
+            locator: 'items',
+            totalNumberLocator: function (response) {
+                $data_container_items.LoadingOverlay('hide');
+                // you can return totalNumber by analyzing response content
+                return response.totalNumber;
+            },
+            pageSize: 5,
+            ajax: {
+                data: {
+                    keyword: $('#orer-ref-search').val(),
+                    deliveryKey: $("#current-delivery-key").val()
+                },
+                beforeSend: function () {
+                    $data_container_items.LoadingOverlay('show');
+                }
+            },
+            callback: function (orders, pagination) {
+                // template method of yourself
+                $itemInfoes = orders;
+                var count = orders.length;
+                if (count == 0) {
+                    goToPosition($depot, icons.depot);
+                    return;
+                }
+                var extraCol = (count % 3 == 0 ? 0 : 3) - count % 3;
+                var dataHtml = '';
+                $.each(orders, function (index, order) {
+                    dataHtml += orderTemplate(order);
+                });
+                for (var i = 0; i < extraCol; i++) {
+                    dataHtml += '<div class="col">&nbsp;</div>';
+                }
+                $data_container_items.html(dataHtml);
+
+                $.each(orders, function (index, order) {
+                    getSetDistance(order.CustomerLatitude, order.CustomerLongitude, 'order-distance-list-' + order.Id, 'order-duration-list-' + order.Id, order);
+                });
+            }
+        })
+    }
+
+
+    function orderTemplate(o) {
+        var _html = "<div id='order-id-" + o.Id + "' onclick='OrderListDetail(" + o.Id + ");' class='delivery-order' style='width: inherit;'>";
+        _html += "<span class='label label-lg label-" + o.StatusLabel + " ostatus'>" + o.Status + "</span>";
+
+        if (o.DeliveryStatus != null && o.DeliveryStatus != '')
+            _html += "<h5 style='color: #f39c12 !important;'>Order " + o.OrderRef + "</h5>";
+        else
+            _html += "<h5>Order " + o.OrderRef + "</h5>";
+
+        _html += "<p>" + o.OrderItems + " item(s) - " + o.OrderTotal + "</p>";
+        _html += "<p>" + o.Customer + "</p>";
+
+        _html += "<div class='row'>";
+
+        _html += "<div class='col-xs-6'>";
+        _html += "<label>Distance</label>";
+        _html += "<p id='order-distance-list-" + o.Id + "'></p>";
+        _html += "</div>";
+
+        _html += "<div class='col-xs-6'>";
+        _html += "<label>Duration</label>";
+        _html += "<p id='order-duration-list-" + o.Id + "'></p>";
+        _html += "</div>";
+
+        _html += "</div>";
+
+        _html += "</div>";
+        return _html;
+    }
+
+    var orderSelected = {
+        Id: 0,
+        Title: '',
+        Latitude: 0,
+        Longitude: 0
+    }
+
+    function OrderListDetail(id) {
+
+        $('#btn-close-order-list').hide();
+
+        $('.plus').show();
+        $('.calculator').hide();
+        $('.check').hide();
+
+        orderSelected.Id = id;
+        //remove all delivery-element-active
+        removeActiveClass();
+        //add to current selected
+        $("#order-id-" + orderSelected.Id).addClass('delivery-element-active');
+
+        var order = _.find($itemInfoes, i => i.Id == id);
+        $("#order-detail-info").html(order.ItemsInfo);
+        orderSelected.Latitude = order.CustomerLatitude;
+        orderSelected.Longitude = order.CustomerLongitude;
+        orderSelected.Title = order.Customer;
+
+        $('.order-list').hide();
+        $('.order-spec').show();
+
+        goToPosition(orderSelected, icons.customer);
+    }
+
+    function CaculateRoute() {
+        //var routeTo = { Title: orderSelected.Title, Latitude: orderSelected.Latitude, Longitude: orderSelected.Longitude };
+
+        //routeMapsFromDepot(routeTo, icons.customer);
+        $delivery.Orders.push({
+            Id: orderSelected.Id,
+            TraderId: orderSelected.Id,
+            DeliverySequence: $delivery.Orders.length + 1,
+            Title: orderSelected.Title,
+            Latitude: orderSelected.Latitude,
+            Longitude: orderSelected.Longitude
+        });
+        initMap(false, false);
+        getSetDistance(orderSelected.Latitude, orderSelected.Longitude, 'order-distance-' + orderSelected.Id, 'order-duration-' + orderSelected.Id, orderSelected);
+    }
+
+    function AddOrderToDelivery() {
+        //var routeTo = { Title: orderSelected.Title, Latitude: orderSelected.Latitude, Longitude: orderSelected.Longitude };
+        var bounds = new google.maps.LatLngBounds();
+
+        //routeMapsFromDepot(routeTo, icons.customer, false, false);
+        var pointOrder = new google.maps.LatLng(orderSelected.Latitude, orderSelected.Longitude),
+            pointDepot = new google.maps.LatLng($depot.Latitude, $depot.Longitude),
+            myOptions = {
+                zoom: 15,
+                center: pointOrder
+            },
+            map = new google.maps.Map(document.getElementById('qbicle-delivery'), myOptions),
+            markerA = new google.maps.Marker({
+                position: pointDepot,
+                title: $depot.Title,
+                icon: icons.depot,
+                map: map
+            }),
+            markerB = new google.maps.Marker({
+                position: pointOrder,
+                title: orderSelected.Title,
+                icon: icons.customer,
+                map: map
+            });
+        bounds.extend(pointDepot);
+        bounds.extend(pointOrder);
+        map.fitBounds(bounds);
+    }
+
+    function ConfirmOrderToDelivery() {
+        $("#order-id-" + orderSelected.Id).removeClass('delivery-element-active');
+        $("#order-id-" + orderSelected.Id).remove();
+        $('.order-list').show();
+        $('.order-spec').hide();
+
+        //$delivery.Orders.push({
+        //    Id: orderSelected.Id,
+        //    TraderId: orderSelected.Id,
+        //    DeliverySequence: $delivery.Orders.length + 1,
+        //    Title: orderSelected.Title,
+        //    Latitude: orderSelected.Latitude,
+        //    Longitude: orderSelected.Longitude
+        //});
+
+        $('#btn-close-order-list').show();
+        initMap(true, true);
+    }
+
+    function BackToListOrder() {
+
+        _.remove($delivery.Orders, o => o.Id == orderSelected.Id);
+
+        $('#btn-close-order-list').show();
+
+        $('.order-list').show();
+        $('.order-spec').hide();
+        initMap(false, false);
+    }
+
+</script>

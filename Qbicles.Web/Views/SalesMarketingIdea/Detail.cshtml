@@ -1,0 +1,226 @@
+﻿@using Qbicles.Models.SalesMkt;
+@using Qbicles.BusinessRules;
+@model IdeaTheme
+@{
+    ViewBag.Title = "Sales & Marketing > Themes > " + Model.Name;
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var setting = (Settings)ViewBag.Setting;
+    var currentTimeZone = (string)ViewBag.CurrentTimeZone;
+}
+
+<div class="content-wrapper qbicle-detail mdv2-wrapper" style="position: relative; min-height: 591px;">
+    <!-- Main content -->
+    <section class="mdv2 dash" data-tooltip-color="teal" data-tooltip-delay="300" data-tooltip-animate-function="spin" style="border-top: 1px solid #f1f1f1;">
+        <!-- App bar -->
+        <div class="mdv2-col-app" style="margin-bottom: 0;">
+
+            <div data-spy="affix" class="contained-sidebar affix">
+
+                <div class="activity-overview plain company-overview welcome-info" style="text-align: left !important; flex: none; margin: 0; padding-top: 30px; padding-bottom: 0;">
+
+                    <div class="pull-left" style="margin-bottom: 15px;">
+                        <a href="/SalesMarketing/SMApps" class="btn btn-primary"><i class="fa fa-angle-left"></i> &nbsp; Ideas</a>
+                        <a href="#" onclick="QbicleSelected('@(setting != null && setting.SourceQbicle != null ? setting.SourceQbicle.Key : "0")', 'Dashboard');" class="btn btn-info"><i class="fa fa-eye"></i> &nbsp; View in Qbicle</a>
+                        <a href="#app-marketing-idea-add" data-toggle="modal" class="btn btn-warning"><i class="fa fa-pencil"></i> &nbsp; Edit</a>
+                    </div>
+                    <div class="clearfix"></div>
+
+                    <br>
+
+                    <img src="@(api + Model.FeaturedImageUri + "&size=M")" class="img-responsive" style="width: 100%; height: auto; margin-bottom: 25px;">
+                    <input type="hidden" value="@Model.Id" id="ideaId" name="ideaId" />
+                    <h1 style="line-height: 1.2;">@Model.Name</h1>
+
+                    <span class="label label-lg label-primary">@Model.Type.Name</span>
+                    @if (Model.IsActive)
+                    {
+                        <span class="label label-lg label-success">Active</span>
+                    }
+                    else
+                    {
+                        <span class="label label-lg label-danger">Disabled</span>
+                    }
+                    <br><br><br>
+                    <p style="color: rgba(0, 0, 0, 0.5);">
+                        @Model.Explanation
+                    </p>
+
+                    <br><br>
+                    <ul class="subapps-nav" role="navigation" data-tooltip-stickto="bottom">
+                        <li class="active">
+                            <a href="#" data-toggle="tab" data-target="#theme-activity" onclick="$('#community-list').DataTable().ajax.reload()" data-tooltip="Activity" aria-expanded="false">
+                                <i class="fa fa-calendar-check"></i>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#" data-toggle="tab" data-target="#theme-resources" id="theme-resources-link" data-tooltip="Resources" aria-expanded="true">
+                                <i class="fa fa-folder"></i>
+                            </a>
+                        </li>
+                    </ul>
+
+                    <br>
+                    @if (Model.Links != null && Model.Links.Count > 0)
+                    {
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <label>Useful links</label>
+                                <ul class="list-unstyled">
+                                    @foreach (var item in Model.Links)
+                                    {
+                                        <li><a href="@item.URL" target="_blank"><i class="fa fa-external-link"></i> &nbsp; @item.URL</a></li>
+                                    }
+                                </ul>
+                            </div>
+                        </div>
+                    }
+                    <br><br>
+                    @if (Model.Discussion == null)
+                    {
+                        <a href="#" data-toggle="modal" data-target="#create-discussion" class="btn btn-info community-button new-discuss" style="margin-bottom: 5px;"><i class="fa fa-comments"></i> &nbsp; Open Discussion</a>
+                    }
+                    <a href="/SalesMarketingIdea/DiscussionIdea@(Model.Discussion != null ? "?disId=" + Model.Discussion.Id : "")" id="btnJoinDiscussion" class="btn btn-primary community-button view-discuss" style="display: @(Model.Discussion != null ? "block" : "none");margin-bottom:5px;"><i class="fa fa-comments"></i> &nbsp; Join Discussion</a>
+                    <button class="btn btn-success community-button" data-toggle="modal" data-target="#create-resource"><i class="fa fa-plus"></i> &nbsp; Add a File</button>
+                </div>
+            </div>
+        </div>
+        <!-- END App bar -->
+        <!-- Main area -->
+        <div class="mdv2-col-dash">
+            <div class="spacing">
+                <div class="tab-content">
+                    <!-- Activity -->
+                    <div class="tab-pane fade active in" id="theme-activity">
+
+                        <h5>Posts using this Theme</h5>
+                        <br>
+
+                        <div class="well custom" style="padding-bottom: 5px;">
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-4">
+                                    <div class="form-group">
+                                        <label for="search">Search</label>
+                                        <input type="text" id="searchCampaign" onkeyup="$('#community-list').DataTable().ajax.reload()" class="form-control">
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-3">
+                                    <div class="form-group">
+                                        <label for="search">Campaign Type(s)</label>
+                                        <select name="filter" id="campaignType" onchange="$('#community-list').DataTable().ajax.reload()" class="form-control checkmulti" multiple style="width: 100%; display: none">
+                                            <optgroup label="Show all">
+                                                <option value="3" selected>Email Marketing Campaigns</option>
+                                                <option value="1" selected>Automated Social Campaigns</option>
+                                                <option value="2" selected>Manual Social Campaigns</option>
+                                            </optgroup>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+
+                        <br>
+                        <table class="datatable table-striped table-hover" id="community-list" style="width: 100%;">
+                            <thead>
+                                <tr>
+                                    <th>Post ID</th>
+                                    <th>Campaign</th>
+                                    <th>Campaign type</th>
+                                    <th>Date of issue</th>
+                                    <th>Status</th>
+                                    <th>Options</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+
+                    </div>
+                    <!-- END Activity -->
+                    <!-- Resources -->
+                    <div class="tab-pane fade" id="theme-resources">
+                        <div id="idea-content" class="flex-grid-thirds-lg">
+                            @{
+                                Html.RenderAction("LoadMediasByIdea", "SalesMarketingIdea", new { fid = Model.ResourceFolder.Id, qid = setting.SourceQbicle.Id });
+                            }
+                        </div>
+
+                    </div>
+                    <!-- END Resources -->
+
+                </div>
+
+            </div>
+
+        </div>
+        <!-- END Main Area -->
+
+
+    </section>
+    <!-- ./content -->
+
+</div>
+@if (Model.Discussion == null)
+{
+    <div class="modal fade left" id="create-discussion" role="dialog" aria-labelledby="create-discussion">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h5 class="modal-title">Start Discussing this Activity</h5>
+                </div>
+                <div class="modal-body">
+                    <form id="frm-create-discussion" method="post" action="/Discussions/SaveDiscussion">
+                        <div class="well custom">
+                            <div class="row">
+                                <div class="col-xs-12">
+                                    <div class="form-group">
+                                        <label for="event-title">Opening comment</label>
+                                        <textarea id="ds_openingmessage" name="openingmessage" class="form-control"></textarea>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12">
+                                    <label>Set an expiry date</label><br />
+                                    <div class="checkbox toggle" onclick="$('.setexpiry').toggle();">
+                                        <label>
+                                            <input data-toggle="toggle" data-onstyle="success" name="isexpiry" id="ds_isexpiry" type="checkbox">
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 setexpiry" style="display: none;">
+                                    <div class="form-group" style="margin: 0;">
+                                        <label>Choose a date and time for expiration</label>
+                                        <input type="text" name="expirydate" id="ds_expirydate" class="form-control singledateandtime">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <a href="#" class="btn btn-danger" data-dismiss="modal">Cancel</a>
+                        <button type="submit" class="btn btn-success">Confirm</button>
+                    </form>
+
+                </div>
+            </div><!-- /.modal-content -->
+        </div><!-- /.modal-dialog -->
+    </div><!-- /.modal -->
+}
+
+<div class="modal fade left" id="app-marketing-idea-add" role="dialog" aria-labelledby="app-marketing-idea-add" style="display: none;">
+    @{
+        Html.RenderAction("GenerateModalIdeaAddEdit", "SalesMarketingIdea", new { ideaId = Model.Id });
+    } 
+</div>
+
+@Html.Partial("_CreateResource", Model)
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Content/DesignStyle/js/bootstrap-multiselect.js"></script>
+        <script src="~/Scripts/dev/salesmarketing.ideadetail.js"></script>
+    }
+    else
+    {
+        <script src="~/Content/DesignStyle/js/bootstrap-multiselect.min.js"></script>
+        <script src="~/Scripts/dev/salesmarketing.ideadetail.min.js"></script>
+    }
+}

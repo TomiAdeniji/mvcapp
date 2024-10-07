@@ -1,0 +1,65 @@
+﻿@using Qbicles.BusinessRules
+@using Qbicles.Models.B2C_C2C
+@model List<B2CQbicle>
+@{
+    var currentUserId = (string)ViewBag.CurrentUserId;
+    var api = (string)ViewBag.DocRetrievalUrl;
+    string currentTimeZone = ViewBag.currentTimeZone;
+    var dateFormat = (string)ViewBag.CurrentDateFormat;
+    var b2CQbiceSelectedId = (int)ViewBag.B2CQbiceSelectedId;
+    if (b2CQbiceSelectedId == 0)//default is first of collections C2CQbicle
+    {
+        b2CQbiceSelectedId = Model.FirstOrDefault()?.Id ?? 0;
+    }
+}
+@foreach (var item in Model)
+{
+    if (item.RemovedForUsers.Any(r => r.Id == item.Customer.Id))
+    {
+        continue;
+    }
+    
+    <li data-b2cqbicleid="@item.Key" data-linkid="@item.Customer.Id" data-status="@item.Status" data-forename="@item.Customer.GetFullName()"
+        class="@(b2CQbiceSelectedId == item.Id ? "active" : "")">
+        <a href="javascript:void(0)">
+            <div class="contact-avatar">
+                <div style="background-image: url('@(api+item.Customer.ProfilePic)&size=T');">&nbsp;</div>
+            </div>
+            <div class="contact-info">
+                <h5>
+                    @item.Customer.GetFullName()
+                    @if (item.IsNewContact.HasValue && item.IsNewContact.Value)
+                    {
+                        <span class="label label-success newnots" style="position: relative; font-size: 10px; top: -2px; left: 5px;">New</span>
+                    }
+                    @if (item.Status == CommsStatus.Blocked)
+                    {
+                        <span class="label label-danger" style="position: relative; font-size: 10px; top: -2px; left: 5px;">Blocked</span>
+
+                    }
+                </h5>
+                <p>Connected @(item.StartedDate.Date == DateTime.UtcNow.Date ? "today" : item.StartedDate.ConvertTimeFromUtc(currentTimeZone).ToString(dateFormat))</p>
+            </div>
+            <div class="comms-newstuff" @(item.BusinessViewed == true ? "hidden" : "")></div>
+        </a>
+
+        <div class="dropdown contactoptside">
+            <button class="btn btn-primary dropdown-toggle" type="button" data-toggle="dropdown">
+                <i class="fa fa-ellipsis-h"></i>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-right">
+                <li><a href="/Community/UserProfilePage?uId=@item.Customer.Id" class="user-viewprofile">View profile</a></li>
+                @if (item.Status == CommsStatus.Blocked)
+                {
+                    <li><a href="javascript:void(0)" class="block-contact" onclick="setStatusBy('@item.Key','@CommsStatus.Approved');">Unblock</a></li>
+                    <li><a href="javascript:void(0)" name="remove-option" onclick="removeB2CQbicleById('@item.Key','@item.Customer.GetFullName()')">Remove</a></li>
+                }
+                else
+                {
+                    <li><a href="javascript:void(0)" class="block-contact" onclick="blockB2CContact('@item.Key','@item.Customer.GetFullName()')">Block</a></li>
+                }
+            </ul>
+        </div>
+    </li>
+}
+

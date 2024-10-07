@@ -1,0 +1,141 @@
+﻿@using Qbicles.Models;
+@{
+    ViewBag.Title = "Manage profile";
+    var user = (ApplicationUser)ViewBag.user;
+    var userPrivilege = ViewBag.userPrivilege;
+    var currentUserId = (string)ViewBag.CurrentUserId;
+    var domainAdmin = ViewBag.domainAdmin;
+    var api = (string)ViewBag.DocRetrievalUrl;
+}
+
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail">
+    <!-- Main content -->
+    <section class="content"
+             data-tooltip-animate-function="fadein" data-tooltip-delay="300" data-tooltip-stickTo="top" data-tooltip-stickDistance="30">
+
+        <br /><br />
+
+        <div class="mod_title">
+            <h5>Users</h5>
+            <h4>@user.Forename @user.Surname</h4>
+        </div>
+
+        <div class="row">
+            <div class="col-xs-12">
+                <div class="app_filter">
+                    <div class="row">
+                        <div class="col-xs-5 col-sm-4 col-lg-8">
+                            <button class="btn btn-info" style="margin-left: 20px;" onclick="window.location.href = '/Qbicles/OurPeople';">
+                                <i class="fa fa-angle-left"></i> &nbsp; Go back
+                            </button>
+                            @{
+                                if (domainAdmin != null && user.Id != currentUserId)// current user not is guest
+                                {
+                                    if (domainAdmin)
+                                    {//as domain admin, then can demote/promote
+                                        if (userPrivilege)//domain admin
+                                        {
+                                            <a id="demote-admin" href="javascript:void(0);" onclick="ChangeUserPrivilege('@user.Id','demote')" class="btn btn-danger"><i class="fa fa-chevron-down"></i> &nbsp; Demote to Domain User</a>
+                                            <a id="promote-admin" style="display:none;" href="javascript:void(0);" onclick="ChangeUserPrivilege('@user.Id','promote')" class="btn btn-success"><i class="fa fa-chevron-up"></i> &nbsp; Promote to Domain Administrator</a>
+                                        }
+                                        else
+                                        {
+                                            <a id="demote-admin" style="display:none;" href="javascript:void(0);" onclick="ChangeUserPrivilege('@user.Id','demote')" class="btn btn-danger"><i class="fa fa-chevron-down"></i> &nbsp; Demote to Domain User</a>
+                                            <a id="promote-admin" href="javascript:void(0);" onclick="ChangeUserPrivilege('@user.Id','promote')" class="btn btn-success"><i class="fa fa-chevron-up"></i> &nbsp; Promote to Domain Administrator</a>
+                                        }
+                                    }
+                                }
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <br /><br />
+
+        <div class="row">
+            <div class="col-xs-12 col-md-8 col-lg-6">
+                <div class="profile_display">
+                    <div class="topper">
+                        <h1>@user.Forename @user.Surname</h1>
+                        @{
+                            if (userPrivilege == null)
+                            {
+                                <span class="label label-primary" id="lblPrivilege">Guest</span>
+                            }
+                            else
+                            {
+                                <span class="label label-primary" id="lblPrivilege">@(userPrivilege == true ? "Domain Administrator" : "Domain user" )</span>
+                            }
+                        }
+                        
+                        <img src='@api@user.ProfilePic' class="our-people-avata" />
+                        
+                    </div>
+
+                    <div class="row">
+                        <div class="col-xs-12">
+                            <div class="biography text-center">
+                                <p>
+                                    @user.Profile
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row profile_stats">
+                        <div class="col-xs-12 col-sm-4">
+                            <span>Qbicles</span>
+                            <h3>@user.Qbicles.Count()</h3>
+                        </div>
+                        <div class="col-xs-12 col-sm-4" style="border-left: 1px solid #eee; border-right: 1px solid #eee;">
+                            <span>Tasks</span>
+                            <h3>@user.Activities.Where(x => x.ActivityType == QbicleActivity.ActivityTypeEnum.TaskActivity && x.State == QbicleActivity.ActivityStateEnum.Open).Count()</h3>
+                        </div>
+                        <div class="col-xs-12 col-sm-4">
+                            <span>Completed</span>
+                            <h3>@user.Activities.Where(x => x.ActivityType == QbicleActivity.ActivityTypeEnum.TaskActivity && x.State == QbicleActivity.ActivityStateEnum.Closed).Count()</h3>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+
+    </section>
+    <!-- ./content -->
+
+</div>
+<!-- /.content-wrapper -->
+
+<script>
+    function ChangeUserPrivilege(userId, privilegeType) {
+
+        $.ajax({
+            url: "/Administration/ChangeUserPrivilege/",
+            data: { userId: userId, privilegeType: privilegeType },
+            type: "POST",
+            cache: false,
+            async: false,
+            success: function (refModel) {
+                if (refModel.result) {
+                    if (privilegeType == 'promote') {
+                        $("#demote-admin").show();
+                        $("#promote-admin").hide();
+                        $('#lblPrivilege').text("Domain Administrator");
+                    }
+                    else {
+                        $("#promote-admin").show();
+                        $("#demote-admin").hide();
+                        $('#lblPrivilege').text("Domain user");
+                    }
+                }
+            },
+            error: function (xhr, status, error) {
+            }
+        })
+    }
+</script>

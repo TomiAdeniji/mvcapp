@@ -1,0 +1,275 @@
+﻿@using System.Diagnostics
+@using Qbicles.BusinessRules
+@{
+    var item = (PosPaymentMenuSources)ViewBag.SourceItems;
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+    var dateFormat = (string)ViewBag.CurrentDateFormat;
+    var endDate = DateTime.Now.FormatDateTimeByUser(dateFormat);
+    var startDate = (DateTime.Now.AddDays(-30)).FormatDateTimeByUser(dateFormat);
+
+    //Export
+    var createdDate = DateTime.Now;
+    var timeZone = (string)ViewBag.CurrentTimeZone ?? "";
+    var user = (Qbicles.Models.ApplicationUser)ViewBag.CurrentUser;
+    var defaultLocation = (Qbicles.Models.Trader.TraderLocation)ViewBag.DefaultLocation;
+    var logoBase64 = (string)ViewBag.DomainLogoBase64;
+}
+
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail mdv2-wrapper" style="position: relative;">
+
+    <!-- Main content -->
+    <section class="mdv2 dash" data-tooltip-color="teal" data-tooltip-delay="300" data-tooltip-animate-function="spin" style="border-top: 1px solid #f1f1f1;">
+
+        <!-- App bar -->
+        <div class="mdv2-col-app" style="margin-bottom: 0;">
+
+            <div data-spy="affix" class="contained-sidebar">
+
+                <div class="activity-overview plain company-overview welcome-info" style="text-align: left !important; flex: none; margin: 0; padding-top: 30px; padding-bottom: 0;">
+
+                    <div class="pull-left" style="margin-bottom: 15px;">
+                        <a href="/Trader/AppTrader" onclick="setTabTrader('reports')" class="btn btn-primary"><i class="fa fa-angle-left"></i> &nbsp; Reports</a>
+                    </div>
+                    <div class="clearfix"></div>
+
+                    <br />
+
+                    <h1 style="line-height: 1.2;">POS Payment Report</h1>
+                    <br /><br />
+
+                    <div class="well custom" style="padding-bottom: 5px;">
+
+                        <div class="form-group">
+                            <label for="search">Search</label>
+                            <input type="text" id="pp_keyword" name="search" onkeyup="doSearch()" class="form-control" placeholder="Enter a reference">
+                        </div>
+
+                        <label for="date">Limit to a date range</label><br />
+                        <div class="input-group" style="margin-bottom: 15px;">
+                            <input type="text" id="limit_date_range" onchange="applyChange()" name="date" class="form-control daterange" value="@startDate - @endDate">
+                            <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="loc">Location</label>
+                            <select name="type" id="pp_locations" onchange="applyChange()" class="form-control checkmulti" multiple style="display: none">
+                                @if (item.TraderLocations.Any())
+                                {
+                                    foreach (var location in item.TraderLocations)
+                                    {
+                                        <option value="@location.Id">@location.Name</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="type">Payment method</label>
+                            <select name="type" id="pp_methods" onchange="applyChange()" class="form-control checkmulti" multiple style="display: none">
+                                @if (item.Methods.Any())
+                                {
+                                    foreach (var p in item.Methods)
+                                    {
+                                        <option value="@p.Id">@p.Name</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="type">Bank</label>
+                            <select name="type" id="pp_accounts" onchange="applyChange()" class="form-control checkmulti" multiple style="display: none">
+                                @if (item.TraderCashAccounts.Any())
+                                {
+                                    foreach (var p in item.TraderCashAccounts)
+                                    {
+                                        <option value="@p.Id">@p.Name</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="type">Cashier</label>
+                            <select name="type" id="pp_cashiers" onchange="applyChange()" class="form-control checkmulti" multiple style="display: none">
+                                @if (item.Cashiers.Any())
+                                {
+                                    foreach (var p in item.Cashiers)
+                                    {
+                                        if (!string.IsNullOrEmpty(p.Surname + p.Forename))
+                                        {
+                                            <option value="@p.Id">@(p.Forename + " " + p.Surname)</option>
+                                        }
+                                        else
+                                        {
+                                            <option value="@p.Id">@p.DisplayUserName</option>
+                                        }
+                                    }
+                                }
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="type">Device</label>
+                            <select name="type" id="pp_devices" onchange="applyChange()" class="form-control checkmulti" multiple style="display: none">
+                                @if (item.PosDevices.Any())
+                                {
+                                    foreach (var p in item.PosDevices)
+                                    {
+                                        <option value="@p.Id">@p.Name</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- END App bar -->
+        <!-- Main area -->
+        <div class="mdv2-col-dash">
+
+            <!-- Options -->
+            <div class="col-lg-12" style="padding: 30px 30px 0;">
+                <div class="form-group" style="margin-bottom: -25px;
+                                                position: relative;
+                                                width: 100%;
+                                                float: right;">
+                    <!-- Export -->
+                    <div class="btn-group options" style="float: right;">
+                        <button type="button" class="btn btn-warning dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            <i class="fa fa-download"></i> &nbsp; Export
+                        </button>
+                        <div class="dropdown-menu dropdown-menu-right" id="kt_datatable_example_export_menu" aria-labelledby="dropdownMenuButton" style="background-color: #a37a41;">
+                            <li>
+                                <a class="dropdown-item data-qb-excel" href="javascript:void(0)" onclick="GetDataTableContentExport()">Excel</a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item data-qb-csv" href="javascript:void(0)" onclick="GetDataTableContentExport(2)">CSV</a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item data-qb-pdf" href="javascript:void(0)" onclick="GetDataTableContentExport(3)">PDF</a>
+                            </li>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!--begin::Hide default export buttons-->
+            <div id="kt_datatable_example_buttons" style="display: none;"></div>
+            <!--end::Hide default export buttons-->
+
+            <div class="subspacing" style="padding: 30px;">
+
+                <table class="datatable table-striped table-hover" data-order='[0, "desc"]' id="community-list" style="width: 100%;">
+                    <thead>
+                        <tr>
+                            <th>Date/time</th>
+                            <th>Location</th>
+                            <th>Reference</th>
+                            <th>Payment method</th>
+                            <th>Account</th>
+                            <th>Cashier</th>
+                            <th>POS Device</th>
+                            <th>Amount <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+    <!-- ./content -->
+</div>
+<!-- /.content-wrapper -->
+
+<script src="~/Content/DesignStyle/js/bootstrap-multiselect.min.js"></script>
+@if (Debugger.IsAttached)
+{
+    <script src="~/Scripts/dev/pos.payment.report.js"></script>
+}
+else
+{
+    <script src="~/Scripts/dev/pos.payment.report.min.js"></script>
+
+}
+
+<script>
+    $(".checkmulti").multiselect({
+        includeSelectAllOption: true,
+        enableFiltering: true,
+        buttonWidth: '100%',
+        maxHeight: 200,
+        enableClickableOptGroups: true
+    });
+
+    $(document).ready(function () {
+
+        $('#limit_date_range').daterangepicker({
+            autoUpdateInput: true,
+            timePicker: true,
+            cancelClass: "btn-danger",
+            opens: "right",
+            startDate: moment().startOf('week'),
+            endDate: moment().endOf('day'),
+            //startDate: new Date($("#fromDateTime").val()),
+            //endDate: new Date($("#toDateTime").val()),
+            locale: {
+                cancelLabel: 'cancel',
+                format: $dateTimeFormatByUser
+            }
+        });
+        $('#limit_date_range').on('apply.daterangepicker', function (ev, picker) {
+            //$(this).val(picker.startDate.format($dateFormatByUser.toUpperCase()) + ' - ' + picker.endDate.format($dateFormatByUser.toUpperCase()));
+            //$('.reporting_period').text(picker.startDate.format("DD MMMM YYYY") + " - " + picker.endDate.format("DD MMMM YYYY"));
+            $(this).val(picker.startDate.format($dateTimeFormatByUser) + ' - ' + picker.endDate.format($dateTimeFormatByUser));
+            $('.reporting_period').text(picker.startDate.format($dateTimeFormatByUser) + ' - ' + picker.endDate.format($dateTimeFormatByUser));
+            applyChange();
+        });
+
+        $('#limit_date_range').on('cancel.daterangepicker', function (ev, picker) {
+            $(this).val(null);
+        });
+    });
+
+    // ----------------------------------------
+    //         EXPORT FUNCTIONALITY
+    // ----------------------------------------
+    function GetDataTableContentExport(exportType = 1) {
+        $.LoadingOverlay("show");
+
+        //Get table params
+        var params = $('#community-list').DataTable().ajax.params();
+        console.log(params, "params");
+
+        //init params
+        var _parameter = {
+            ...params,
+            "export": exportType
+        };
+
+        $.ajax({
+            type: 'POST',
+            url: '/Report/GetPosPaymentTableContentExport',
+            dataType: 'json',
+            data: _parameter,
+            success: function (response) {
+                if (response.result == true) {
+                    console.log(response, 'response');
+                    window.location.href = response.Object;
+                    cleanBookNotification.success("Export downloaded successfully!", "Qbicles");
+                }
+                $.LoadingOverlay("hide");
+            },
+            error: function (err) {
+                console.log(err, 'error');
+                $.LoadingOverlay("hide");
+            }
+        });
+    }
+
+
+</script>

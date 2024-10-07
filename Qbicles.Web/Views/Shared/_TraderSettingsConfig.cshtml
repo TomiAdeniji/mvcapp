@@ -1,0 +1,82 @@
+﻿@using Qbicles.Models;
+@model CurrencySetting
+<div class="tab-pane fade in active" id="tab-settings">
+    <form id="frmCurrencyConfiguration" method="post" action="/Qbicles/SaveCurrencySettings">
+        <div class="activity-overview generic help-text animated bounce">
+            <i class="fa fa-info-circle"></i>
+            <p>
+                Choose how you want currency values to appear in Bookkeeping. <strong>Please note</strong> that any changes you make here will also be applied to your
+                Trader app settings (where relevant) to ensure consistency.
+            </p>
+        </div>
+
+        <div class="well custom" style="padding-bottom: 5px;">
+            <div class="row">
+                <div class="col-xs-12 col-sm-4">
+                    <div class="form-group">
+                        <label for="symbol">Currency symbol</label>
+                        <select name="CurrencySymbol" onchange="ChangeSymbolDisplay('')" class="form-control select2Pos" style="width: 100%;">
+                            <option value="₦" @(Model != null && Model.CurrencySymbol == "₦" ? "selected" : "")>₦ (NGN)</option>
+                            <option value="€" @(Model != null && Model.CurrencySymbol == "€" ? "selected" : "")>€ (EUR)</option>
+                            <option value="£" @(Model != null && Model.CurrencySymbol == "£" ? "selected" : "")>£ (GBP)</option>
+                            <option value="$" @(Model != null && Model.CurrencySymbol == "$" ? "selected" : "")>$ (USD)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-xs-12 col-sm-4">
+                    <div class="form-group">
+                        <label for="SymbolDisplay">Symbol display</label>
+                        <select id="symboldisplay-id" name="SymbolDisplay" class="form-control select2Pos" style="width: 100%;">
+                            <option value="0" @(Model != null && Model.SymbolDisplay == CurrencySetting.SymbolDisplayEnum.Prefixed ? "selected" : "")>
+                                Prefixed (@(Model.CurrencySymbol)1,000)
+                            </option>
+                            <option value="1" @(Model != null && Model.SymbolDisplay == CurrencySetting.SymbolDisplayEnum.Suffixed ? "selected" : "")>
+                                Suffixed (1,000@(Model.CurrencySymbol))
+                            </option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-xs-12 col-sm-4">
+                    <div class="form-group">
+                        <label for="DecimalPlace">Decimal places</label>
+                        <select name="DecimalPlace" class="form-control select2Pos" style="width: 100%;">
+                            <option value="0" @(Model != null && Model.DecimalPlace == CurrencySetting.DecimalPlaceEnum.None ? "selected" : "")>None</option>
+                            <option value="1" @(Model != null && Model.DecimalPlace == CurrencySetting.DecimalPlaceEnum.One ? "selected" : "")>1 (1,000.0)</option>
+                            <option value="2" @(Model != null && Model.DecimalPlace == CurrencySetting.DecimalPlaceEnum.Two ? "selected" : "")>2 (1,000.00)</option>
+                            <option value="3" @(Model != null && Model.DecimalPlace == CurrencySetting.DecimalPlaceEnum.Three ? "selected" : "")>3 (1,000.000)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <br>
+        <button type="button" id="btnCurrencyReset" onclick="resetTraderSettings('@(Model?.CurrencySymbol)','@((int)Model?.SymbolDisplay)','@((int)Model?.DecimalPlace)')" class="btn btn-danger">Cancel</button>
+        <button type="submit" class="btn btn-success">Confirm</button>
+    </form>
+</div>
+<script>
+    setTimeout(function () {
+        $('.select2Pos').select2({ placeholder: 'Please select' });
+    }, 100);
+
+    function resetTraderSettings(cSymbol, sDisplay, dPlace) {
+        $('select[name=CurrencySymbol]').val(cSymbol).trigger('change');
+        $('select[name=SymbolDisplay]').val(sDisplay).trigger('change');
+        $('select[name=DecimalPlace]').val(dPlace).trigger('change');
+        ChangeSymbolDisplay(cSymbol);
+    }
+
+    function ChangeSymbolDisplay(cSymbol) {
+        var symbol = $('select[name=CurrencySymbol]').val();
+
+        if (cSymbol != '')
+            symbol = cSymbol;
+
+        $("#symboldisplay-id").select2("destroy");
+        $('#symboldisplay-id option[value="0"]').text('Prefixed (' + symbol + '1,000)');
+        $('#symboldisplay-id option[value="1"]').text('Suffixed (1,000' + symbol + ')');
+        $("#symboldisplay-id").select2();
+        
+    }
+</script>

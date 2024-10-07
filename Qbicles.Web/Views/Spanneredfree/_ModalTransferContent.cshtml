@@ -1,0 +1,198 @@
+﻿@using Qbicles.Models.Spannered;
+@using Qbicles.Models.Trader
+@using Qbicles.BusinessRules;
+@model Asset
+@{
+    var loactions = (List<TraderLocation>)ViewBag.locations;
+    var workgroups = (List<WorkGroup>)ViewBag.workgroups;
+}
+<div class="modal-dialog modal-xl" role="document">
+    <div class="modal-content">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+            <h5 class="modal-title">Transfer @Model.Title Asset</h5>
+        </div>
+        <div class="modal-body">
+
+            <form id="frmTransferAsset" method="post" action="~/Spanneredfree/SaveTransferAsset">
+                <div class="row">
+                    <div class="col-xs-12">
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <ul id="tabtransferasset" class="app_subnav admintabs" style="padding-top: 0; position: relative; top: -20px;">
+                                    <li class="active"><a href="#relocate-1" data-toggle="tab" aria-expanded="true">Specifics</a></li>
+                                    <li class=""><a href="#relocate-2" data-toggle="tab" aria-expanded="false">Confirm</a></li>
+                                </ul>
+                            </div>
+                        </div>
+                        <br>
+                        <div class="tab-content">
+                            <!-- Specifics -->
+                            <div class="tab-pane fade active in" id="relocate-1">
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-4">
+                                        <div class="activity-overview generic" style="padding: 20px; margin-bottom: 30px;">
+                                            <div class="form-group" style="margin: 0;">
+                                                <label for="WorkgroupId">Assign a Workgroup to this Transfer</label>
+                                                <select name="WorkgroupId" class="form-control select2" style="width: 100%;" onchange="$('.preview-workgroup').show(); $(this).valid(); workGroupTransferChange(this);" tabindex="-1" aria-hidden="true">
+                                                    <option value="" selected=""></option>
+                                                    @foreach (var item in workgroups)
+                                                    {
+                                                        <option value="@item.Id">@item.Name</option>
+                                                    }
+                                                </select>
+                                                <label id="WorkgroupId-error" class="error" for="WorkgroupId" style="display:none">This field is required.</label>
+                                            </div>
+
+                                            <div class="preview-workgroup" style="display: none;">
+                                                <br />
+                                                <table class="table app_specific" style="margin: 0;">
+                                                    <tr>
+                                                        <td><h5>Location</h5></td>
+                                                        <td class="location_name">Location name</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td><h5>Process</h5></td>
+                                                        <td class="workgroup_process">Transfers</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td><h5>Qbicle</h5></td>
+                                                        <td class="workgroup_qbicle">Qblicle Name</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td><h5>Members</h5></td>
+                                                        <td class="workgroup_member"><button class="btn btn-info" onclick="ShowGroupMember()" data-toggle="modal" data-target="#app-trader-workgroup-preview"><i class="fa fa-user"></i> &nbsp; <span></span></button></td>
+                                                    </tr>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-8">
+
+                                        <div class="activity-overview task" style="padding: 20px 20px 5px 20px;">
+                                            <div class="row">
+                                                <div class="col-xs-12 col-sm-6">
+                                                    <div class="form-group" style="margin: 0;">
+                                                        <label for="type">Transfer type</label>
+                                                        <select name="type" class="form-control select2" style="width: 100%;" disabled="">
+                                                            <option value=""></option>
+                                                            <option value="#destination" selected="">Outbound</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <div class="col-xs-12 col-sm-6">
+                                                    <div class="form-group" style="margin: 0;">
+                                                        <label for="type">Transfer requirement</label>
+                                                        <select name="type" id="transfer_req" class="form-control select2" style="width: 100%;" disabled="">
+                                                            <option value="p2p" selected="">Point to point</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <br>
+
+                                            <div class="row" id="p2p">
+                                                <div class="col-xs-12 col-sm-6" id="destination">
+                                                    <div class="form-group">
+                                                        <label for="DestinationLocationId">Where are you moving this Asset?</label>
+                                                        <select name="DestinationLocationId" class="form-control select2" onchange="$(this).valid(); previewLocation(this);" style="width: 100%;" data-placeholder="Choose a location">
+                                                            <option value=""></option>
+                                                            @foreach (var item in loactions)
+                                                            {
+                                                                var isCurrentLocation = Model.Location.Id == item.Id ? true : false;
+                                                                <option data-name="@item.Name.FixQuoteCode()" data-address="@item.TraderLocationToAddress().FixQuoteCode()" value="@item.Id" @(isCurrentLocation ? "disabled" : "")>@item.Name @(isCurrentLocation ? "(current)" : "")</option>
+                                                            }
+                                                        </select>
+                                                        <label id="DestinationLocationId-error" class="error" for="DestinationLocationId" style="display:none">This field is required.</label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                    </div>
+                                </div>
+
+                                <br>
+                                <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                                <a class="btn btn-success btnNext" aria-expanded="true">Next &nbsp; <i class="fa fa-angle-right"></i></a>
+                            </div>
+                            <!-- END Specifics -->
+                            <!-- Confirm -->
+                            <div class="tab-pane fade" id="relocate-2">
+
+                                <div class="app_upper_dash text-center">
+                                    <div class="row">
+                                        <div class="col-xs-12 col-sm-6">
+                                            <div class="stat_label">
+                                                <span>Transfer type</span>
+                                                <h3>Outbound</h3>
+                                            </div>
+                                        </div>
+                                        <div class="col-xs-12 col-sm-6">
+                                            <div class="stat_label">
+                                                <span>Requirement</span>
+                                                <h3>Point to Point</h3>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <br>
+
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-4">
+
+                                        <article class="community-feature">
+
+                                            <div class="content-block transfer">
+                                                <div class="content-block-upper">
+                                                    <smaller>Source</smaller>
+                                                    <h2>From @Model.Location.Name</h2>
+                                                    <p>@Html.Raw(Model.Location.TraderLocationToAddress())</p>
+                                                </div>
+                                            </div>
+                                        </article>
+
+                                        <article class="community-feature">
+                                            <div class="content-block transfer">
+                                                <div class="content-block-upper">
+                                                    <smaller>Destination</smaller>
+                                                    <h2 id="preview-destination-location-title"></h2>
+                                                    <p id="preview-destination-location-address"></p>
+                                                </div>
+                                            </div>
+                                        </article>
+
+                                    </div>
+                                    <div class="col-xs-12 col-sm-8">
+                                        <table class="datatable table-striped table-hover" style="width: 100%; background: #fff;" data-order='[[1, "asc"]]'>
+                                            <thead>
+                                                <tr>
+                                                    <th>Asset ID</th>
+                                                    <th>Name</th>
+                                                    <th>Quantity</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr>
+                                                    <td>@Model.Identification</td>
+                                                    <td>@Model.Title</td>
+                                                    <td>1</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <br>
+                                <a href="#relocate-1" data-toggle="tab" class="btn btn-warning btnPrevious" aria-expanded="false"><i class="fa fa-angle-left"></i> &nbsp; Previous</a>
+                                <button type="submit"  class="btn btn-success">Send for pickup</button>
+                            </div>
+                        </div> <!-- ./tab-content -->
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div><!-- /.modal-content -->
+</div><!-- /.modal-dialog -->

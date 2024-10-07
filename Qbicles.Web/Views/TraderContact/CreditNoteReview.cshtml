@@ -1,0 +1,481 @@
+﻿@using Qbicles.BusinessRules
+@using Qbicles.Models
+@using Qbicles.Models.Trader
+@using Qbicles.Models.Qbicles
+@using Qbicles.Models.Trader.Payments
+@model CreditNote
+@{
+
+    var workGroups = (List<WorkGroup>)ViewBag.WorkGroups;
+    var contactGroups = (List<TraderContactGroup>)ViewBag.ContactGroups;
+    var countries = (List<Country>)ViewBag.Countries;
+
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var pageSize = HelperClass.activitiesPageSize;
+    var timeZone = (string)ViewBag.CurrentTimeZone ?? "";
+    var userId = ViewBag.CurrentUserId;
+    var userAvatar = ViewBag.CurrentUserAvatar;
+    var userRight = "none";
+    var traderAppRight = (IsReviewerAndApproverModel)ViewBag.TraderApprovalRight;
+    var isUpdate = (bool)ViewBag.IsUpdate;
+    var approvalHistorys = Model.ApprovalProcess.ApprovalReqHistories.OrderByDescending(q => q.CreatedDate).ToList();
+
+    var today = (DateTime)ViewBag.Today;
+    var timeline = (List<ApprovalStatusTimeline>)ViewBag.Timeline;
+    var timelineDate = (List<DateTime>)ViewBag.TimelineDate;
+
+    //o1
+    if (!traderAppRight.IsInitiators && !traderAppRight.IsReviewer && !traderAppRight.IsApprover)
+    {
+        userRight = "none";
+
+    }//hiden approval, no edit
+     //o2
+    else if (traderAppRight.IsInitiators && !traderAppRight.IsReviewer && !traderAppRight.IsApprover)
+    { userRight = "initiator"; } // readonly approval, no edit
+                                 //o3
+    else if (traderAppRight.IsReviewer && Model.ApprovalProcess?.RequestStatus == ApprovalReq.RequestStatusEnum.Pending)
+    {
+        userRight = "reviewer";
+    }//If the user is an ApprovalReq.ApprovalRequestDefinition.Reviewer and the Status of the ApprovalReq is Pending, the drop down displays the items Discard, or Send to Approval.
+     //o4
+    else if (traderAppRight.IsApprover && Model.ApprovalProcess?.RequestStatus == ApprovalReq.RequestStatusEnum.Reviewed)
+    {
+        userRight = "approver";
+    }
+    //o4.1
+    else if (traderAppRight.IsApprover && Model.ApprovalProcess?.RequestStatus == ApprovalReq.RequestStatusEnum.Pending)
+    {
+        userRight = "initiator";
+    }
+    //o5
+    else if (Model.ApprovalProcess?.RequestStatus == ApprovalReq.RequestStatusEnum.Approved
+             || Model.ApprovalProcess?.RequestStatus == ApprovalReq.RequestStatusEnum.Denied
+             || Model.ApprovalProcess?.RequestStatus == ApprovalReq.RequestStatusEnum.Discarded)
+    {
+        userRight = "completed";
+    }
+    var isCreditNote = true;
+    ViewBag.Title = "Trader - Credit note #" + Model.Id;
+    if (Model.Reason == CreditNoteReason.DebitNote || Model.Reason == CreditNoteReason.PriceIncrease)
+    {
+        isCreditNote = false;
+        ViewBag.Title = "Trader - Debit note #" + Model.Id;
+    }
+    var confirm = "";
+    var isChange = "";
+    if (userRight == "initiator" || userRight == "completed" || userRight == "none" || !isUpdate)
+    {
+        isChange = "disabled";
+        confirm = "hidden";
+    }
+    if (isChange == "disabled")
+    {
+        confirm = "hidden";
+    }
+    var statusClass = "";
+    var displaystatus = "";
+    if (Model.ApprovalProcess?.RequestStatus == ApprovalReq.RequestStatusEnum.Pending)
+    {
+        statusClass = "label-warning";
+        displaystatus = "Awaiting review";
+    }
+    else if (Model.ApprovalProcess?.RequestStatus == ApprovalReq.RequestStatusEnum.Reviewed)
+    {
+        statusClass = "label-info";
+        displaystatus = "Awaiting approval";
+    }
+    else if (Model.ApprovalProcess?.RequestStatus == ApprovalReq.RequestStatusEnum.Denied)
+    {
+        statusClass = "label-danger";
+        displaystatus = "Denied";
+    }
+    else if (Model.ApprovalProcess?.RequestStatus == ApprovalReq.RequestStatusEnum.Discarded)
+    {
+        statusClass = "label-danger";
+        displaystatus = "Discarded";
+    }
+    else if (Model.ApprovalProcess?.RequestStatus == ApprovalReq.RequestStatusEnum.Approved)
+    {
+        statusClass = "label-success";
+        displaystatus = "Approved";
+    }
+    var dateFormat = (string)ViewBag.CurrentDateFormat;
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+}
+
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail">
+
+    <input type="hidden" value="creditnote" id="pagemode" />
+    <!-- Main content -->
+    <section class="content">
+
+        <div class="item_detail npl">
+
+            <div class="item_type_icon">
+                <img src="~/Content/DesignStyle/img/icon_contact.png" />
+            </div>
+            <div class="item_titling">
+                <span class="item_type">Trader &gt; Contacts &gt; @Model.Contact.Name</span>
+                @if (isCreditNote == false)
+                {
+                    <h4>Debit Note #@Model.Reference.FullRef</h4>
+                }
+                else
+                {
+                    <h4>Credit Note #@Model.Reference.FullRef</h4>
+                }
+                <span class="label label-lg @statusClass">@displaystatus</span>
+            </div>
+            <div class="clearfix"></div>
+
+            <br />
+
+            <div class="row">
+                <div class="col-xs-12">
+                    <div class="app_filter">
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <a href="/Trader/AppTrader" onclick="setTabTrader('contacts')" class="btn btn-primary"><i class="fa fa-angle-left"></i> &nbsp; Contact</a>
+                                <a onclick="javascript:QbicleSelected('@(Model.WorkGroup?.Qbicle.Key ?? "0")','Dashboard');" class="btn btn-primary"><i class="fa fa-angle-up"></i> &nbsp; Qbicle</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+
+        <br /><br />
+
+        <div id="contact-content">
+            <div class="row">
+                <div class="col-xs-12 col-md-7 col-lg-8">
+
+                    <div class="app_upper_dash verbose text-center">
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-6 col-md-3">
+                                <div class="stat_label">
+                                    <span>Ref</span>
+                                    <h3>#@Model.Reference.FullRef</h3>
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-6 col-md-3">
+                                <div class="stat_label">
+                                    <span>Value</span>
+                                    <h3>@Model.Value.ToCurrencySymbol(currencySettings)</h3>
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-6 col-md-3">
+                                <div class="stat_label">
+                                    <span>Reason</span>
+                                    <h3>@Model.Reason.ToString()</h3>
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-6 col-md-3">
+                                <div class="stat_label">
+                                    <span>Status</span>
+                                    <h3>@displaystatus</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            @if (Model.Invoice != null && Model.Invoice.Reference != null)
+                            {
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="stat_label">
+                                        <span>Invoice</span>
+                                        <h3>#@Model.Invoice.Reference.FullRef</h3>
+                                    </div>
+                                </div>
+                            }
+                            @if (Model.Sale != null && Model.Sale.Reference != null)
+                            {
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="stat_label">
+                                        <span>Sale</span>
+                                        <h3>#@Model.Sale.Reference.FullRef</h3>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    <br />
+
+                    <div class="activity-overview task" style="padding: 20px; margin-top: 5px;">
+                        <div class="row">
+                            <div class="col-xs-12 col-lg-6">
+
+                                <div class="flex-avatar">
+                                    <div class="col-thumb" style="flex: 0 0 80px;">
+                                        <a href="app_trader_contact.php"><img src="@api@Model.Contact.AvatarUri" class="img-circle img-responsive"></a>
+                                    </div>
+                                    <div class="col">
+                                        <h5 style="font-family: 'Roboto'; margin-top: 0;">Contact: @Model.Contact.Name</h5>
+                                        @if (Model.Invoice != null)
+                                        {
+                                            <a href="/TraderInvoices/InvoiceManage?key=@Model.Invoice.Key" class="btn btn-info"><i class="fa fa-eye"></i> &nbsp; View Invoice</a>
+                                        }
+
+                                    </div>
+                                </div>
+                                <br class="hidden-lg">
+
+                            </div>
+                            <div class="col-xs-12 col-lg-6">
+                                <h5>Notes</h5>
+                                <p>@Html.Raw(Model.Notes?.Replace(Environment.NewLine, "<br/>").Replace("\n", "<br/>"))</p>
+                            </div>
+                        </div>
+                    </div>
+
+
+                </div>
+                <div class="col-xs-12 col-md-5 col-lg-4">
+
+                    @{
+                        <div class="alert activity-overview generic reviewer" style="margin-bottom: 5px;">
+                            <img style="background-image: url('@api@userAvatar')" class="activity-avatar">
+                            <strong style="display: block; padding-bottom: 5px;">You</strong>
+
+                            @if (Model.ApprovalProcess != null)
+                            {
+                                <input type="hidden" id="action_approval_default" value="@Model.ApprovalProcess.RequestStatus" />
+                            }
+                            else
+                            {
+                                <input type="hidden" id="action_approval_default" value="" />
+                            }
+                            <select @isChange id="action_approval" class="form-control select2" style="width: 100%;" data-placeholder="Please choose...">
+                                @{
+                                    switch (userRight)
+                                    {
+                                        case "initiator":
+                                            <option>@(Model.ApprovalProcess?.RequestStatus)</option>
+                                            break;
+                                        case "reviewer":
+                                            <option value="Reviewed" selected>Send to Approval</option>
+                                            <option value="Discarded">Discard</option>
+                                            break;
+                                        case "approver":
+                                            <option value="Approved" selected>Approve</option>
+                                            <option value="Pending">Send back to Review</option>
+                                            <option value="Denied">Deny</option>
+                                            break;
+                                        case "completed":
+
+                                            <option>@(Model.ApprovalProcess?.RequestStatus)</option>
+                                            break;
+                                    }
+                                }
+                            </select>
+                            @{if (confirm == "")
+                                {
+                                    var approvalId = Model.ApprovalProcess?.Id.Encrypt();
+                                    <button onclick="javascript:UpdateStatusApproval('@approvalId','CreditNote');" style="margin: 8px 0 3px 0;" class="btn btn-success @confirm">Confirm</button>
+                                }
+                            }
+
+                        </div>
+                    }
+                    <br />
+                    <ul class="timeline">
+
+                        @foreach (var date in timelineDate)
+                        {
+                            var dateStart = date.ConvertTimeFromUtc(timeZone).DatetimeToOrdinal();
+                            var dateStr = date.Date == today.Date ? "Today" : dateStart;
+
+                            <li class="time-label">
+                                <span class="label label-lg label-primary">
+                                    @dateStr
+                                </span>
+                            </li>
+                            foreach (var tl in timeline.Where(d => d.LogDate.Date == date.Date))
+                            {
+                                <li>
+                                    <i class="@tl.Icon"></i>
+                                    <div class="timeline-item">
+                                        <span class="time"><i class="fa fa-clock-o"></i> @tl.Time</span>
+                                        <h4 class="timeline-header">@tl.Status</h4>
+                                    </div>
+                                </li>
+                            }
+                        }
+
+                    </ul>
+
+
+                </div>
+
+            </div>
+
+
+            <br />
+            @* comment and media*@
+            <div class="app_topnav entity_adds" style="background: #fff; padding: 0;">
+                <ul class="nav nav-pills app_main_nav">
+                    <li role="presentation" class="active">
+                        <a href="#tab1" data-toggle="tab">
+                            <i class="fa fa-comments"></i>
+                            Comments
+                        </a>
+                    </li>
+                    <li role="presentation">
+                        <a href="#tab2" data-toggle="tab">
+                            <i class="fa fa-folder-open"></i>
+                            Files
+                        </a>
+                    </li>
+                </ul>
+            </div>
+            <br />
+            <div class="row">
+                <div class="col-xs-12">
+                    <div class="tab-content">
+                        <div class="tab-pane fade in active" id="tab1">
+                            <div class="row">
+                                <div class="col-xs-12">
+                                    <div class="well" style="max-width: 800px;">
+                                        <div class="form-group">
+                                            <label for="add-comment">Add a comment</label>
+                                            <textarea id="txt-comment-approval" name="add-comment" class="form-control"></textarea>
+                                        </div>
+                                        <button onclick="javascript:addCommentForApproval('@(Model.ApprovalProcess?.Key ?? "")');" class="btn btn-success">Submit</button>
+                                    </div>
+                                    <br />
+                                </div>
+                            </div>
+                            <div id="list-comments-approval">
+                                @if (Model.ApprovalProcess != null)
+                                {
+                                    foreach (var post in Model.ApprovalProcess?.Posts.OrderByDescending(x => x.StartedDate).Take(pageSize))
+                                    {
+
+                                        <!-- General post -->
+                                        var fullName = HelperClass.GetFullNameOfUser(post.CreatedBy, userId);
+                                        <article id="post-@post.Id" class="activity post">
+                                            <img style="background-image: url('@api@post.CreatedBy.ProfilePic')" class="activity-avatar" />
+                                            <div class="activity-detail">
+                                                <div class="activity-meta">
+                                                    <h4>@fullName</h4>
+                                                    <small>@post.StartedDate.ConvertTimeFromUtc(timeZone).ToString(dateFormat+ ", hh:mmtt")</small>
+                                                </div>
+                                                <div class="activity-overview media-comment">
+                                                    <p>
+                                                        @Html.Raw(post.Message.Replace(Environment.NewLine, "<br />"))
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div class="clearfix"></div>
+                                        </article>
+                                        <!-- END General post -->
+                                    }
+                                }
+
+                            </div>
+                            @if (Model.ApprovalProcess?.Posts.Count() > pageSize)
+                            {
+                                <button id="btnLoadPosts" onclick="javascript:LoadMorePosts('@(Model.ApprovalProcess?.Key ?? "")', @pageSize,'list-comments-approval');" class="btn btn-info trigger_load">Load older posts</button>
+                            }
+                        </div>
+
+                        <div class="tab-pane fade" id="tab2">
+                            <br />
+                            <a href="javascript:void(0)" class="btn btn-success" id="btnAddFile" data-toggle="modal" data-target="#create-media"><i class="fa fa-upload"></i> &nbsp; Upload a file</a>
+
+                            <br /><br />
+                            <div id="list-medias">
+                                @if (Model.ApprovalProcess?.SubActivities.Count > 0)
+                                {
+                                    foreach (var item in Model.ApprovalProcess?.SubActivities.OrderByDescending(x => x.Id).Take(pageSize))
+                                    {
+                                        var media = (QbicleMedia)item;
+                                        var createdByName = HelperClass.GetFullNameOfUser(media.StartedBy, userId);
+                                        var createdDate = media.StartedDate.Date == DateTime.UtcNow.Date ? "Today, " + media.StartedDate.ConvertTimeFromUtc(timeZone).ToString("hh:mmtt").ToLower() : media.StartedDate.ConvertTimeFromUtc(timeZone).ToString(dateFormat + " hh:mmtt").ToLower();
+                                        var mediaLastupdate = media.VersionedFiles.Where(e => !e.IsDeleted).OrderByDescending(x => x.UploadedDate).First() ?? null;
+                                        var lastUpdateFile = mediaLastupdate != null ? (mediaLastupdate.UploadedDate.Date == DateTime.UtcNow.Date ? "Today, " + mediaLastupdate.UploadedDate.ConvertTimeFromUtc(timeZone).ToString("hh:mmtt").ToLower() : mediaLastupdate.UploadedDate.ConvertTimeFromUtc(timeZone).ToString(dateFormat+" hh:mmtt").ToLower()) : createdDate;
+                                        //Media post
+                                        <article class="activity media">
+                                            <img style="background-image: url('@api@media.StartedBy.ProfilePic')" class="activity-avatar" />
+                                            <div class="activity-detail">
+                                                <div class="activity-meta">
+                                                    <h4>@createdByName</h4>
+                                                    <small>@createdDate</small>
+                                                    <br class="visible-xs">
+                                                </div>
+                                                <div class="activity-overview media">
+                                                    <div class="row">
+                                                        <div class="col-xs-12 col-sm-5 col-md-6 col-lg-5">
+                                                            <a href="javascript:void(0)" onclick="javascript: ShowMediaPage('@media.Key');">
+                                                                @if (media.FileType.Type == "Image File")
+                                                                {
+                                                                    <img id="media-@item.Id" class="img-responsive" src='@api@mediaLastupdate.Uri' />
+                                                                }
+                                                                else
+                                                                {
+                                                                    <img src="@media.FileType.IconPath" class="img-responsive">
+                                                                }
+                                                            </a>
+                                                        </div>
+                                                        <div class="col-xs-12 col-sm-7 col-md-6 col-lg-7 description">
+                                                            <h5>@media.Name</h5>
+                                                            <p>
+                                                                @media.Description
+                                                            </p>
+                                                            <small>@media.FileType.Type | Update @lastUpdateFile</small>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="clearfix"></div>
+                                        </article>
+                                        <!-- END Media post -->
+                                    }
+                                }
+                            </div>
+                            @if (Model.ApprovalProcess?.SubActivities.Count() > pageSize)
+                            {
+                                <button id="btnLoadMedias" onclick="javascript:LoadMoreMedias(@Model.ApprovalProcess.Id,@pageSize,'list-medias');" class="btn btn-info trigger_load">Load older medias</button>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+
+
+
+
+
+    </section>
+    <!-- ./content -->
+
+</div>
+<!-- /.content-wrapper -->
+
+<div class="modal fade left" id="app-bookkeeping-treeview" role="dialog" aria-labelledby="app-bookkeeping-treeview">
+    
+</div>
+@{
+    Html.RenderAction("GenerateModalMedia", "Qbicles");
+}
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/trader.contact.review.js"></script>
+        <script src="~/Scripts/dev/trader.domain.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/trader.contact.review.min.js"></script>
+        <script src="~/Scripts/dev/trader.domain.min.js"></script>
+
+    }
+}

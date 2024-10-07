@@ -1,0 +1,137 @@
+﻿@using Qbicles.BusinessRules;
+@using Qbicles.Models;
+@model CurrencySetting
+
+@{
+    var taxrates = (List<TaxRateModel>)ViewBag.Taxrates;
+}
+<div class="well custom">
+    <form id="frmCurrencyConfiguration" method="post" action="/Qbicles/SaveCurrencySettings">
+        <div class="row">
+            <div class="col-xs-12 col-sm-4">
+                <div class="form-group">
+                    <label for="symbol">Currency symbol</label>
+                    <select name="CurrencySymbol" onchange="ChangeSymbolDisplay('')" class="form-control select2Pos" style="width: 100%;">
+                        <option value="₦" @(Model != null && Model.CurrencySymbol == "₦" ? "selected" : "")>₦ (NGN)</option>
+                        <option value="€" @(Model != null && Model.CurrencySymbol == "€" ? "selected" : "")>€ (EUR)</option>
+                        <option value="£" @(Model != null && Model.CurrencySymbol == "£" ? "selected" : "")>£ (GBP)</option>
+                        <option value="$" @(Model != null && Model.CurrencySymbol == "$" ? "selected" : "")>$ (USD)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="col-xs-12 col-sm-4">
+                <div class="form-group">
+                    <label for="SymbolDisplay">Symbol display</label>
+                    <select id="symboldisplay-id" name="SymbolDisplay" class="form-control select2Pos" style="width: 100%;">
+                        <option value="0" @(Model != null && Model.SymbolDisplay == CurrencySetting.SymbolDisplayEnum.Prefixed ? "selected" : "")>
+                            Prefixed (@(Model.CurrencySymbol)1,000)
+                        </option>
+                        <option value="1" @(Model != null && Model.SymbolDisplay == CurrencySetting.SymbolDisplayEnum.Suffixed ? "selected" : "")>
+                            Suffixed (1,000@(Model.CurrencySymbol))
+                        </option>
+                    </select>
+                </div>
+            </div>
+            <div class="col-xs-12 col-sm-4">
+                <div class="form-group">
+                    <label for="DecimalPlace">Decimal places</label>
+                    <select name="DecimalPlace" class="form-control select2Pos" style="width: 100%;">
+                        <option value="0" @(Model != null && Model.DecimalPlace == CurrencySetting.DecimalPlaceEnum.None ? "selected" : "")>None</option>
+                        <option value="1" @(Model != null && Model.DecimalPlace == CurrencySetting.DecimalPlaceEnum.One ? "selected" : "")>1 (1,000.0)</option>
+                        <option value="2" @(Model != null && Model.DecimalPlace == CurrencySetting.DecimalPlaceEnum.Two ? "selected" : "")>2 (1,000.00)</option>
+                        <option value="3" @(Model != null && Model.DecimalPlace == CurrencySetting.DecimalPlaceEnum.Three ? "selected" : "")>3 (1,000.000)</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        <br>
+        <button type="button" id="btnCurrencyReset" onclick="resetTraderSettings('@(Model?.CurrencySymbol)','@((int)Model?.SymbolDisplay)','@((int)Model?.DecimalPlace)')" class="btn btn-danger">Cancel</button>
+        <button type="submit" class="btn btn-success">Confirm</button>
+    </form>
+</div>
+
+
+<br /><br />
+
+<h5>Tax rates</h5>
+
+<div class="well custom" style="padding-bottom: 5px;">
+    <div class="row">
+        <div class="col-xs-12 col-sm-6 col-lg-3">
+            <div class="form-group">
+                <label for="search">Search</label>
+                <input type="text" class="form-control" name="search">
+            </div>
+        </div>
+        <div class="col-xs-12 col-sm-6 col-lg-3">
+            <div class="form-group">
+                <label for="search">Transaction type</label>
+                <select name="transactiontype" class="form-control checkmulti" multiple>
+                    <option value="Purchase" selected>Purchase</option>
+                    <option value="Sale" selected>Sale</option>
+                </select>
+            </div>
+        </div>
+        <div class="col-xs-12 col-sm-6 col-lg-3">
+            <div class="form-group">
+                <label for="search">Credit/debit</label>
+                <select name="type" class="form-control checkmulti" multiple>
+                    <option value="Credit" selected>Credit</option>
+                    <option value="Debit" selected>Debit</option>
+                </select>
+            </div>
+        </div>
+        <div class="col-xs-12 col-sm-6 col-lg-3">
+            <div class="form-group">
+                <label for="search">Options</label><br />
+                <button class="btn btn-success" data-toggle="modal" onclick="clickAdd()" data-target="#app-coa-tax-add"><i class="fa fa-plus"></i> &nbsp; Add a tax rate</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="tbl-taxrates-content">
+    @Html.Partial("~/Views/Commerce/TradingSettings/_TblTaxratesContent.cshtml", taxrates)
+</div>
+<script>
+    $(".checkmulti").multiselect({
+        includeSelectAllOption: false,
+        enableFiltering: false,
+        buttonWidth: '100%',
+        maxHeight: 400,
+        enableClickableOptGroups: true
+    });
+    $('.select2Pos').select2({ placeholder: 'Please select' });
+
+    function resetTraderSettings(cSymbol, sDisplay, dPlace) {
+        $('select[name=CurrencySymbol]').val(cSymbol).trigger('change');
+        $('select[name=SymbolDisplay]').val(sDisplay).trigger('change');
+        $('select[name=DecimalPlace]').val(dPlace).trigger('change');
+        ChangeSymbolDisplay(cSymbol);
+    }
+
+    function ChangeSymbolDisplay(cSymbol) {
+
+        var symbol = $('select[name=CurrencySymbol]').val();
+        if (cSymbol != '')
+            symbol = cSymbol;
+
+        $("#symboldisplay-id").select2("destroy");
+        $('#symboldisplay-id option[value="0"]').text('Prefixed (' + symbol + '1,000)');
+        $('#symboldisplay-id option[value="1"]').text('Suffixed (1,000' + symbol + ')');
+        $("#symboldisplay-id").select2();
+
+
+
+    }
+</script>
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/trader.config.accounting.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/trader.config.accounting.js"></script>
+    }
+}

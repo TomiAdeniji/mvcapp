@@ -1,0 +1,244 @@
+﻿@using Qbicles.BusinessRules
+@using Qbicles.Models.Trader
+@using Qbicles.Models
+@{
+    var locations = (List<TraderLocation>)ViewBag.Locations;
+    var currentDomain = (QbicleDomain)ViewBag.CurrentDomain;
+    var filterinvoices = HelperClass.EnumModel.GetEnumValuesAndDescriptions<B2CFilterInvoiceType>();
+    var filterpayments = HelperClass.EnumModel.GetEnumValuesAndDescriptions<B2CFilterPaymentType>();
+    var filterdelivery = HelperClass.EnumModel.GetEnumValuesAndDescriptions<B2CFilterDeliveryType>();
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+    var contacts = (List<TraderContact>)ViewBag.TraderContacts;
+    var currentDomainPlan = (DomainPlan)ViewBag.CurrentDomainPlan;
+    var currentDomainPlanLevel = currentDomainPlan?.Level?.Level ?? BusinessDomainLevelEnum.Free;
+}
+
+<div class="row" style="margin-bottom: 30px;">
+    <div class="col-xs-12">
+        <ul class="nav nav-pills traderv2" style="padding-top: 0;">
+            @if (currentDomainPlanLevel >= BusinessDomainLevelEnum.Starter)
+            {
+                <li class="active"><a href="#orders-sale" data-toggle="tab">Sale orders</a></li>
+            }
+            @if (currentDomainPlanLevel >= BusinessDomainLevelEnum.Standard)
+            {
+                <li><a data-toggle="tab" href="#orders-purchase">Purchase orders</a></li>
+            }
+        </ul>
+    </div>
+</div>
+
+<div class="tab-content">
+    <div class="tab-pane fade in active" id="orders-sale">
+        <div class="well custom" style="padding-bottom: 5px;">
+            <div class="row">
+                <div class="col-xs-12 col-sm-6 col-lg-3">
+                    <div class="form-group">
+                        <label for="search">Search</label>
+                        <input type="text" name="search" class="form-control">
+                    </div>
+                </div>
+                <div class="col-xs-12 col-sm-6 col-lg-3">
+                    <div class="form-group">
+                        <label for="location">Location</label>
+                        <select name="location" class="form-control select2" style="width: 100%;">
+                            <option value="0">Show all</option>
+                            @foreach (var item in locations)
+                            {
+                                <option value="@item.Id">@item.Name</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+                <div class="col-xs-12 col-sm-6 col-lg-3">
+                    <div class="form-group">
+                        <label for="channel">Sales channel</label>
+                        <select name="channel" class="form-control select2" style="width: 100%;">
+                            <option value="0" selected>Show all</option>
+                            <option value="@((int)Qbicles.Models.Trader.SalesChannel.SalesChannelEnum.B2B)">B2B</option>
+                            <option value="@((int)Qbicles.Models.Trader.SalesChannel.SalesChannelEnum.B2C)">B2C</option>
+                            <option value="@((int)Qbicles.Models.Trader.SalesChannel.SalesChannelEnum.POS)">POS</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-xs-12 col-sm-6 col-lg-3">
+                    <label for="daterange">Date range</label><br>
+                    <div class="input-group" style="margin-bottom: 15px;">
+                        <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                        <input type="text" name="daterange" class="form-control daterange">
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-xs-12 col-sm-6 col-lg-3">
+                    <div class="form-group">
+                        <label for="contacts">Contact</label>
+                        <select name="contacts" id="sale-order-tab-contacts" class="form-control select2">
+                            <option value="0" selected>Show all</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-xs-12 col-sm-6 col-lg-3">
+                    <div class="form-group">
+                        <label for="filterInvoice">Invoice</label>
+                        <select name="filterInvoice" class="form-control select2" style="width: 100%;" tabindex="-1" aria-hidden="true">
+                            @foreach (var item in filterinvoices)
+                            {
+                                <option value="@item.Key">@item.Value</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+                <div class="col-xs-12 col-sm-6 col-lg-3">
+                    <div class="form-group">
+                        <label for="filterPayment">Payment</label>
+                        <select name="filterPayment" class="form-control select2" style="width: 100%;" tabindex="-1" aria-hidden="true">
+                            @foreach (var item in filterpayments)
+                            {
+                                <option value="@item.Key">@item.Value</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+                <div class="col-xs-12 col-sm-6 col-lg-3">
+                    <div class="form-group">
+                        <label for="filterDelivery">Delivery</label>
+                        <select name="filterDelivery" class="form-control select2 select2-hidden-accessible" style="width: 100%;" tabindex="-1" aria-hidden="true">
+                            @foreach (var item in filterdelivery)
+                            {
+                                <option value="@item.Key">@item.Value</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <br>
+        <table class="datatable table-striped table-hover" id="tblOrdersSale" style="width: 100%;">
+            <thead>
+                <tr>
+                    <th>Reference</th>
+                    <th>Date</th>
+                    <th>Location</th>
+                    <th>Sales Channel</th>
+                    <th>Contact</th>
+                    <th>Total (@currencySettings.CurrencySymbol)</th>
+                    <th>Status</th>
+                    <th>Sale</th>
+                    <th>Invoice</th>
+                    <th>Payment</th>
+                    <th>Transfer</th>
+                    <th data-orderable="false">Options</th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="tab-pane fade" id="orders-purchase">
+        <div class="well custom" style="padding-bottom: 5px;">
+            <div class="row">
+                <div class="col-xs-12 col-sm-6 col-lg-3">
+                    <div class="form-group">
+                        <label for="search">Search</label>
+                        <input type="text" name="search" class="form-control">
+                    </div>
+                </div>
+                <div class="col-xs-12 col-sm-6 col-lg-3">
+                    <div class="form-group">
+                        <label for="location">Location</label>
+                        <select name="location" class="form-control select2" style="width: 100%;">
+                            <option value="0">Show all</option>
+                            @foreach (var item in locations)
+                            {
+                                <option value="@item.Id">@item.Name</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+                <div class="col-xs-12 col-sm-6 col-lg-3">
+                    <label for="daterange">Date range</label><br>
+                    <div class="input-group" style="margin-bottom: 15px;">
+                        <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                        <input type="text" name="daterange" class="form-control daterange">
+                    </div>
+                </div>
+                <div class="col-xs-12 col-sm-6 col-lg-3">
+                    <div class="form-group">
+                        <label for="contacts">Contact</label>
+                        <select name="contacts" id="purchase-order-tab-contacts" class="form-control select2" style="width: 100%;" tabindex="-1" aria-hidden="true">
+                            <option value="0" selected>Show all</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-xs-12 col-sm-6 col-lg-3">
+                    <div class="form-group">
+                        <label for="filterInvoice">Invoice</label>
+                        <select name="filterInvoice" class="form-control select2" style="width: 100%;" tabindex="-1" aria-hidden="true">
+                            @foreach (var item in filterinvoices)
+                            {
+                                <option value="@item.Key">@item.Value</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+                <div class="col-xs-12 col-sm-6 col-lg-3">
+                    <div class="form-group">
+                        <label for="filterPayment">Payment</label>
+                        <select name="filterPayment" class="form-control select2" style="width: 100%;" tabindex="-1" aria-hidden="true">
+                            @foreach (var item in filterpayments)
+                            {
+                                <option value="@item.Key">@item.Value</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+                <div class="col-xs-12 col-sm-6 col-lg-3">
+                    <div class="form-group">
+                        <label for="filterDelivery">Delivery</label>
+                        <select name="filterDelivery" class="form-control select2 select2-hidden-accessible" style="width: 100%;" tabindex="-1" aria-hidden="true">
+                            @foreach (var item in filterdelivery)
+                            {
+                                <option value="@item.Key">@item.Value</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <br>
+        <table class="datatable table-striped table-hover" id="tblOrdersPurchase" style="width: 100%;">
+            <thead>
+                <tr>
+                    <th>Reference</th>
+                    <th>Date</th>
+                    <th>Location</th>
+                    <th>Contact</th>
+                    <th>Total (@currencySettings.CurrencySymbol)</th>
+                    <th>Status</th>
+                    <th>Purchase</th>
+                    <th>Bill</th>
+                    <th>Payment</th>
+                    <th>Transfer</th>
+                    <th data-orderable="false">Options</th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+    </div>
+
+</div>
+
+<script>
+    $(document).ready(function () {
+        setTimeout(function () {
+            initSelect2MethodAJAX('sale-order-tab-contacts', '/Select2Data/GetTraderContact', {}, true);
+            initSelect2MethodAJAX('purchase-order-tab-contacts', '/Select2Data/GetTraderContact', {}, true);
+        }, 200);
+    })
+</script>

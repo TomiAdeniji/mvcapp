@@ -1,0 +1,684 @@
+﻿@using Qbicles.BusinessRules
+@using Qbicles.Models
+@using Qbicles.Models.Trader
+@model CashAccountTransaction
+
+@{
+    ViewBag.Title = ViewBag.TraderTitle;
+
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var pageSize = HelperClass.activitiesPageSize;
+    var timeZone = (string)ViewBag.CurrentTimeZone ?? "";
+    var userId = ViewBag.CurrentUserId;
+    var userAvatar = ViewBag.CurrentUserAvatar;
+    var dateTimeFormat = (string)ViewBag.CurrentDateTimeFormat;
+    var userRight = "none";
+    var traderAppRight = (IsReviewerAndApproverModel)ViewBag.TraderApprovalRight;
+    var invoiceStatus = Model.AssociatedInvoice.Status;
+    //o1
+    if (!traderAppRight.IsInitiators && !traderAppRight.IsReviewer && !traderAppRight.IsApprover)
+    {
+        userRight = "none";
+
+    }//hiden approval, no edit
+     //o2
+    else if (traderAppRight.IsInitiators && !traderAppRight.IsReviewer && !traderAppRight.IsApprover)
+    { userRight = "initiator"; } // readonly approval, no edit
+                                 //o3
+    else if (traderAppRight.IsReviewer && Model.PaymentApprovalProcess.RequestStatus == ApprovalReq.RequestStatusEnum.Pending)
+    {
+        userRight = "reviewer";
+    }//If the user is an ApprovalReq.ApprovalRequestDefinition.Reviewer and the Status of the ApprovalReq is Pending, the drop down displays the items Discard, or Send to Approval.
+     //o4
+    else if (traderAppRight.IsApprover && Model.PaymentApprovalProcess.RequestStatus == ApprovalReq.RequestStatusEnum.Reviewed)
+    {
+        userRight = "approver";
+    }
+    //o4.1
+    else if (traderAppRight.IsApprover && Model.PaymentApprovalProcess.RequestStatus == ApprovalReq.RequestStatusEnum.Pending)
+    {
+        userRight = "initiator";
+    }
+    //o5
+    else if (Model.PaymentApprovalProcess.RequestStatus == ApprovalReq.RequestStatusEnum.Approved
+             || Model.PaymentApprovalProcess.RequestStatus == ApprovalReq.RequestStatusEnum.Denied
+             || Model.PaymentApprovalProcess.RequestStatus == ApprovalReq.RequestStatusEnum.Discarded)
+    {
+        userRight = "completed";
+    }
+
+    var confirm = "";
+    var isChange = "";
+    if (userRight == "initiator" || userRight == "completed" || userRight == "none")
+    {
+        isChange = "disabled";
+        confirm = "hidden";
+    }
+    if (Model.PaymentApprovalProcess?.RequestStatus != ApprovalReq.RequestStatusEnum.Pending)
+    {
+    }
+    if (isChange == "disabled")
+    {
+        confirm = "hidden";
+    }
+
+    var sourceTitle = "";
+    var sourceContent = "";
+
+
+    var today = (DateTime)ViewBag.Today;
+    var timeline = (List<ApprovalStatusTimeline>)ViewBag.Timeline;
+    var timelineDate = (List<DateTime>)ViewBag.TimelineDate;
+    var dateFormat = (string)ViewBag.CurrentDateFormat;
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+}
+
+<style>
+    .stat_label {
+        text-align: center !important;
+    }
+</style>
+<!-- App bar -->
+<div class="mdv2-col-app" style="margin-bottom: 0;">
+
+    <div data-spy="affix" class="contained-sidebar">
+
+        <div class="activity-overview plain company-overview welcome-info" style="text-align: left !important; flex: none; margin: 0 0 30px 0; padding-top: 30px; padding-bottom: 0;">
+
+            <div class="pull-left" style="margin-bottom: 15px;">
+                <a href="javascript:void(0)" onclick="QbicleSelected('@(Model.PaymentApprovalProcess?.Qbicle.Key??"0")','Dashboard')" class="btn btn-primary"><i class="fa fa-angle-up"></i> &nbsp; Qbicle</a>
+                <a href="/Trader/AppTrader" onclick="setTabTrader('cashbank')" class="btn btn-primary hidden"><i class="fa fa-th"></i> &nbsp; Cash &amp; Bank</a>
+                @{
+                    if (Model.AssociatedInvoice != null)
+                    {
+                        <a href="/TraderInvoices/InvoiceManage?key=@Model.AssociatedInvoice.Key" class="btn btn-info"><i class="fa fa-eye"></i> &nbsp; View Invoice</a>
+                    }
+                }
+            </div>
+            <div class="clearfix"></div>
+
+            <br />
+
+            <h6 class="subhead">Trader Payment Approval</h6>
+            <h1 style="line-height: 1.2;">Payment #@Model.Reference</h1>
+            @if (Model.PaymentApprovalProcess != null)
+            {
+                if (invoiceStatus == TraderInvoiceStatusEnum.PendingReview || invoiceStatus == TraderInvoiceStatusEnum.PendingApproval || invoiceStatus == TraderInvoiceStatusEnum.Draft)
+                {
+                    <span class="label label-lg label-warning">Bill Pending Approval</span>
+                }
+                else 
+                {
+                    switch (Model.PaymentApprovalProcess.RequestStatus)
+                    {
+                        case ApprovalReq.RequestStatusEnum.Approved:
+                            <span class="label label-lg label-success">@(Model.PaymentApprovalProcess?.RequestStatus.GetDescription())</span>
+                            break;
+                        case ApprovalReq.RequestStatusEnum.Denied:
+                        case ApprovalReq.RequestStatusEnum.Discarded:
+                            <span class="label label-lg label-danger">@(Model.PaymentApprovalProcess?.RequestStatus.GetDescription())</span>
+                            break;
+                        case ApprovalReq.RequestStatusEnum.Pending:
+                            <span class="label label-lg label-warning">@(Model.PaymentApprovalProcess?.RequestStatus.GetDescription())</span>
+                            break;
+                        case ApprovalReq.RequestStatusEnum.Reviewed:
+                            <span class="label label-lg label-info">@(Model.PaymentApprovalProcess?.RequestStatus.GetDescription())</span>
+                            break;
+                    }
+                }
+
+            }
+            <div class="clearfix"></div>
+
+
+            <br /><br /><br />
+
+            <div class="row">
+                <div class="col-xs-12">
+                    <label>Description</label><br />
+                    <p>@Model.Description</p>
+                </div>
+            </div>
+
+            <br /><br />
+            <div class="row">
+                <div class="col-xs-12 col-sm-6">
+                    <label>Created</label><br />
+                    <p>@Model.CreatedDate.FormatDateTimeByUser(dateTimeFormat)
+                </div>
+                <div class="col-xs-12 col-sm-6">
+                    <label>Creator</label><br />
+                    <p><a href="/Community/UserProfilePage?uId=@(Model.CreatedBy.Id)">@HelperClass.GetFullNameOfUser(Model.CreatedBy)</a></p>
+                </div>
+            </div>
+
+
+            <br /><br />
+            <div class="row">
+                <div class="col-xs-12 col-sm-6">
+                    <button class="btn btn-primary community-button" style="margin-bottom: 3px;" data-toggle="modal" data-target="#team-view">
+                        <i class="fa fa-users"></i> &nbsp; Team
+                    </button>
+                </div>
+                <div class="col-xs-12 col-sm-6">
+                    <button class="btn btn-info community-button" data-toggle="modal" onclick="$('#view-timeline').empty(); $('#view-timeline').append($('#timeline_review').html());" data-target="#history-view"><i class="fa fa-history"></i> &nbsp; History</button>
+                </div>
+            </div>
+
+
+            <br /><br /><br />
+            <h5>Attachments</h5>
+            <ul class="avatar-listing team unstyled" style="margin-bottom: 30px !important;">
+                @if (Model.AssociatedFiles.Any())
+                {
+                    foreach (var modelAssociatedFile in Model.AssociatedFiles)
+                    {
+                        <li>
+                            <a href="javascript:void(0)" onclick="ShowMediaPage('@modelAssociatedFile.Key', false);">
+                                <div class="owner-avatar">
+                                    <div class="avatar-sm" style="background: url('@modelAssociatedFile.FileType.IconPath');"></div>
+                                </div>
+                                <h5>Associated Document<br><small>@modelAssociatedFile.Name</small></h5>
+                            </a>
+                        </li>
+                    }
+                }
+            </ul>
+
+        </div>
+
+    </div>
+</div>
+<!-- END App bar -->
+<!-- Main area -->
+<div class="mdv2-col-dash">
+
+    <div class="spacing">
+
+        @{
+            if (confirm == "" && Model.PaymentApprovalProcess != null && invoiceStatus == TraderInvoiceStatusEnum.InvoiceApproved || invoiceStatus == TraderInvoiceStatusEnum.InvoiceIssued && Model.PaymentApprovalProcess.RequestStatus != ApprovalReq.RequestStatusEnum.Approved)
+            {
+                <div style="width: 500px; max-width: 100%; margin-bottom: 40px;">
+                    <div class="alert activity-overview generic reviewer" style="padding: 20px 20px !important; margin: 0;">
+                        <label for="status">Approval options available to you</label>
+                        <div class="input-group">
+                            @if (Model.PaymentApprovalProcess != null)
+                            {
+                                <input type="hidden" id="action_approval_default" value="@Model.PaymentApprovalProcess.RequestStatus" />
+                            }
+                            else
+                            {
+                                <input type="hidden" id="action_approval_default" value="" />
+                            }
+                            <select @isChange id="action_approval" class="form-control select2" style="width: 100%;" data-placeholder="Please choose...">
+                                <option value=""></option>
+                                @{
+                                    switch (userRight)
+                                    {
+                                        case "initiator":
+                                            <option>@(Model.PaymentApprovalProcess?.RequestStatus)</option>
+                                            break;
+                                        case "reviewer":
+                                            <option value="Reviewed" selected>Send to Approval</option>
+                                            <option value="Discarded">Discard</option>
+                                            break;
+                                        case "approver":
+                                            <option value="Approved" selected>Approve</option>
+                                            <option value="Pending">Send back to Review</option>
+                                            <option value="Denied">Deny</option>
+                                            break;
+                                        case "completed":
+                                            <option>@(Model.PaymentApprovalProcess?.RequestStatus)</option>
+                                            break;
+                                    }
+                                }
+                            </select>
+
+                            <span class="input-group-btn">
+                                @{
+                                    if (confirm == "")
+                                    {
+                                        var approvalId = Model.PaymentApprovalProcess?.Id.Encrypt();
+                                        <button onclick="javascript:UpdateStatusApproval('@approvalId');" class="btn btn-success @confirm">Confirm</button>
+                                    }
+                                }
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+
+        <br />
+
+        <section class="associated_forms">
+
+            <ul class="nav nav-pills alt" style="margin: 0 0 30px 0;">
+                <li class="active"><a href="#" data-toggle="tab" data-target="#approval-0">Overview</a></li>
+                <li><a href="javascript:void(0)" data-toggle="tab" data-target="#approval-2">Comments &amp; Files</a></li>
+            </ul>
+
+
+            <div class="tab-content">
+
+
+                <!-- Overview -->
+                <div class="tab-pane fade in active" id="approval-0">
+
+
+                    <div class="row">
+                        <div class="col-xs-12">
+
+                            <div class="app_upper_dash text-center">
+                                @if (Model.Type == CashAccountTransactionTypeEnum.Transfer)
+                                {
+                                    <div class="row">
+                                        <div class="col-xs-12 col-sm-6 col-lg-6">
+                                            <div class="stat_label">
+                                                <span>Payment total</span>
+                                                <h3>@Model.Amount.ToCurrencySymbol(currencySettings)</h3>
+                                            </div>
+                                        </div>
+                                        <div class="col-xs-12 col-sm-6 col-lg-6">
+                                            <div class="stat_label" style="padding-bottom: 10px;">
+                                                <span>Type</span>
+                                                @{
+
+                                                    switch (Model.Type)
+                                                    {
+                                                        case CashAccountTransactionTypeEnum.PaymentIn:
+                                                            <h3>Payment In</h3>
+                                                            break;
+                                                        case CashAccountTransactionTypeEnum.PaymentOut:
+                                                            <h3>Payment Out</h3>
+                                                            break;
+                                                        case CashAccountTransactionTypeEnum.Transfer:
+                                                            <h3>Transfer</h3>
+                                                            break;
+                                                        default:
+                                                            <h3></h3>
+                                                            break;
+                                                    }
+                                                }
+
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                }
+                                else
+                                {
+                                    <div class="row">
+                                        <div class="col-xs-12 col-sm-4">
+                                            <div class="stat_label">
+                                                <span>Payment total</span>
+                                                <h3>@Model.Amount.ToCurrencySymbol(currencySettings)</h3>
+                                            </div>
+                                        </div>
+                                        <div class="col-xs-12 col-sm-4">
+                                            <div class="stat_label">
+                                                <span>For</span>
+                                                @if (Model.AssociatedInvoice != null)
+                                                {
+                                                    <h3>Invoice #@(Model.AssociatedInvoice?.Reference?.FullRef ?? "")</h3>
+                                                }
+                                                else
+                                                {
+                                                    <h3>Payment on account</h3>
+                                                }
+
+                                            </div>
+                                        </div>
+                                        <div class="col-xs-12 col-sm-4">
+                                            <div class="stat_label" style="padding-bottom: 10px;">
+                                                <span>Type</span>
+                                                @{
+
+                                                    switch (Model.Type)
+                                                    {
+                                                        case CashAccountTransactionTypeEnum.PaymentIn:
+                                                            <h3>Payment In</h3>
+                                                            break;
+                                                        case CashAccountTransactionTypeEnum.PaymentOut:
+                                                            <h3>Payment Out</h3>
+                                                            break;
+                                                        case CashAccountTransactionTypeEnum.Transfer:
+                                                            <h3>Transfer</h3>
+                                                            break;
+                                                        default:
+                                                            <h3></h3>
+                                                            break;
+                                                    }
+                                                }
+
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-xs-12 col-sm-4">
+                                            <div class="stat_label" style="padding-bottom: 10px;">
+                                                <span>Reference</span>
+                                                <h3>
+                                                    @{ var reference = string.IsNullOrEmpty(Model.Reference) ? "N/A" : Model.Reference;}
+                                                    @reference
+                                                </h3>
+                                            </div>
+                                        </div>
+                                        <div class="col-xs-12 col-sm-4">
+                                            <div class="stat_label" style="padding-bottom: 10px;">
+                                                <span>Payment method</span>
+                                                <h3>
+                                                    @{
+                                                        var method = Model.PaymentMethod?.Name ?? "N/A";
+                                                    }
+                                                    @method
+                                                </h3>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+
+                        </div>
+                    </div>
+
+
+                    <br />
+
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-6">
+
+                            <h5>FROM</h5>
+                            <div class="flex-grid-fluid-lg from-community c1" style="width: 100%;">
+                                <div class="col" style="width: 100%; flex: 0;">
+                                    @{
+                                        var avatar = "";
+                                        if (Model.Type == CashAccountTransactionTypeEnum.PaymentIn && Model.AssociatedInvoice == null)
+                                        {
+                                            sourceTitle = "No account details available";
+                                        }
+                                        else if (Model.Type == CashAccountTransactionTypeEnum.PaymentIn && Model.AssociatedInvoice != null && Model.AssociatedInvoice.Sale != null)
+                                        {
+                                            sourceTitle = Model.AssociatedInvoice.Sale.Purchaser.Name;
+                                            avatar = Model.AssociatedInvoice.Sale.Purchaser.AvatarUri;
+                                            sourceContent = Model.AssociatedInvoice.Sale.Purchaser.Address?.ToAddress();
+                                        }
+                                        else if (Model.Type == CashAccountTransactionTypeEnum.PaymentOut || Model.Type == CashAccountTransactionTypeEnum.Transfer)
+                                        {
+                                            if (Model.OriginatingAccount != null)
+                                            {
+                                                sourceTitle = Model.OriginatingAccount.Name;
+                                                avatar = Model.OriginatingAccount.ImageUri;
+                                                if (Model.OriginatingAccount.AssociatedBKAccount != null)
+                                                {
+                                                    sourceContent = Model.OriginatingAccount.AssociatedBKAccount.Number + " - " + Model.OriginatingAccount.AssociatedBKAccount.Name;
+                                                }
+                                                else
+                                                {
+                                                    sourceContent = "No associated bookkeeping account";
+                                                }
+                                            }
+
+
+                                        }
+                                    }
+                                    <div class="article-feature">
+                                        <div class="info" style="padding-top: 15px;">
+
+                                            <ul class="avatar-listing team unstyled" style="margin: 0 15px !important;">
+                                                <li>
+                                                    <a href="/Community/UserProfilePage?uId=@((string)userId)" target="_blank">
+                                                        <div class="owner-avatar">
+                                                            <div class="avatar-sm" style="background: url('@api@avatar');"></div>
+                                                        </div>
+                                                        <h5>@sourceTitle<br><small>@sourceContent</small></h5>
+                                                    </a>
+                                                </li>
+                                            </ul>
+
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+
+                        </div>
+                        <div class="col-xs-12 col-sm-6">
+
+                            <h5>TO</h5>
+                            <div class="flex-grid-fluid-lg from-community c1" style="width: 100%;">
+                                <div class="col" style="width: 100%; flex: 0;">
+                                    @{
+                                        sourceTitle = "";
+                                        sourceContent = "";
+                                        if (Model.Type == CashAccountTransactionTypeEnum.PaymentOut && Model.AssociatedInvoice == null)
+                                        {
+                                            sourceTitle = "No account details available";
+                                        }
+                                        else if (Model.Type == CashAccountTransactionTypeEnum.PaymentOut && Model.AssociatedInvoice != null)
+                                        {
+                                            sourceTitle = (Model.AssociatedInvoice?.Purchase?.Vendor?.Name ?? "");
+                                            avatar = (Model.AssociatedInvoice?.Purchase?.Vendor?.AvatarUri ?? "");
+                                            sourceContent = Model.AssociatedInvoice.Purchase?.Vendor?.Address?.ToAddress();
+                                        }
+                                        else if (Model.Type == CashAccountTransactionTypeEnum.PaymentIn || Model.Type == CashAccountTransactionTypeEnum.Transfer)
+                                        {
+                                            if (Model.DestinationAccount != null)
+                                            {
+                                                sourceTitle = Model.DestinationAccount.Name;
+                                                avatar = Model.DestinationAccount.ImageUri;
+                                                if (Model.DestinationAccount.AssociatedBKAccount != null)
+                                                {
+                                                    sourceContent = Model.DestinationAccount.AssociatedBKAccount.Number + " - " + Model.DestinationAccount.AssociatedBKAccount.Name;
+                                                }
+                                                else
+                                                {
+                                                    sourceContent = "No associated bookkeeping account";
+                                                }
+
+                                            }
+                                        }
+                                    }
+                                    <div class="article-feature">
+                                        <div class="info" style="padding-top: 15px;">
+
+                                            <ul class="avatar-listing team unstyled" style="margin: 0 15px !important;">
+                                                <li>
+                                                    <a href="#" target="_blank">
+                                                        <div class="owner-avatar">
+                                                            <div class="avatar-sm" style="background: url('@api@avatar');"></div>
+                                                        </div>
+                                                        <h5>@sourceTitle<br><small>@sourceContent</small></h5>
+                                                    </a>
+                                                </li>
+                                            </ul>
+
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+
+                        </div>
+                    </div>
+
+
+                </div>
+                <!-- END Overview -->
+                <!-- Comments & Files -->
+                <div class="tab-pane fade" id="approval-2">
+
+                    <div class="app_topnav entity_adds" style="background: #fff; padding: 0;">
+                        <ul class="nav nav-pills app_main_nav">
+                            <li role="presentation" class="active">
+                                <a href="#tab1" data-toggle="tab">
+                                    <i class="fa fa-comments"></i>
+                                    Comments
+                                </a>
+                            </li>
+                            <li role="presentation">
+                                <a href="#tab2" data-toggle="tab">
+                                    <i class="fa fa-folder-open"></i>
+                                    Files
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                    <br />
+                    <div class="row">
+                        <div class="col-xs-12">
+                            <div class="tab-content">
+                                <div class="tab-pane fade in active" id="tab1">
+                                    <div class="row">
+                                        <div class="col-xs-12">
+                                            <div class="well" style="max-width: 800px;">
+                                                <div class="form-group">
+                                                    <label for="add-comment">Add a comment</label>
+                                                    <textarea id="txt-comment-approval" name="add-comment" class="form-control"></textarea>
+                                                </div>
+                                                <button onclick="addCommentForApproval('@(Model.PaymentApprovalProcess?.Key ?? "")')" class="btn btn-success">Submit</button>
+                                            </div>
+                                            <br />
+                                        </div>
+                                    </div>
+                                    <div id="list-comments-approval">
+                                        @if (Model.PaymentApprovalProcess != null)
+                                        {
+                                            foreach (var post in Model.PaymentApprovalProcess.Posts.OrderByDescending(x => x.StartedDate).Take(pageSize))
+                                            {
+
+                                                <!-- General post -->
+                                                var fullName = HelperClass.GetFullNameOfUser(post.CreatedBy, userId);
+                                                <article id="post-@post.Id" class="activity post">
+                                                    <img style="background-image: url('@api@post.CreatedBy.ProfilePic')" class="activity-avatar" />
+                                                    <div class="activity-detail">
+                                                        <div class="activity-meta">
+                                                            <h4>@fullName</h4>
+                                                            <small>@post.StartedDate.ConvertTimeFromUtc(timeZone).ToString(dateFormat + ", hh:mmtt")</small>
+                                                        </div>
+                                                        <div class="activity-overview media-comment">
+                                                            <p>
+                                                                @Html.Raw(post.Message.Replace(Environment.NewLine, "<br />"))
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    <div class="clearfix"></div>
+                                                </article>
+                                                <!-- END General post -->
+                                            }
+                                        }
+
+                                    </div>
+                                    @if (Model.PaymentApprovalProcess != null && Model.PaymentApprovalProcess.Posts.Count() > pageSize)
+                                    {
+                                        <button id="btnLoadPosts" onclick="LoadMorePosts('@Model.PaymentApprovalProcess.Key', @pageSize,'list-comments-approval')" class="btn btn-info trigger_load">Load older posts</button>
+                                    }
+                                </div>
+
+                                <div class="tab-pane fade" id="tab2">
+                                    <br />
+                                    <a href="javascript:void(0)" class="btn btn-success" id="btnAddFile" data-toggle="modal" data-target="#create-media"><i class="fa fa-upload"></i> &nbsp; Upload a file</a>
+
+                                    <br /><br />
+                                    <div id="list-medias">
+                                        @if (Model.PaymentApprovalProcess != null && Model.PaymentApprovalProcess.SubActivities.Count > 0)
+                                        {
+                                            foreach (var item in Model.PaymentApprovalProcess.SubActivities.OrderByDescending(x => x.Id).Take(pageSize))
+                                            {
+                                                var media = (QbicleMedia)item;
+                                                var createdByName = HelperClass.GetFullNameOfUser(media.StartedBy, userId);
+                                                var createdDate = media.StartedDate.Date == DateTime.UtcNow.Date ? "Today, " + media.StartedDate.ToString("hh:mmtt").ToLower() : media.StartedDate.ToString(dateFormat + " hh:mmtt").ToLower();
+                                                var mediaLastupdate = media.VersionedFiles.Where(e => !e.IsDeleted).OrderByDescending(x => x.UploadedDate).First() ?? null;
+                                                var lastUpdateFile = mediaLastupdate != null ? (mediaLastupdate.UploadedDate.Date == DateTime.UtcNow.Date ? "Today, " + mediaLastupdate.UploadedDate.ToString("hh:mmtt").ToLower() : mediaLastupdate.UploadedDate.ToString(dateFormat + " hh:mmtt").ToLower()) : createdDate;
+                                                //Media post
+                                                <article class="activity media">
+                                                    <img style="background-image: url('@api@media.StartedBy.ProfilePic')" class="activity-avatar" />
+                                                    <div class="activity-detail">
+                                                        <div class="activity-meta">
+                                                            <h4>@createdByName</h4>
+                                                            <small>@createdDate</small>
+                                                            <br class="visible-xs">
+                                                        </div>
+                                                        <div class="activity-overview media">
+                                                            <div class="row">
+                                                                <div class="col-xs-12 col-sm-5 col-md-6 col-lg-5">
+                                                                    <a href="javascript:void(0)" onclick="ShowMediaPage('@media.Key')">
+                                                                        @if (media.FileType.Type == "Image File")
+                                                                        {
+                                                                            <img id="media-@item.Id" class="img-responsive" src='@api@mediaLastupdate.Uri' />
+                                                                        }
+                                                                        else
+                                                                        {
+                                                                            <img src="@media.FileType.IconPath" class="img-responsive">
+                                                                        }
+                                                                    </a>
+                                                                </div>
+                                                                <div class="col-xs-12 col-sm-7 col-md-6 col-lg-7 description">
+                                                                    <h5>@media.Name</h5>
+                                                                    <p>
+                                                                        @media.Description
+                                                                    </p>
+                                                                    <small>@media.FileType.Type | Update @lastUpdateFile</small>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="clearfix"></div>
+                                                </article>
+                                                <!-- END Media post -->
+                                            }
+                                        }
+                                    </div>
+                                    @if (Model.PaymentApprovalProcess != null && Model.PaymentApprovalProcess.SubActivities.Count() > pageSize)
+                                    {
+                                        <button id="btnLoadMedias" onclick="LoadMoreMedias(@Model.PaymentApprovalProcess.Id,@pageSize,'list-medias')" class="btn btn-info trigger_load">Load older medias</button>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+                <!-- END Comments & Files -->
+
+
+            </div>
+
+        </section>
+
+    </div>
+
+</div>
+
+<div id="timeline_review" style="display: none;">
+    <ul class="timeline">
+        @foreach (var date in timelineDate)
+        {
+            var dateStart = date.ConvertTimeFromUtc(timeZone).FormatDateTimeByUser(dateFormat);
+            var dateStr = date.Date == today.Date ? "Today" : dateStart;
+
+            <li class="time-label">
+                <span class="label label-lg label-info">
+                    @dateStr
+                </span>
+            </li>
+            foreach (var tl in timeline.Where(d => d.LogDate.Date == date.Date))
+            {
+                <li>
+                    <div class="person" style="background-image: url('@api@tl.UserAvatar');"></div>
+                    <div class="timeline-item">
+                        <span class="time"><i class="fa fa-clock-o"></i> @tl.Time</span>
+                        <h4 class="timeline-header">@tl.Status</h4>
+                    </div>
+                </li>
+            }
+            <br />
+        }
+    </ul>
+</div>
+<script>
+    $('#payment_content .select2').select2({
+        placeholder: 'Please choose...'
+    });
+</script>

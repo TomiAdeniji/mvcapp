@@ -1,0 +1,426 @@
+﻿@using Qbicles.Models.Qbicles
+@using Qbicles.Models.MyBankMate
+@using Qbicles.Models.Trader
+@using Qbicles.BusinessRules;
+
+@{
+    var countries = (List<Country>)ViewBag.Countries;
+    var banks = (List<Bank>)ViewBag.Banks;
+    var api = (string)ViewBag.DocRetrievalUrl;
+
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+
+    var listDomainBankMateAccounts = (List<TraderCashAccountCustom>)ViewBag.DomainBankMateAccounts;
+    var listExternalBankMateAccounts = (List<TraderCashAccountCustom>)ViewBag.ExternalBankMateAccounts;
+    var listDriverBankMateAccounts = (List<TraderCashAccountCustom>)ViewBag.DriverBankMateAccounts;
+}
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail mdv2-wrapper" style="position: relative;">
+    <!-- Main content -->
+    <section class="mdv2 dash" data-tooltip-color="teal" data-tooltip-delay="300" data-tooltip-animate-function="spin" style="border-top: 1px solid #f1f1f1;">
+        <!-- App bar -->
+        <div class="mdv2-col-app" style="margin-bottom: 0;">
+
+            <div data-spy="affix" class="contained-sidebar">
+
+                <ul class="subapps-nav" role="navigation" data-tooltip-stickto="bottom" style="margin-bottom: 0;">
+                    <li class="active">
+                        <a href="#app-accounts" data-tooltip="Accounts" data-toggle="tab" onclick="manage_options('#options-accounts'); $('.section-detail').hide(); $('.intro-accounts').show(); $('.appnav').hide();">
+                            <i class="fas fa-university"></i>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#app-config" data-tooltip="App config" data-toggle="tab" onclick="manage_options('#options-config'); $('.section-detail').hide(); $('.intro-config').show(); $('.appnav').hide();">
+                            <i class="fas fa-cog"></i>
+                        </a>
+                    </li>
+                </ul>
+                <br /><br />
+                <div class="qbicle-overview">
+
+                    <div class="activity-overview plain company-overview welcome-info" style="flex: none; margin: 0; padding: 20px 20px 25px 20px; text-align: left;">
+
+                        <div class="section-detail intro-accounts">
+                            <h2 style="font-weight: 500;">Accounts</h2>
+                            <p style="color: rgba(0, 0, 0, 0.5);">Manage and track account activity across all of your MyBankMate Accounts.</p>
+                        </div>
+
+                        <div class="section-detail intro-config" style="display: none;">
+                            <h2 style="font-weight: 500;">App Config</h2>
+                            <p style="color: rgba(0, 0, 0, 0.5);">Configure your MyBankMate experience here.</p>
+                        </div>
+                    </div>
+                </div>
+                <div style="padding: 0 20px 20px 20px;">
+                    <!-- Accounts options -->
+                    <div id="options-accounts" class="sidebar-options">
+
+                        <button class="btn btn-success community-button" data-toggle="modal" data-target="#app-mbm-account-add" style="margin-bottom: 30px;">
+                            <i class="fa fa-plus"></i>
+                            &nbsp; Add an Account
+                        </button>
+
+                        <div class="well custom">
+                            <div class="form-group">
+                                <label for="search">Search</label>
+                                <input type="text" name="search" class="form-control">
+                            </div>
+                            <div class="form-group" style="margin: 0;">
+                                <label for="type">Filter</label>
+                                <select name="type" class="form-control select2" style="width: 100%;">
+                                    <option value="0" selected>Show all</option>
+                                    <option value="1">Option 1</option>
+                                    <option value="2">Option 2</option>
+                                    <option value="3">Option 3</option>
+                                </select>
+                            </div>
+                        </div>
+
+                    </div>
+                    <!-- END Accounts options -->
+                    <!-- Config options -->
+                    <div id="options-config" class="sidebar-options" style="display: none;">
+
+                    </div>
+                    <!-- END Config options -->
+
+                </div>
+
+
+
+            </div>
+        </div>
+        <!-- END App bar -->
+        <!-- Main area -->
+        <div class="mdv2-col-dash" style="background: #f5f5f5;">
+            <div class="spacing">
+
+
+
+                <div class="tab-content" style="padding-bottom: 30px;">
+
+
+                    <!-- Accounts -->
+                    <div class="tab-pane fade in active" id="app-accounts">
+
+                        <div class="row">
+                            <div class="col-xs-12 col-lg-6">
+
+                                <h5>BankMate Accounts</h5>
+
+                                <ul class="mbm-acclist" style="margin-bottom: 30px;">
+                                    @foreach (var domainAccountItem in listDomainBankMateAccounts)
+                                    {
+                                        <li>
+                                            <a href="/BankMate/DomainBMAccountDetail?accountId=@domainAccountItem.TraderCashAccountId">
+                                                <div class="accimg" style="background-image: url('@api@domainAccountItem.ImageUri');"></div>
+                                                <div class="accinf">
+                                                    <h5>@(domainAccountItem.Name ?? "")</h5>
+                                                    <p>@(domainAccountItem.Name ?? "")</p>
+                                                </div>
+                                                <div class="accbal text-right">
+                                                    <h3 class="red">@(currencySettings?.CurrencySymbol ?? "")@(domainAccountItem.BalanceAmount.ToDecimalPlace(currencySettings))</h3>
+                                                </div>
+                                            </a>
+                                        </li>
+                                    }
+                                </ul>
+
+                                <h5>External Accounts</h5>
+
+                                <ul class="mbm-acclist" style="margin-bottom: 30px;">
+                                    @foreach (var externalAccountItem in listExternalBankMateAccounts)
+                                    {
+                                        <li>
+                                            <a href="#" data-tooltip="BankMate transactions involving this account can be found in your BankMate Account records above."
+                                               data-tooltip-animate-function="foldin">
+                                                <span class="acclab">Bank</span>
+                                                <div class="accimg" style="background-image: url('@api@externalAccountItem.ImageUri');"></div>
+                                                <div class="accinf">
+                                                    <h5>@(externalAccountItem.Name ?? "")</h5>
+                                                    @{ 
+                                                        var nuban = string.IsNullOrEmpty(externalAccountItem.NUBAN) ? "" : "NUBAN: " + externalAccountItem.NUBAN;
+                                                        var iban = string.IsNullOrEmpty(externalAccountItem.IBAN) ? "" : "IBAN: " + externalAccountItem.IBAN;
+                                                        if (iban != "" && nuban != "")
+                                                        {
+                                                            nuban += " / ";
+                                                        }
+                                                    }
+                                                    <p>@(nuban + iban)</p>
+                                                </div>
+                                            </a>
+                                        </li>
+                                    }
+                                </ul>
+
+                            </div>
+
+                            <div class="col-xs-12 col-lg-6">
+
+                                <h5>Driver accounts</h5>
+
+                                <ul class="mbm-acclist">
+                                    @foreach (var driverAccItem in listDriverBankMateAccounts)
+                                    {
+                                        <li>
+                                            <a href="#">
+                                                <div class="accimg" style="background-image: url('@api@driverAccItem.ImageUri');"></div>
+                                                <div class="accinf">
+                                                    <h5>@(driverAccItem.Name ?? "")</h5>
+                                                    <p>@(driverAccItem.AssociatedDriver?.User?.User?.DisplayUserName ?? "")</p>
+                                                </div>
+                                                <div class="accbal text-right">
+                                                    <h3 class="red">@(currencySettings.CurrencySymbol)@(driverAccItem.BalanceAmount.ToDecimalPlace(currencySettings))</h3>
+                                                </div>
+                                            </a>
+                                        </li>
+                                    }
+                                </ul>
+
+                            </div>
+
+                        </div>
+
+
+                    </div>
+                    <!-- END Accounts -->
+                    <!-- App Config -->
+                    <div class="tab-pane fade" id="app-config">
+
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <ul class="app_subnav admintabs" style="padding-top: 0; margin-top: -20px;">
+                                    <li class="active"><a href="#config-0" data-toggle="tab">Settings</a></li>
+                                    <li><a href="#config-21" data-toggle="tab" id="workgroups2">Workgroups</a></li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <br /><br />
+
+
+
+                        <div class="tab-content">
+
+
+                            <!-- Settings -->
+                            <div class="tab-pane fade in active" id="config-0">
+
+                                <div class="activity-overview plain" style="padding: 25px 25px 10px 25px;">
+                                    <div class="row">
+                                        <div class="col-xs-12 col-sm-6">
+                                            <div class="form-group">
+                                                <label for="source">Source Qbicle</label>
+                                                <select name="source" class="form-control select2" style="width: 100%;">
+                                                    <option value="0" selected>Daily Opening Checklist</option>
+                                                    <option value="1">General Operations</option>
+                                                </select>
+                                                <p class="formhelp below">
+                                                    The source Qbicle is the Qbicle that supports this app. It'll store Resources and be the place where people collaborate
+                                                    on and approve content. It can be managed just like any other Qbicle with all functionality available.
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div class="col-xs-12 col-sm-6">
+                                            <div class="form-group">
+                                                <label for="source">Default Topic</label>
+                                                <select name="source" class="form-control select2" style="width: 100%;">
+                                                    <option value="0" selected>General</option>
+                                                </select>
+                                                <p class="formhelp below">When things like Task Approvals are added to a Qbicle they're assigned Topics for ease-of-access. You can change the Topic for specific items by using the Topic Management portion of your source Qbicle once they're created.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+                            <!-- END Settings -->
+                            <!-- Workgroups -->
+                            <div class="tab-pane fade" id="config-21">
+
+                                <div class="activity-overview plain" style="padding: 25px 25px 10px 25px;">
+                                    <div class="row">
+                                        <div class="col-xs-12 col-sm-4">
+                                            <div class="form-group">
+                                                <label for="search">Search</label>
+                                                <input type="text" name="search" class="form-control">
+                                            </div>
+                                        </div>
+                                        <div class="col-xs-12 col-sm-4 col-lg-3">
+                                            <div class="form-group">
+                                                <label for="search">Filter by type</label>
+                                                <select name="group" class="form-control select2" style="width: 100%;">
+                                                    <option value="0">Show all</option>
+                                                    <option value="0">Tasks</option>
+                                                    <option value="1">Team</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="col-xs-12 col-sm-4 col-lg-5">
+                                            <div class="form-group">
+                                                <label>Options</label><br />
+                                                <a href="#app-operator-workgroup-add" data-toggle="modal" class="btn btn-success"><i class="fa fa-plus"></i> &nbsp; New Workgroup</a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <br /><br />
+
+                                <table class="table-hover datatable table-striped" style="width: 100%; background: #fff;">
+                                    <thead>
+                                        <tr>
+                                            <th data-priority="1">Name</th>
+                                            <th data-priority="3">Creator</th>
+                                            <th data-priority="3">Created</th>
+                                            <th data-priority="2">Process</th>
+                                            <th data-priority="2">Qbicle</th>
+                                            <th data-priority="2">Members</th>
+                                            <th data-priority="1">Options</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>Accounts handlers</td>
+                                            <td>Graham Deuchar</td>
+                                            <td>05/11/2020</td>
+                                            <td>
+                                                <ul>
+                                                    <li>Create account</li>
+                                                    <li>Add funds</li>
+                                                    <li>Withdraw funds</li>
+                                                </ul>
+                                            </td>
+                                            <td><a href="dashboardv2.php">Daily Opening Checklist</a></td>
+                                            <td>8</td>
+                                            <td>
+                                                <button class="btn btn-warning" data-toggle="modal" data-target="#app-trader-group-edit"><i class="fa fa-pencil"></i></button>
+                                                <button class="btn btn-danger"><i class="fa fa-trash"></i></button>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <!-- END Workgroups -->
+                        </div>
+                    </div>
+                    <!-- END Team -->
+                </div>
+            </div>
+        </div>
+    </section>
+    <!-- ./content -->
+
+</div>
+<!-- /.content-wrapper -->
+<div class="modal fade left" id="app-mbm-account-add" role="dialog" aria-labelledby="app-mbm-account-add">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Add an account to BankMate</h5>
+            </div>
+            <div class="modal-body">
+                <form id="frmaddbankmate" method="post" action="~/Bankmate/SaveBankmate">
+                    <div class="well custom" style="padding-bottom: 5px;">
+
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <div class="avatarpickermini">
+                                    <div class="form-group">
+                                        <label for="bankId">Bank <span class="red">*</span></label>
+                                        <select name="bankId" class="form-control select2avatar-delivery" style="width: 100%;">
+                                            @foreach (var item in banks)
+                                            {
+                                                <option data-iconurl="@(!string.IsNullOrEmpty(item.LogoUri)? (api+item.LogoUri):"")" value="@item.Id">@item.Name</option>
+                                            }
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label for="address">Bank address <span class="red">*</span></label>
+                                    <textarea name="address" class="form-control" style="max-width: 100%; height: 80px;"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label for="num">Country <span class="red">*</span></label>
+                                    <select name="countryCode" class="form-control select2" style="width: 100%;">
+                                        @foreach (var c in countries)
+                                        {
+                                            if (c.CommonName == "Nigeria")
+                                            {
+                                                <option value="@c.CommonName" selected>@c.CommonName</option>
+                                            }
+                                            else
+                                            {
+                                                <option value="@c.CommonName">@c.CommonName</option>
+                                            }
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label for="phone">Phone number <span class="red">*</span></label>
+                                    <input type="text" name="phone" class="form-control">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label for="accountName">Account name <span class="red">*</span></label>
+                                    <input type="text" name="accountName" class="form-control">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label for="IBAN">IBAN</label>
+                                    <input type="text" name="IBAN" class="form-control">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label for="NUBAN">NUBAN</label>
+                                    <input type="number" name="NUBAN" class="form-control">
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+
+
+                    <button type="button" class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">Confirm</button>
+                </form>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/mybankmate.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/mybankmate.min.js"></script>
+    }
+}

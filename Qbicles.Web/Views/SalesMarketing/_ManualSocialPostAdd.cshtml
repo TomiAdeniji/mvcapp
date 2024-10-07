@@ -1,0 +1,193 @@
+@using Qbicles.Models.SalesMkt;
+@model SocialCampaign
+<div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+            <h5 class="modal-title">Add a Manual Social Media Post</h5>
+        </div>
+        <div class="modal-body">
+            <form id="frm_marketing-social-post" enctype="multipart/form-data">
+                <div class="row">
+                    <div class="col-xs-12">
+                        <ul class="app_subnav admintabs" style="padding-top: 0;">
+                            <li class="active"><a href="#social-1" id="li-social-1" data-toggle="tab">Create your post</a></li>
+                            <li><a href="#social-reminder" id="li-social-reminder" data-toggle="tab" aria-expanded="true">Set Reminder</a></li>
+                            <li><a href="#social-2" id="li-social-2" onclick="loadManualPreview()" data-toggle="tab">Preview</a></li>
+                        </ul>
+                    </div>
+                </div>
+                <br>
+                <div class="tab-content">
+                    <!-- Create your post -->
+                    <div class="tab-pane fade in active" id="social-1">
+
+                        <div class="well custom">
+
+                            <div class="row">
+                                <div class="col-xs-12">
+                                    <div class="form-group">
+                                        <label for="title">Give this post a title <span class="red">*</span></label>
+                                        <input type="text" name="Title" class="form-control">
+                                        <input type="hidden" value="@Model.Id" name="SocialCampaignId" id="SocialCampaignId" />
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-xs-12">
+                                    <div class="form-group">
+                                        <label for="campaignatts">Target networks</label>
+                                        <span class="multiselect-native-select">
+                                            <select name="networktype" class="checkmulti" multiple="" style="display:none">
+                                                @foreach (var item in Model.TargetNetworks)
+                                                {
+                                                    if (item.AllowedCampaignType == CampaignType.Manual || item.AllowedCampaignType == CampaignType.Both)
+                                                    {
+                                                        <option value="@item.Id">@(item.Name == "FaceBook" ? "Facebook" : item.Name)</option>
+                                                    }
+                                                }
+                                            </select>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row" style="display:none">
+                                <select name="SharingAccount">
+                                    <option value="0" selected></option>
+                                </select>
+                            </div>
+                            <div class="row">
+                                <div class="col-xs-12">
+                                    <div class="form-group">
+                                        <label for="socialtext">What do you want to say? <span class="red">*</span></label>
+                                        <textarea name="Content" class="form-control socialpost" style="height: 90px;" id="textfield"></textarea>
+                                        <div class="socialconstraints"><i class="fa fa-twitter aqua"></i> &nbsp; <span id="charNum">0/460</span></div>
+                                        <div class="socialconstraints"><i class="fa fa-instagram default"></i> &nbsp; <span id="charNum2">0/2,200</span></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <br>
+                            <div class="form-group" style="margin: 0;">
+                                <label for="media">Attach an image or video (optional)</label>
+                                <select name="attachtype" class="form-control select2 select2-hidden-accessible" style="width: 100%;" onchange="AttachChange(this,true)" tabindex="-1" aria-hidden="true">
+                                    <option value=""></option>
+                                    <option value="1">Choose an existing Campaign Resource</option>
+                                    <option value="2">Upload a new image or video</option>
+                                </select>
+                                <input type="hidden" value="0" name="ImageOrVideo" id="ImageOrVideo" />
+                                <input type="hidden" id="sm-social-post-feature-image-object-key" name="mediaSocialPostFeatureObjectKey" />
+                                <input type="hidden" id="sm-social-post-feature-image-object-name" name="mediaSocialPostFeatureObjectName" />
+                                <input type="hidden" id="sm-social-post-feature-image-object-size" name="mediaSocialPostFeatureObjectSize" />
+                            </div>
+                            <div class="uploadnew" style="display: none; margin-top: 15px;">
+                                <div class="form-group">
+                                    <label for="featuredimg">Choose an image or video to upload</label>
+                                    <input id="sm-social-post-feature-upload-media" type="file" name="featuredimg" class="form-control previewimgpost" data-target=".newpreview">
+                                </div>
+                                <img class="newpreview" src="" alt="Your attachment" style="display: none; width: 100%; height: auto;">
+                            </div>
+                            <div class="campaign-resource-picker" style="display: none; padding: 25px 0 0 0;">
+                                <div id="Choose-campaign-resource" class="flex-grid-half-lg from-community c1" style="width: 100%;">
+                                </div>
+                            </div>
+                        </div>
+                        <br>
+                        <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                        @*<a href="#social-2" data-toggle="tab" onclick="loadPreview()" class="btn btn-success btnNext">Preview &nbsp; <i class="fa fa-angle-right"></i></a>*@
+                        <a href="#social-reminder" onclick="$('#li-social-reminder').trigger('click')" class="btn btn-success btnNext">Next &nbsp; <i class="fa fa-angle-right"></i></a>
+
+                    </div>
+                    <!-- END Create your post -->
+                    <!-- Reminder -->
+                    <div class="tab-pane fade" id="social-reminder">
+
+                        <div class="activity-overview generic help-text animated bounce">
+                            <i class="fa fa-info-circle"></i>
+                            <p>
+                                Optionally include a Reminder at a date and time of your choosing. A Reminder will email you and send you a Qbicles notification when you desire,
+                                and is useful for things like remembering to post to other networks that aren't included in your Queue.
+                            </p>
+                        </div>
+
+                        <div class="well custom">
+                            <input type="hidden" id="isReminder" name="isReminder" value="false">
+                            <div class="checkbox toggle" style="margin: 0;">
+                                <label>
+                                    <input data-toggle="toggle" data-onstyle="success" name="reminderCheckbox" type="checkbox" onchange="$('.setreminder').toggle(); $('#isReminder').val($('#isReminder').val() === 'true' ? 'false' : 'true');">
+                                    Include a Reminder
+                                </label>
+                            </div>
+
+
+                            <div class="row setreminder" style="margin-top: 30px; display: none;">
+                                <div class="col-xs-12 col-sm-6">
+                                    <label for="remindertime">When do you want to receive this Reminder?</label>
+                                    <div class="input-group" style="margin-bottom: 15px;">
+                                        <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                                        <input type="text" name="reminderDate" class="form-control singledateandtime">
+                                    </div>
+                                </div>
+                                <div class="col-xs-12">
+                                    <div class="form-group" style="margin: 0;">
+                                        <label for="reminder">Reminder content</label>
+                                        <textarea name="Reminder.Content" class="form-control" style="height: 80px;"></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+
+                        <br />
+                        <a href="#social-1" onclick="$('#li-social-1').trigger('click')" class="btn btn-warning btnPrevious"><i class="fa fa-angle-left"></i> &nbsp; Previous</a>
+                        <a href="#social-2" onclick="loadManualPreview(); $('#li-social-2').trigger('click')" data-toggle="tab" class="btn btn-success btnNext">Preview &nbsp; <i class="fa fa-angle-right"></i></a>
+
+                    </div>
+                    <!-- END Reminder -->
+                    <!-- Post preview -->
+                    <div class="tab-pane fade" id="social-2">
+                        <div class="social-post" style="margin: 0 0 30px 0; border: 1px solid #e1e1e1; max-width: 800px;">
+                            <div class="social-heading">
+                                <div class="social-avatar" style="background-image: url('@Url.Content("/Content/DesignStyle/img/icon_socialpost_manual.png")'); border-radius: 0;"></div>
+                                <div class="social-content">
+                                    <small><strong style="color: #14171a;">Your Name</strong><br>@@yourpage</small>
+                                </div>
+                            </div>
+                            <div id="the-post" class="thepost">
+                                <p class="preview-content"></p>
+                            </div>
+
+                        </div>
+                        <a href="#social-reminder" onclick="$('#li-social-reminder').trigger('click')" class="btn btn-warning btnPrevious"><i class="fa fa-angle-left"></i> &nbsp; Previous</a>
+                        <a class="btn btn-success" onclick="$('.inreview').show(); $('.inreviewitem').show(); ProcessMaualSocialPost('app-marketing-social-post-add','frm_marketing-social-post');">Confirm</a>
+                    </div>
+                    <!-- END Post preview -->
+                </div>
+            </form>
+        </div>
+    </div><!-- /.modal-content -->
+</div><!-- /.modal-dialog -->
+
+<script>
+    $(document).ready(function () {
+        $('#textfield').keyup(function () {
+            var maxtw = 460;
+            var maxin = 2200;
+
+            var len = $(this).val().length;
+
+            if (len >= maxtw) {
+                $('#charNum').text(' Twitter limit exceeded');
+            } else {
+                //var char = max - len;
+                $('#charNum').text(len + '/' + maxtw);
+            }
+
+            if (len >= maxin) {
+                $('#charNum2').text(' Instagram limit exceeded');
+            } else {
+                //var char = max - len;
+                $('#charNum2').text(len + '/' + maxin);
+            }
+        });
+    })
+</script>

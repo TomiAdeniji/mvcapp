@@ -1,0 +1,394 @@
+﻿@using Qbicles.Models;
+@using Qbicles.BusinessRules;
+@{
+    var domainPlan = (DomainPlan)ViewBag.DomainPlan;
+    var currentDomain = (QbicleDomain)ViewBag.CurrentDomain;
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var currencySettings = (CurrencySetting)ViewBag.CurrencySettings;
+    var isFreePlan = domainPlan == null || domainPlan.Level == null
+        || domainPlan.Level.Level == BusinessDomainLevelEnum.Free || domainPlan.Level.Level == BusinessDomainLevelEnum.Existing;
+    var currentSlotNumber = isFreePlan ? 0 : (domainPlan.NumberOfExtraUsers + domainPlan.Level.NumberOfUsers);
+    DateTime? nextBillingDate = (DateTime?)ViewBag.NextBillingDate ?? null;
+    var lstBusinessDomainLevels = (List<BusinessDomainLevel>)ViewBag.LstBusinessDomainLevel ?? new List<BusinessDomainLevel>();
+
+    var hasError = ViewBag.HasError != null ? (bool)ViewBag.HasError : false;
+    var errorMessage = (string)ViewBag.ErrorMessage ?? "";
+    var currentDomainUserNumber = currentDomain.Users.Count();
+}
+
+
+<input type="hidden" value="@(domainPlan.Level.NumberOfUsers)" id="current-level-default-slot-number" />
+<input type="hidden" value="@(domainPlan.Level.CostPerAdditionalUser)" id="current-level-cost-per-extra-user" />
+<input type="hidden" value="@(domainPlan.Level.Cost)" id="current-level-cost" />
+<input type="hidden" value="@(domainPlan.Level.Currency)" id="current-level-currency-symbol" />
+<input type="hidden" value="@currentDomainUserNumber" id="current-domain-user-number" />
+
+<!-- Content wrapper -->
+<div class="content-wrapper qbicle-detail" style="background: #f4f6f9; padding-top: 85px;">
+
+    <!-- Main content -->
+    <section class="content nopad profilev2">
+
+        <div class="container-lg">
+
+            <div class="row">
+                <div class="col-xs-12">
+
+                    <div class="activity-overview plain rounded businesscard" style="padding: 20px 30px;">
+
+                        <input type="file" class="hidden" id="newavatar">
+                        <a href="#" style="display: block; text-align: center; margin: 0 auto;">
+                            <div class="business-logo" style="position: relative; background-image: url('@api@(currentDomain.LogoUri)');">
+                            </div>
+                        </a>
+
+
+                        <div class="business-info">
+
+                            <h1>@(currentDomain.Name)</h1>
+                            <p class="summ">Manage your Domain subscription</p>
+
+                        </div>
+
+
+                        <div class="business-options">
+
+                        </div>
+
+                    </div>
+
+                </div>
+            </div>
+
+
+
+
+
+
+            <div class="row">
+                <div class="col-xs-12">
+
+                    <ul class="nav nav-pills traderv2" style="padding: 15px 0 30px 0;">
+                        <li>
+                            <a href="/Administration/AdminPermissions"><i class="fa fa-angle-left"></i> &nbsp; Domain admin</a>
+                        </li>
+                        <li class="active">
+                            <a href="#sub-plan" data-toggle="tab">Your plan</a>
+                        </li>
+                        <li class="@(isFreePlan ? "hidden" : "")">
+                            <a href="#sub-slots" data-toggle="tab" id="slots">Additional user slots</a>
+                        </li>
+                    </ul>
+
+
+                    <br />
+                    <a id="topjump"></a>
+
+
+                    <div class="tab-content">
+
+
+                        <!-- Plan -->
+                        <div class="tab-pane fade in active" id="sub-plan">
+
+
+                            <div class="activity-overview plain rounded" style="padding-bottom: 20px;">
+                                <div class="titlezone">
+                                    <h5>Your subscription plan</h5>
+                                </div>
+
+
+                                <table class="table table-hover table-borderless table-striped trestyle valignm" style="margin: 0; padding: 0;">
+                                    <thead>
+                                        <tr>
+                                            <th>Item</th>
+                                            <th>Quantity</th>
+                                            <th>Monthly cost</th>
+                                            <th>&nbsp;</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>@(domainPlan.Level == null ? "Existing business domain" : domainPlan.Level.Name)</td>
+                                            <td>1</td>
+                                            <td>@(domainPlan.Level == null ? "0" : $"{domainPlan.Level.Cost.ToDecimalPlace(currencySettings)}{domainPlan.Level.Currency}")</td>
+                                            <td><a href="#jump" class="btn btn-warning"><i class="fa fa-pencil"></i></a></td>
+                                        </tr>
+
+                                        @if (!isFreePlan)
+                                        {
+                                            <tr>
+                                                <td>Additional user slot</td>
+                                                <td id="extra-user-number-row">@(isFreePlan ? 0 : domainPlan.NumberOfExtraUsers)</td>
+                                                @{
+                                                    var extraSlotCost = isFreePlan ? 0 : (domainPlan.NumberOfExtraUsers * domainPlan.Level.CostPerAdditionalUser);
+                                                }
+                                                <td id="extra-slot-money-row">@(isFreePlan ? "0" : $"{extraSlotCost.ToDecimalPlace(currencySettings)}{domainPlan.Level.Currency}")</td>
+                                                <td></td>
+                                            </tr>
+                                        }
+
+                                        <tr class="hidden">
+                                            <td>Sales &amp; Marketing Bolt-on</td>
+                                            <td>--</td>
+                                            <td>--</td>
+                                            <td></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+
+                                <br /><br />
+                                <div class="well custom rounded" style="max-width: 450px; margin: 0;">
+                                    <table class="table table-condensed table-borderless trestyle" style="margin: 0; padding: 0;">
+                                        <tbody>
+                                            <tr>
+                                                <td><strong>Next billing date</strong></td>
+                                                <td>@(nextBillingDate == null ? "--" : ((DateTime)nextBillingDate).DatetimeToOrdinal())</td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>Amount due</strong></td>
+                                                <td id="total-cost-row">@(domainPlan == null ? "0" : $"{domainPlan.ActualCost.ToDecimalPlace(currencySettings)}{domainPlan.Level.Currency}" )</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <br />
+
+
+
+
+                            <h1>Available plans</h1>
+                            <a id="jump"></a>
+                            <br />
+
+                            <div class="wizard-form bness" style="margin: 0; padding: 0; width: 100%; max-width: none;">
+
+                                <div class="row pricing addbusiness" id="planselect" style="display: block;">
+                                    @foreach (var planTypeItem in lstBusinessDomainLevels)
+                                    {
+                                        <div class="col-xs-12 col-md-4 @(planTypeItem.IsVisible ? "" : "hidden")">
+
+                                            <div class="card @(planTypeItem.Level == domainPlan.Level.Level ? "currentplan" : "")">
+                                                <div class="card-body">
+                                                    <h5 class="card-title text-muted text-uppercase text-center">@(planTypeItem.Name)</h5>
+                                                    <h6 class="card-price text-center">@(planTypeItem.Level == BusinessDomainLevelEnum.Free ? "Free" : $"{((planTypeItem.Cost ?? 0).ToDecimalPlace(0))}{(planTypeItem.Currency)} monthly")</h6>
+
+                                                    <br />
+                                                    @if (planTypeItem.Level < domainPlan.Level.Level)
+                                                    {
+                                                        <button class="btn btn-info community-button" onclick="validateOnChangingDomainPlanLevel(@planTypeItem.Id)" data-toggle="modal" data-target="#domchange-low" style="margin-bottom: 10px;">Downgrade</button>
+                                                    }
+                                                    else if (planTypeItem.Level == domainPlan.Level.Level)
+                                                    {
+                                                        <button class="btn btn-info community-button" data-toggle="modal" data-target="#downgrade-slots" style="margin-bottom: 10px;">Current plan @(nextBillingDate == null ? "" : $"- expires {(((DateTime)nextBillingDate).ToString("dd/MM/yy"))}")</button>
+                                                    }
+                                                    else if (planTypeItem.Level > domainPlan.Level.Level)
+                                                    {
+                                                        <button class="btn btn-info community-button" onclick="validateOnChangingDomainPlanLevel(@planTypeItem.Id)" data-toggle="modal" data-target="#domchange-entry" style="margin-bottom: 10px;">Upgrade</button>
+                                                    }
+
+                                                    <hr>
+                                                    <br>
+
+                                                    <ul class="fa-ul">
+                                                        <li>@planTypeItem.Description</li>
+                                                    </ul>
+                                                </div>
+                                            </div>
+
+                                        </div>
+                                    }
+                                </div>
+
+                            </div>
+                        </div>
+                        <!-- END Plan -->
+                        <!-- Slots -->
+                        <div class="tab-pane fade" id="sub-slots">
+
+                            <div class="wizard-form bness" style="margin: 0; padding: 0; width: 100%; max-width: none;">
+
+                                <div class="row pricing addbusiness" id="planselect" style="display: block;">
+                                    <div class="col-xs-12 col-md-4">
+
+                                        <div class="card">
+                                            <div class="card-body">
+                                                <h5 class="card-title text-muted text-uppercase text-center">Current user slots</h5>
+                                                <h6 class="card-price text-center" id="current-slot-number">@(currentDomainUserNumber)/@(currentSlotNumber) used</h6>
+
+                                                <hr />
+                                                <br />
+
+                                                <ul class="fa-ul">
+                                                    <li><span class="fa-li"><i class="fas fa-check green" aria-hidden="true"></i></span> @(currentDomainUserNumber > domainPlan.Level.NumberOfUsers ? domainPlan.Level.NumberOfUsers.ToString() : currentDomainUserNumber.ToString()) included with <strong>@(isFreePlan ? "Free" : domainPlan.Level.Level.ToString())</strong> plan</li>
+                                                    @{ 
+                                                        var additionalSlotUsed = currentDomainUserNumber > domainPlan.Level.NumberOfUsers ? currentDomainUserNumber - domainPlan.Level.NumberOfUsers : 0;
+                                                    }
+                                                    <li id="extra-user-number"><span class="fa-li"><i class="@(additionalSlotUsed > 0 ? "fas fa-check green" : "fas fa-remove red")" aria-hidden="true"></i></span> @(additionalSlotUsed) additional slots added</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+
+                                    </div>
+                                    <div class="col-xs-12 col-md-8">
+
+                                        <div class="activity-overview plain rounded">
+                                            <div class="titlezone">
+                                                <h5>Manage your user slots</h5>
+                                            </div>
+
+                                            <div class="row">
+                                                <div class="col-xs-12 col-sm-6">
+                                                    <div class="form-group">
+                                                        <label>Current user limit</label>
+                                                        <input type="number" value="@(isFreePlan ? "--" : domainPlan.Level.NumberOfUsers.ToString())" class="form-control" disabled="">
+                                                        <p class="formhelp below">Your current user limit is controlled by your chosen plan. You may optionally increase this at additional cost per user, or alternatively review other plans.</p>
+                                                    </div>
+                                                </div>
+                                                <div class="col-xs-12 col-sm-6">
+                                                    <div class="form-group">
+                                                        <label>User slots required</label>
+                                                        <input type="number" id="slot-required-number" class="form-control 
+                                                               @(isFreePlan ? "disabled" : "")" 
+                                                               value="@(currentSlotNumber)" 
+                                                               onchange="$('#newslots').removeAttr('disabled');" 
+                                                               min="@(isFreePlan ? 1 : domainPlan.Level.NumberOfUsers)">
+                                                        <p class="formhelp below">
+                                                            Please note each additional user will incur a fee of
+                                                            <strong>@(isFreePlan ? "--" : $"{(domainPlan.Level.CostPerAdditionalUser ?? 0).ToDecimalPlace(0)}{domainPlan.Level.Currency}")</strong> per month. We'll confirm the total cost prior to you having to make any payments.
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+
+                                            <br>
+
+                                            <button class="btn community-button btn-success w-auto" disabled id="newslots" onclick="updateDomainTotalSlotNumber()">Apply change</button>
+                                        </div>
+
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div> <!-- END Slots -->
+
+                    </div>
+
+                </div>
+
+
+
+
+            </div>
+
+            <br /><br />
+
+        </div>
+
+    </section>
+    <!-- ./content -->
+
+</div>
+<!-- /.content-wrapper -->
+<!--Modals-->
+<div class="modal fade" id="downgrade-slots" role="dialog" aria-labelledby="downgrade-slots"></div> <!--Modal to show error message-->
+<div class="modal fade left" id="domchange-entry" role="dialog" aria-labelledby="domchange-entry"></div> <!--Modal to show confirmation message-->
+
+<div class="modal fade" id="packagesuccess" role="dialog" aria-labelledby="packagesuccess"> <!--Modal on success domain plan level updating-->
+    <div class="modal-dialog" role="document">
+        <div class="modal-content" style="background: transparent; box-shadow: none;">
+            <div class="modal-body">
+
+                <div class="alert alert-qb text-center animated fadeIn" style="padding: 50px !important; margin: 0 auto;">
+                    <img src="~/Content/DesignStyle/img/icon_approval.png" style="width: 140px; height: auto; margin-bottom: 30px;">
+                    <h4 style="margin-bottom: 20px;">You're all set</h4>
+                    <p style="max-width: 80%; margin: 0 auto !important;">
+                        Your new Domain plan is active, and you'll be charged the new rate
+                        on your next monthly bill.
+                    </p>
+
+                    <br /><br />
+                    <button class="btn btn-success community-button" onclick="window.location='/Administration/UpdateSubscriptionDetail'">Done</button>
+                </div>
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+
+<!--END Modals-->
+
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/administration.admin.app.js"></script>
+
+    }
+    else
+    {
+        <script src="~/Scripts/dev/administration.admin.app.js"></script>
+    }
+}
+
+
+<script>
+    $(document).ready(function () {
+        if ("@hasError" == 'True') {
+            cleanBookNotification.error("@errorMessage", "Qbicles");
+        }
+    })
+
+    $('.owl-carousel').owlCarousel({
+        loop: false,
+        dots: true,
+        nav: false,
+        margin: 10,
+        responsiveClass: true,
+        responsive: {
+            0: {
+                items: 1
+            },
+            600: {
+                items: 3
+            }
+        }
+    });
+
+    $('.gallery0').fancybox({
+        protect: true,
+        infobar: false,
+        toolbar: false
+    });
+
+
+    $('.toggle-pw').bind('click', function (e) {
+        e.preventDefault();
+
+        var type = $('#password').attr('type');
+
+        if (type == "password") {
+            $('#password').prop('type', 'text');
+        } else {
+            $('#password').prop('type', 'password');
+        }
+
+        $('i', this).toggleClass('fa-eye').toggleClass('fa-eye-slash');
+    });
+
+
+    $('.myinterests .col a').bind('click', function (e) {
+        $('#interests').removeAttr('disabled');
+        e.preventDefault();
+        $(this).toggleClass('active');
+    });
+
+    function changeavatar(target) {
+        setTimeout(function () {
+            $(target).css('background-image', "url('dist/img/logos/rhapsody.png')");
+        }, 3000);
+    }
+
+</script>

@@ -1,0 +1,57 @@
+﻿@using Qbicles.BusinessRules;
+@using Qbicles.Models;
+@model List<QbiclePost>
+@{
+    var currentUserId = (string)ViewBag.CurrentUserId;
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var enOfOlder = (bool)ViewBag.EndOfOlder;
+    var dateFormat = (string)ViewBag.CurrentDateFormat;
+
+    var isDiscussionOrder = (bool)ViewBag.IsDiscussionOrder;
+}
+
+
+@{ if (isDiscussionOrder)
+    {
+        var createdByImg = "";
+        foreach (var item in Model)
+        {
+            var createdBy = item.GetCommentAvatar(ref createdByImg, currentUserId);
+            <div class="activity-overview post-mini animated fadeInUp newpost">
+                <p>@Html.Raw(item.Message.Replace(Environment.NewLine, "<br/>"))</p>
+
+                <a href="#">
+                    <div class="activity-avatar" style="background-image: url('@createdByImg');"></div>
+                    <h5>@createdBy, @item.StartedDate.GetTimeRelative()</h5>
+                </a>
+            </div>
+        }
+    }
+    else
+    {
+        foreach (var post in Model)
+        {
+            <article id="post-@post.Id" class="activity post reprisedcomments">
+                <div class="activity-avatar" style="background-image: url('@api@post.CreatedBy.ProfilePic');"></div>
+                <div class="activity-detail">
+                    <div class="activity-meta">
+                        <h4>@(post.CreatedBy.GetFullName(currentUserId))</h4>
+                        <small>@post.StartedDate.ToString(dateFormat + ", hh:mmtt")</small>
+                    </div>
+                    <div class="activity-overview media-comment">
+                        <p>@Html.Raw(post.Message)</p>
+                    </div>
+                </div>
+                <div class="clearfix"></div>
+            </article>
+        }
+    }
+}
+
+
+<script>
+    jQuery(function ($) {
+        if ('@enOfOlder'==='True')
+            $('#btnLoadPosts').hide();
+    });
+</script>

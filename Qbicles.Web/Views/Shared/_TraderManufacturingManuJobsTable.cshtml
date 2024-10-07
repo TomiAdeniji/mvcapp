@@ -1,0 +1,182 @@
+﻿@using Qbicles.Models.Manufacturing;
+@using Qbicles.Models.Trader
+@using Qbicles.BusinessRules
+@model List<ManuJob>
+@{
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var wGroups = (List<string>)ViewBag.WorkGroups;
+    var wGroupFilter = (List<WorkGroup>)ViewBag.ManuWorkGroupFilter;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+}
+<style>
+    .dataTables_filter {
+        display: none;
+    }
+</style>
+<div class="well custom" style="padding-bottom: 5px;">
+
+    <div class="row">
+        <div class="col-xs-12 col-sm-6 col-lg-4">
+            <div class="form-group">
+                <label for="search_dt">Search items</label>
+                <input type="text" name="search_dt" id="search_assembledlist" onkeyup="assembledlistSearch()" class="form-control" placeholder="Search for...">
+            </div>
+        </div>
+        <div class="col-xs-12 col-sm-6 col-lg-3">
+            <div class="form-group">
+                <label for="group">Filter groups</label>
+                <select id="subfilter-group-assembledlist" onchange="assembledlistSearch()" class="form-control select2" style="width: 100%;">
+                    <option value="" selected>Show all groups</option>
+                    @foreach (var item in wGroupFilter)
+                    {
+                        <option value="@item.Name">@item.Name</option>
+                    }
+                </select>
+            </div>
+        </div>
+        <div class="col-xs-12 col-sm-6 col-lg-5">
+            <label>Options</label>
+            <br />
+            <div class="form-group">
+                @if (wGroups.Count > 0)
+                {
+                    <button class="btn btn-success" data-toggle="modal" data-target="#app-trader-inventory-manufacturing" onclick="addEditManufacturing()"><i class="fa fa-hammer"></i> &nbsp; Assemble an item</button>
+                }
+                <div class="btn-group options">
+                    <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        <i class="fa fa-sliders"></i> &nbsp; Manage display
+                    </button>
+                    <ul class="dropdown-menu primary manage-columns">
+                        <li><label><input type="checkbox" data-column="1" checked> Item</label></li>
+                        <li><label><input type="checkbox" data-column="2" checked> Group</label></li>
+                        <li><label><input type="checkbox" data-column="3" checked> Description</label></li>
+                        <li><label><input type="checkbox" data-column="4" checked> Unit</label></li>
+                        <li><label><input type="checkbox" data-column="5" checked> Quantity</label></li>
+                        <li><label><input type="checkbox" data-column="6" checked> Status</label></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<br />
+<div id="manujob-table">
+    <table class="datatable table-striped table-hover" id="community-assembledlist" style="width: 100%;">
+        <thead>
+            <tr>
+                <th data-priority="3" style="width: 90px;" data-orderable="false"></th>
+                <th data-priority="1">Item</th>
+                <th data-priority="3">Reference</th>
+                <th data-priority="3">Group</th>
+                <th data-priority="3">Description</th>
+                <th data-priority="2">Unit</th>
+                <th data-priority="2">Quantity</th>
+                <th data-priority="1">Status</th>
+                <th data-priority="1" data-orderable="false">Options</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model)
+            {
+                <tr>
+                    <td>
+                        <div class="table-avatar" style="background-image: url('@(api+item.Product.ImageUri)&size=T');"></div>
+                    </td>
+                    <td><a href="#">@item.Product.Name</a></td>
+                    <td>@(item.Reference != null? item.Reference.FullRef : "")</td>
+                    <td>@item.WorkGroup.Name</td>
+                    <td>@Html.Raw(item.Product.Description.TruncateForDisplay(100))</td>
+                    <td>@item.AssemblyUnit.Name</td>
+                    <td>@item.Quantity.ToDecimalPlace(currencySettings)</td>
+                    <td>
+                        @switch (item.Status)
+                        {
+                            case ManuJobStatus.Approved:
+                                <span class="label label-lg label-success">Approved</span>
+                                break;
+                            case ManuJobStatus.Denied:
+                                <span class="label label-lg label-danger">Denied</span>
+                                break;
+                            case ManuJobStatus.Discarded:
+                                <span class="label label-lg label-danger">Discarded</span>
+                                break;
+                            case ManuJobStatus.Pending:
+                                <span class="label label-lg label-warning">Pending</span>
+                                break;
+                            case ManuJobStatus.Reviewed:
+                                <span class="label label-lg label-info">Reviewed</span>
+                                break;
+                        }
+                    </td>
+                    <td><button class="btn btn-primary" data-toggle="modal" onclick="manuJobViewer(@item.Id)" data-target="#app-trader-inventory-recipe-view"><i class="fa fa-eye"></i> &nbsp; Details</button></td>
+                </tr>
+            }
+
+        </tbody>
+    </table>
+</div>
+
+
+<script>
+    $('.manage-columns input[type="checkbox"]').on('change', function () {
+        var table = $('#community-assembledlist').DataTable();
+        var column = table.column($(this).attr('data-column'));
+        column.visible(!column.visible());
+    });
+
+    //$("#subfilter-group-assembledlist").on("change",
+    //    function () {
+    //        var group = $(this).val();
+    //        $("#community-assembledlist").DataTable().search(group, true, false, false).draw();
+    //    });
+
+    //var oTable = $("#community-assembledlist");
+    //$("#search_assembledlist").keyup(function () {
+    //    $("#community-assembledlist").DataTable().search($(this).val()).draw();
+    //});
+    //$("#community-assembledlist").DataTable().search($('#search_assembledlist').val()).draw();
+
+    $('#subfilter-group-assembledlist').select2();
+    //search multi columns
+    var $tableAssembledlist;
+    $(document).ready(function () {
+        $tableAssembledlist = $('#community-assembledlist').DataTable();
+        // Override default search function
+        $.fn.dataTable.ext.search.push(function (settings, searchData, index, rowData, counter) {
+            if (settings.nTable.id !== 'community-assembledlist') {
+                // Return true to include row in other DataTable instances
+                return true;
+            }
+            var searchKey = $('#search_assembledlist').val().toLowerCase();
+            var searchCagegory = $('#subfilter-group-assembledlist').val().toLowerCase();
+            
+            var col1 = searchData[1].toLowerCase();
+            var col2 = searchData[2].toLowerCase();
+            var col3 = searchData[3].toLowerCase();
+            var col4 = searchData[4].toLowerCase();
+            var col5 = searchData[5].toLowerCase();
+            var col6 = searchData[6].toLowerCase();
+            var col7 = searchData[7].toLowerCase();
+
+            // Apply filtering conditions with AND operator
+            var match1 = col1.includes(searchKey);
+            var match3 = col3.includes(searchCagegory);
+            var match2 = col2.includes(searchKey);
+            var match4 = col4.includes(searchKey);
+            var match5 = col5.includes(searchKey);
+            var match6 = col6.includes(searchKey);
+            var match7 = col7.includes(searchKey);
+
+            return (match1 || match2 || match4 || match5 || match6 || match7) && match3;
+        }
+        );
+    });
+    //on change, on input
+    function assembledlistSearch() {
+        $tableAssembledlist.draw();
+    }
+
+
+</script>

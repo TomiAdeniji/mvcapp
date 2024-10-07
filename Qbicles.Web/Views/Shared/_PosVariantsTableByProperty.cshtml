@@ -1,0 +1,144 @@
+﻿
+@using Qbicles.BusinessRules.Helper;
+@using Qbicles.Models.Catalogs;
+@using Qbicles.BusinessRules
+@model List<Variant>
+@{
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+
+}
+<table name="variants" class="datatable posCategoryItem_variants_table table-hover table-striped" style="width: 100%;">
+    <thead>
+        <tr>
+            <th>Variant</th>
+            <th>SKU</th>
+            <th>Product unit</th>
+            <th style="width: 80px;">Price<strong>(@currencySettings.CurrencySymbol)</strong></th>
+            <th>Image (override)</th>
+            <th>Active</th>
+            <th>Default</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            var options = string.Join(",", item.VariantOptions.Select(e => e.Id));
+            var optionsName = string.Join(",", item.VariantOptions.Select(e => e.Name));
+            var index = Model.IndexOf(item);
+            <tr>
+                <td id="table_variants_name_@index">@item.Name</td>
+                <td>
+                    <div class="input-group">
+                        <input type="hidden" id="table_variants_id_@index" name="name" class="form-control" value="@item.Id">
+                        <input type="hidden" id="table_variants_options_@index" value="@options" />
+                        <span style="display:none;">@optionsName</span>
+
+                        @if (item.TraderItem != null)
+                        {
+                            <input type="hidden" id="table_variants_traderitem_@index" name="name" class="form-control" value="@item.TraderItem.Id">
+                            <input type="text" id="table_variants_sku_@index" name="name" index="@index" class="sku-input form-control" value="@item.TraderItem.SKU">
+                        }
+                        else
+                        {
+                            <input type="hidden" id="table_variants_traderitem_@index" name="name" class="form-control" value="0">
+                            <input type="text" id="table_variants_sku_@index" name="name" index="@index" class="sku-input form-control" value="">
+                        }
+                        <div class="input-group-btn"><button class="btn btn-info" data-toggle="modal" onclick="FindSKUVariants('@index')" data-target="#app-trader-pos-itemlist"><i class="fa fa-search"></i></button></div>
+                    </div>
+                </td>
+                <td id="table_variants_tdunit_@index">
+                    @if (item.TraderItem != null)
+                    {
+                        <select name="unit" id="table_variants_unit_@index" onchange="changeUnitTable('@index')" class="form-control select2" style="width: 100%;">
+                            @foreach (var unit in item.TraderItem.Units)
+                            {
+                                if (item.Unit != null && item.Unit.Id == unit.Id)
+                                {
+                                    <option value="@unit.Id|@unit.QuantityOfBaseunit" selected>@unit.Name</option>
+                                }
+                                else
+                                {
+                                    <option value="@unit.Id|@unit.QuantityOfBaseunit">@unit.Name</option>
+                                }
+                            }
+                        </select>
+
+                    }
+                    else
+                    {
+                        <select name="unit" id="table_variants_unit_@index" onchange="changeUnitTable('@index')" class="form-control select2" style="width: 100%;"></select>
+
+                    }
+                </td>
+                <td>
+                    @if (item.BaseUnitPrice != null)
+                    {
+                        <input type="hidden" id="table_variants_priceid_@index" class="form-control" value="@item.BaseUnitPrice.Id" disabled>
+                        <input type="hidden" id="table_variants_pricebase_@index" class="form-control" value="@item.BaseUnitPrice.GrossPrice" disabled>
+                        <input type="number" min="0" id="table_variants_price_@index" class="form-control" onchange="UpdateVariantPriceTable(@(item.Id), @(index))" value="@(item.Price?.GrossPrice ?? 0)">
+                    }
+                    else
+                    {
+                        <input type="hidden" id="table_variants_priceid_@index" class="form-control" value="" disabled>
+                        <input type="hidden" id="table_variants_pricebase_@index" class="form-control" value="" disabled>
+                        <input type="text" id="table_variants_price_@index" onchange="UpdateVariantPriceTable(@(item.Id), @(index))" class="form-control" value="@(item.Price?.GrossPrice ?? 0)">
+                    }
+                </td>
+                <td>
+                    <div class="row">
+                        @{
+                            var col = 4;
+                        }
+                        <div class="col-xs-12 col-sm-6 col-md-@col">
+                            @{
+                                var img = string.IsNullOrEmpty(item.ImageUri) ? ConfigManager.DefaultProductPlaceholderImageUrl : item.ImageUri;
+                            }
+                            <img id="variant-image-preview-@index" src="@img.ToDocumentUri(Enums.FileTypeEnum.Image, "T")" style="max-width: 100%; height: auto; margin-bottom: 15px;">
+                        </div>
+                        <div class="col-xs-12 col-sm-6 col-md-8">
+                            <div class="form-group">
+                                <label for="dimg">Change image</label>
+                                <input type="hidden" id="table_variants_image_@index" class="form-control" value="@item.ImageUri" disabled>
+                                <input style="color:transparent;" onchange="variantImageChange(this,@index)" type="file" class="form-control" id="table_variants_file_@index" name="domainLogo" data-target="#variant-image-preview-@index">
+                            </div>
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <div class="checkbox toggle">
+                        <label>
+                            @if (item.IsActive)
+                            {
+                                <input data-toggle="toggle" onchange="SaveVariantsTable('@index');$('.onlysale').toggle();" id="table_variants_isactive_@index" data-onstyle="success" type="checkbox" data-on="Yes" data-off="No" checked>
+                            }
+                            else
+                            {
+                                <input data-toggle="toggle" onchange="SaveVariantsTable('@index');$('.onlysale').toggle();" id="table_variants_isactive_@index" data-onstyle="success" type="checkbox" data-on="Yes" data-off="No">
+                            }
+                        </label>
+                    </div>
+                </td>
+                <td>
+                    @if (item.IsDefault)
+                    {
+                        <input type="radio" onchange="SaveVariantsTable('@index')" id="table_variants_default_@index" checked name="primary[]" class="form-control">
+                    }
+                    else
+                    {
+                        <input type="radio" onchange="SaveVariantsTable('@index')" id="table_variants_default_@index" name="primary[]" class="form-control">
+                    }
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+<script>
+    $('.checkbox.toggle input').bootstrapToggle();
+    $(".posCategoryItem_variants_table select").select2({ placeholder: 'Please select' });
+    //$('.sku-input').on('change', function () {
+    //    //var sku = $(this).val();
+    //    //var index = $(this).attr('index');
+    //    //getPriceBySKU(sku, index);
+
+    //})
+</script>

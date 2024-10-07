@@ -1,0 +1,206 @@
+﻿@using Qbicles.Models
+@using Qbicles.BusinessRules
+@model List<ApplicationUser>
+@{
+    var sharedPostId = (int)ViewBag.SharedPostId;
+}
+<input type="hidden" value="@sharedPostId" id="sharedPostId" />
+<div class="modal-dialog" role="document">
+    <div class="modal-content">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <h5 class="modal-title">Share this post</h5>
+        </div>
+        <div class="modal-body">
+
+
+            <ul class="subapps-nav" role="navigation" data-tooltip-stickto="bottom">
+                <li class="active">
+                    <a href="#" data-toggle="tab" data-target="#share-existing" data-tooltip="Share with contacts">
+                        <i class="fa fa-users"></i>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" data-toggle="tab" data-target="#share-new" data-tooltip="Send invitation">
+                        <i class="fa fa-user-plus"></i>
+                    </a>
+                </li>
+            </ul>
+
+
+            <div class="tab-content">
+
+                <!-- Members -->
+                <div class="tab-pane fade in active" id="share-existing">
+
+                    <div class="well custom">
+                        <div class="form-group" style="margin: 0;">
+                            <label for="existing">Search my contacts</label>
+                            <input type="text" id="key-search" class="form-control" onkeyup="searchContact()" name="member-search" placeholder="Search by name...">
+                        </div>
+                    </div>
+
+                    <div class="existing-member" style="margin-top: 15px 0;">
+                        <ul class="widget-contacts" id="lst-contacts" style="margin-bottom: 60px;">
+                            @{
+                                var currentFirstChar = "";
+                                foreach (var userItem in Model)
+                                {
+                                    if (userItem != null)
+                                    {
+                                        if (currentFirstChar != userItem.GetFullName().ToUpper()[0].ToString())
+                                        {
+                                            currentFirstChar = userItem.GetFullName().ToUpper()[0].ToString();
+                                            <li class="letters" style="padding-top: 0;">@(currentFirstChar)</li>
+                                        }
+                                        <li>
+                                            <a href="#" onclick="showShareBtn(this)">
+                                                <div class="contact-avatar">
+                                                    <div style="background-image: url('@userItem.ProfilePic.ToDocumentUri().ToString()');">&nbsp;</div>
+                                                </div>
+                                                <div class="contact-info">
+                                                    <h5>@(userItem.GetFullName())</h5>
+                                                </div>
+                                                <div class="sharing" userId="@userItem.Id">
+                                                    <i class="fa fa-check-circle green animated bounceIn"></i>
+                                                </div>
+                                            </a>
+                                        </li>
+                                    }
+
+                                }
+                            }
+
+                        </ul>
+
+
+                        <div class="modal-confirmation animated fadeInUp" id="sharenow" style="display: none;">
+                            <button class="btn btn-success community-button" onclick="shareHLPost(1)">Share with selected</button>
+                        </div>
+
+                    </div>
+
+                    <div class="contact-add" style="display: none;">
+
+                        <a href="#" class="btn btn-info" onclick="$('.contact-add').hide(); $('.contact-invite').fadeIn(); $('.contact-list-found').fadeIn();"><i class="fa fa-angle-left"></i> &nbsp; Back to search</a>
+
+                        <div class="activity-overview plain company-overview welcome-info" style="flex: none; margin: 0; padding-top: 15px;">
+                            <a href="app_community_vendor_profile.php">
+                                <div class="contact-avatar-profile" style="background-image: url('dist/img/contact-2.jpg');">&nbsp;</div>
+
+                                <h2>Luke Skywalker</h2>
+                                <p>Luke is a pivotal figure in the Rebel Alliance's struggle against the Galactic Empire, a friend and eventual brother-in-law of smuggler Han Solo, and unknown to him until Return of the Jedi, the twin brother of Rebellion leader Princess Leia. He trains under Jedi Masters Obi-Wan Kenobi and Yoda, and is the son of Anakin Skywalker and Padmé Amidala. He mentors Rey, the protagonist of the sequel trilogy, and is the maternal uncle of Kylo Ren, the antagonist of the sequel trilogy.</p>
+                            </a>
+
+                            <ul class="user-meta" style="margin: 0 auto;">
+                                <li>
+                                    <h6>Tel</h6>
+                                    <p>+44(1292) 133654</p>
+                                </li>
+                                <li>
+                                    <h6>Email</h6>
+                                    <p><a href="mailto:luke@rebelalliance.com">luke@rebelalliance.com</a></p>
+                                </li>
+                            </ul>
+
+                            <br />
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-6">
+                                    <button class="btn btn-primary community-button"><i class="fa fa-address-card"></i> &nbsp; View profile</button>
+                                </div>
+                                <div class="col-xs-12 col-sm-6">
+                                    <button class="btn btn-success community-button" onclick="$(this).hide(); $(this).siblings('.added').show();"><i class="fa fa-share"></i> &nbsp; Share post</button>
+                                    <button class="btn btn-success community-button added" style="display: none;"><i class="fa fa-check"></i></button>
+                                </div>
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+                <!-- END Invite -->
+                <!-- Non-members -->
+                <div class="tab-pane fade" id="share-new">
+
+                    <div class="well custom contact-invite">
+                        <div class="form-group" style="margin: 0;">
+                            <label for="member-new">Share as invitation to an email address</label>
+                            <input type="email" class="form-control" name="new-member" placeholder="Enter their email address" onkeyup="$('.confirm-add').removeAttr('disabled');">
+                        </div>
+                        <br />
+                        <button class="btn btn-success community-button confirm-add" disabled onclick="shareHLPost(2)"><i class="fa fa-envelope"></i> &nbsp; Share now</button>
+                    </div>
+
+                </div>
+                <!-- END Non-members -->
+
+            </div>
+
+        </div>
+    </div><!-- /.modal-content -->
+</div><!-- /.modal-dialog -->
+
+
+<script>
+    function showShareBtn(ev) {
+        $('.sharing', ev).toggle();
+        $('.sharing', ev).toggleClass('selected-contact');
+        $('#sharenow').show();
+    }
+
+    //type: 1-existed contact, 2-email
+    function shareHLPost(type) {
+        var sharedPostId = $("#sharedPostId").val();
+        var _url = "/HighlightPost/ShareHLPost";
+        var selectedUserIds = [];
+        var email = "";
+        if (type == 1) {
+            $(".selected-contact").each(function () {
+                selectedUserIds.push($(this).attr('userid'));
+            })
+        } else if (type == 2) {
+            email = $("input[name=new-member]").val();
+        }
+
+        LoadingOverlay();
+        $.ajax({
+            method: 'POST',
+            dataType: 'JSON',
+            url: _url,
+            data: {
+                'type': type,
+                'email': email,
+                'sharedUserIds': JSON.stringify(selectedUserIds),
+                'postId': sharedPostId
+            },
+            success: function (response) {
+                if (response.result) {
+                    cleanBookNotification.success("This post has been successfully shared with your chosen contacts", "Qbicles");
+                    $("#share-content").modal('hide');
+                } else {
+                    cleanBookNotification.error(response.msg, "Qbicles");
+                }
+            },
+            error: function (err) {
+                cleanBookNotification.error("There was a problem sharing this post. Please try again", "Qbicles");
+            }
+        }).done(function () {
+            LoadingOverlayEnd();
+        })
+    }
+
+    function searchContact() {
+        var filter, ul, li, a, i, txtValue;
+        filter = $("#key-search").val().toUpperCase();
+        li = $("#lst-contacts li");
+        for (i = 0; i < li.length; i++) {
+            txtValue = li[i].textContent;
+            if (txtValue.toUpperCase().indexOf(filter) > -1) {
+                li[i].style.display = "";
+            } else {
+                li[i].style.display = "none";
+            }
+        }
+    }
+</script>

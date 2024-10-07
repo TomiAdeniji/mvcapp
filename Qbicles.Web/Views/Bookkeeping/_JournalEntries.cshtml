@@ -1,0 +1,92 @@
+﻿@using Qbicles.BusinessRules
+@using Qbicles.Models
+@using Qbicles.Models.Bookkeeping;
+@{
+    var journalEntries = (List<JournalEntry>)ViewBag.JournalEntries;
+    var format = (string) ViewBag.CurrentDateFormat;
+    //var rightCreateJournalEntry = (bool)ViewBag.rightCreateJournalEntry;
+}
+
+
+<table class="datatable table-striped table-hover app_specific no-search journalEntries-datatable" style="width: 100%;">
+    <thead>
+        <tr>
+            <th data-priority="1">Number</th>
+            <th data-priority="1">Group</th>
+            <th data-priority="2">Date</th>
+            <th data-priority="3">Description</th>
+            <th data-priority="1">Approval status</th>
+            <th data-priority="1">Options</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in journalEntries)
+        {
+            <tr>
+                <td>@item.Number</td>
+                <td>@(item.Group?.Name ?? "")</td>
+                <td data-sort="@item.PostedDate.ToString("yyyy-MM-dd")">@item.PostedDate.FormatDateTimeByUser(format)</td>
+                <td>@item.Description</td>
+                @{ 
+                    var css = "";
+                    var approvalStatus = "";
+                    if (item.Approval != null)
+                    {
+                        css = "label-success";
+                        approvalStatus = item.Approval.RequestStatus.GetDescription();
+                        switch (item.Approval.RequestStatus)
+                        {
+                            case ApprovalReq.RequestStatusEnum.Pending:
+                                css = StatusLabelStyle.Pending;
+                                break;
+                            case ApprovalReq.RequestStatusEnum.Reviewed:
+                                css = StatusLabelStyle.Reviewed;
+                                break;
+                            case ApprovalReq.RequestStatusEnum.Approved:
+                                css = StatusLabelStyle.Approved;
+                                break;
+                            case ApprovalReq.RequestStatusEnum.Denied:
+                                css = StatusLabelStyle.Denied;
+                                break;
+                        }
+                    }else if (item.Approval == null && item.IsApproved)
+                    {
+                        css = StatusLabelStyle.Approved;
+                        approvalStatus = ApprovalReq.RequestStatusEnum.Approved.GetDescription();
+                    }
+                }
+                <td><div class="label label-lg @css">@approvalStatus</div></td>
+                <td>
+                    <a href="/Bookkeeping/JournalEntry?id=@item.Id" class="btn btn-primary"><i class="fa fa-eye" style="color: #fff;"></i></a>
+                </td>
+                
+            </tr>
+        }
+        
+    </tbody>
+</table>
+
+<script>
+    $(document).ready(function () {
+        $('.journalEntries-datatable').DataTable({
+            responsive: true,
+            "lengthChange": true,
+            "pageLength": 10,
+            "columnDefs": [{
+                "targets": 5,
+                "orderable": false
+            }],
+            "order": []
+        });
+
+        $('.journalEntries-datatable').show();
+
+        $("#total-journals").text(@journalEntries.Count);
+    });
+</script>
+
+<style>
+    .dataTables_filter {
+        display: none !important;
+    }
+</style>

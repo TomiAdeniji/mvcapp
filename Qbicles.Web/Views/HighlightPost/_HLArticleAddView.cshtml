@@ -1,0 +1,155 @@
+﻿@using Qbicles.Models.Highlight
+@using System.Globalization;
+@using Qbicles.Models;
+@using Qbicles.BusinessRules;
+@model ArticleHighlight
+@{
+    var lstTags = (List<string>)ViewBag.ListTags;
+    var imgAcceptedFile = (string)ViewBag.ImageAcceptedExtensions;
+}
+<input type="hidden" id="article-id" value="@(Model?.Id ?? 0)" />
+<div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <h5 class="modal-title">Add an article</h5>
+        </div>
+        <form id="add-articlepost-form">
+            <div class="modal-body">
+                <div class="well custom">
+
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group">
+                                <label for="title">Title</label>
+                                <input type="text" id="article-title" class="form-control" value="@(Model?.Title ?? "")" name="title">
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group">
+                                <label for="image">Featured image (leave blank for default)</label>
+                                <input type="file" id="article-img" accept="@imgAcceptedFile" class="form-control" name="image">
+                            </div>
+                        </div>
+                        <div class="col-xs-12">
+                            <div class="form-group">
+                                <label for="tags">Tags (optional)</label><br />
+                                <select name="tags" id="article-tags" class="form-control select2tag" style="width: 100%;" multiple placeholder="Type a tag and hit enter to add it">
+                                    @foreach (var tagItem in lstTags)
+                                    {
+                                        var isTagSelected = (Model != null && Model.Tags != null && Model.Tags.Select(p => p.Name).ToList().Contains(tagItem)) ? "selected" : "";
+                                        <option value="@tagItem" @isTagSelected>@tagItem</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <div class="write news-form">
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label for="summary">Summarise this article</label>
+                                    <textarea name="summary" id="article-summary" class="form-control" style="max-width: 100%; height: 80px;">@(Model?.Content ?? "")</textarea>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <label for="link">Article body</label><br />
+
+                                <div class="editor-container" style="background: #fff;">
+
+                                    <div id="newsletter-toolbar-container">
+                                        <span class="ql-formats">
+                                            <select class="ql-font"></select>
+                                            <select class="ql-size"></select>
+                                        </span>
+                                        <span class="ql-formats">
+                                            <button class="ql-bold"></button>
+                                            <button class="ql-italic"></button>
+                                            <button class="ql-underline"></button>
+                                        </span>
+                                        <span class="ql-formats">
+                                            <button class="ql-list" value="ordered"></button>
+                                            <button class="ql-list" value="bullet"></button>
+                                            <button class="ql-indent" value="-1"></button>
+                                            <button class="ql-indent" value="+1"></button>
+                                        </span>
+                                        <span class="ql-formats">
+                                            <select class="ql-align"></select>
+                                        </span>
+                                        <span class="ql-formats">
+                                            <button class="ql-link"></button>
+                                        </span>
+                                    </div>
+
+
+                                    <div id="newsletter-editor" style="min-height: 400px;">@(Model?.ArticleBody ?? "")</div>
+
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+
+                <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                <button class="btn btn-success" type="submit">Confirm</button>
+
+
+            </div>
+        </form>
+    </div><!-- /.modal-content -->
+</div><!-- /.modal-dialog -->
+<link href="/Content/DesignStyle/css/quill.snow.css" rel="stylesheet">
+<script src="/Content/DesignStyle/js/quill.js"></script>
+<script>
+    $(document).ready(function () {
+        $(".select2").select2();
+        $(".select2tag").select2({
+            placeholder: 'Please select',
+            tags: true
+        });
+        initAddingArticleForm();
+
+        var Block = Quill.import('blots/block');
+        Block.tagName = 'div';
+        Quill.register(Block);
+        quillEditor = new Quill('#newsletter-editor', {
+            modules: {
+                toolbar: '#newsletter-toolbar-container'
+            },
+            placeholder: 'Enter your newsletter content here...',
+            theme: 'snow'
+        });
+        quillEditor.on('text-change', function (delta, oldDelta, source) {
+            var html = quillEditor.root.innerHTML;
+            $('#bodypreview p').html(html);
+        })
+        $(".previewimg").change(function () {
+            var target = $(this).data('target');
+            readURL(this, target);
+            $(target).fadeIn();
+        });
+
+        if ($('#article-id').val() > 0) {
+            var bodycontent = '@(Html.Raw(HttpUtility.UrlDecode(Model?.ArticleBody ?? "")))';
+            $(".ql-editor").html(bodycontent);
+        }
+
+        @* $('#headlinefont').change(function () {
+            $('#headline').css('font-family', $(this).val());
+        });
+
+        $('#bodyfont').change(function () {
+            $('#bodypreview p').css('font-family', $(this).val());
+        });
+
+        $('#buttonfont').change(function () {
+            $('#button').css('font-family', $(this).val());
+        });*@
+    });
+</script>

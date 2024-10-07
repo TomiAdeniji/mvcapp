@@ -1,0 +1,125 @@
+﻿@using Qbicles.Models.Trader;
+@using Qbicles.Models.Trader.PoS;
+@using Qbicles.BusinessRules.Model
+@model PosDevice
+@{
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var accounts = (List<TraderCashAccount>)ViewBag.Accounts ?? new List<TraderCashAccount>();
+    var safeAccId = (int)ViewBag.SafeAccountId;
+    var safeAcc = accounts.FirstOrDefault(p => p.Id == safeAccId);
+    accounts = accounts.Where(p => p.Id != safeAccId).ToList();
+
+    var methods = (List<PaymentMethod>)ViewBag.PaymentMethods ?? new List<PaymentMethod>();
+    var isCashMethodUsed = Model.MethodAccount.Any(p => p.PaymentMethod.Name == PaymentMethodNameConst.Cash);
+    var paymentMethods = methods.Where(e => e.Name != PaymentMethodNameConst.Cash);
+    var paymentMethodCard = methods.FirstOrDefault(e => e.Name == PaymentMethodNameConst.Cash);
+}
+<table class="reload-table datatable table_content table-striped table-hover" style="width: 100%;">
+    <thead>
+        <tr>
+            <th>Payment type</th>
+            <th>Display Name</th>
+            <th>Collection account(s)</th>
+            <th>Options</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model.MethodAccount)
+        {
+            <tr id="table_payment_tr_@item.Id" onchange="PaymentAccountRowChanged('@item.Id')">
+                <td data-order="0">
+                    <select name="pay-0" id="table_paymentmethod_@item.Id" class="form-control select2" style="width: 100%;">
+
+                        @if (isCashMethodUsed && paymentMethodCard.Id == item.PaymentMethod.Id)
+                        {
+                            <option value="@paymentMethodCard.Id" selected>@paymentMethodCard.Name</option>
+                        }
+                        else if (!isCashMethodUsed)
+                        {
+                            <option value="@paymentMethodCard.Id">@paymentMethodCard.Name</option>
+                        }
+                        @foreach (var pay in paymentMethods)
+                        {
+                            if (item.PaymentMethod != null && pay.Id == item.PaymentMethod.Id)
+                            {
+                                <option value="@pay.Id" selected>@pay.Name</option>
+                            }
+                            else
+                            {
+                                <option value="@pay.Id">@pay.Name</option>
+                            }
+                        }
+                    </select>
+                </td>
+                <td>
+                    @{var isReadOnly = item.PaymentMethod?.Name == PaymentMethodNameConst.Cash ? "readonly" : "";}
+                    <input maxlength="25" class="form-control" @isReadOnly name="dis-0" id="table_displayname_@item.Id" value="@item.TabletDisplayName" />
+                </td>
+                <td>
+                    @{var isDisabled = item.PaymentMethod?.Name == PaymentMethodNameConst.Cash ? "disabled" : "";}
+                    <select name="cash-0" id="table_account_@item.Id" @isDisabled class="form-control select2" style="width: 100%;">
+                        <option value="0"></option>
+                        @if (item.PaymentMethod?.Name == PaymentMethodNameConst.Cash)
+                        {
+                            <option selected value="@(item.CollectionAccount?.Id ?? 0)">@(item.CollectionAccount?.Name ?? "")</option>
+                        }
+                        @foreach (var acc in accounts)
+                        {
+                            if (item.CollectionAccount != null && item.CollectionAccount.Id == acc.Id)
+                            {
+                                <option value="@acc.Id" selected>@acc.Name</option>
+                            }
+                            else
+                            {
+                                <option value="@acc.Id">@acc.Name</option>
+                            }
+                        }
+                    </select>
+                </td>
+                <td>
+                    <button class="btn btn-danger" onclick="DeletePaymentAccount('@item.Id')"><i class="fa fa-trash"></i></button>
+                </td>
+            </tr>
+        }
+
+
+    </tbody>
+</table>
+<table id="table_templage" style="width: 100%; display:none">
+    <tbody>
+        <tr class="row_template">
+            <td data-order="1">
+                <select name="pay-0" id="table_paymentmethod_temp" style="width: 100%;">
+                    @if (!isCashMethodUsed)
+                    {
+                        <option value="@paymentMethodCard.Id">@paymentMethodCard.Name</option>
+                    }
+                    @foreach (var pay in paymentMethods)
+                    {
+                        <option value="@pay.Id">@pay.Name</option>
+                    }
+                </select>
+            </td>
+            <td>
+                <input maxlength="25" name="dis-0" class="form-control" id="table_displayname_temp" />
+            </td>
+            <td>
+                <select name="cash-0" id="table_account_temp" style="width: 100%;">
+                    @foreach (var acc in accounts)
+                    {
+                        <option value="@acc.Id">@acc.Name</option>
+                    }
+                </select>
+            </td>
+            <td>
+                <button class="btn btn-danger" onclick="RemovePaymentMethodRowItem()"><i class="fa fa-trash"></i></button>
+            </td>
+        </tr>
+    </tbody>
+</table>
+<script>
+    $("table.reload-table select.select2").select2({ placeholder: 'Please select' });
+    $("table.reload-table").DataTable().draw();
+
+
+</script>

@@ -1,0 +1,106 @@
+﻿@using Qbicles.Models.Trader.Pricing;
+@model List<PriceBookVersion>
+@{
+    var instanceStatus = true;
+}
+
+<div id="versions">
+
+    <div class="activity-overview task" style="padding: 20px;">
+        <h5>Version management</h5>
+        <p>
+            Only one version of your Pricebook can be active at a time. To enable a different one, first deactivate any
+            currently active versions.
+        </p>
+
+        <br />
+        <table class="app_specific table table-hover" style="width: 100%; background: #fff;">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Applied</th>
+                    <th>Draft in progress</th>
+                    <th>Options</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var version in Model)
+                {
+                    var instance = version.AssociatedInstances.OrderByDescending(i => i.InstanceVersion).FirstOrDefault();//TODO: where idraft = true
+                    instanceStatus = instance?.IsDraft ?? true;
+                    <tr>
+                        <td>@version.VersionName</td>
+                        <td>
+                            @{
+                                var appliedDate = "";
+
+                                if (instance != null && !instance.IsDraft)
+                                {
+                                    appliedDate = instance.CreatedDate.ToString("dd MMM yyyy");
+                                }
+
+                                @appliedDate
+                            }
+                        </td>
+                        <td>
+                            <span id="status">
+                                @{
+                                    var status = "";
+                                    if (instance != null && !instanceStatus)
+                                    {
+                                        status = "No";
+                                    }
+                                    else
+                                    {
+                                        status = "Yes";
+                                    }
+                                    @status
+                                }
+                            </span>
+                        </td>
+                        <td>
+                            @{
+                                if (instanceStatus)
+                                {
+                                    <button class="btn btn-warning" onclick="EditPricesInfo(@instance.Id)"><i class="fa fa-pencil"></i> &nbsp; Edit prices</button>
+                                }
+                                else
+                                {
+                                    <button class="btn btn-success" onclick="CopyPricesInfo(@instance.Id)"><i class="fa fa-pencil"></i> &nbsp; Edit prices</button>
+                                }
+                            }
+                            <button onclick="ShowHistoryModal(@version.Id)" class="btn btn-info" data-toggle="modal" data-target="#app-trader-pricebook-history"><i class="fa fa-clock-o"></i> &nbsp; History</button>
+                        </td>
+                    </tr>
+                }
+
+            </tbody>
+        </table>
+
+        <button class="btn btn-success" onclick="ShowAddPricebookVersion()"><i class="fa fa-plus"></i> &nbsp; Add a version</button>
+
+    </div>
+
+
+    <br /><br />
+    <button class="btn btn-info" onclick="$('#overview-tab').trigger('click');"><i class="fa fa-angle-left"></i> &nbsp; Overview</button>
+
+</div>
+
+
+
+<div class="modal fade" id="app-trader-pricebook-history" role="dialog" aria-labelledby="app-trader-pricebook-history">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Summer Price Book History</h5>
+            </div>
+            <div id="app-trader-pricebook-history-table" class="modal-body">
+
+                
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->

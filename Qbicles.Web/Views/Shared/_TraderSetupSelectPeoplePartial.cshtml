@@ -1,0 +1,91 @@
+﻿@using Qbicles.BusinessRules
+@using Qbicles.Models
+@using Qbicles.Models.Trader
+ 
+@{
+    var domainRoles = (List<DomainRole>)ViewBag.DomainRoles;
+    var domain = (QbicleDomain)ViewBag.CurrentDomain;
+    var api = (string)ViewBag.DocRetrievalUrl;
+}
+ 
+   <div class="modal-lg modal-dialog" role="document">
+    <div class="modal-content">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <h5 class="modal-title">Add people to your Workgroup</h5>
+        </div>
+        <div class="modal-body">
+
+            <div class="activity-overview task" style="padding: 30px 30px 15px 30px;">
+                <div class="row">
+                    <div class="col-xs-12 col-sm-6">
+                        <div class="form-group">
+                            <label for="search_dt">Search Qbicle members</label>
+                            <input type="text" id="search-member-all" class="form-control" placeholder="Search for something">
+                        </div>
+                    </div>
+                    <div class="col-xs-12 col-sm-6">
+                        <div class="form-group">
+                            <label for="tags">Limit to app role(s)</label>
+                            <select id="search-right-all" name="tags" class="form-control chosen-multiple" style="width: 100%;" data-placeholder="Show all roles" multiple>
+                                @foreach (var role in domainRoles)
+                                {
+                                    <option value="@role.Name">@role.Name</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+            <br />
+            <table class="datatable our-people table-hover table-striped" id="user-list" style="width: 100%;" data-order='[[ 2, "asc" ]]'>
+                <thead>
+                    <tr>
+                        <th data-priority="3" data-orderable="false" style="width: 50px;"></th>
+                        <th data-priority="1">Name</th>
+                        <th data-priority="1">Domain App Role(s)</th>
+                        <th data-priority="1">In this Workgroup</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var u in domain.Users)
+                    {
+                        var fullName = @HelperClass.GetFullNameOfUser(u);
+                        <tr>
+                            <td>
+                                <div class="table-avatar mini" style="background-image: url('@(api+u.ProfilePic)&size=T');">&nbsp;</div>
+                            </td>
+                            <td>@fullName</td>
+                            <td>
+                                @{
+                                    var roleAll = "";
+                                    foreach (var r in u.DomainRoles.Where(d => d.Domain.Id == domain.Id))
+                                    {
+                                        roleAll += @r.Name + ",";
+                                        <span class="label label-lg label-info">@r.Name</span>
+                                    }
+                                    <span class="hidden">@roleAll</span>
+                                }
+                            </td>
+                            <td>
+                                <div class="checkbox toggle">
+                                    <input data-fullname="@fullName" onchange="AddUsersToMembers(this.checked,'@u.Id', $(this).data('fullname'),'@api@u.ProfilePic')" class="check-right" data-toggle="toggle" data-onstyle="success" data-on="<i class='fa fa-check'></i>" data-off=" " type="checkbox">
+                                </div>
+                            </td>
+                        </tr>
+                                    }
+                </tbody>
+            </table>
+
+
+            <br />
+            <button class="btn btn-danger" data-dismiss="modal"><i class="fa fa-remove"></i> &nbsp; Cancel</button>
+            <button onclick="AddMemberToWorkgroup()" class="btn btn-success" data-dismiss="modal"><i class="fa fa-save"></i> &nbsp; Add</button>
+
+
+        </div>
+    </div><!-- /.modal-content -->
+</div>
+

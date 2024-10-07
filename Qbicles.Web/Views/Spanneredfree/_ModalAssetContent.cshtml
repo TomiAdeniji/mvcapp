@@ -1,0 +1,474 @@
+﻿@using Qbicles.Models.Spannered;
+@using Qbicles.BusinessRules;
+@using Qbicles.Models.Trader;
+@model Asset
+@{
+    var workgroups = (List<SpanneredWorkgroupsInfo>)ViewBag.workgroups;
+    var tags = (List<AssetTag>)ViewBag.tags;
+    var workgroup = Model != null && Model.Workgroup != null ? Model.Workgroup : new SpanneredWorkgroup();
+    var othersAssets = (List<Asset>)ViewBag.othersAssets;
+    var meters = (List<Meter>)ViewBag.meters;
+    var tradergroups = (List<TraderGroup>)ViewBag.tradergroups;
+}
+<div class="modal-dialog modal-xl" role="document">
+    <div class="modal-content">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            @if (Model != null && Model.Id > 0)
+            {
+                <h5 class="modal-title">Edit @Model.Title</h5>
+            }
+            else
+            {
+                <h5 class="modal-title">Add an Asset</h5>
+            }
+        </div>
+        <div class="modal-body">
+            <form id="frmSpanneredAsset" enctype="multipart/form-data">
+                <div class="row">
+                    <div class="col-xs-12">
+                        <ul id="tabNavAsset" class="app_subnav admintabs" style="padding-top: 0;">
+                            <li class="active"><a href="#asset-1" data-toggle="tab">Specifics</a></li>
+                            <li><a href="#asset-2" data-toggle="tab" onclick="$('#tblTraderItem').DataTable().ajax.reload();">Associated Trader item</a></li>
+                            <li><a href="#asset-3" data-toggle="tab">Consumables, Parts &amp; Services</a></li>
+                            <li><a href="#asset-4" data-toggle="tab">Meters</a></li>
+                        </ul>
+                    </div>
+                </div>
+                <br />
+                <div class="tab-content">
+                    <!-- Specifics -->
+                    <div class="tab-pane fade in active" id="asset-1">
+
+                        @if (Model == null)
+                        {
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-4 col-lg-3">
+                                    <div class="activity-overview generic" style="padding: 20px; margin-bottom: 30px;">
+                                        <div class="form-group" style="margin: 0;">
+                                            <label for="workgroup">Assign to a Workgroup <span class="red">*</span></label>
+                                            <select name="WorkgroupId" id="spn-workgroupId" class="form-control select2" style="width: 100%;" onchange="workgroupSelect(this); $('.preview-workgroup').show();" tabindex="-1" aria-hidden="true">
+                                                <option value="" selected=""></option>
+                                                @foreach (var item in workgroups)
+                                                {
+                                                    <option detail-info="@(item.Qbicle.FixQuoteCode() + ";" + item.Members + ";" + item.Process)" value="@item.Id">@item.Name</option>
+                                                }
+                                            </select>
+                                            <label id="WorkgroupId-error" class="error" for="WorkgroupId" style="display: none;">This field is required.</label>
+                                        </div>
+
+                                        <div class="preview-workgroup" style="display:none;">
+                                            <br>
+                                            <table class="table app_specific" style="margin: 0;">
+                                                <tbody>
+                                                    <tr>
+                                                        <td><h5>Process</h5></td>
+                                                        <td class="prv-process"></td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td><h5>Qbicle</h5></td>
+                                                        <td class="prv-qbicle"></td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td><h5>Members</h5></td>
+                                                        <td><button type="button" class="btn btn-info"><i class="fa fa-user"></i> &nbsp; <span class="prv-members"></span></button></td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-8 col-lg-9">
+                                    <div class="well custom" style="padding-bottom: 5px;">
+                                        <div class="row">
+                                            <div class="col-xs-12 col-sm-6">
+                                                <div class="form-group">
+                                                    <label for="title">Title</label>
+                                                    <input type="text" class="form-control" value="" id="spn-title" name="Title">
+                                                </div>
+                                            </div>
+                                            <div class="col-xs-12 col-sm-6">
+                                                <div class="form-group">
+                                                    <label for="title">Identification</label>
+                                                    <input type="text" class="form-control" id="spn-identification" name="Identification" value="" placeholder="e.g. barcode number or ID">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-xs-12 col-sm-6">
+                                                <div class="form-group">
+                                                    <label for="tags">Tags</label>
+                                                    <select name="Tags" id="spn-tags" class="form-control select2" multiple="" style="width: 100%;">
+                                                        <option value=""></option>
+                                                        @foreach (var item in tags)
+                                                        {
+                                                            <option value="@item.Id">@item.Name</option>
+                                                        }
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="col-xs-12 col-sm-6">
+                                                <div class="form-group">
+                                                    <label for="description">Link to other Assets</label>
+                                                    <select id="spn-otherAssets" name="OtherAssets" class="form-control select2" style="width: 100%;" multiple="">
+                                                        @foreach (var item in othersAssets)
+                                                        {
+                                                            <option value="@item.Id">@(item.Identification + " - " + item.Title)</option>
+                                                        }
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-xs-12 col-sm-6">
+                                                <div class="form-group">
+                                                    <label for="description">Description</label>
+                                                    <textarea name="Description" id="spn-description" class="form-control" style="max-width: 100%; height: 80px;"></textarea>
+                                                </div>
+                                            </div>
+                                            <div class="col-xs-12 col-sm-6">
+                                                <div class="form-group">
+                                                    <label for="image">Image</label>
+                                                    <input type="hidden" id="spannered-asset-object-key" name="mediaObjectKey" />
+                                                    <input type="hidden" id="spannered-asset-object-name" name="mediaObjectName" />
+                                                    <input type="hidden" id="spannered-asset-object-size" name="mediaObjectSize" />
+                                                    <input type="file" id="spannered-asset-image-upload" class="form-control" name="FeaturedImage" required>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <br>
+                                    <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                                    <a href="#asset-2" data-toggle="tab" class="btn btn-success btnNext">Next &nbsp; <i class="fa fa-angle-right"></i></a>
+                                </div>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-4 col-lg-3">
+                                    <div class="activity-overview generic" style="padding: 20px; margin-bottom: 30px;">
+                                        <div class="form-group" style="margin: 0;">
+                                            <label for="workgroup">Assign to a Workgroup <span class="red">*</span></label>
+                                            <select name="WorkgroupId" id="spn-workgroupId" class="form-control select2" style="width: 100%;" onchange="workgroupSelect(this); $('.preview-workgroup').show();" tabindex="-1" aria-hidden="true">
+                                                <option value="" selected=""></option>
+                                                <!-- detail-info=Qbicle;Members;Process -->
+                                                @foreach (var item in workgroups)
+                                                {
+                                                    <option detail-info="@(item.Qbicle + ";" + item.Members + ";" + item.Process)" @(Model.Workgroup.Id == item.Id ? "selected" : "") value="@item.Id">@item.Name</option>
+                                                }
+                                            </select>
+                                            <label id="WorkgroupId-error" class="error" for="WorkgroupId" style="display: none;">This field is required.</label>
+                                        </div>
+                                        @{
+                                            var wginfo = workgroups.FirstOrDefault(s => s.Id == Model.Workgroup.Id);
+                                        }
+                                        <div class="preview-workgroup" style="display:block;">
+                                            <br>
+                                            <table class="table app_specific" style="margin: 0;">
+                                                <tbody>
+                                                    <tr>
+                                                        <td><h5>Process</h5></td>
+                                                        <td class="prv-process">@wginfo.Process</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td><h5>Qbicle</h5></td>
+                                                        <td class="prv-qbicle">@wginfo.Qbicle</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td><h5>Members</h5></td>
+                                                        <td><button type="button" class="btn btn-info" onclick="loadTeamsWorkgroupSpannered(@wginfo.Id)"><i class="fa fa-user"></i> &nbsp; <span class="prv-members">@wginfo.Members</span></button></td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-8 col-lg-9">
+                                    <div class="well custom" style="padding-bottom: 5px;">
+                                        <div class="row">
+                                            <div class="col-xs-12 col-sm-6">
+                                                <div class="form-group">
+                                                    <label for="title">Title</label>
+                                                    <input type="hidden" class="form-control" value="@(Model.Id)" id="spn-id" name="Id">
+                                                    <input type="text" class="form-control" value="@(Model.Title)" id="spn-title" name="Title">
+                                                </div>
+                                            </div>
+                                            <div class="col-xs-12 col-sm-6">
+                                                <div class="form-group">
+                                                    <label for="title">Identification</label>
+                                                    <input type="text" class="form-control" id="spn-identification" name="Identification" value="@(Model?.Identification)" placeholder="e.g. barcode number or ID">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-xs-12 col-sm-6">
+                                                <div class="form-group">
+                                                    <label for="tags">Tags</label>
+                                                    <select name="Tags" id="spn-tags" class="form-control select2" multiple="" style="width: 100%;">
+                                                        <option value=""></option>
+                                                        @foreach (var item in tags)
+                                                        {
+                                                            <option value="@item.Id" @(Model != null && Model.Tags.Any(s => s.Id == item.Id) ? "selected" : "")>@item.Name</option>
+                                                        }
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="col-xs-12 col-sm-6">
+                                                <div class="form-group">
+                                                    <label for="description">Link to other Assets</label>
+                                                    <select id="spn-otherAssets" name="OtherAssets" class="form-control select2" style="width: 100%;" multiple="">
+                                                        @foreach (var item in othersAssets)
+                                                        {
+                                                            <option value="@item.Id" @(Model != null && Model.OtherAssets.Any(s => s.Id == item.Id) ? "selected" : "")>@(item.Identification + " - " + item.Title)</option>
+                                                        }
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-xs-12 col-sm-6">
+                                                <div class="form-group">
+                                                    <label for="description">Description</label>
+                                                    <textarea name="Description" id="spn-description" class="form-control" style="max-width: 100%; height: 80px;">@(Model?.Description)</textarea>
+                                                </div>
+                                            </div>
+                                            <div class="col-xs-12 col-sm-6">
+                                                <div class="form-group">
+                                                    <label for="image">Image</label>
+                                                    <input type="hidden" id="spannered-asset-object-key" name="mediaObjectKey" />
+                                                    <input type="hidden" id="spannered-asset-object-name" name="mediaObjectName" />
+                                                    <input type="hidden" id="spannered-asset-object-size" name="mediaObjectSize" />
+                                                    <input type="file" id="spannered-asset-image-upload" class="form-control" name="FeaturedImage" @(Model != null && Model.Id > 0 ? "" : "required")>
+
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <br>
+                                    <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                                    <a href="#asset-2" data-toggle="tab" class="btn btn-success btnNext">Next &nbsp; <i class="fa fa-angle-right"></i></a>
+                                </div>
+                            </div>
+
+                        }
+
+                    </div>
+                    <!-- END Specifics -->
+                    <!-- Meters -->
+                    <div class="tab-pane fade" id="asset-4">
+                        <div class="well custom" style="padding-bottom: 5px;">
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-5 col-lg-4">
+                                    <div class="form-group">
+                                        <label for="mname">Meter name</label>
+                                        <input type="hidden" name="rid" value="" />
+                                        <input type="hidden" name="mid" value="" />
+                                        <input type="text" name="mname" maxlength="200" onchange="meterInfoValid();" style="border: 1px solid #e1e1e1;" class="form-control" placeholder="e.g. Temperature">
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-3 col-lg-2">
+                                    <div class="form-group">
+                                        <label for="munit">Unit</label>
+                                        <input type="text" name="munit" maxlength="200" onchange="meterInfoValid();" style="border: 1px solid #e1e1e1;" class="form-control" placeholder="e.g. Fahrenheit">
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-2">
+                                    <div class="form-group">
+                                        <label for="mdesc">Description</label>
+                                        <input type="text" name="mdesc" maxlength="500" onchange="meterInfoValid();" style="border: 1px solid #e1e1e1;" class="form-control">
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-2">
+                                    <div class="form-group">
+                                        <label>&nbsp;</label><br />
+                                        <button type="button" id="btnAddMeter" disabled class="btn btn-success btnvalid"><i class="fa fa-plus"></i> &nbsp; Add to list</button>
+                                        <button type="button" id="btnUpdateMeter" disabled class="btn btn-success btnvalid" onclick="updateMeter();" style="display:none;">Confirm</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <br />
+                        <table id="tblMeters" class="datatable table-striped table-hover" style="width: 100%;">
+                            <thead>
+                                <tr>
+                                    <th>Id</th>
+                                    <th>Meter name</th>
+                                    <th>Unit</th>
+                                    <th style="max-width:660px">Description</th>
+                                    <th>Options</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in meters)
+                                {
+                                    <tr>
+                                        <td>@item.Id</td>
+                                        <td>@item.Name</td>
+                                        <td>@item.Unit</td>
+                                        <td>@item.Description</td>
+                                        <td>
+                                            <button class="btn btn-warning btn-edit-meter"><i class="fa fa-pencil"></i></button>
+                                            <button class="btn btn-danger btn-delete-meter"><i class="fa fa-trash"></i></button>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+
+                        <br />
+                        <a href="#asset-3" data-toggle="tab" class="btn btn-warning btnPrevious"><i class="fa fa-angle-left"></i> &nbsp; Previous</a>
+                        <a onclick="saveSpanneredAsset()" class="btn btn-success">Confirm</a>
+                    </div>
+                    <!-- END Meters -->
+                    <!-- Link with Trader -->
+                    <div class="tab-pane fade" id="asset-2">
+
+                        <div class="activity-overview generic help-text animated bounce">
+                            <i class="fa fa-info-circle"></i>
+                            <p>
+                                Optionally link this Asset to an existing item in your Trader inventory at the current location. This will allow finer control over the physical asset,
+                                including the ability to move it between locations.
+                            </p>
+                        </div>
+
+                        <div class="well custom" style="padding-bottom: 5px;">
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-4">
+                                    <div class="form-group">
+                                        <label for="search">Search items</label>
+                                        <input type="text" class="form-control" name="search">
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-4 col-lg-3">
+                                    <div class="form-group">
+                                        <label for="group">Filter by group</label>
+                                        <select name="group" class="form-control select2" style="width: 100%;">
+                                            <option value="0">Show all</option>
+                                            @foreach (var item in tradergroups)
+                                            {
+                                                <option value="@item.Id">@item.Name</option>
+                                            }
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <input type="hidden" value="@(Model!=null&&Model.AssociatedTraderItem!=null?Model.AssociatedTraderItem.Id:0)" id="hdfTraderItemIdLink" />
+                        <br />
+                        <table class="datatable table-striped table-hover" id="tblTraderItem" style="width: 100%;">
+                            <thead>
+                                <tr>
+                                    <th data-priority="1">Id</th>
+                                    <th data-priority="1">Item</th>
+                                    <th data-priority="1">Barcode</th>
+                                    <th data-priority="1">SKU</th>
+                                    <th data-priority="3">Group</th>
+                                    <th data-priority="1" data-orderable="false"></th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+
+
+                        <br />
+                        <a href="#asset-1" data-toggle="tab" class="btn btn-warning btnPrevious"><i class="fa fa-angle-left"></i> &nbsp; Previous</a>
+                        <a href="#asset-3" data-toggle="tab" class="btn btn-success btnNext">Next &nbsp; <i class="fa fa-angle-right"></i></a>
+
+                    </div>
+                    <!-- END Link with Trader -->
+                    <!-- Parts etc -->
+                    <div class="tab-pane fade" id="asset-3">
+                        <input type="hidden" name="rid" value="" />
+                        <input type="hidden" name="atid" value="0" />
+                        <div class="well custom" style="padding-bottom: 5px;">
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-4 col-lg-4">
+                                    <div class="form-group">
+                                        <label for="items">Search for items</label>
+                                        <select id="select-traderitems" onchange="inventoryInfoValid()" name="items" class="form-control select2" data-placeholder="Search by name or SKU" style="width: 100%;"></select>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-2 col-lg-2">
+                                    <div class="form-group">
+                                        <label for="unit">Unit</label>
+                                        <select name="unit" class="form-control select2" onchange="inventoryInfoValid()" style="width: 100%;"></select>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-2">
+                                    <div class="form-group">
+                                        <label for="purpose">Purpose</label>
+                                        <select name="purpose" class="form-control select2" onchange="inventoryInfoValid()" style="width: 100%;">
+                                            <option value=""></option>
+                                            <option value="0">Consumable</option>
+                                            <option value="1">Spare part</option>
+                                            <option value="2">Service</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-2">
+                                    <div class="form-group">
+                                        <label>&nbsp;</label><br />
+                                        <button type="button" id="btnAddAssetInventory" disabled class="btn btn-success btnvalid"><i class="fa fa-plus"></i> &nbsp; Add to list</button>
+                                        <button type="button" id="btnUpdateAssetInventory" disabled class="btn btn-success btnvalid" onclick="updateinventoryCPS();" style="display:none;">Confirm</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <br />
+                        <table id="tblAssetInventory" class="datatable table-striped table-hover" style="width: 100%;">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Barcode</th>
+                                    <th>SKU</th>
+                                    <th>Unit</th>
+                                    <th>Purpose</th>
+                                    <th>Options</th>
+                                    <th>TraderItemId</th>
+                                    <th>UnitId</th>
+                                    <th>PurposeId</th>
+                                    <th>Id</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (Model != null && Model.AssetInventories.Any())
+                                {
+                                    foreach (var item in Model.AssetInventories)
+                                    {
+                                        <tr>
+                                            <td>@item.Item.Name</td>
+                                            <td>@item.Item.Barcode</td>
+                                            <td>@item.Item.SKU</td>
+                                            <td>@(item.Unit?.Name??"")</td>
+                                            <td>@item.Purpose.ToString()</td>
+                                            <td>
+                                                <button class="btn btn-warning btn-edit-assetinventory"><i class="fa fa-pencil"></i></button>
+                                                <button class="btn btn-danger btn-delete-assetinventory"><i class="fa fa-trash"></i></button>
+                                            </td>
+                                            <td>@item.Item.Id</td>
+                                            <td>@(item.Unit?.Id??0)</td>
+                                            <td>@((int)item.Purpose)</td>
+                                            <td>@(item.Id)</td>
+                                        </tr>
+                                    }
+                                }
+                            </tbody>
+                        </table>
+
+                        <br />
+                        <a href="#asset-2" data-toggle="tab" class="btn btn-warning btnPrevious"><i class="fa fa-angle-left"></i> &nbsp; Previous</a>
+                        <a href="#asset-4" data-toggle="tab" class="btn btn-success btnNext">Next &nbsp; <i class="fa fa-angle-right"></i></a>
+                    </div>
+                    <!-- END Services -->
+
+                </div>
+            </form>
+        </div>
+    </div><!-- /.modal-content -->
+</div>

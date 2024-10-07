@@ -1,0 +1,538 @@
+﻿@using Qbicles.Models.Spannered
+@using Qbicles.BusinessRules
+@using Qbicles.Models
+@using Qbicles.Models.Trader
+@using Qbicles.Models.Trader.Movement
+@model Asset
+@{
+    ViewBag.Title = $"Spannered > Assets > {Model.Title}";
+    var tags = (List<AssetTag>)ViewBag.tags;
+    var dbContext = new Qbicles.BusinessRules.Model.ApplicationDbContext();
+    var qbicleTopics = new TopicRules(dbContext).GetTopicByQbicle(Model.Workgroup.SourceQbicle.Id);
+    var lstAssignee = (List<ApplicationUser>)(Model.Tasks.SelectMany(t => t.AssociatedSet.Peoples).Where(t => t.Type == QbiclePeople.PeopleTypeEnum.Assignee).Select(t => t.User).Distinct().ToList());
+    var relatedAssets = (List<Asset>)ViewBag.RelateAssets;
+    var currentUserId = (string)ViewBag.CurrentUserId;
+    var workGroupsOfMember = (List<WorkGroup>)ViewBag.WorkGroupsOfMember ?? (new List<WorkGroup>());
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+    var locationId = Model.Location?.Id ?? 0;
+    var tranfer = Model.Transfers.OrderByDescending(s => s.Id).FirstOrDefault();
+}
+
+<input type="hidden" id="taskQbicleId" name="taskQbicleId" value="@Model.Workgroup.SourceQbicle.Id">
+<input type="hidden" id="assetId" value="@Model.Id">
+<input type="hidden" id="workgroupId" value="@Model.Workgroup.Id">
+<input type="hidden" id="locationId" value="@locationId">
+<input type="hidden" value="@api" id="api_url" />
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail mdv2-wrapper" style="position: relative;">
+
+
+    <!-- Main content -->
+    <section class="mdv2 dash" data-tooltip-color="teal" data-tooltip-delay="300" data-tooltip-animate-function="spin" style="border-top: 1px solid #f1f1f1;">
+
+
+        <!-- App bar -->
+        <div class="mdv2-col-app" style="margin-bottom: 0;">
+
+            <div data-spy="affix" class="contained-sidebar">
+
+                <div class="activity-overview plain company-overview welcome-info" style="text-align: left !important; flex: none; margin: 0; padding-top: 30px; padding-bottom: 0;">
+
+                    <div class="pull-left" style="margin-bottom: 15px;">
+                        <a href="/Spanneredfree" class="btn btn-info"><i class="fa fa-angle-left"></i> &nbsp; Assets</a>
+                        <a class="btn btn-warning" onclick="loadModalAsset(@Model.Id);"><i class="fa fa-pencil"></i> &nbsp; Edit</a>
+                    </div>
+                    <div class="clearfix"></div>
+
+                    <br /><br />
+
+                    <h1 style="line-height: 1.2; font-size: 18px; margin-bottom: 5px;">@Model.Title</h1>
+                    @foreach (var tag in tags)
+                    {
+                        <span class="label label-lg label-primary">@tag.Name</span>
+                    }
+
+                    <br /><br /><br />
+                    <p style="color: rgba(0, 0, 0, 0.5); margin-bottom: 40px;">
+                        @Model.Description
+                    </p>
+
+
+                    <div class="row">
+                        <div class="col-xs-6 col-sm-6">
+                            <p class="qbicle-detail" style="margin-bottom: 30px; color: rgba(0, 0, 0, 0.5);">
+                                <label style="color: #333;">Current location</label><br>
+                                @(Model.Location?.Name)
+                            </p>
+                        </div>
+                        <div class="col-xs-12 col-sm-6">
+                            <p class="qbicle-detail" style="margin-bottom: 30px;">
+                                <label style="color: #333;">Identification</label><br>
+                                @Model.Identification
+                            </p>
+                        </div>
+                    </div>
+                    @if (relatedAssets != null && relatedAssets.Any())
+                    {
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <p class="qbicle-detail" style="margin-bottom: 0;">
+                                    <label style="color: #333;">Linked Assets</label><br>
+                                </p>
+                                <ul class="unstyled" style="margin: 0; padding: 0 0 40px 0;">
+                                    @foreach (var asset in relatedAssets)
+                                    {
+                                        <li><a href="/Spanneredfree/Asset?id=@asset.Id">@(asset.Identification + " - " + asset.Title)</a></li>
+                                    }
+
+                                </ul>
+                            </div>
+                        </div>
+                    }
+                </div>
+
+
+                <ul class="subapps-nav" role="navigation" data-tooltip-stickto="bottom">
+                    <li class="active">
+                        <a href="#" data-toggle="tab" data-target="#asset-tasks" data-tooltip="Asset Tasks" onclick="$('.options-brand-sub').hide(); $('#task-options').show();SearchAssetTask()">
+                            <i class="fa fa-wrench"></i>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" data-toggle="tab" data-target="#asset-relatedpurchases" onclick="$('.options-brand-sub').hide(); $('#relatedpurchases-options').show();" data-tooltip="Related Purchases">
+                            <i class="fa fa-cart-arrow-down"></i>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" data-toggle="tab" data-target="#asset-inventory" onclick="$('.options-brand-sub').hide(); $('#inventory-options').show();" data-tooltip="Inventory">
+                            <i class="fa fa-boxes"></i>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" data-toggle="tab" data-target="#asset-meters" onclick="$('.options-brand-sub').hide(); $('#meter-options').show();searchMeters();" data-tooltip="Meters">
+                            <i class="fa fa-dashboard"></i>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" data-toggle="tab" data-target="#asset-resources" onclick="$('.options-brand-sub').hide(); $('#media-options').show(); LoadMedias($('#mediaFolderId').val(), $('#taskQbicleId').val())" data-tooltip="Documents &amp; Reports">
+                            <i class="fa fa-folder"></i>
+                        </a>
+                    </li>
+                </ul>
+
+
+                <div style="padding: 15px 30px 30px 30px;">
+
+
+                    <!-- Task options -->
+                    <div class="options-brand-sub" id="task-options">
+
+                        <button class="btn btn-success community-button" style="margin-bottom: 30px; display: none" data-toggle="modal" data-target="#app-spannered-task-add" onclick="LoadModalAssetTask(0, @Model.Id)">
+                            <i class="fa fa-plus"></i> &nbsp; Add an Asset Task
+                        </button>
+
+                        <div class="well custom text-left" style="padding-bottom: 5px;">
+                            <div class="form-group">
+                                <label for="search">Search Tasks</label>
+                                <input type="text" id="assetTaskSearch" onkeyup="SearchAssetTask()" name="search" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label for="attributegroups">Limit by status</label>
+                                <select name="attributegroups" id="assetTaskStatus" onchange="SearchAssetTask()" class="form-control select2" style="width: 100%;">
+                                    <option value=" ">All</option>
+                                    <option value="Pending">Pending</option>
+                                    <option value="In progress">In progress</option>
+                                    <option value="Overdue">Overdue</option>
+                                    <option value="Complete">Complete</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="attributegroups">Limit by assignee</label>
+                                <select name="attributegroups" id="assetTaskAssignee" onchange="SearchAssetTask()" class="form-control select2" style="width: 100%;">
+                                    <option value=" ">All</option>
+                                    @foreach (var ass in lstAssignee)
+                                    {
+                                        <option value="@ass.Id">@HelperClass.GetFullNameOfUser(ass, currentUserId)</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- END Task options -->
+                    <!-- Purchases options -->
+                    <div class="options-brand-sub" id="relatedpurchases-options" style="display: none;">
+                        @if (workGroupsOfMember.Any())
+                        {
+                            <button class="btn btn-success community-button" onclick="addPurchase()" style="margin-bottom: 30px;">
+                                <i class="fa fa-plus"></i> &nbsp; Add a Purchase
+                            </button>
+                        }
+
+                        <div class="well custom text-left" style="padding-bottom: 5px;">
+                            <div class="form-group">
+                                <label for="search">Search</label>
+                                <input id="txtFilterPurchaseSearch" type="text" name="search" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label for="slFilterPurchaseStatus">Limit by status</label>
+                                <select id="slFilterPurchaseStatus" name="slFilterPurchaseStatus" class="form-control select2" style="width: 100%;">
+                                    <option value=" ">All</option>
+                                    <option value="Draft">Draft</option>
+                                    <option value="Awaiting Review">Awaiting Review</option>
+                                    <option value="Denied">Denied</option>
+                                    <option value="Approved">Approved</option>
+                                    <option value="Discarded">Discarded</option>
+                                    <option value="Order Issued">Order Issued</option>
+                                </select>
+                            </div>
+                        </div>
+
+                    </div>
+                    <!-- END Purchases options -->
+                    <!-- Inventory options -->
+                    <div class="options-brand-sub" id="inventory-options" style="display: none;">
+
+                        <div class="well custom text-left" style="padding-bottom: 5px;">
+                            <div class="form-group">
+                                <label for="search">Search</label>
+                                <input id="txtFilterInventorySearch" type="text" name="search" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label for="iloc">Filter by purpose</label>
+                                <select id="slFilterInventoryPurpose" name="slFilterInventoryPurpose" class="form-control select2" multiple style="width: 100%;">
+                                    <option value="Consumable">Consumable</option>
+                                    <option value="Service">Service</option>
+                                    <option value="Spare part">Spare part</option>
+                                </select>
+                            </div>
+                        </div>
+
+                    </div>
+                    <!-- END Purchases options -->
+                    <!-- Meter options -->
+                    <div class="options-brand-sub" id="meter-options" style="display: none;">
+
+                        <button class="btn btn-success community-button" data-toggle="modal" data-target="#app-spannered-meter-add" style="margin-bottom: 30px; display: none" onclick="LoadModalMeter()">
+                            <i class="fa fa-plus"></i> &nbsp; Add a Meter
+                        </button>
+
+                        <div class="well custom text-left" style="padding-bottom: 5px;">
+                            <div class="form-group">
+                                <label for="search">Search</label>
+                                <input type="text" id="searchMeterName" name="search" class="form-control">
+                            </div>
+                        </div>
+                    </div>
+                    <!-- END Meter options -->
+                    <!-- Media options -->
+                    <div class="options-brand-sub" id="media-options" style="display: none;">
+
+                        <button class="btn btn-success community-button" data-toggle="modal" data-target="#create-resource" style="margin: 0 0 30px 0;">
+                            <i class="fa fa-upload"></i>
+                            &nbsp; Upload a file
+                        </button>
+
+                        <div class="well custom">
+                            <div class="row">
+                                <div class="col-xs-12">
+                                    <div class="form-group" style="margin: 0;">
+                                        <label for="folder">Limit by type</label>
+                                        <select id="sl-media-type" onchange="LoadMedias(@Model.ResourceFolder.Id,@Model.Workgroup.SourceQbicle.Id)" name="folder" class="form-control select2" style="width: 100%;">
+                                            <option></option>
+                                            <option value="All">Show all</option>
+                                            <option value="Documents">Documents</option>
+                                            <option value="Image File">Photos</option>
+                                            <option value="Video File">Videos</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+
+
+                    </div>
+                    <!-- END Media options -->
+
+                </div>
+
+
+            </div>
+        </div>
+        <!-- END App bar -->
+        <!-- Main area -->
+        <div class="mdv2-col-dash">
+            @if (tranfer != null && tranfer.Status != TransferStatus.Delivered && tranfer.Status != TransferStatus.Denied && tranfer.Status != TransferStatus.Discarded)
+            {
+            <div style="margin: 30px 25px 0 25px;">
+                <div class="activity-overview generic help-text animated bounce" style="margin-bottom: 0;">
+                    <i class="fa fa-info-circle"></i>
+                    <p>
+                        This Asset is scheduled to be transferred to <strong>@(tranfer.DestinationLocation?.Name)</strong>. Please ensure ongoing tasks take this into account when using resources
+                        only available at the original location.
+                    </p>
+                    <a href="#" onclick="$(this).parent().parent().hide();">Dismiss</a>
+                </div>
+            </div>
+            }
+            <div class="tab-content" style="padding-bottom: 30px;">
+
+
+                <!-- Tasks -->
+                <div class="tab-pane fade in active" id="asset-tasks">
+
+                    <div class="spacing">
+
+
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <ul class="app_subnav admintabs" style="padding-top: 0; margin-top: -20px;">
+                                    <li class="active"><a href="#tasks-0" data-toggle="tab" onclick="SearchAssetTask('Open')">Open Tasks</a></li>
+                                    <li><a href="#tasks-1" data-toggle="tab" onclick="SearchAssetTask('History')">History</a></li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <br /><br />
+
+
+
+                        <div class="tab-content">
+
+
+                            <!-- Open Tasks -->
+                            <div class="tab-pane fade in active" id="tasks-0">
+
+                                <table id="tblAssetTaskUnCompleted" class="datatable table-striped table-hover" style="width: 100%;">
+                                    <thead>
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Created</th>
+                                            <th>Assignee</th>
+                                            <th>Due</th>
+                                            <th>Meter threshold</th>
+                                            <th>Status</th>
+                                            <th>Options</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+
+                            </div>
+                            <!-- END Open Tasks -->
+                            <!-- Task History -->
+                            <div class="tab-pane fade" id="tasks-1">
+
+                                <table id="tblAssetTaskCompleted" class="datatable table-striped table-hover" style="width: 100%;">
+                                    <thead>
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Created</th>
+                                            <th>Assignee</th>
+                                            <th>Due</th>
+                                            <th>Meter threshold</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+
+                            </div>
+                            <!-- END Task History -->
+
+                        </div>
+
+
+                    </div>
+
+                </div>
+                <!-- END Tasks -->
+                <!-- Related Purchases -->
+                <div class="tab-pane fade" id="asset-relatedpurchases">
+                    <div class="spacing">
+                        @Html.Partial("_TableRelatedPurchases", Model)
+                    </div>
+                </div>
+                <!-- END Related Purchases -->
+                <!-- Inventory -->
+                <div class="tab-pane fade" id="asset-inventory">
+
+                    <div class="spacing">
+
+                        <table class="datatable table-striped table-hover" id="tblAssetInventories" style="width: 100%;">
+                            <thead>
+                                <tr>
+                                    <th data-priority="1">Item</th>
+                                    <th data-priority="2">Barcode</th>
+                                    <th data-priority="2">SKU</th>
+                                    <th data-priority="1">Unit</th>
+                                    <th data-priority="1">In stock</th>
+                                    <th data-priority="1">Purpose</th>
+                                    <th data-priority="1">Additional</th>
+                                    <th data-priority="1"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in Model.AssetInventories)
+                                {
+                                    <tr>
+                                        <td><a href="#">@item.Item.Name</a></td>
+                                        <td>@item.Item.Barcode</td>
+                                        <td>@item.Item.SKU</td>
+                                        <td>@(item.Unit?.Name)</td>
+                                        <td>@item.Item.GetInStockByItem(locationId, item.Unit).ToDecimalPlace(currencySettings)</td>
+                                        <td><span class="label label-lg label-info">@(item.Purpose.GetDescription())</span></td>
+                                        <td><button type="button" class="btn btn-info" onclick="ShowTraderItemAdditional(@(item.Item?.Id??0))" data-toggle="modal" data-target="#app-trader-item-additional"><i class="fa fa-list"></i> &nbsp; View</button></td>
+                                        <td><button type="button" class="btn btn-danger" onclick="removeFromSpannered(@item.Id,this)"><i class="fa fa-trash"></i></button></td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+
+                        <style>
+                            #tblAssetInventories_filter {
+                                display: none;
+                            }
+                        </style>
+                    </div>
+
+                </div>
+                <!-- END Inventory -->
+                <!-- Meters -->
+                <div class="tab-pane fade" id="asset-meters">
+                </div>
+                <!-- END Work Orders -->
+                <!-- Related Purchases -->
+                <div class="tab-pane fade" id="asset-relatedpurchases">
+                    <div class="spacing">
+                        <p>Related Purchases</p>
+                    </div>
+                </div>
+                <!-- END Related Purchases -->
+                <!-- Inventory -->
+                <div class="tab-pane fade" id="asset-inventory">
+                    <div class="spacing">
+                        <p>Inventory</p>
+                    </div>
+                </div>
+                <!-- END Inventory -->
+                <!-- Resources -->
+                <div class="tab-pane fade" id="asset-resources">
+
+                    <div class="spacing">
+
+                        <div class="flex-grid-thirds-lg">
+
+                        </div>
+
+                    </div>
+
+                </div>
+                <!-- END Resources -->
+            </div>
+        </div>
+    </section>
+    <!-- ./content -->
+
+</div>
+<!-- /.content-wrapper -->
+<div class="modal fade left" id="create-resource" role="dialog" aria-labelledby="create-resource">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Add a Resource</h5>
+            </div>
+            <div class="modal-body">
+                <form id="form_media_smresource" enctype="multipart/form-data">
+                    <input type="hidden" id="mediaFolderId" name="mediaFolderId" value="@Model.ResourceFolder.Id">
+                    <div class="well custom">
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label for="media-title">Document name</label>
+                                    <input type="text" name="name" required class="form-control">
+                                </div>
+                            </div>
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label for="topic">Choose a topic</label>
+                                    <select name="topicId" class="form-control select2" style="width: 100%;">
+                                        @foreach (var item in qbicleTopics)
+                                        {
+                                            <option value="@item.Id">@item.Name</option>
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label for="account_number">Choose a file</label>
+                                    <input type="hidden" id="spannered-resource-object-key" name="mediaObjectKey" />
+                                    <input type="hidden" id="spannered-resource-object-name" name="mediaObjectName" />
+                                    <input type="hidden" id="spannered-resource-object-size" name="mediaObjectSize" />
+                                    <input type="file" class="form-control previewimgresource" id="spannered-resource-file-upload" data-target='#preview'>
+                                </div>
+
+                                <img id="preview" src="" alt="Your image" style="display: none; width: 100%; height: auto; margin-bottom: 30px;" />
+                            </div>
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label for="tags">Destination folder</label>
+                                    <select name="mediaFolder" class="form-control select2" style="width: 100%;" disabled>
+                                        <option value="@Model.ResourceFolder" selected>@Model.ResourceFolder.Name</option>
+                                    </select>
+                                    <input type="hidden" value="@Model.ResourceFolder.Id" name="mediaFolderId" />
+                                </div>
+                            </div>
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label for="media-description">Add a description</label>
+                                    <textarea name="description" class="form-control" required style="height: 80px;"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <a href="#" class="btn btn-danger" data-dismiss="modal">Cancel</a>
+                    <a class="btn btn-success" onclick="SaveSpanneredResource()">Add media</a>
+                </form>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+
+<div class="modal fade left" id="app-spannered-asset-add" role="dialog" aria-labelledby="app-spannered-asset-add"></div>
+<div class="modal fade left" id="app-spannered-meter-history" role="dialog" aria-labelledby="app-spannered-meter-history"></div>
+<div class="modal fade left" id="app-spannered-meter-add" role="dialog" aria-labelledby="app-spannered-meter-add"></div>
+<div class="modal fade left" id="app-spannered-task-add" role="dialog" aria-labelledby="app-spannered-task-add">
+    <form id="form_task_addedit" method="post" action="/Spannered/SaveQbicleTask" enctype="multipart/form-data"></form>
+</div>
+<div class="modal fade left" id="app-trader-purchase-add" role="dialog" aria-labelledby="app-trader-purchase-add"></div>
+<div class="modal fade left" id="app-trader-workgroup-preview" role="dialog" aria-labelledby="app-trader-workgroup-preview"></div>
+<div class="modal fade left" id="app-trader-item-additional" role="dialog" aria-labelledby="app-trader-item-additional"></div>
+<div class="modal fade left" id="app-spannered-purchase-detail" role="dialog" aria-labelledby="app-spannered-purchase-detail"></div>
+<div class="modal fade left" id="team-view" role="dialog" aria-labelledby="team-view"></div>
+@{
+
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Content/DesignStyle/js/bootstrap-multiselect.js"></script>
+        <script src="~/Scripts/dev/qbicle.model-task.js"></script>
+        <script src="~/Scripts/dev/spanneredfree.asset.js"></script>
+        <script src="~/Scripts/dev/spanneredfree.modalasset.js"></script>
+        <script src="~/Scripts/dev/spanneredfree.modalpurchase.js"></script>
+    }
+    else
+    {
+        <script src="~/Content/DesignStyle/js/bootstrap-multiselect.min.js"></script>
+        <script src="~/Scripts/dev/qbicle.model-task.js"></script>
+        <script src="~/Scripts/dev/spanneredfree.asset.js"></script>
+        <script src="~/Scripts/dev/spanneredfree.modalasset.js"></script>
+        <script src="~/Scripts/dev/spanneredfree.modalpurchase.min.js"></script>
+    }
+}
+
+

@@ -1,0 +1,130 @@
+﻿@using Qbicles.BusinessRules
+@using Qbicles.Models.Trader
+@using Qbicles.BusinessRules.Azure
+@model CashAccountTransaction
+@{
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var externalAccounts = (List<TraderCashAccountCustom>)ViewBag.ExternalAccounts;
+    TraderCashAccountCustom bankAccount = null;
+}
+<div class="modal-dialog" role="document">
+    <div class="modal-content">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <h5 class="modal-title">Record a transfer</h5>
+        </div>
+        <div class="modal-body">
+            <div class="well custom" style="padding-bottom: 5px;">
+
+                <div class="row">
+                    <div class="col-xs-12">
+                        <div class="form-group">
+                            @if (Model.Type == CashAccountTransactionTypeEnum.PaymentIn)
+                            {
+                                bankAccount = externalAccounts.FirstOrDefault(s => s.TraderCashAccountId == Model.OriginatingAccount.Id);
+                                <label for="bank">Originating bank account <span class="red">*</span></label>
+                                <select id="sl-md-originatingaid" name="bank" onchange="onChangeExternalBankInfo(this)" class="form-control select2" style="width: 100%;">
+                                    @foreach (var item in externalAccounts)
+                                    {
+                                        <option data-address="@(item?.Address.AddressLine1.FixQuoteCode())" 
+                                                data-phonenumber="@(item?.PhoneNumber.FixQuoteCode())" 
+                                                data-accountname="@(item?.AssociatedBKAccount?.Name.FixQuoteCode())"
+                                                data-IBAN="@(item?.IBAN.FixQuoteCode())"
+                                                data-NUBAN="@(item?.NUBAN.FixQuoteCode())"
+                                                value="@item.TraderCashAccountId" @(bankAccount.TraderCashAccountId == item.TraderCashAccountId ? "selected" : "")>@item.Name</option>
+                                    }
+                                </select>
+                            }
+                            else
+                            {
+                                bankAccount = externalAccounts.FirstOrDefault(s => s.TraderCashAccountId == Model.DestinationAccount.Id);
+                                <label for="bank">Destination bank account <span class="red">*</span></label>
+                                <select id="sl-md-destinationid" name="bank" onchange="onChangeExternalBankInfo(this)" class="form-control select2" style="width: 100%;">
+                                    @foreach (var item in externalAccounts)
+                                    {
+                                        <option data-address="@(item?.Address.AddressLine1.FixQuoteCode())" 
+                                                data-phonenumber="@(item?.PhoneNumber.FixQuoteCode())" 
+                                                data-accountname="@(item?.AssociatedBKAccount?.Name.FixQuoteCode())"
+                                                data-IBAN="@(item?.IBAN.FixQuoteCode())"
+                                                data-NUBAN="@(item?.NUBAN.FixQuoteCode())" 
+                                                value="@item.TraderCashAccountId" @(bankAccount.TraderCashAccountId == item.TraderCashAccountId ? "selected" : "")>@item.Name</option>
+                                    }
+                                </select>
+                            }
+
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-xs-12">
+                        <div class="form-group">
+                            <label for="num">Bank address</label>
+                            <textarea name="BankAddress" class="form-control" style="max-width: 100%; height: 80px;" disabled>@(bankAccount?.Address.AddressLine1)</textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-xs-12">
+                        <div class="form-group">
+                            <label for="num">Phone number</label>
+                            <input type="text" name="PhoneNumber" class="form-control" value="@(bankAccount?.PhoneNumber)" disabled>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-xs-12">
+                        <div class="form-group">
+                            <label for="num">Account name</label>
+                            <input type="text" name="AccountName" class="form-control" value="@(bankAccount?.AssociatedBKAccount?.Name)" disabled>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-xs-12">
+                        <div class="form-group">
+                            <label for="num">IBAN</label>
+                            <input type="text" name="IBAN" class="form-control" value="@(bankAccount?.IBAN)" disabled>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-xs-12">
+                        <div class="form-group">
+                            <label for="num">NUBAN</label>
+                            <input type="number" name="NUBAN" class="form-control" value="@(bankAccount?.NUBAN)" disabled>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <label>Supporting evidence</label><br />
+            <ul class="avatar-listing team unstyled" style="margin: 0 0 30px 0 !important;">
+                @foreach (var item in Model.AssociatedFiles)
+                {
+                    var vs = item.VersionedFiles.Where(e => !e.IsDeleted).OrderByDescending(x => x.UploadedDate).FirstOrDefault();
+                    if (vs != null)
+                    {
+                        <li>
+                            <a href="@(AzureStorageHelper.SignedUrl(vs.Uri,item.Name))" target="_blank">
+                                <div class="owner-avatar">
+                                    <div class="avatar-sm" style="background: url('@vs.FileType.IconPath');"></div>
+                                </div>
+                                <h5>@item.Name<br><small>@vs.FileType.Type</small></h5>
+                            </a>
+                        </li>
+                    }
+                }
+            </ul>
+
+            <br />
+            <button type="button" class="btn btn-danger" data-dismiss="modal">Cancel</button>
+            <button type="button" class="btn btn-success" onclick="confirmApprove(@Model.Id,'@(Model.Type == CashAccountTransactionTypeEnum.PaymentIn?"#sl-md-originatingaid":"#sl-md-destinationid")','@CashAccountTransactionTypeEnum.PaymentIn.ToString()')">Confirm</button>
+
+        </div>
+    </div><!-- /.modal-content -->
+</div><!-- /.modal-dialog -->

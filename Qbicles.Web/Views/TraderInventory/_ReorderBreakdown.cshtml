@@ -1,0 +1,94 @@
+﻿@using Qbicles.BusinessRules;
+@using Qbicles.Models.Trader;
+@using Qbicles.Models.Trader.Reorder;
+@model Reorder
+@{
+    var contacts = (List<TraderContact>)ViewBag.Contacts;
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+    var items = Model.ReorderItemGroups.Where(s => s.PrimaryContact != null).SelectMany(s => s.ReorderItems).ToList();
+}
+<div class="modal-lg modal-dialog modal-xl" role="document">
+    <div class="modal-content">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+            <h5 class="modal-title">Trader Reorder @(Model?.Reference.FullRef)</h5>
+        </div>
+        <div class="modal-body">
+
+            <div class="well custom" style="padding-bottom: 5px;">
+                <div class="row">
+                    <div class="col-xs-12 col-sm-4 col-lg-3">
+                        <div class="form-group">
+                            <label for="search">Search</label>
+                            <input id="txtsearchbreakdown" type="text" name="search" class="form-control">
+                        </div>
+                    </div>
+                    <div class="col-xs-12 col-sm-4 col-lg-3">
+                        <div class="form-group">
+                            <label for="contact">Filter by Primary Contact</label>
+                            <select id="slprimarycontactbreakdown" name="contact" class="form-control select2" style="width: 100%;" tabindex="-1" aria-hidden="true">
+                                <option value="0">Show all</option>
+                                @foreach (var item in contacts)
+                                {
+                                    <option value="@item.Id">@item.Name</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <table class="datatable table-striped table-hover" id="tblReorderitems" style="width: 100%;">
+                <thead>
+                    <tr>
+                        <th data-priority="1">Item</th>
+                        <th data-priority="3">Group</th>
+                        <th data-priority="1">Primary contact</th>
+                        <th data-priority="3">Unit</th>
+                        <th data-priority="1">Cost per unit (@currencySettings.CurrencySymbol)</th>
+                        <th data-priority="3">Quantity</th>
+                        <th data-priority="3">Discount %</th>
+                        <th data-priority="3">Tax rate</th>
+                        <th data-priority="3">Total (@currencySettings.CurrencySymbol)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in items.Where(s => s.IsForReorder).ToList())
+                    {
+                        <tr>
+                            <td>@item.Item.Name</td>
+                            <td>@item.Item.Group.Name</td>
+                            <td>@item.PrimaryContact.Name</td>
+                            <td>@item.Unit.Name</td>
+                            <td>@item.CostPerUnit.ToCurrencySymbol(currencySettings)</td>
+                            <td>@item.Quantity</td>
+                            <td>@item.Discount</td>
+                            <td>
+                                @{
+                                    var taxs = item.Item.TaxRates.Where(s => s.IsPurchaseTax);
+                                }
+                                @if (taxs.Any())
+                                {
+                                    <ul class="unstyled">
+                                        @foreach (var tax in taxs)
+                                        {
+                                            var value = item.CostPerUnit * item.Quantity * (1 - (item.Discount / 100)) * (tax.Rate / 100);
+                                            <li>@value.ToDecimalPlace(currencySettings)<small>&nbsp;<i>(@tax.Name)</i></small></li>
+                                        }
+                                    </ul>
+                                }
+                                else
+                                {
+                                    <ul class="unstyled"><li>Tax free</li></ul>
+                                }
+                            </td>
+                            <td>@item.Total</td>
+                        </tr>
+                    }
+
+                </tbody>
+            </table>
+        </div>
+    </div><!-- /.modal-content -->
+</div><!-- /.modal-dialog -->

@@ -1,0 +1,150 @@
+﻿@using Qbicles.BusinessRules;
+@using Qbicles.Models.Trader.ODS
+@using Qbicles.Models.Trader.PoS
+@model List<OdsDeviceType>
+@{
+    var posOrderTypes = (List<PosOrderType>)ViewBag.PosOrderTypes;
+}
+
+<div class="well custom" style="padding-bottom: 5px;">
+    <div class="row">
+        <div class="col-xs-12 col-sm-4">
+            <div class="form-group">
+                <label for="search">Search</label>
+                <input id="ods-device-type-search" onkeyup="SearchOdsDeviceType()" type="text" name="search" class="form-control">
+            </div>
+        </div>
+        <div class="col-xs-12 col-sm-4 col-lg-3">
+            <div class="form-group">
+                <label for="search">Filter by Order Type</label>
+                <select id="ods-order-type-search" onchange="SearchOdsDeviceType()" class="form-control select2All" style="width: 100%;">
+                    <option value="-1">Show all</option>
+                    @foreach (var item in posOrderTypes)
+                    {
+                        <option value="@item.Id">@item.Name</option>
+                    }
+                </select>
+            </div>
+        </div>
+        <div class="col-xs-12 col-sm-3">
+            <label>&nbsp;</label><br />
+            <a class="btn btn-success" onclick="OdsDeviceTypeAddEdit(0)"><i class="fa fa-plus"></i> &nbsp; Add a Device Type</a>
+        </div>
+    </div>
+</div>
+
+<br />
+<div class="row" id="ods-device-types-content">
+    <table class="datatable table-striped table-hover" id="ods-device-type-table" style="width: 100%;">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Type(s)</th>
+                <th>Status(es)</th>
+                <th>Options</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var type in Model)
+            {
+                <tr id="ods-device-type-row-id-@type.Id">
+                    <td>@type.Name</td>
+                    <td>
+                        @{
+
+                            var types = type.AssociatedOrderTypes.Select(n => n.Name);
+                            var typeName = string.Join(", ", types);
+
+                        }
+                        @typeName
+                    </td>
+                    <td>
+                        @{
+
+                            var statuses = type.OrderStatus.Select(n => n.Status.GetDescription());
+                            var statusesName = string.Join(", ", statuses);
+
+                        }
+                        @statusesName
+                    </td>
+                    <td>
+                        <input type="hidden" id="ods-device-type-name-@type.Id" value="@type.Name" />
+                        <a onclick="OdsDeviceTypeAddEdit(@type.Id)" class="btn btn-warning"><i class="fa fa-pencil"></i></a>
+                        <a onclick="ConfirmOdsDeviceTypeDelete(@type.Id)" class="btn btn-danger"><i class="fa fa-trash"></i></a>
+                    </td>
+                </tr>
+            }
+
+
+        </tbody>
+    </table>
+</div>
+
+
+
+<div class="modal fade" id="confirm-pds-device-type-delete" role="dialog" aria-labelledby="confirm-pds-device-type-delete">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-body">
+
+                <div class="activity-overview generic help-text" style="margin: 0;">
+                    <i class="fa fa-info-circle"></i>
+                    <p>You are about to delete item <strong><span id="name-pds-device-type-delete"></span></strong> permanently. This action cannot be undone. If you are sure you wish to proceed, please confirm below...</p>
+
+
+                    <button class="btn btn-danger" onclick="CancelDelete()">Cancel</button>
+                    <button class="btn btn-success" onclick="OdsDeviceTypeDelete()">Confirm &amp; Delete</button>
+                </div>
+
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+
+
+
+
+
+
+
+
+
+
+
+<div class="modal fade left" id="app-trader-pos-device-type-add-edit" role="dialog" aria-labelledby="app-trader-pos-device-type-add-edit">
+    <!-- /.modal-dialog -->
+</div><!-- /.modal -->
+
+
+
+
+
+
+
+
+
+
+
+
+@{
+    <script src="~/Scripts/dev/pds.device.type.js?v=@DateTime.Now.Ticks"></script>
+
+    @*if (System.Diagnostics.Debugger.IsAttached)
+        {
+            <script src="~/Scripts/dev/pds.device.type.js"></script>
+        }
+        else
+        {
+            <script src="~/Scripts/dev/pds.device.type.min.js"></script>
+        }*@
+}
+
+<script>
+    $('select.select2All').select2({ placeholder: 'Please select' });
+
+    $('#ods-device-type-table').DataTable({
+        responsive: true,
+        order: [[0, 'asc']]
+    });
+</script>

@@ -1,0 +1,197 @@
+﻿@using Qbicles.Models.B2B
+@using Qbicles.BusinessRules
+@using Qbicles.Models
+@using Qbicles.BusinessRules.Model
+@model LogisticsPartnership
+@{
+    var currentDomain = (QbicleDomain)ViewBag.CurrentDomain;
+    var consumerBusinesProfile = Model.ConsumerDomain.Id.BusinesProfile();
+    var providerBusinessProfile = Model.ProviderDomain.Id.BusinesProfile();
+    var consumerBusinessName = consumerBusinesProfile?.BusinessName ?? Model.ConsumerDomain.Name;
+    var providerBusinessName = providerBusinessProfile?.BusinessName ?? Model.ProviderDomain.Name;
+    //var consumerLocations = (List<TraderLocation>)ViewBag.ConsumerLocations;
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var currentLogisticsAgreement = Model.LogisticsAgreements.FirstOrDefault(s => s.Status == AgreementStatus.IsActive);
+    var verhicleTypeIcons = B2bVerhicleTypeIcon.vehicleTypes;
+    var currencySettings = (CurrencySetting)ViewBag.CurrencySettings;
+}
+@if (currentLogisticsAgreement != null)
+{
+    <article class="col">
+
+        <div class="row">
+            <div class="col-xs-12 col-sm-6">
+
+                <a href="#">
+                    <div class="avatar" style="background-image: url('@(api+consumerBusinesProfile.LogoUri)&size=T');">&nbsp;</div>
+                    <h1 style="color: #333;">@consumerBusinessName</h1>
+                </a>
+                <p class="qbicle-detail">Choose the locations you require coverage for</p>
+
+            </div>
+
+            <div class="col-xs-12 col-sm-6">
+
+                <a href="#">
+                    <div class="avatar" style="background-image: url('@(api+providerBusinessProfile.LogoUri)&size=T');">&nbsp;</div>
+                    <h1 style="color: #333;">@providerBusinessName</h1>
+                </a>
+                <p class="qbicle-detail">@providerBusinessName's proposals will appear here as they add them</p>
+
+            </div>
+        </div>
+
+
+        <br><br>
+
+
+        <div class="well custom rounded text-left">
+            <div class="row">
+
+                <div class="col-xs-12 col-sm-6">
+
+                    <div class="activity-overview plain rounded" style="margin: 0;">
+
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <label>Location(s) requiring coverage</label>
+                                <br><br>
+                                <table class="table table-condensed table-borderless app_specific" style="margin: 6.5px 0 6.5px -4px;">
+                                    <tbody>
+                                        @foreach (var item in currentLogisticsAgreement.ConsumerLocations)
+                                        {
+                                            <tr>
+                                                <td style="max-width:30%;width:20%"><strong>@item.Name</strong></td>
+                                                <td><i class="fa fa-map-marker red"></i> &nbsp; @item.Address.ToAddress()</td>
+                                                <td style="text-align: right;@(item.Address.Latitude != 0 && item.Address.Longitude != 0?"width:80px":"")">
+                                                    @if (item.Address!=null&&item.Address.Latitude != 0 && item.Address.Longitude != 0)
+                                                    {
+                                                        <a href="https://www.google.com/maps/@("@"+item.Address.Latitude),@(item.Address.Longitude),15z" target="_blank">View map</a>
+                                                    }
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <div class="col-xs-12 col-sm-6">
+                    <div class="activity-overview plain rounded" style="margin: 0px;">
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <table class="table table-condensed table-borderless app_specific" style="margin: 6.5px 0 6.5px -4px;">
+                                    <tbody>
+                                        <tr>
+                                            <td><strong>@currentLogisticsAgreement.PriceList.PriceList.Name</strong></td>
+                                            <td><i class="fa fa-map-marker red"></i> &nbsp; @currentLogisticsAgreement.PriceList.PriceList.Location.Name</td>
+                                            <td style="text-align: right;"><button class="btn btn-info" data-toggle="modal" data-target="#b2b-active-delivery-charge-list"><i class="fa fa-eye"></i> &nbsp; Show prices</button></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </article>
+    <div class="modal fade right" id="b2b-active-delivery-charge-list" role="dialog" aria-labelledby="b2b-delivery-charge-list" style="display: none;">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+                    <h5 class="modal-title">@currentLogisticsAgreement.PriceList.PriceList.Name for your location</h5>
+                </div>
+                <div class="modal-body">
+
+
+                    <div class="flex-grid-fluid-lg qbicles-dash-grid criteria-tables">
+                        @foreach (var item in currentLogisticsAgreement.PriceList.ChargeFrameworks.Where(s => s.IsActive))
+                        {
+                            <article class="col">
+                                <a href="#" style="cursor: initial !important;">
+                                    <div class="avatar" style="border-radius: 0; background-image: url('@(Url.Content(verhicleTypeIcons.FirstOrDefault(s=>s.Key==item.VehicleType).Value))');">&nbsp;</div>
+                                    <h1 style="color: #333;">@item.Name</h1>
+                                </a>
+                                <br>
+
+                                <div class="text-left">
+                                    <table class="table app_specific table-borderless">
+                                        <thead>
+                                            <tr>
+                                                <th colspan="2">Distance travelled</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td style="width: 70%;">Flat fee</td>
+                                                <td>@item.DistanceTravelledFlatFee.ToCurrencySymbol(currencySettings)</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="width: 70%;">Per km</td>
+                                                <td>@item.DistanceTravelPerKm.ToCurrencySymbol(currencySettings)</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+
+
+                                    <table class="table app_specific table-borderless">
+                                        <thead>
+                                            <tr>
+                                                <th colspan="2">Time taken</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td style="width: 70%;">Flat fee</td>
+                                                <td>@item.TimeTakenFlatFee.ToCurrencySymbol(currencySettings)</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="width: 70%;">Per second</td>
+                                                <td>@item.TimeTakenPerSecond.ToCurrencySymbol(currencySettings)</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+
+
+                                    <table class="table app_specific table-borderless" style="margin-bottom: 0;">
+                                        <thead>
+                                            <tr>
+                                                <th colspan="2">Value of delivery</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td style="width: 70%;">Flat fee</td>
+                                                <td>@item.ValueOfDeliveryFlatFee.ToCurrencySymbol(currencySettings)</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="width: 70%;">Percentage</td>
+                                                <td>@item.ValueOfDeliveryPercentTotal%</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                            </article>
+                        }
+                    </div>
+
+                    <br>
+                    <button class="btn btn-primary" data-dismiss="modal">Close</button>
+
+                </div>
+            </div><!-- /.modal-content -->
+        </div><!-- /.modal-dialog -->
+    </div>
+    <script>
+        $(document).ready(function () {
+            moveModalIntoBody('#b2b-active-delivery-charge-list');
+        });
+    </script>
+}

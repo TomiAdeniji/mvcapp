@@ -1,0 +1,1488 @@
+﻿@using Qbicles.BusinessRules;
+@using Qbicles.Models.Trader
+@using Qbicles.Models.Trader.Resources
+@using Qbicles.BusinessRules.Helper;
+@model TraderItem
+@{
+    var callBack = (bool)(ViewBag.CallBack ?? false);
+    var saleTaxRates = (List<TaxRate>)ViewBag.SaleTaxRates;
+    var traderGroups = (List<TraderGroup>)ViewBag.TraderGroups;
+    var traderContacts = (List<TraderContact>)ViewBag.Contacts;
+    var traderItemSubs = (List<TraderItemEditCustomModel>)ViewBag.TraderItems;
+    var currentLocationId = (int)ViewBag.CurrentLocationManage;
+    var additionalInfos = (List<AdditionalInfo>)(ViewBag.AdditionalInfos ?? new List<AdditionalInfo>());
+    var locationId = (int)ViewBag.LocationId;
+    //var hiddenContact = "none";
+    var showReDocument = "none";
+    if (Model.ResourceDocuments.Any())
+    {
+        showReDocument = "block";
+    }
+
+    var inventoryDetail = new InventoryDetail();
+    var styleDisplay = "none";
+    if (Model.InventoryDetails.Count > 0 && Model.InventoryDetails.Any(q => q.Location != null && q.Location.Id == locationId))
+    {
+        inventoryDetail = Model.InventoryDetails.FirstOrDefault(q => q.Location.Id == locationId);
+        styleDisplay = "block";
+    }
+    if (locationId == 0 && Model.InventoryDetails.Any())
+    {
+        styleDisplay = "block";
+    }
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var displayFormulae = "none";
+    if (Model.IsCompoundProduct)
+    {
+        displayFormulae = "block";
+    }
+    int type = (int)ViewBag.Types;
+
+    if (type == 1)
+    {
+        Model.IsBought = true;
+    }
+    else
+    {
+        Model.IsBought = false;
+    }
+
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+
+    var itemTags = Model.AdditionalInfos.Where(q => q.Type == AdditionalInfoType.ProductTag).Select(p => p.Name).ToList();
+
+    var itemTagNames = string.Join(",", itemTags);
+    var tags = additionalInfos.Where(q => q.Type == AdditionalInfoType.ProductTag).Select(p => p.Name).ToList();
+    var lstProductTagNames = Html.Raw(tags.ToJson());
+    var maxTagItems = tags.Count;
+    var galeryImages = Model.GalleryItems.OrderBy(e => e.Order);
+
+}
+<div class="modal-dialog modal-xl cx" role="document">
+
+    <div class="modal-content">
+        <div class="modal-header" style="padding-bottom: 0;">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            @if (Model.Id > 0)
+            {
+                <h5 class="modal-title">Edit item I sell</h5>
+            }
+            else
+            {
+                <h5 class="modal-title">Add an item I sell</h5>
+                Model.ImageUri = Qbicles.BusinessRules.Helper.ConfigManager.DefaultProductPlaceholderImageUrl;
+            }
+            <input type="hidden" value="@Model.Id" id="traderItem_id" />
+        </div>
+        <div class="modal-body">
+
+
+
+            <div id="theform">
+                <div class="row">
+                    <div class="col-xs-12">
+                        <ul class="app_subnav admintabs" style="padding-top: 0;">
+                            <li class="active"><a href="#item-1" data-toggle="tab">Item specifics</a></li>
+                            <li><a href="#sale-item-gallery" data-toggle="tab">Gallery</a></li>
+                            <li id="additional-tab"><a href="#item-additional" data-toggle="tab">Additional</a></li>
+                            <li><a href="#item-2" onclick="inventoryTabSelected()" data-toggle="tab">Inventory</a></li>
+                            <li><a href="#item-3" data-toggle="tab">Accounting</a></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <br />
+
+
+
+                <!-- Main content -->
+                <section class="setup-ui" style="background: #f5f5f5; padding: 30px 15px;">
+
+                    <div class="row">
+                        <div class="col-xs-12">
+                            <div class="tab-content activity-overview plain" style="padding: 20px;">
+
+                                <!-- Item specifics -->
+                                <div class="tab-pane fade in active" id="item-1">
+                                    <form id="tab_form_specifics">
+
+                                        @if (type == 1)
+                                        {
+                                            <input id="form_specifics_isSold" checked type="checkbox" class="hidden" />
+                                        }
+                                        else
+                                        {
+                                            <input id="form_specifics_isSold" type="checkbox" class="hidden" />
+                                        }
+
+
+                                        <div class="row">
+                                            <div class="col-xs-12 col-sm-6">
+                                                <div class="form-group">
+                                                    <label for="form_specifics_name">Name</label>
+                                                    <input type="text" onchange="changeName()" value="@Model.Name" id="form_specifics_name" class="form-control" name="specifics_name">
+                                                </div>
+                                            </div>
+                                            <div class="col-xs-12 col-sm-6">
+                                                <div class="form-group">
+                                                    <label for="specifics_category">Category/group</label>
+                                                    <select name="specifics_category" id="form_specifics_category" class="form-control select2" style="width: 100%;">
+                                                        @foreach (var traderGroup in traderGroups)
+                                                        {
+                                                            if (Model.Group.Id == traderGroup.Id)
+                                                            {
+                                                                <option value="@traderGroup.Id" selected>@traderGroup.Name</option>
+                                                            }
+                                                            else
+                                                            {
+                                                                <option value="@traderGroup.Id">@traderGroup.Name</option>
+                                                            }
+                                                        }
+                                                    </select>
+                                                </div>
+                                            </div>
+
+                                        </div>
+
+                                        <div class="row description-class">
+                                            <div class="col-xs-12">
+                                                <div class="form-group">
+                                                    <label for="description">Description</label><br />
+                                                    <input type="hidden" value="@Model.DescriptionText" id="form_specifics_description_text">
+                                                    <textarea rows="5" name="form_specifics_description" id="form_specifics_description">@Html.Raw(Model.Description)</textarea>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="row">
+
+                                            <div class="col-xs-12 col-sm-6">
+                                                <div class="form-group">
+                                                    <label for="image-type">Product image</label>
+                                                    <select name="image-type" id="product_image" class="form-control select2" style="width: 100%;"
+                                                            onchange="if($(this).val() == 1) { $('.buy-newimg').show(); $('.buy-resourceimg').hide();} else { $('.buy-newimg').hide(); $('.buy-resourceimg').show();}">
+                                                        <option value="0">Choose an existing Resource</option>
+                                                        <option value="1" selected>Upload a new image</option>
+                                                    </select>
+                                                </div>
+                                                <div class="form-group buy-resourceimg" style="display: none;">
+                                                    <button class="btn btn-primary" data-toggle="modal" onclick="getResourceImage()" data-target="#app-trader-resources-image-select"><i class="fa fa-images"></i> &nbsp; Browse</button>
+                                                    <p class="inline" id="image_resource_select" style="padding-left: 5px;"></p>
+                                                </div>
+                                                <div class="form-group buy-newimg">
+                                                    <label for="icon">Image/Icon</label>
+                                                    <input type="file" value="@Model.ImageUri" id="form_specifics_icon" class="form-control" name="specifics_icon">
+                                                    <input type="hidden" value="@Model.ImageUri" id="form_specifics_icon_text" />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="row">
+                                            <div class="col-xs-12 col-sm-6 hidden">
+
+                                                <div class="form-group">
+                                                    <label for="form_specifics_benchamark">Benchmark your buying price with...</label>
+                                                    <select name="specifics_benchamark" id="form_specifics_benchamark" class="form-control select2" style="width: 100%;" data-placeholder="Choose a Knowledge Base item">
+                                                        <option value=""></option>
+                                                        <option value="1">Cardboard</option>
+                                                        <option value="2">Eggs</option>
+                                                        <option value="3">Milk</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+
+                                            <div class="col-xs-12 col-sm-6">
+                                                <div class="row">
+                                                    <div class="col-xs-12 col-sm-6" style="@(locationId > 0 ? "" : "display:none")">
+                                                        <div class="form-group">
+                                                            <label for="community">Active in current location</label>
+                                                            <div id="location_ref" class="checkbox toggle" onclick="activeLocation()" style="margin: 0;">
+                                                                <label>
+                                                                    @if (Model.Id > 0 && Model.Locations.Count > 0 && Model.Locations.Any(q => q.Id == locationId))
+                                                                    {
+                                                                        <input name="specifics_current_location" class="trigger_load toggle-switch" checked value="true" id="form_specifics_active_in_current" data-toggle="toggle" data-onstyle="success" type="checkbox" onchange="if(!$('#form_specifics_active_in_current').prop('checked')) showMenusInLocations(@Model.Id, false, false)">
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <input name="specifics_current_location" class="toggle-switch" value="true" id="form_specifics_active_in_current" data-toggle="toggle" data-onstyle="success" type="checkbox">
+                                                                    }
+
+                                                                </label>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-xs-12 col-sm-6">
+                                                        <div class="form-group">
+                                                            <label>Active in ALL locations</label>
+                                                            <br />
+                                                            @if (Model.IsActiveInAllLocations)
+                                                            {
+                                                                <button type="button" id="form_specifics_active_in_all" class="btn btn-info" onclick="changelocationAll()">Applied</button>
+                                                            }
+                                                            else
+                                                            {
+                                                                <button type="button" id="form_specifics_active_in_all" class="btn btn-info" onclick="changelocationAll()">Apply</button>
+                                                            }
+
+
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                            </div>
+                                        </div>
+
+
+
+                                        <div class="tab-content">
+
+
+                                        </div>
+                                    </form>
+                                    <br />
+                                    @*<a href="#sale-item-gallery" data-toggle="tab" class="btn btn-success btnNext">Next &nbsp; <i class="fa fa-angle-right"></i></a>*@
+
+                                    <a class="btn btn-success" onclick="nextStepSpecifics()">Next &nbsp; <i class="fa fa-angle-right"></i></a>
+                                    <a id="a_next_item1" class="hidden btnNext" href="#sale-item-gallery" data-toggle="tab"></a>
+
+                                </div>
+                                <!-- END #item-1 -->
+                                <!-- Gallery -->
+                                <div class="tab-pane fade" id="sale-item-gallery">
+
+                                    <div class="well custom rounded" style="padding: 30px 35px;">
+                                        <h5>Add a gallery</h5>
+                                        <p>
+                                            Optionally add one or more images to introduce a gallery to your item display. You can drag and drop the images
+                                            to change the order in which they're displayed.
+                                        </p>
+                                        <br />
+
+                                        <div onclick="AddImage()" class="btn btn-success community-button sm w-auto fileUpload blue-btn btn width100">
+                                            <span> <i class="fa fa-plus"></i> &nbsp; Add image</span>
+                                        </div>
+
+                                        <input type="file" id="image-galery-edit" accept="image/*" style="display:none" onchange="ChangeImageGalery()">
+                                        <input id="image-galery-input" onchange="AddImageGalery()" style="display:none" type="file" class="uploadlogo" accept="image/*" />
+                                        <a href="#item-additional" data-toggle="tab" class="btn btn-info community-button sm w-auto">Skip step &nbsp; <i class="fa fa-angle-right"></i></a>
+                                    </div>
+
+                                    @{ 
+                                        var displayImgEmpty = "none;";
+                                        if (galeryImages.Count() == 0)
+                                        {
+                                            displayImgEmpty = "block;";
+                                        }
+                                        
+                                    }
+                                    <div class="gallerynone text-center" style="display: @displayImgEmpty">
+                                        <p>Looks like you haven't added any gallery images for this item yet. If you want to, tap the button above to begin adding.</p>
+                                    </div>
+
+                                    @{
+                                        var displayImgList = "none;";
+                                        if (galeryImages.Any())
+                                        {
+                                            displayImgList = "block;";
+                                        }
+                                    }
+
+                                    <div class="gallerystart" style="display:@displayImgList">
+                                        <div id="itemgalerylist" class="item-galery-list" style="margin-top: 20px; background: #f5f5f5; border-radius: 5px; padding: 15px;">
+
+                                            @foreach (var image in galeryImages)
+                                            {
+                                                <figure id="figure-@image.FileUri">
+                                                    <div id="@image.FileUri" class="flex-contain">
+                                                        <div class="col img">
+                                                            <div style="background-image: url('@api@image.FileUri');"></div>
+                                                        </div>
+                                                        <div class="col options">
+                                                            <span class="image_row" style="display:none">@image.FileUri</span>
+                                                            <div class="dropdown contactoptside">
+                                                                <button class="btn btn-primary dropdown-toggle" type="button" data-toggle="dropdown">
+                                                                    <i class="fa fa-ellipsis-h"></i>
+                                                                </button>
+                                                                <ul class="dropdown-menu dropdown-menu-right">
+                                                                    <li><a style="cursor: pointer !important;" onclick="ItemGaleryEdit('@image.FileUri')">Edit</a></li>
+                                                                    <li><a style="cursor: pointer !important;" onclick="ItemGaleryDelete('@image.FileUri')">Delete</a></li>
+                                                                </ul>
+                                                            </div>
+
+                                                        </div>
+                                                    </div>
+                                                </figure>
+
+                                            }
+
+                                        </div>
+
+                                    </div>
+
+
+                                    <br /><br />
+                                    <div class="normalfinish">
+                                        <a href="#item-1" data-toggle="tab" class="btn btn-warning"><i class="fa fa-angle-left"></i> &nbsp; Previous</a>
+                                        <a href="#item-additional" data-toggle="tab" class="btn btn-success btnNext">Next &nbsp; <i class="fa fa-angle-right"></i></a>
+                                    </div>
+
+                                </div>
+                                <!-- END Gallery -->
+                                <!-- Item extras -->
+                                <div class="tab-pane fade" id="item-additional">
+                                    <form id="additional-form" class="row">
+                                        <div class="col-xs-12">
+                                            <div class="form-group">
+                                                <label for="tags">Product tags</label>
+                                                <p class="formhelp">
+                                                    Choose one or more tags (to a maximum of 10) to help classify your item. 
+                                                    If the tag you desire isn't in the list, you can freely add new ones in your Trading Item Resources section and return here to apply them.
+                                                </p>
+                                                <textarea class="form-control input-lg" name="extratags" id="item_protags" placeholder='Additional tags...'>@itemTagNames</textarea>
+                                                @*<input name="extratags" id="item_protags" class="form-control input-lg" value="@itemTagNames">*@
+                                            </div>
+                                        </div>
+                                    </form>
+                                    <br />
+                                    <div class="row">
+                                        <div class="col-xs-12 col-sm-6">
+                                            <div class="form-group">
+                                                <label for="brand">Brand</label>
+                                                <select name="brand" id="item_brand" class="form-control select2" style="width: 100%;">
+                                                    <option value="" selected>N/A</option>
+                                                    @foreach (var additionalInfo in additionalInfos.Where(q => q.Type == AdditionalInfoType.Brand))
+                                                    {
+                                                        if (Model.AdditionalInfos.Any(e => e.Id == additionalInfo.Id))
+                                                        {
+                                                            <option selected value="@additionalInfo.Id">@additionalInfo.Name</option>
+                                                        }
+                                                        else
+                                                        {
+                                                            <option value="@additionalInfo.Id">@additionalInfo.Name</option>
+                                                        }
+                                                    }
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="col-xs-12 col-sm-6">
+                                            <div class="form-group">
+                                                <label for="needs">Needs fulfilled</label>
+                                                <select name="needs" id="item_need" class="checkmulti form-control" multiple style="width: 100%; display: none">
+                                                    @foreach (var additionalInfo in additionalInfos.Where(q => q.Type == AdditionalInfoType.Need))
+                                                    {
+                                                        if (Model.AdditionalInfos.Any(e => e.Id == additionalInfo.Id))
+                                                        {
+                                                            <option selected value="@additionalInfo.Id">@additionalInfo.Name</option>
+                                                        }
+                                                        else
+                                                        {
+                                                            <option value="@additionalInfo.Id">@additionalInfo.Name</option>
+                                                        }
+                                                    }
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-xs-12 col-sm-6">
+                                            <div class="form-group">
+                                                <label for="segments">Rating</label>
+                                                <select name="segments" id="item_quality" class="form-control" style="width: 100%;">
+                                                    <option value="">N/A</option>
+                                                    @foreach (var additionalInfo in additionalInfos.Where(q => q.Type == AdditionalInfoType.QualityRating))
+                                                    {
+                                                        if (Model.AdditionalInfos.Any(e => e.Id == additionalInfo.Id))
+                                                        {
+                                                            <option selected value="@additionalInfo.Id">@additionalInfo.Name</option>
+                                                        }
+                                                        else
+                                                        {
+                                                            <option value="@additionalInfo.Id">@additionalInfo.Name</option>
+                                                        }
+                                                    }
+                                                </select>
+                                            </div>
+                                        </div>
+                                        @*<div class="col-xs-12 col-sm-6">
+                                            <div class="form-group">
+                                                <label for="extratags">Additional tags</label>
+                                                <select name="extratags1" id="item_protags" class="select2 form-control" multiple style="width: 100%; display: none">
+                                                    @foreach (var additionalInfo in additionalInfos.Where(q => q.Type == AdditionalInfoType.ProductTag))
+                                                    {
+                                                        if (Model.AdditionalInfos.Any(e => e.Id == additionalInfo.Id))
+                                                        {
+                                                            <option selected value="@additionalInfo.Id">@additionalInfo.Name</option>
+                                                        }
+                                                        else
+                                                        {
+                                                            <option value="@additionalInfo.Id">@additionalInfo.Name</option>
+                                                        }
+                                                    }
+                                                </select>
+                                            </div>
+                                        </div>*@
+                                    </div>
+
+
+                                    <br />
+                                    <div class="row">
+                                        <div class="col-xs-12 col-sm-12">
+                                            <div class="form-group">
+                                                <label for="docs">Optionally attach Resource Document(s)</label><br />
+                                                <button class="btn btn-primary" data-toggle="modal" onclick="getResourceDocument()" data-target="#app-trader-resources-docs-select"><i class="fa fa-file-alt"></i> &nbsp; Browse</button>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-xs-12 col-sm-6 buy-doc-attachments" style="display: @showReDocument;">
+                                            <input type="hidden" value="@string.Join(",", Model.ResourceDocuments.Select(q=>q.Id))" id="value_resource_document" />
+                                            <ul class="domain-change-list unstyled cap-height" style="height: auto !important; margin-top: 15px;">
+                                                @foreach (var modelResourceDocument in Model.ResourceDocuments)
+                                                {
+                                                    <li>
+                                                        <span class="btn btn-danger delete_item" onclick="deleteDocument(this,'@modelResourceDocument.Id')"><i class="fa fa-trash"></i></span>
+                                                        <a href="@api@modelResourceDocument.FileUri">
+                                                            <img src="@modelResourceDocument.Type.IconPath" style="max-width: 60px; height: auto; padding-right: 10px;"> @modelResourceDocument.Name
+                                                        </a>
+                                                    </li>
+                                                }
+                                            </ul>
+
+                                        </div>
+                                    </div>
+
+
+                                    <br />
+                                    <a href="#sale-item-gallery" data-toggle="tab" class="btn btn-warning btnPrevious"><i class="fa fa-angle-left"></i> &nbsp; Previous</a>
+                                    <a href="#item-2" data-toggle="tab" class="btn btn-success btnNext">Next &nbsp; <i class="fa fa-angle-right"></i></a>
+                                </div>
+                                <!-- END Item extras -->
+                                <!-- Inventory -->
+                                <div class="tab-pane fade" id="item-2">
+
+                                    <div class="activity-overview generic help-text animated bounce">
+                                        <i class="fa fa-info-circle"></i>
+                                        <p>Manage your item's units and inventory here. Track stock levels and configure alerts for low stock or even surplus to avoid inventory losses</p>
+                                    </div>
+                                    <br />
+                                    <div class="row">
+                                        <div class="col-xs-12 col-sm-4">
+                                            <div class="form-group">
+                                                <label for="community">Is this a compound item?</label>
+                                                <div class="checkbox toggle" onclick="$('.bookkeeping-connected').toggle(); $('.no-bookkeeping').toggle();$('#form_purchase_account').toggle();" style="margin: 0;">
+                                                    <label>
+                                                        @if (Model.IsCompoundProduct)
+                                                        {
+                                                            <input checked data-toggle="toggle" class="toggle-switch" id="form_showrecipes" data-size="small" data-onstyle="success" value="true" type="checkbox" onchange="$('#formulae_recipes').fadeToggle();">
+                                                        }
+                                                        else
+                                                        {
+                                                            <input data-toggle="toggle" id="form_showrecipes" class="toggle-switch" data-size="small" data-onstyle="success" value="true" type="checkbox" onchange="$('#formulae_recipes').fadeToggle();">
+                                                        }
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <form id="frmvalidateSkuAndBarcode">
+                                            <div class="col-xs-12 col-sm-6">
+                                                <div class="form-group">
+                                                    <label for="sku">SKU</label>
+                                                    <input type="text" id="form_inventory_SKU" value="@Model.SKU" name="sku" class="form-control">
+                                                </div>
+                                            </div>
+                                            <div class="col-xs-12 col-sm-6">
+                                                <div class="form-group">
+                                                    <label for="barcode">Barcode</label>
+                                                    <input type="text" id="form_inventory_barcode" name="barcode" value="@Model.Barcode" class="form-control">
+                                                </div>
+                                            </div>
+                                        </form>
+                                    </div>
+                                    <div class="panel-group accordion-statement inverted" id="accordion" role="tablist" aria-multiselectable="true">
+                                        <!-- Product Unit -->
+                                        <div class="panel panel-default">
+                                            <div class="panel-heading" role="tab" id="heading-general">
+                                                <h4 class="panel-title">
+                                                    <a role="button" data-toggle="collapse" data-parent="#accordion" href="#collapse-units" aria-expanded="false" aria-controls="collapse-units" class="collapsed">
+                                                        <i class="more-less fa fa-plus"></i>
+                                                        Product &amp; Units
+                                                    </a>
+                                                </h4>
+                                            </div>
+                                            <div id="collapse-units" class="panel-collapse collapse" role="tabpanel" aria-labelledby="heading-units" aria-expanded="false" style="">
+                                                <div class="panel-body">
+                                                    <div class="row no-search">
+                                                        <div class="col-xs-12">
+                                                            @*<div class="activity-overview task" style="padding: 20px;">
+                                                                    <div class="form-group" style="margin: 0;">
+                                                                        <label for="measure_type">Measurement type</label>
+                                                                        <select name="measure_type" id="item_measure_type" class="form-control select2" style="width: 100%;">
+                                                                            @foreach (var m in MeasurementTypes)
+                                                                            {
+                                                                                if (Model.Units.Count > 0 && Model.Units[0].MeasurementType.ToString() == m)
+                                                                                {
+                                                                                    <option value="@m" selected>@m</option>
+                                                                                }
+                                                                                else
+                                                                                {
+                                                                                    <option value="@m">@m</option>
+                                                                                }
+                                                                            }
+                                                                        </select>
+                                                                    </div>
+                                                                </div><br />*@
+                                                            <form id="form-unit-table">
+                                                                <table id="unit_conversions" class="no-search table-hover" style="background: #fff; width: 100%;"
+                                                                       data-ordering="false" data-info="false" data-paging="false" searching="false">
+                                                                    <thead>
+                                                                        <tr>
+                                                                            <th>Unit</th>
+                                                                            <th>Quantity</th>
+                                                                            <th>Component unit</th>
+                                                                            <th style="display:none">Primary</th>
+                                                                            <th>Active</th>
+                                                                            <th></th>
+                                                                        </tr>
+                                                                    </thead>
+                                                                    <tbody>
+                                                                        @foreach (var item in Model.Units)
+                                                                        {
+                                                                            <tr class="tr_units_@item.Id">
+                                                                                <td class="row_name">
+                                                                                    <input class="unitIds" value="@item.Id" type="hidden" />
+                                                                                    <input type="text" onchange="changeUnitName(@item.Id)" id="unit_@item.Id" value="@item.Name" class="form-control unitName" required style="width: 100%" />
+                                                                                    <span class="hidden">@item.QuantityOfBaseunit</span>
+                                                                                    <p class="hidden">@item.IsBase.ToString().ToLower()</p>
+                                                                                </td>
+                                                                                <td class="row_quantity">@item.Quantity</td>
+                                                                                <td class="row_componentUnit">
+
+                                                                                    @if (item.ParentUnit != null)
+                                                                                    {
+                                                                                        <p class="parent_@item.ParentUnit.Id mod-css">@item.ParentUnit.Name</p>
+                                                                                        <input value="@item.ParentUnit.Id" type="hidden" />
+                                                                                    }
+                                                                                    else
+                                                                                    {
+                                                                                        <p></p>
+                                                                                        <input value="0" type="hidden" />
+                                                                                    }
+
+                                                                                </td>
+                                                                                <td class="row_primary" style="display:none">
+                                                                                    <label>
+                                                                                        @if (item.IsPrimary)
+                                                                                        {
+                                                                                            <input type="radio" checked name="primary[]" class="form-control">
+                                                                                        }
+                                                                                        else
+                                                                                        {
+                                                                                            <input type="radio" name="primary[]" class="form-control">
+                                                                                        }
+
+                                                                                    </label>
+                                                                                </td>
+                                                                                <td class="row_active">
+                                                                                    <label>
+                                                                                        @if (item.IsActive)
+                                                                                        {
+                                                                                            <input type="checkbox" checked value="@item.IsActive" class="form-control">
+                                                                                        }
+                                                                                        else
+                                                                                        {
+                                                                                            <input type="checkbox" value="@item.IsActive" class="form-control">
+                                                                                        }
+
+                                                                                    </label>
+                                                                                </td>
+                                                                                <td class="row_delete">
+                                                                                    @if (!item.IsBase)
+                                                                                    {
+                                                                                        <a href="#" onclick="deleteUnit(@item.Id, this)" class="btn btn-danger pull-right">
+                                                                                            <i class="fa fa-trash" style="color: #fff;"></i>
+                                                                                        </a>
+                                                                                    }
+                                                                                </td>
+                                                                            </tr>
+                                                                        }
+                                                                    </tbody>
+                                                                </table>
+                                                            </form>
+                                                            <br />
+                                                            <button id="btn_addNewUnitConversion" class="btn btn-success" onclick="addNewUnitConversion()"><i class="fa fa-plus"></i> &nbsp; Add another</button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- END Units & Conversions -->
+                                        <!-- Formulae/Recipes -->
+                                        <div class="panel panel-default" id="formulae_recipes" style="display: @displayFormulae">
+                                            <div class="panel-heading" role="tab" id="heading-general">
+                                                <h4 class="panel-title">
+                                                    <a role="button" data-toggle="collapse" data-parent="#accordion" href="#collapse-recipes" aria-expanded="false" aria-controls="collapse-recipes" class="collapsed">
+                                                        <i class="more-less fa fa-plus"></i>
+                                                        Formulae/Recipes
+                                                    </a>
+                                                </h4>
+                                            </div>
+                                            <div id="collapse-recipes" class="panel-collapse collapse" role="tabpanel" aria-labelledby="heading-recipes" aria-expanded="false" style="height: 0px;">
+                                                <div class="panel-body">
+                                                    <div class="no-search">
+
+                                                        <table id="tb_main_recipe" class="table-hover" style="background: #fff; width: 100%;" data-ordering="false" data-info="false" data-paging="false">
+                                                            <thead>
+                                                                <tr>
+                                                                    <th>Recipe</th>
+                                                                    <th>Active</th>
+                                                                    <th>Is Current</th>
+                                                                    <th>Options</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                @foreach (var item in Model.AssociatedRecipes)
+                                                                {
+                                                                    <tr>
+                                                                        <td class="row_recipes_name">
+                                                                            <p>@item.Name</p>
+                                                                            <input type="hidden" id="tb_main_id_@item.Id" value="@item.Id" />
+                                                                        </td>
+                                                                        <td class="row_recipes_active">
+                                                                            <label>
+                                                                                @if (item.IsActive)
+                                                                                {
+                                                                                    <input type="checkbox" checked onchange="activeRecipe(@item.Id, this)" value="@item.IsActive" class="form-control">
+                                                                                }
+                                                                                else
+                                                                                {
+                                                                                    <input type="checkbox" onchange="activeRecipe(@item.Id, this)" value="@item.IsActive" class="form-control">
+                                                                                }
+                                                                            </label>
+                                                                        </td>
+                                                                        <td class="row_recipes_iscurrent">
+                                                                            <label>
+                                                                                @if (Model.InventoryDetails.Any(q => q.Location.Id == currentLocationId
+                                                                                                                   && q.CurrentRecipe != null && q.CurrentRecipe.Id == item.Id))
+                                                                                {
+                                                                                    <input type="radio" checked name="primary[]" onchange="changeIsCurrentRecipe(@item.Id)">
+                                                                                }
+                                                                                else
+                                                                                {
+                                                                                    <input type="radio" name="primary[]" onchange="changeIsCurrentRecipe(@item.Id)">
+                                                                                }
+
+                                                                            </label>
+                                                                        </td>
+                                                                        <td><button class="btn btn-warning" onclick="editRecipes(@item.Id)"><i class="fa fa-pencil"></i> &nbsp; Edit</button></td>
+                                                                    </tr>
+                                                                }
+
+                                                            </tbody>
+                                                        </table>
+
+                                                        <br />
+                                                        <button class="btn btn-success" onclick="addRecipes()"><i class="fa fa-plus"></i> &nbsp; Create new recipe</button>
+
+                                                    </div>
+                                                    <br />
+                                                    <!-- Create new recipe -->
+                                                    <div class="no-search activity-overview alert-detail" id="newrecipe" style="display: none; padding: 20px 20px 0 20px; margin-bottom: 10px;">
+                                                        <form id="form_new_recipe">
+                                                            <div class="row">
+                                                                <div class="col-xs-12 col-md-6">
+                                                                    <div class="form-group">
+                                                                        <label for="recipe-name">Recipe name</label>
+                                                                        <input type="text" id="form_add_recipe_name" name="recipe_name" class="form-control">
+                                                                    </div>
+                                                                </div>
+                                                                <div class="col-xs-12 col-md-6">
+                                                                    <div class="form-group">
+                                                                        <label for="recipe-name" style="display:block">Is currrent</label>
+                                                                        <input type="radio" id="form_add_recipe_iscurrent" style="margin-top: 12px;" name="recipe_iscurrent" class="">
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+
+
+
+                                                            <table id="tb_add_recipe" class="table-hover" style="background: #fff; width: 100%;" data-ordering="false" data-info="false" data-paging="false">
+                                                                <thead>
+                                                                    <tr>
+                                                                        <th>Item</th>
+                                                                        <th>Quantity</th>
+                                                                        <th>Unit</th>
+                                                                        <th>Average Cost</th>
+                                                                        <th>Latest Cost</th>
+                                                                        <th></th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody></tbody>
+                                                            </table>
+                                                        </form>
+                                                        <br />
+                                                        <button class="btn btn-success" onclick="addNewRowRecipe2('tb_add_recipe')"><i class="fa fa-plus"></i> &nbsp; Add another item</button>
+                                                        <button onclick="saveNewRecipe(@Model.Id, 'tb_add_recipe')" class="btn btn-primary"><i class="fa fa-save"></i> &nbsp; Save recipe</button>
+
+                                                        <br /><br />
+
+                                                    </div>
+
+                                                    <table id="template-options-select" class="table-hover hidden">
+                                                        <tbody>
+                                                        <tr class="new_row_recipe2">
+                                                                <td class="item_name">
+                                                                    <select name="item" class="recipe-ingredient-add-mew" style="width: 100%;" data-placeholder="Choose an ingredient">
+                                                                    </select>
+                                                                    <input type="hidden" value="0" />
+                                                                </td>
+                                                                <td class="item_quantity">
+                                                                    <input type="number" min="1" step=".001" data-unitcost="0" class="form-control" value="0">
+                                                                </td>
+                                                                <td class="item_selected">
+                                                                    <select name="selectUnit" class="form-control select2"></select>
+                                                                </td>
+                                                                <td class="item_averagecost"><span>0</span></td>
+                                                                <td class="item_latestcost"><span>0</span></td>
+                                                                <td><a href="javascript:void(0)" onclick="removeRowRecipe(this.parentElement.parentElement)" class="btn btn-danger pull-right"><i class="fa fa-trash" style="color: #fff;"></i></a></td>
+                                                        </tr>
+                                                        </tbody>
+                                                    </table>
+
+                                                    <table id="table_template" class="table-hover hidden">
+                                                        <tbody>
+                                                            <tr class="new_row_recipe">
+                                                                <td class="item_name">
+                                                                    <select name="item" onchange="onSelectItem(this)" class="recipe-ingredient-add-mew yeu-em-never-sai" style="width: 100%;" id="" data-placeholder="Choose an ingredient">
+                                                                        <option value="" data-unitcost="0"></option>
+                                                                        @* @foreach (var item in traderItemSubs)
+                                                                        {
+                                                                            var averageCost = item.Inventory == null || item.Inventory.AverageCost == 0 ? "0" : item.Inventory.AverageCost.ToString();
+                                                                            var latestCost = item.Inventory == null || item.Inventory.LatestCost == 0 ? "0" : item.Inventory.LatestCost.ToString();
+                                                                            <option value="@item.Id" average-cost="@(averageCost)" latest-cost="@(latestCost)" data-unitcost="inven.UnitCost">@item.Name</option>
+                                                                        } *@
+                                                                    </select>
+                                                                    <input type="hidden" value="0" />
+                                                                </td>
+                                                                <td class="item_quantity">
+                                                                    <input type="number" min="1" step=".001" data-unitcost="0" class="form-control" value="0">
+                                                                </td>
+                                                                <td class="item_selected">
+                                                                    <select name="selectUnit" class="form-control select2"></select>
+                                                                </td>
+                                                                <td class="item_averagecost"><span>0</span></td>
+                                                                <td class="item_latestcost"><span>0</span></td>
+                                                                <td><a href="javascript:void(0)" onclick="removeRowRecipe(this.parentElement.parentElement)" class="btn btn-danger pull-right"><i class="fa fa-trash" style="color: #fff;"></i></a></td>
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+
+                                                    <!-- END Create new recipe -->
+                                                    <!-- Edit existing recipe -->
+                                                    <div class="no-search activity-overview alert-detail" id="editrecipe" style="display: none; padding: 20px 20px 0 20px; margin-bottom: 10px;">
+                                                        <form id="form_edit_recipe">
+                                                            <div class="row">
+                                                                <div class="col-xs-12 col-md-6">
+                                                                    <div class="form-group">
+                                                                        <label for="recipe-name">Recipe name</label>
+                                                                        <input type="text" id="edit_recipe_name" name="recipe_name_edit" class="form-control" value="RoadChef Burger v1">
+                                                                    </div>
+                                                                </div>
+                                                                <div class="col-xs-12 col-md-6">
+                                                                    <div class="form-group">
+                                                                        <label for="recipe-name" style="display: block">Is current</label>
+                                                                        <input type="radio" id="edit_recipe_iscurrent" style="margin-top: 12px;" name="recipe_iscurrent_edit" class="">
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <input type="hidden" id="edit_recipe_form_id" />
+
+                                                            <table id="tb_edit_recipe" class="table-hover" style="background: #fff; width: 100%;" data-ordering="false" data-info="false" data-paging="false">
+                                                                <thead>
+                                                                    <tr>
+                                                                        <th>Item</th>
+                                                                        <th>Quantity</th>
+                                                                        <th>Unit</th>
+                                                                        <th>Average Cost</th>
+                                                                        <th>Latest Cost</th>
+                                                                        <th></th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody></tbody>
+                                                            </table>
+                                                        </form>
+                                                        <br />
+                                                        <button class="btn btn-success" onclick="addNewRowRecipe2('tb_edit_recipe')"><i class="fa fa-plus"></i> &nbsp; Add another item</button>
+                                                        <button class="btn btn-primary" onclick="saveNewRecipe(@Model.Id, 'tb_edit_recipe')"><i class="fa fa-save"></i> &nbsp; Save recipe</button>
+
+                                                        <br /><br />
+
+                                                    </div>
+                                                    <!-- END Edit exiting recipe -->
+
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <!-- END Formulae/Recipes -->
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-xs-12 col-sm-4">
+                                            <div class="form-group">
+                                                <label for="community">Track as inventory item at the current location</label>
+                                                @if (inventoryDetail.Id > 0)
+                                                {
+                                                    if (inventoryDetail.InventoryBatches.Count() > 0)
+                                                    {
+                                                        <div class="checkbox toggle" onclick="$('.bookkeeping-connected').toggle(); $('.no-bookkeeping').toggle();" style="margin: 0;">
+                                                            <label>
+                                                                <input checked disabled data-toggle="toggle" class="toggle-switch" id="form_inventory_checkbox" data-size="small" data-onstyle="success" value="true" type="checkbox" onchange="$('#inventory-bk').fadeToggle(); $('#inventory-meta').fadeToggle();">
+                                                            </label>
+                                                        </div>
+                                                    }
+                                                    else
+                                                    {
+                                                        <div class="checkbox toggle" onclick="$('.bookkeeping-connected').toggle(); $('.no-bookkeeping').toggle();" style="margin: 0;">
+                                                            <label>
+                                                                <input checked data-toggle="toggle" class="toggle-switch" id="form_inventory_checkbox" data-size="small" data-onstyle="success" value="true" type="checkbox" onchange="$('#inventory-bk').fadeToggle(); $('#inventory-meta').fadeToggle();">
+                                                            </label>
+                                                        </div>
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    <div class="checkbox toggle" onclick="$('.bookkeeping-connected').toggle(); $('.no-bookkeeping').toggle();$('#form_specifics_active_in_current').bootstrapToggle('on');" style="margin: 0;">
+                                                        <label>
+                                                            @if (locationId == 0 && Model.InventoryDetails.Any())
+                                                            {
+                                                                <input checked disabled data-toggle="toggle" class="toggle-switch" id="form_inventory_checkbox" data-size="small" data-onstyle="success" value="true" type="checkbox" onchange="$('#inventory-bk').fadeToggle(); $('#inventory-meta').fadeToggle();">
+                                                            }
+                                                            else
+                                                            {
+                                                                <input data-toggle="toggle" id="form_inventory_checkbox" class="toggle-switch" data-size="small" data-onstyle="success" value="true" type="checkbox" onchange="$('#inventory-bk').fadeToggle(); $('#inventory-meta').fadeToggle();">
+                                                            }
+                                                        </label>
+                                                    </div>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+
+
+                                    <!-- Advanced item meta -->
+                                    <div id="inventory-meta" style="display: @styleDisplay; margin-top: 20px;">
+                                        <form id="form_inventory">
+                                            @{
+                                                var unitBaseItem = Model.Units.Where(s => s.IsBase).FirstOrDefault();
+                                                var si = unitBaseItem != null ? " (Inventory units: " + unitBaseItem.Name + ")" : "";
+                                            }
+                                            <h4 id="form_inventory_name">"@Model.Name" inventory specifics<span class="unit-base-iv">@(si)</span></h4>
+                                            <br />
+                                            <div class="activity-overview generic help-text animated bounce">
+                                                <i class="fa fa-info-circle"></i>
+                                                <p>
+                                                    <strong>NOTE:</strong> Your current inventory count will not be directly editable once your item is added. Please be sure the count you
+                                                    provide below is accurate, as any changes you may require later will have to be made through stock adjustments.
+                                                </p>
+                                            </div>
+                                            @if (locationId == 0)
+                                            {
+                                                <div class="row">
+                                                    <div class="col-xs-12 col-sm-6" style="margin-bottom: 15px;">
+                                                        <label for="location">Current location</label>
+                                                        <select id="local-manage-select" name="location" onchange="checkInventoryChoose(this)" class="form-control select2" style="width: 100%;">
+                                                            <option value=""></option>
+                                                            @foreach (var item in Model.Locations)
+                                                            {
+                                                                <option value="@item.Id">@item.Name</option>
+                                                            }
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            }
+                                            <div class="row">
+                                                <div class="col-xs-12 col-sm-6">
+                                                    <div class="form-group">
+                                                        <label for="instock">Current inventory</label>
+                                                        <div class="input-group" style="margin-bottom: 15px;">
+                                                            <input type="hidden" value="@inventoryDetail.CurrentInventoryLevel.ToInputNumberFormat(currencySettings)" id="hdfCurrentInventory" />
+                                                            <input type="text" value="@inventoryDetail.CurrentInventoryLevel.ToInputNumberFormat(currencySettings)" id="form_inventory_instock" name="instock" class="form-control" disabled="">
+                                                            <span class="input-group-btn"><button type="button" @(locationId == 0 ? "disabled" : "") onclick="initInventoryCreateModal('sell')" class="btn btn-primary btnaddinventory"><i class="fa fa-plus"></i> &nbsp; Create inventory</button></span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-xs-12 col-sm-3">
+                                                    <div class="form-group">
+                                                        <label for="mininv">Min inventory</label>
+                                                        <input type="text" value="@inventoryDetail.MinInventorylLevel" name="mininv" id="form_inventory_mininv" class="form-control isnumber">
+                                                    </div>
+                                                </div>
+                                                <div class="col-xs-12 col-sm-3">
+                                                    <div class="form-group">
+                                                        <label for="maxinv">Max inventory</label>
+                                                        <input type="text" value="@inventoryDetail.MaxInventoryLevel" id="form_inventory_maxinv" name="maxinv" class="form-control isnumber">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="row">
+                                                <div class="col-xs-12 col-sm-3">
+                                                    <div class="form-group">
+                                                        <label for="avgcost">Average cost</label>
+                                                        <p class="lblavgcost">@inventoryDetail.AverageCost.ToCurrencySymbol(currencySettings)</p>
+                                                    </div>
+                                                </div>
+                                                <div class="col-xs-12 col-sm-3">
+                                                    <div class="form-group">
+                                                        <label for="latestcost">Latest cost</label>
+                                                        <p class="lbllatestcost">@inventoryDetail.LatestCost.ToCurrencySymbol(currencySettings)</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </form>
+                                    </div>
+                                    <!-- END Advanced item meta -->
+
+
+                                    <br />
+                                    <a href="#item-additional" data-toggle="tab" class="btn btn-warning btnPrevious"><i class="fa fa-angle-left"></i> &nbsp; Previous</a>
+                                    <a class="btn btn-success" onclick="nextStepInventory()">Next &nbsp; <i class="fa fa-angle-right"></i></a>
+                                    <a id="a_next_item2" class="hidden btnNext" href="#location-vendors" data-toggle="tab"></a>
+
+                                </div>
+                                <!-- END Inventory -->
+                                <!-- Bookkeeping -->
+                                <div class="tab-pane fade" id="item-3">
+
+                                    <div class="activity-overview generic" style="padding: 20px; display: flex;">
+                                        <div class="avatar" style="flex: 0 0 90px;"><img src="\Content\DesignStyle\img\icon_bookkeeping.png" style="width: 90px; height: auto;"></div>
+                                        <div style="flex: 1; padding-left: 15px; justify-content: center; align-self: center;">
+                                            <h4 style="margin: 0; padding: 0 0 8px 0;">Qbicles Bookkeeping</h4>
+                                            <label class="label label-lg label-success" style="font-size: 11px !important;">Connected</label>
+                                        </div>
+                                    </div>
+
+                                    <br />
+                                    <div class="row">
+                                        <div class="col-xs-12 col-sm-6">
+                                            <div class="form-group">
+                                                <label for="active">Sale Tax Rate(s)</label>
+                                                <select id="form_taxrate_select_sale" name="taxaccountsale" class="form-control checkmulti" multiple style="width: 100%;display:none">
+                                                    @foreach (var item in saleTaxRates)
+                                                    {
+                                                        var nameAcc = "";
+                                                        if (item.AssociatedAccount != null) { nameAcc = item.AssociatedAccount.Name; }
+                                                        if (Model.TaxRates != null && Model.TaxRates.Any(s => s.Id == item.Id))
+                                                        {
+                                                            <option value="@item.Id" selected>@item.Name (linked account: @nameAcc)</option>
+                                                        }
+                                                        else
+                                                        {
+                                                            <option value="@item.Id">@item.Name (linked account: @nameAcc)</option>
+                                                        }
+
+                                                    }
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div id="form_sales_account" class="col-xs-12 col-sm-6">
+                                            <div class="form-group" style="margin: 0;">
+                                                <label for="customer-account">Sales account</label><br />
+
+                                                @if (Model.SalesAccount != null)
+                                                {
+                                                    <button id="btn_addsales_account" class="btn btn-info hidden" onclick="LoadAccountsTree(); idAccount = 'form_salesaccount'" data-toggle="modal" data-target="#app-bookkeeping-treeview">Choose account</button>
+                                                    <button id="btn_editsales_account" class="btn btn-small btn-warning btn-edit" onclick="LoadAccountsTree(); idAccount = 'form_salesaccount'" data-toggle="modal" data-target="#app-bookkeeping-treeview"><i class="fa fa-pencil"></i></button>
+                                                    <input type="hidden" id="form_salesaccount" value="@Model.SalesAccount.Id" />
+                                                    <p style="display: inline; padding-left: 5px;">@Model.SalesAccount.Name</p>
+                                                }
+                                                else
+                                                {
+                                                    <button id="btn_addsales_account" class="btn btn-info" onclick="LoadAccountsTree(); idAccount = 'form_salesaccount'" data-toggle="modal" data-target="#app-bookkeeping-treeview">Choose account</button>
+                                                    <button id="btn_editsales_account" class="btn btn-small btn-warning btn-edit hidden" onclick="LoadAccountsTree(); idAccount = 'form_salesaccount'" data-toggle="modal" data-target="#app-bookkeeping-treeview"><i class="fa fa-pencil"></i></button>
+                                                    <input type="hidden" id="form_salesaccount" value="0" />
+                                                    <p style="display: inline; padding-left: 5px;">No account selected</p>
+                                                }
+                                            </div>
+                                        </div>
+
+
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-xs-12 col-sm-6 " id="form_purchase_account" style="display:@(Model.IsCompoundProduct?"block":"none");">
+                                            <div class="form-group" style="margin: 0;">
+                                                <label for="customer-account">Cost of Sales Account</label><br />
+                                                @if (Model.PurchaseAccount != null)
+                                                {
+                                                    <button id="btn_addpurchase_account" class="btn btn-info hidden" onclick="LoadAccountsTree(); idAccount = 'form_purchase';" data-toggle="modal" data-target="#app-bookkeeping-treeview">Choose account</button>
+                                                    <button id="btn_editpurchase_account" class="btn btn-small btn-warning btn-edit" onclick="LoadAccountsTree(); idAccount = 'form_purchase';" data-toggle="modal" data-target="#app-bookkeeping-treeview"><i class="fa fa-pencil"></i></button>
+                                                    <input type="hidden" id="form_purchase" value="@Model.PurchaseAccount.Id" />
+                                                    <p style="display: inline; padding-left: 5px;">@Model.PurchaseAccount.Name</p>
+                                                }
+                                                else
+                                                {
+                                                    <button id="btn_addpurchase_account" class="btn btn-info" onclick="LoadAccountsTree(); idAccount = 'form_purchase';" data-toggle="modal" data-target="#app-bookkeeping-treeview">Choose account</button>
+                                                    <button id="btn_editpurchase_account" class="btn btn-small btn-warning btn-edit hidden" onclick="LoadAccountsTree(); idAccount = 'form_purchase';" data-toggle="modal" data-target="#app-bookkeeping-treeview"><i class="fa fa-pencil"></i></button>
+                                                    <input type="hidden" id="form_purchase" value="0" />
+                                                    <p style="display: inline; padding-left: 5px;">No account selected</p>
+                                                }
+                                            </div>
+                                        </div>
+                                        <div class="col-xs-12 col-sm-6 " id="form_inventory_account">
+                                            <div class="form-group" style="margin: 0;">
+                                                <label for="customer-account">Inventory account</label><br />
+
+                                                @if (Model.InventoryAccount != null)
+                                                {
+                                                    <button id="btn_addinventory_account" class="btn btn-info hidden" onclick="LoadAccountsTree(); idAccount = 'form_inventoryaccount'" data-toggle="modal" data-target="#app-bookkeeping-treeview">Choose account</button>
+                                                    <button id="btn_editinventory_account" class="btn btn-small btn-warning btn-edit" onclick="LoadAccountsTree(); idAccount = 'form_inventoryaccount'" data-toggle="modal" data-target="#app-bookkeeping-treeview"><i class="fa fa-pencil"></i></button>
+                                                    <input type="hidden" id="form_inventoryaccount" value="@Model.InventoryAccount.Id" />
+                                                    <p style="display: inline; padding-left: 5px;">@Model.InventoryAccount.Name</p>
+                                                }
+                                                else
+                                                {
+                                                    <button id="btn_addinventory_account" class="btn btn-info" onclick="LoadAccountsTree(); idAccount = 'form_inventoryaccount'" data-toggle="modal" data-target="#app-bookkeeping-treeview">Choose account</button>
+                                                    <button id="btn_editinventory_account" class="btn btn-small btn-warning btn-edit hidden" onclick="LoadAccountsTree(); idAccount = 'form_inventoryaccount'" data-toggle="modal" data-target="#app-bookkeeping-treeview"><i class="fa fa-pencil"></i></button>
+                                                    <input type="hidden" id="form_inventoryaccount" value="0" />
+                                                    <p style="display: inline; padding-left: 5px;">No account selected</p>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+
+
+                                    <br />
+                                    <a href="#item-2" data-toggle="tab" class="btn btn-warning btnPrevious"><i class="fa fa-angle-left"></i> &nbsp; Previous</a>
+                                    <a href="#item-4" data-toggle="tab" class="btn btn-success btnNext hidden">Next &nbsp; <i class="fa fa-angle-right"></i></a>
+                                    <a href="javascript:void(0)" onclick="save()" class="btn btn-success trigger_load">Finish &amp; save</a>
+                                </div>
+                                <!-- END Bookkeeping -->
+                                <!-- Community -->
+                                <div class="tab-pane fade hidden" id="item-4">
+
+                                    <div class="activity-overview generic help-text animated bounce">
+                                        <i class="fa fa-info-circle"></i>
+                                        <p>Showing your item in the Qbicles Community makes your products visible to other Communmity users, widening their reach and exposure.</p>
+                                    </div>
+                                    <br />
+
+                                    <div class="activity-overview task" style="padding: 20px;">
+                                        <div class="row">
+                                            <div class="col-xs-12 col-sm-4">
+                                                <div class="form-group" style="margin: 0;">
+                                                    <label for="community">Show in Community app</label>
+                                                    <div class="checkbox toggle" onclick="$('.bookkeeping-connected').toggle(); $('.no-bookkeeping').toggle();">
+                                                        <label>
+                                                            @if (Model.IsCommunityProduct)
+                                                            {
+                                                                <input id="form_community" class="toggle-switch" data-toggle="toggle" checked data-size="small" data-onstyle="success" type="checkbox" onchange="$('#community-meta').fadeToggle();">
+                                                            }
+                                                            else
+                                                            {
+                                                                <input id="form_community" class="toggle-switch" data-toggle="toggle" data-size="small" data-onstyle="success" type="checkbox" onchange="$('#community-meta').fadeToggle();">
+                                                            }
+
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div id="community-meta" style="display: none; margin-top: 20px;">
+                                            <div class="row">
+                                                <div class="col-xs-12">
+                                                    <div class="form-group" style="margin: 0;">
+                                                        <label for="hotel">Tag this item</label>
+                                                        <select name="tags" class="form-control select2" multiple style="width: 100%;">
+                                                            <option value=""></option>
+                                                            <option value="1">Tag 1</option>
+                                                            <option value="2">Tag 2</option>
+                                                            <option value="3">Tag 3</option>
+                                                            <option value="4">Tag 4</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <br />
+                                    <a href="#item-3" data-toggle="tab" class="btn btn-warning btnPrevious"><i class="fa fa-angle-left"></i> &nbsp; Previous</a>
+                                    <a href="javascript:void(0)" onclick="save()" class="btn btn-success trigger_load">Finish &amp; save</a>
+
+                                </div>
+                                <!-- END Community -->
+
+
+                            </div> <!-- ./tab-content -->
+
+                        </div> <!-- /.col -->
+                    </div> <!-- /.row -->
+
+                </section>
+
+            </div> <!-- /#theform -->
+
+
+        </div> <!-- /.modal-body -->
+
+    </div><!-- /.modal-content -->
+</div><!-- /.modal-dialog -->
+
+<div class="modal fade" id="app-trader-add-contact" role="dialog" aria-labelledby="app-trader-add-contact">
+
+</div><!-- /.modal -->
+<div class="modal fade left" id="app-trader-resources-image-select" role="dialog" aria-labelledby="app-trader-resources-image-select">
+
+</div><!-- /.modal -->
+<div class="modal fade left" id="app-trader-resources-docs-select" role="dialog" aria-labelledby="app-trader-resources-docs-select">
+
+</div><!-- /.modal -->
+<div class="modal fade left" id="app-trader-inventory-create" role="dialog" aria-labelledby="app-trader-inventory-create">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" onclick="$('#app-trader-inventory-create').modal('hide')" aria-label="Close"><span aria-hidden="true">×</span></button>
+                <h5 class="modal-title">Create inventory</h5>
+            </div>
+            <div class="modal-body">
+                <form id="frmCreateInventory">
+                    <table class="table table-striped table-hover app_specific">
+                        <thead>
+                            <tr>
+                                <th>Item</th>
+                                <th>Unit</th>
+                                <th>Location</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="iv-item-name"></td>
+                                <td class="iv-unit-base-name"></td>
+                                <td class="iv-locations"></td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <br>
+                    <div class="well custom">
+                        <div class="form-group">
+                            <label for="quantity">Quantity</label>
+                            <input type="number" class="form-control" required id="ivquantity" name="ivquantity">
+                        </div>
+                        <label for="ivunitcost">Unit cost</label>
+                        <div class="input-group">
+                            <span class="input-group-addon">@currencySettings.CurrencySymbol</span>
+                            <input type="number" class="form-control" required id="ivunitcost" name="ivunitcost">
+                        </div>
+                        <label id="ivunitcost-error" class="error" for="ivunitcost" style="display: none;"></label>
+                    </div>
+                    <br>
+                    <button type="button" class="btn btn-danger" onclick="$('#app-trader-inventory-create').modal('hide')">Cancel</button>
+                    <button type="submit" class="btn btn-success">Confirm</button>
+                </form>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+<style>
+    #form_inventory_unitcost-error {
+        position: absolute;
+        top: 34px;
+        right: 0;
+    }
+</style>
+
+
+<script src="~/Scripts/dev/qbicle.formatnumber.min.js"></script>
+<link href="~/Content/DesignStyle/css/tagify.css" rel="stylesheet" />
+@*<script src="~/Content/DesignStyle/js/tagify.polyfills.min.js"></script>*@
+<script src="~/Content/DesignStyle/js/tagify.js"></script>
+<script src="https://cdn.tiny.cloud/1/ppfa9ubyahapmcpxedac4yuyhojva0q9bm41rip6a351qegu/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
+<script src="~/Content/DesignStyle/js/Sortable.min.js"></script>
+
+@if (callBack)
+{
+
+    @*<script src="//cdn.datatables.net/v/bs/dt-1.10.16/r-2.2.1/datatables.min.js"></script>
+        <script src="//cdn.datatables.net/rowreorder/1.2.5/js/dataTables.rowReorder.min.js"></script>*@
+<script type="text/javascript">
+
+        @{
+            var recipesmodel = Model.AssociatedRecipes.Select(q => new
+            {
+                Id = q.Id,
+                Name = q.Name,
+                IsActive = q.IsActive,
+                IsCurrent = q.IsCurrent,
+                Ingredients = q.Ingredients.Select(c => new
+                {
+                    Id = c.Id,
+                    SubItem = new { Id = c.SubItem != null ? c.SubItem.Id : 0},
+                    Quantity = c.Quantity,
+                    Unit = new { Id = c.Unit != null ? c.Unit.Id : 0 },
+                    AverageCost = c.SubItem != null ? (c.SubItem.InventoryDetails.Any() ? c.SubItem.InventoryDetails[0].AverageCost : 0) : 0,
+                    LatestCost = c.SubItem != null ? (c.SubItem.InventoryDetails.Any() ? c.SubItem.InventoryDetails[0].LatestCost : 0): 0
+                }).ToList()
+            }).ToList();
+            }
+        recipes = @Html.Raw(Json.Encode(recipesmodel));
+        $("#product_image, #item_quality, #item_brand@(locationId==0? ",#local-manage-select":"")").select2({placeholder: "Please select"});
+        $("#item_need, #form_taxrate_select_sale").multiselect({
+            includeSelectAllOption: false,
+            enableFiltering: false,
+            buttonWidth: '100%',
+            maxHeight: 200,
+            enableClickableOptGroups: true,
+            numberDisplayed: 1,
+        });
+        $('.toggle-switch').bootstrapToggle();
+        if ($('#form_specifics_active_in_current')[0].checked === true
+            || $('#form_inventory_checkbox')[0].checked === true
+            || $('#form_community')[0].checked === true) {
+            $('.bookkeeping-connected').toggle();
+            $('.no-bookkeeping').toggle();
+        }
+        $('#form_specifics_category').not('.multi-select').select2();
+        $('#form_specifics_contacts').not('.multi-select').select2();
+        $('#form_inventory_baseunit').not('.multi-select').select2();
+        //$('#form_taxrate_select').not('.multi-select').select2();
+        $('#community-meta select').not('.multi-select').select2();
+        $('#unit_conversions').DataTable({
+            //responsive: true,
+            "lengthChange": true,
+            "pageLength": 10,
+            "order": [],
+            "autoWidth": false,
+            "columnDefs": [
+                {
+                    "targets": [3],
+                    "visible": false
+                },
+                {
+                    "targets": [0],
+                    "width" : "30%"
+                },
+                {
+                    "targets": [5],
+                    "width" : "15%"
+                },
+                {
+                    "targets": [2],
+                    "width" : "30%"
+                },
+                {
+                    "targets": [4],
+                    "width" : "10%"
+                }
+            ]
+        });
+        $('#unit_conversions').show();
+
+        $('#tb_main_recipe').DataTable({
+            //responsive: true,
+            "lengthChange": true,
+            "pageLength": 10,
+            "order": []
+        });
+        $('#tb_main_recipe').show();
+        $('.btnNext').click(function () {
+            $('.modal .app_subnav > .active').next('li').find('a').trigger('click');
+        });
+
+        $('.btnPrevious').click(function () {
+            $('.modal .app_subnav > .active').prev('li').find('a').trigger('click');
+        });
+    $(document).ready(function () {
+        $('.description-class').LoadingOverlay("show");
+        setTimeout(function () {
+            tinymce.init({
+                selector: 'textarea#form_specifics_description',
+                setup: function (ed) {
+                    ed.on('change', function (e) {
+                        if ((ed.getContent({ format: 'text' })) != "")
+                            $("#form_specifics_description-error").hide();
+                        else
+                            $("#form_specifics_description-error").show();
+
+                        $("#form_specifics_description_text").val(ed.getContent({ format: 'text' }));
+
+                        $("#form_specifics_description").val(ed.getContent());
+                        $("#form_specifics_description").text(ed.getContent());
+                    });
+                },
+                menubar: false,
+                plugins: 'link',
+                toolbar: 'undo redo | bold italic underline | alignleft aligncenter alignright alignjustify |' +
+                    'bullist numlist checklist | removeformat'
+            });
+
+
+            new Sortable.create(itemgalerylist, {
+                swapThreshold: 1,
+                animation: 150,
+                onUpdate: function (e) {
+                    changeOrderGalery(e.oldIndex, e.newIndex);
+                }
+            });
+            $('.description-class').LoadingOverlay("hide", true);
+        }, 1000);
+
+        var input = document.querySelector('textarea[name="extratags"]'),
+            // init Tagify script on the above inputs
+            tagify = new Tagify(input, {
+                whitelist: @(lstProductTagNames),
+                maxTags: 10,
+                contenteditable: false,
+                editTags: false,
+                enforceWhitelist: true,
+                dropdown: {
+                    maxItems:10,// @maxTagItems, // <- mixumum allowed rendered suggestions
+                    classname: "tags-look", // <- custom classname for this dropdown, so it could be targeted
+                    enabled: 0, // <- show suggestions on focus
+                    closeOnSelect: false // <- do not hide the suggestions dropdown once an item has been selected
+                },
+                callbacks: {
+                    "change": (e) => {
+                        //$("#item_protags").val(e.detail.value);
+                        //$("#item_protags").text(e.detail.value);
+                        if (e.detail.value != "")
+                            $("#item_protags-error").hide();
+                        else
+                            $("#item_protags-error").show();
+                    }//,
+                    //"dropdown:show": (e) => console.log(e.detail)
+                }
+            });
+
+        //new Sortable(gallery2, {
+        //    swapThreshold: 1,
+        //    animation: 150
+        //});
+    });
+
+
+
+
+
+</script>
+}
+
+<style>
+    /*.fileUpload {
+        position: relative;
+        overflow: hidden;
+        height: 43px;
+        margin-top: 0;
+    }
+
+        .fileUpload input.uploadlogo {
+            position: absolute;
+            top: 0;
+            right: 0;
+            margin: 0;
+            padding: 0;
+            font-size: 20px;
+            cursor: pointer;
+            opacity: 0;
+            filter: alpha(opacity=0);
+            width: 100%;
+            height: 42px;
+        }*/
+
+    /*Chrome fix*/
+/*    input::-webkit-file-upload-button {
+        cursor: pointer !important;
+        height: 42px;
+        width: 100%;
+    }*/
+
+
+    .gallerynone {
+        padding: 80px 30px;
+        border: 1px dashed rgba(0, 0, 0, 0.08);
+        border-radius: 10px;
+        margin: 30px 0;
+    }
+
+        .gallerynone p {
+            margin: 0;
+            padding: 0;
+        }
+
+    .item-galery-list {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        grid-gap: 10px;
+    }
+
+        .item-galery-list figure {
+            display: block;
+            width: 100%;
+            padding: 13px;
+            border-radius: 10px;
+            background: #fff;
+            cursor: move;
+        }
+
+            .item-galery-list figure .col.caption p {
+                padding-left: 30px;
+                margin: 0;
+                font-size: 13px;
+            }
+
+    .flex-contain {
+        display: flex;
+        flex-direction: row;
+        align-content: center;
+        align-items: center;
+    }
+
+        .flex-contain .col {
+            flex: 1;
+        }
+
+            .flex-contain .col.img {
+                flex: 1;
+            }
+
+            .flex-contain .col.options {
+                position: relative;
+                flex: 0 1 80px;
+            }
+
+                .flex-contain .col.options .dropdown {
+                    bottom: -8px;
+                }
+
+            .flex-contain .col.img div {
+                width: 100%;
+                max-width: 340px;
+                height: 210px;
+                background-size: cover;
+                border-radius: 5px;
+                overflow: hidden;
+                background-position: center center;
+            }
+    .tagify {
+        height: auto;
+        width: 100%;
+        /*max-width: 700px;*/
+    }
+    #form_specifics_description-error.error {
+        float: none !important;
+    }
+   /* #item_protags-error.error {
+        float: none !important;
+    }*/
+
+    .mod-css { 
+        word-break: break-word;
+    }
+
+    .row_componentUnit{
+        width: 50%
+    }
+</style>

@@ -1,0 +1,235 @@
+﻿@using Qbicles.Models;
+@using Qbicles.Models.Catalogs;
+@using Qbicles.Models.Trader
+@using Qbicles.BusinessRules;
+@model CategoryItem
+@{
+    var currencySetting = (CurrencySetting)ViewBag.CurrencySetting;
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var imageUri = Model.ImageUri;
+    var item = Model.PosVariants.FirstOrDefault();
+    if (string.IsNullOrEmpty(imageUri))
+    {
+        imageUri = item?.ImageUri;
+    }
+    if (string.IsNullOrEmpty(imageUri))
+    {
+        imageUri = "https://www.placehold.it/300x250/EFEFEF/AAAAAA&text=no+image+selected";
+    }
+    else
+    {
+        imageUri = api + imageUri;
+    }
+    var consumingProfileDomain = (string)ViewBag.ConsumingBusinessName;
+    var distintionGroups = (List<Qbicles.Models.Trader.TraderGroup>)ViewBag.Groups;
+
+
+    var variantDefault = Model.PosVariants.FirstOrDefault(v => v.IsDefault) ?? new Variant();
+    var galleryItems = variantDefault.TraderItem.GalleryItems;
+}
+<link href="~/Content/DesignStyle/css/easyzoom.css" rel="stylesheet" />
+<div class="modal-dialog" role="document">
+    <div class="modal-content">
+        <div class="modal-body" style="padding: 0;">
+            @* <div class="product-modaltop" style="background-image: url('@imageUri');"></div> *@
+
+            <section id="detail" style="overflow: hidden !important;">
+                <div class="container">
+                    <div class="row">
+                        <div class="main_img">
+
+                            <div class="product-images demo-gallery">
+
+                                <div class="main-img-slider">
+                                    @foreach (var gallery in galleryItems){
+                                    <a data-fancybox="gallery" href='@gallery.FileUri.ToUri(Enums.FileTypeEnum.Image)'><img src='@gallery.FileUri.ToUri(Enums.FileTypeEnum.Image)' class="img-fluid"></a>
+                                    }
+                                </div>
+
+                                <ul class="thumb-nav">
+                                     @foreach (var gallery in galleryItems){
+                                    <li><img src='@gallery.FileUri.ToUri(Enums.FileTypeEnum.Image)'></li>
+                                     }
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <div class="product-sell">
+
+                <h6>Category</h6>
+                <h1>@Model.Category.Name</h1>
+
+                <smaller>@Model.Name</smaller>
+                    
+                <p style="color: #333;">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nulla nec elementum ante. Vivamus vitae lacus pellentesque, sodales dolor ac, molestie massa.</p>
+                
+                <br />
+                <div class="well custom" style="padding-bottom: 5px;">
+                    <form id="frmCloneItem@(Model.Id)">
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label>Set @consumingProfileDomain as your primary vendor for this item?</label>
+                                    <div class="checkbox toggle">
+                                        <label>
+                                            <input name="isprimaryVendor" data-toggle="toggle" data-onstyle="success" data-on="<i class='fa fa-check'></i>" data-off="No" type="checkbox">
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <input type="hidden" name="id" value="@Model.Id" />
+                                    <label>Barcode</label>
+                                    <p>@item.TraderItem.Barcode</p>
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label>Unit</label>
+                                    <p>@item.Unit.Name</p>
+                                </div>
+                            </div>
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label for="unit">Indicative price</label><br />
+                                    @{
+                                        var price = item?.Price?.GrossPrice ?? 0;
+                                    }
+                                    <p>@price.ToCurrencySymbol(currencySetting)</p>
+                                </div>
+                            </div>
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label>SKU</label>
+                                    <input type="text" required class="form-control" name="sku" value="@item.TraderItem.SKU">
+                                </div>
+                            </div>
+
+                            <div class="col-xs-12">
+                                <div class="form-group description-div-edit">
+                                    <label>Description</label>
+                                    <textarea class="form-control" row="5" name="desc" id="trader_item_description" style="width: 100%; max-width: 100%; height: 80px;">@Html.Raw(item.TraderItem.Description)</textarea>
+                                </div>
+                            </div>
+
+                            <div class="col-xs-12">
+                                <label>Choose a category</label><br />
+                                <div class="input-group" style="margin-bottom: 15px;">
+                                    <select name="group" class="form-control select2" id="product_groups_select"style="width: 100%;">
+                                        <option value=""></option>
+                                        @foreach (var group in distintionGroups)
+                                        {
+                                            <option value="@group.Id">@group.Name</option>
+                                        }
+                                    </select>
+                                    <span class="input-group-btn">
+                                        <button class="btn btn-success" data-toggle="modal" data-target="#add-category"><i class="fa fa-plus"></i> &nbsp; Add</button>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
+                <br />
+                <button class="btn btn-success community-button" onclick="importingItemfromDistributorCatalog('#frmCloneItem@(Model.Id)')"><i class="fa fa-plus"></i> &nbsp; Add to my Trader items</button>
+
+            </div>
+        </div>
+    </div><!-- /.modal-content -->
+</div><!-- /.modal-dialog -->
+
+<script src="https://cdn.tiny.cloud/1/ppfa9ubyahapmcpxedac4yuyhojva0q9bm41rip6a351qegu/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
+
+<script src="~/Content/DesignStyle/js/easyzoom.js"></script>
+<script>
+    $(document).ready(function () {
+        $('.checkbox.toggle input').bootstrapToggle();
+        var $easyzoom = $('.easyzoom').easyZoom();
+        // Setup thumbnails example
+        var api1 = $easyzoom.filter('.easyzoom--with-thumbnails').data('easyZoom');
+
+        $('.thumbnails').on('click', 'a', function (e) {
+            var $this = $(this);
+
+            $('.thumbnails li').removeClass('activethumb');
+            $this.parent().addClass('activethumb');
+
+            e.preventDefault();
+
+            // Use EasyZoom's `swap` method
+            api1.swap($this.data('standard'), $this.attr('href'));
+        });
+
+        $('.description-div-edit').LoadingOverlay("show");
+        //tinymce.remove();
+        setTimeout(function () {
+            tinymce.init({
+                selector: 'textarea#trader_item_description',
+                setup: function (ed) {
+                    ed.on('change', function (e) {
+                        //$("#trader_item_description").val(ed.getContent());
+                        $("#trader_item_description").text(ed.getContent());
+                        ChangeDetailItem();
+                    });
+                },
+                menubar: false,
+                plugins: 'link',
+                toolbar: 'undo redo | bold italic underline | alignleft aligncenter alignright alignjustify |' +
+                    'bullist numlist checklist | removeformat'
+            });
+
+            $('.description-div-edit').LoadingOverlay("hide", true);
+        }, 1000);
+
+    $('#detail .main-img-slider').slick({
+        slidesToShow: 1,
+        slidesToScroll: 1,
+        infinite: true,
+        arrows: true,
+        fade: true,
+        autoplay: true,
+        autoplaySpeed: 4000,
+        speed: 300,
+        lazyLoad: 'ondemand',
+        asNavFor: '.thumb-nav',
+        prevArrow: '<div class="slick-prev"><i class="fa fa-angle-left"></i><span class="sr-only sr-only-focusable"><</span></div>',
+        nextArrow: '<div class="slick-next"><i class="fa fa-angle-right"></i><span class="sr-only sr-only-focusable">></span></div>'
+    });
+
+
+    // Thumbnail/alternates slider for product page
+    $('.thumb-nav').slick({
+        slidesToShow: 3,
+        slidesToScroll: 1,
+        infinite: true,
+        centerPadding: '0px',
+        asNavFor: '.main-img-slider',
+        dots: false,
+        arrows: false,
+        centerMode: true,
+        draggable: true,
+        speed: 200,
+        focusOnSelect: true,
+        prevArrow: '<div class="slick-prev"><i class="fa fa-angle-left"></i><span class="sr-only sr-only-focusable"><</span></div>',
+        nextArrow: '<div class="slick-next"><i class="fa fa-angle-right"></i><span class="sr-only sr-only-focusable">></span></div>'
+    });
+        
+    $(".checkmulti").multiselect({
+    includeSelectAllOption: true,
+    selectAllJustVisible: true,
+    includeResetOption: false,
+    enableFiltering: false,
+    buttonWidth: '100%',
+    maxHeight: 400,
+    enableClickableOptGroups: true,
+    enableFiltering: true,
+    enableCaseInsensitiveFiltering: true
+    });
+});
+    
+</script>

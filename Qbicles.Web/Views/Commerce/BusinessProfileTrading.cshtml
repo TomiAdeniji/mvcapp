@@ -1,0 +1,1384 @@
+﻿@using Qbicles.Models.Trader
+@using Qbicles.Models
+@using Qbicles.Models.B2B
+@using Qbicles.BusinessRules
+@using Qbicles.BusinessRules.Helper;
+@using Qbicles.Models.Loyalty;
+@model B2BProfile
+@{
+    ViewBag.Title = $"{Model.BusinessName} | Manage your public profile";
+    var userRoleRights = (List<string>)ViewBag.UserRoleRights;
+    var currentDomain = (QbicleDomain)ViewBag.CurrentDomain;
+    var usersOfDomain = currentDomain.Users;
+    var allowAdd = userRoleRights.Any(r => r == RightPermissions.TraderAccess || r == RightPermissions.QbiclesBusinessAccess);
+    var apiKey = ConfigManager.GoogleMapApiKey;
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var isExistProfile = Model.Id > 0 ? true : false;
+    var activeConversion = (OrderToPointsConversion)ViewBag.ActivePaymentConversion as PaymentConversion;
+    var currencySettings = (CurrencySetting)ViewBag.CurrencySetting;
+    var activeSysSettings = (SystemSettings)ViewBag.ActiveSysSetting;
+    var debitProcessWorkGroups = (List<WorkGroup>)ViewBag.CreditProcessWorkGroup;
+    var domainLoyaltySetting = (DomainLoyaltySettings)ViewBag.DomainLoyaltySetting;
+    var currentDomainPlan = (DomainPlan)ViewBag.CurrentDomainPlan ?? null;
+    var currentDomainPlanLevel = currentDomainPlan?.Level?.Level ?? BusinessDomainLevelEnum.Free;
+}
+<!-- Content wrapper -->
+<div class="content-wrapper qbicle-detail" style="background: #f4f6f9; padding-top: 85px;">
+    <input hidden id="business-name" value="@Model.BusinessName" />
+    <!-- Main content -->
+    <section class="content nopad profilev2">
+
+        <div class="container-lg">
+
+            <div class="row">
+                <div class="col-xs-12">
+
+                    <div class="activity-overview plain rounded businesscard" style="padding: 20px 30px;">
+
+                        <a href="#" style="display: block; text-align: center; margin: 0 auto;">
+                            <div class="business-logo" style="position: relative; background-image: url('/Content/DesignStyle/img/icon_cash.png');"></div>
+                        </a>
+                        <div class="business-info">
+                            <input type="hidden" id="hdfProfileId" value="@Model.Id" />
+                            <h1>@Model.BusinessName Trading</h1>
+                            <p class="summ">Configure where and how you buy &amp; sell</p>
+                        </div>
+
+                        <div class="business-options">
+                            <a href="~/Commerce/BusinessProfile" class="btn btn-primary community-button" style="margin-bottom: 3px;">Public profile</a>
+                            <a href="~/HighlightPost/BusinessHighlight" class="btn btn-info community-button">Network &amp; listings</a>
+                        </div>
+
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-xs-12">
+                    <ul class="profilenav" role="navigation" data-tooltip-stickto="bottom" data-tooltip-max-width="150" data-tooltip-color="teal" style="width: 450px; max-width: 100%;">
+                        <li>
+                            <a href="#profile-info" data-toggle="tab" data-tooltip="General Trade settings">
+                                <i class="fa fa-cog"></i>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#profile-items" data-toggle="tab" data-tooltip="Items &amp; Catalogues">
+                                <i class="fa fa-truck-loading"></i>
+                            </a>
+                        </li>
+                        @if (currentDomainPlanLevel >= BusinessDomainLevelEnum.Standard)
+                        {
+                            <li>
+                                <a href="#profile-services" data-toggle="tab" data-tooltip="Business services" aria-expanded="true">
+                                    <i class="fa fa-industry"></i>
+                                </a>
+                            </li>
+                        }
+                        @if (currentDomainPlanLevel >= BusinessDomainLevelEnum.Starter)
+                        {
+                            <li>
+                                <a href="#profile-loyalty" data-toggle="tab" data-tooltip="Loyalty &amp; rewards">
+                                    <i class="fa fa-piggy-bank"></i>
+                                </a>
+                            </li>
+                        }
+                        @if (currentDomainPlanLevel >= BusinessDomainLevelEnum.Starter)
+                        {
+                            <li class="profile-vouchers">
+                                <a href="#profile-vouchers" data-toggle="tab" data-tooltip="Promotions &amp; vouchers" aria-expanded="false">
+                                    <i class="fa fa-ticket"></i>
+                                </a>
+                            </li>
+                        }
+                    </ul>
+
+                    <a id="topjump"></a>
+                    <div class="tab-content">
+                        <!-- Trading -->
+                        <div class="tab-pane fade in active" id="profile-info">
+
+                            <div class="activity-overview plain rounded" style="padding-bottom: 20px;">
+                                <div class="titlezone">
+                                    <h5>General Trade settings</h5>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-xs-12">
+                                        <ul class="nav nav-pills traderv2 trading-general-tabs" style="padding-top: 0;">
+                                            <li><a href="#general-locations" data-toggle="tab">Locations</a></li>
+                                            <li><a href="#general-workgroups" data-toggle="tab">Workgroups</a></li>
+                                            @if (currentDomainPlanLevel >= BusinessDomainLevelEnum.Starter)
+                                            {
+                                                <li><a href="#general-candb" data-toggle="tab">Cash &amp; bank accounts</a></li>
+                                            }
+                                            <li><a href="#general-currency" data-toggle="tab">Taxes &amp; currency</a></li>
+                                            <li><a href="#general-groups" data-toggle="tab">Groups</a></li>
+                                            @if (currentDomainPlanLevel >= BusinessDomainLevelEnum.Starter)
+                                            {
+                                                <li><a href="#general-contacts" data-toggle="tab">Contacts</a></li>
+                                            }
+                                            @if (currentDomainPlanLevel >= BusinessDomainLevelEnum.Starter)
+                                            {
+                                                <li><a href="#general-order-defaults" data-toggle="tab">Order defaults</a></li>
+                                            }
+                                        </ul>
+                                    </div>
+                                </div>
+
+                                <br /><br />
+
+
+                                <div class="tab-content">
+
+                                    <!-- Locations -->
+                                    <div class="tab-pane fade in" id="general-locations">
+
+                                    </div>
+                                    <!-- END Locations -->
+                                    <!-- Taxes & Currency -->
+                                    <div class="tab-pane fade" id="general-currency" style="min-height:300px"></div>
+                                    <!-- END Taxes & Currency -->
+                                    <!-- Groups -->
+                                    <div class="tab-pane fade" id="general-groups" style="min-height:300px"></div>
+                                    <!-- END Groups -->
+                                    <!-- Contacts -->
+                                    <div class="tab-pane fade" id="general-contacts" style="min-height:300px"></div>
+                                    <!-- END Contacts -->
+                                    <!-- Workgroups -->
+                                    <div class="tab-pane fade" id="general-workgroups" style="min-height:300px"></div>
+                                    <!-- END Workgroups -->
+                                    <!-- Cash & bank -->
+                                    <div class="tab-pane fade" id="general-candb" style="min-height:300px"></div>
+                                    <!-- END Cash & bank -->
+                                    <!-- Order defaults -->
+                                    <div class="tab-pane fade" id="general-order-defaults" style="min-height:300px"></div>
+                                    <!-- Order defaults  -->
+                                </div>
+                            </div>
+                        </div>
+                        <!-- END Info -->
+                        @if (currentDomainPlanLevel >= BusinessDomainLevelEnum.Standard)
+                        {
+                            <!-- Specialised services -->
+                            <div class="tab-pane fade" id="profile-services">
+
+                                <div class="activity-overview plain rounded" style="padding-bottom: 20px;">
+                                    <div class="titlezone">
+                                        <h5>Provide B2B services</h5>
+                                    </div>
+
+
+                                    <div class="well custom rounded" style="width: auto; max-width: 600px; display: inline-block; padding: 30px 30px 20px 30px;">
+                                        <label>Do you want to provide B2B services?</label>
+                                        <br />
+                                        <p style="margin-bottom: 20px;">If you want to provide B2B services like logistics, check the box below. We'll activate Partnership Portal support in your B2B section and you'll be able to configure any services you offer.</p>
+                                        <div class="checkbox toggle">
+                                            <label>
+                                                <input data-toggle="toggle" @(Model.IsB2BServicesProvided || Model.Id == 0 ? "checked" : "") name="b2b-service-toggle" data-onstyle="success" data-on="Yes" data-off="No" type="checkbox" onchange="$('#serviceprovider').toggle();">
+                                            </label>
+                                        </div>
+                                    </div>
+
+
+
+                                    <div id="serviceprovider" class="animated fadeIn" style="margin-top: 30px; @(Model.IsB2BServicesProvided || Model.Id == 0 ? "" : "display: none;")">
+
+                                        <div class="row">
+                                            <div class="col-xs-12">
+                                                <ul class="nav nav-pills traderv2 text-center" style="margin: 0 auto; padding-top: 0;">
+                                                    <li class="active"><a href="#b2b-logistics" data-toggle="tab">Logistics</a></li>
+                                                    <li><a href="#services-loans" data-toggle="tab">Loans</a></li>
+                                                    <li><a href="#services-storage" data-toggle="tab">Storage</a></li>
+                                                    <li><a href="#services-maintenance" data-toggle="tab">Maintenance</a></li>
+                                                </ul>
+                                            </div>
+                                        </div>
+
+                                        <br />
+
+
+
+                                        <!-- Logistics -->
+                                        <div class="tab-pane fade in active" id="b2b-logistics">
+
+
+                                            <div class="row">
+                                                <div class="col-xs-12">
+                                                    <ul class="app_subnav admintabs trading-logistics-tabs" style="padding-top: 0;">
+                                                        <li class="active"><a href="#logistics-general" data-toggle="tab">General</a></li>
+                                                        <li><a href="#logistics-charges" data-toggle="tab">Charges</a></li>
+                                                        <li><a href="#logistics-vehicles" data-toggle="tab">Vehicles</a></li>
+                                                        <li><a href="#logistics-drivers" data-toggle="tab">Drivers</a></li>
+                                                    </ul>
+                                                </div>
+                                            </div>
+                                            <br /><br />
+                                            <div class="tab-content">
+                                                <div class="tab-pane active" id="logistics-general" style="min-height:300px">
+                                                    <div class="activity-overview generic help-text animated bounce">
+                                                        <i class="fa fa-info-circle"></i>
+                                                        <p>
+                                                            Choose a Trader product that represents your logistics provision. We'll use its associated data (including tax rates) to determine
+                                                            what's chargeable over and above the price list rates you specify.
+                                                        </p>
+                                                    </div>
+
+                                                    <div class="well custom" style="padding-bottom: 5px;">
+                                                        <div class="row">
+                                                            <div class="col-xs-12 col-sm-4">
+                                                                <div class="form-group">
+                                                                    <label for="locations">Location</label>
+                                                                    <select name="locations" class="form-control select2" style="width: 100%;" onchange="$('#select-traderitems').removeAttr('disabled');">
+                                                                        <option value=""></option>
+                                                                    </select>
+                                                                </div>
+                                                            </div>
+                                                            <div class="col-xs-12 col-sm-4">
+                                                                <div class="form-group">
+                                                                    <label for="item">Trader item to associate with logistics</label>
+                                                                    <select id="select-traderitems" disabled name="item" class="form-control select2" style="width: 100%;"></select>
+                                                                </div>
+                                                            </div>
+                                                            <div class="col-xs-12 col-sm-4">
+                                                                <label>&nbsp;</label><br>
+                                                                <button type="button" class="btn btn-info" onclick="$('#item-info').fadeIn();loadContentItemInfo();">Show item details</button>
+                                                            </div>
+                                                        </div>
+
+                                                    </div>
+
+                                                    <br>
+                                                    <div id="item-info" style="display: none;min-height:200px">
+                                                    </div>
+                                                </div>
+                                                <div class="tab-pane fade" id="logistics-charges">
+                                                    <div class="pricelists" style="display: block;min-height:200px">
+                                                        <div class="well custom" style="padding-bottom: 5px;">
+                                                            <div class="row">
+                                                                <div class="col-xs-12 col-sm-3">
+                                                                    <div class="form-group">
+                                                                        <label for="locations">Location</label>
+                                                                        <select name="locations" class="form-control select2" onchange="loadContentPriceList()" style="width: 100%;">
+                                                                            <option value="-1">Show all</option>
+                                                                        </select>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="col-xs-12 col-sm-3">
+                                                                    <div class="form-group">
+                                                                        <label for="search">Search</label>
+                                                                        <input type="text" id="txtplkeyword" name="search" class="form-control">
+                                                                    </div>
+                                                                </div>
+                                                                <div class="col-xs-12 col-sm-2">
+                                                                    <label for="">Options</label><br>
+                                                                    <button type="button" class="btn btn-success" onclick="loadModalPriceList(0)"><i class="fa fa-plus"></i> &nbsp; Add a price list</button>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <br>
+                                                        <div id="b2b-charges-content" class="service-types flex-grid-quarters-lg gridfix from-community c1 qbicles-dash-grid pricelists" style="width: 100%; display: flex;min-height:200px;">
+                                                        </div>
+                                                    </div>
+                                                    <div class="framework" id="framework-1" style="display:none;min-height:200px;">
+                                                    </div>
+                                                </div>
+                                                <div class="tab-pane fade" id="logistics-vehicles">
+
+                                                    <div class="well custom" style="padding-bottom: 5px;">
+                                                        <div class="row">
+                                                            <div class="col-xs-12 col-sm-3">
+                                                                <div class="form-group">
+                                                                    <label for="search">Search</label>
+                                                                    <input id="txtvehiclekeyword" type="text" name="search" class="form-control">
+                                                                </div>
+                                                            </div>
+                                                            <div class="col-xs-12 col-sm-2">
+                                                                <label for="">Options</label><br>
+                                                                <button type="button" class="btn btn-success" onclick="loadModalDeliveryVehicle(0)"><i class="fa fa-plus"></i> &nbsp; Add a vehicle</button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <br>
+                                                    <table class="datatable table-hover table-striped" id="tblvehicles" style="width: 100%;">
+                                                        <thead>
+                                                            <tr>
+                                                                <th data-priority="1">Vehicle type</th>
+                                                                <th data-priority="1">Name</th>
+                                                                <th data-priority="2">Reference or registration</th>
+                                                                <th data-priority="1" data-orderable="false">Options</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody></tbody>
+                                                    </table>
+
+                                                </div>
+                                                <div class="tab-pane fade" id="logistics-drivers">
+                                                    <div class="well custom" style="padding-bottom: 5px;">
+                                                        <div class="row">
+                                                            <div class="col-xs-12 col-sm-3">
+                                                                <div class="form-group">
+                                                                    <label for="locations">Location</label>
+                                                                    <select name="locations" class="form-control select2" onchange="reloadTableDrivers()" style="width: 100%;">
+                                                                        <option value="-1">Show all</option>
+                                                                    </select>
+                                                                </div>
+                                                            </div>
+                                                            <div class="col-xs-12 col-sm-3">
+                                                                <div class="form-group">
+                                                                    <label for="search">Search</label>
+                                                                    <input id="txtSearchDriver" type="text" name="search" class="form-control">
+                                                                </div>
+                                                            </div>
+                                                            <div class="col-xs-12 col-sm-2">
+                                                                <label for="">Options</label><br>
+                                                                <button type="button" class="btn btn-success" data-toggle="modal" data-target="#delivery-driver-add"><i class="fa fa-plus"></i> &nbsp; Add a driver</button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <br>
+                                                    <table class="datatable table-hover table-striped" id="tbldrivers" style="width: 100%;">
+                                                        <thead>
+                                                            <tr>
+                                                                <th data-priority="1">Driver</th>
+                                                                <th data-priority="2">Email</th>
+                                                                <th data-priority="2">Vehicle</th>
+                                                                <th data-priority="1">Status</th>
+                                                                <th data-priority="1" data-orderable="false">Options</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody></tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <!-- END Logistics -->
+                                        <!-- Loans -->
+                                        <div class="tab-pane fade" id="services-loans">
+
+                                        </div>
+                                        <!-- END Loans -->
+                                        <!-- Storage -->
+                                        <div class="tab-pane fade" id="services-storage">
+
+
+
+                                        </div>
+                                        <!-- END Storage -->
+                                        <!-- Maintenance -->
+                                        <div class="tab-pane fade" id="services-maintenance">
+
+
+
+                                        </div>
+                                        <!-- END Maintenance -->
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+                            <!-- END Specialised services -->
+                        }
+                        <!-- Trading > Items -->
+                        <div class="tab-pane fade" id="profile-items">
+                            <div class="activity-overview plain rounded" style="padding-bottom: 20px;">
+                                <div class="titlezone">
+                                    <h5>Items &amp; Catalogues</h5>
+                                </div>
+                                <div class="row">
+                                    <div class="col-xs-12">
+                                        <ul class="nav nav-pills traderv2 text-center trading-items-catalogues-tabs" style="margin: 0 auto; padding-top: 0;">
+                                            <li><a href="#items" data-toggle="tab">Items</a></li>
+                                            <li><a href="#item-resources" data-toggle="tab">Resources</a></li>
+                                            <li><a href="#items-pricing" data-toggle="tab">Pricing</a></li>
+                                            <li><a href="#items-catalogues" catalogType="@((int)CatalogType.Sales)" data-toggle="tab" id="menus">Sales Catalogues</a></li>
+                                            @if (currentDomainPlanLevel >= BusinessDomainLevelEnum.Standard)
+                                            {
+                                                <li><a href="#items-catalogues-distribution" catalogType="@((int)CatalogType.Distribution)" data-toggle="tab" aria-expanded="false">Distributor catalogues</a></li>
+                                            }
+                                            @if (currentDomainPlanLevel >= BusinessDomainLevelEnum.Starter)
+                                            {
+                                                <li><a href="#items-import" data-toggle="tab" aria-expanded="false">Import</a></li>
+                                            }
+                                        </ul>
+                                    </div>
+                                </div>
+                                <br /><br />
+                                <div class="tab-content">
+                                    <!-- Items -->
+                                    <div class="tab-pane fade in active" SubscribeTrader="@allowAdd" id="items"></div>
+                                    <!-- END Items -->
+                                    <!-- Resources -->
+                                    <div class="tab-pane fade" id="item-resources">
+                                    </div>
+                                    <!-- END Resources -->
+                                    <!-- Pricing -->
+                                    <div class="tab-pane fade" id="items-pricing"></div>
+                                    <!-- END Pricing -->
+                                    <!-- Sales catalogues -->
+                                    <div class="tab-pane fade" id="items-catalogues"></div>
+                                    <!-- END Sales catalogues -->
+                                    <!-- Sales catalogues -->
+                                    <div class="tab-pane fade" id="items-catalogues-distribution"></div>
+                                    <!-- END Sales catalogues -->
+
+                                    <div class="tab-pane fade" id="items-import">
+
+                                    </div>
+                                </div>
+
+                            </div>
+
+
+                        </div>
+                        <!-- END Items -->
+                        <!--Loyalty-->
+                        @if (currentDomainPlanLevel >= BusinessDomainLevelEnum.Starter)
+                        {
+                            <div class="tab-pane fade" id="profile-loyalty">
+
+
+                                <div class="activity-overview plain rounded" style="padding-bottom: 20px;">
+                                    <div class="titlezone">
+                                        <h5>Loyalty &amp; rewards configuration</h5>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-xs-12">
+                                            <ul class="nav nav-pills traderv2" style="padding-top: 0;">
+                                                <li class="active"><a href="#loyalty-points" data-toggle="tab">Store points</a></li>
+                                                <li><a href="#loyalty-credit" data-toggle="tab">Store credit</a></li>
+                                            </ul>
+                                        </div>
+                                    </div>
+
+                                    <br />
+
+
+                                    <div class="tab-content">
+
+
+                                        <!-- Points -->
+                                        <div class="tab-pane fade in active" id="loyalty-points">
+
+
+                                            <div class="row">
+                                                <div class="col-xs-12">
+                                                    <ul class="app_subnav admintabs" style="padding-top: 0;">
+                                                        <li class="active"><a href="#points-active" data-toggle="tab">Active rule</a></li>
+                                                        <li><a href="#points-archive" data-toggle="tab">Archive</a></li>
+                                                    </ul>
+                                                </div>
+                                            </div>
+
+                                            <br /><br />
+
+
+                                            <div class="tab-content">
+
+
+                                                <!-- Active -->
+                                                <div class="tab-pane fade in active" id="points-active">
+
+
+                                                    <div class="activity-overview generic help-text animated bounce">
+                                                        <i class="fa fa-info-circle"></i>
+                                                        <p>
+                                                            Your conversion rule dictates the rate at which customers can generate loyalty points. Only one rule can be active at a time.
+                                                            Any previously applied rules will be stored in the archive, for future reference.<br /><br />
+                                                            <a href="#" onclick="$(this).parent().parent().hide();">Dismiss</a>
+                                                        </p>
+                                                    </div>
+
+
+                                                    <div class="well custom rounded w-auto" style="width: auto; display: inline-block; padding: 30px 30px 20px 30px;">
+                                                        <form id="addconversion-form">
+                                                            <div class="row">
+                                                                <div class="col-xs-12 col-sm-3">
+                                                                    <label>Per amount spent</label><br />
+                                                                    <div class="input-group">
+                                                                        <input type="number" name="amount" id="conversion-amount" class="form-control decimal-input" min="0" value="@(activeConversion?.Amount != null ? activeConversion.Amount.ToDecimalPlace(currencySettings) : "")" onchange="$('#confirm').removeAttr('disabled');">
+                                                                        <span class="input-group-addon">@(currencySettings?.CurrencySymbol ?? "")</span>
+                                                                    </div>
+                                                                    <label id="conversion-amount-error" class="error" style="display:none" for="conversion-amount">Conversion Amount must be greater than 0.</label>
+                                                                </div>
+                                                                <div class="col-xs-12 col-sm-3">
+                                                                    <label>Award customer with</label><br />
+                                                                    <div class="input-group">
+                                                                        <input type="number" name="point" id="conversion-point" class="form-control" min="1"
+                                                                               step="1" onkeypress="return ((event.charCode >= 48 && event.charCode <= 57) || event.charCode == 45)"
+                                                                               value="@(activeConversion?.Points ?? 0)" onchange="$('#confirm').removeAttr('disabled');">
+                                                                        <span class="input-group-addon">points</span>
+                                                                    </div>
+                                                                    <label id="conversion-point-error" class="error" style="display:none" for="conversion-point">Please enter an integer greater than 0.</label>
+                                                                </div>
+                                                                <div class="col-xs-12 col-sm-6">
+                                                                    <div class="form-group">
+                                                                        <label>&nbsp;</label><br />
+                                                                        <button class="btn btn-info" id="confirm" disabled>Confirm change</button>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </form>
+                                                    </div>
+
+                                                </div>
+                                                <!-- END Active -->
+                                                <!-- Archive -->
+                                                <div class="tab-pane fade" id="points-archive">
+
+                                                    <table class="table-hover table-striped datatable" data-ordering="false" id="archieved-conversions" style="width: 100%;">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>Per amount spent (@currencySettings.CurrencySymbol)</th>
+                                                                <th>Awarded points</th>
+                                                                <th>Archived date</th>
+                                                                <th>Archived by</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody></tbody>
+                                                    </table>
+
+                                                </div>
+                                                <!-- END Archive -->
+
+                                            </div>
+
+                                        </div>
+                                        <!-- END Points -->
+                                        <!-- Store credit -->
+                                        <div class="tab-pane fade" id="loyalty-credit">
+
+                                            <div class="activity-overview generic help-text animated bounce">
+                                                <i class="fa fa-info-circle"></i>
+                                                <p>
+                                                    Choose whether or not you wish to allow customers to make purchases with store credit and manage their balance.
+                                                    Conversion rates are controlled in system administration.<br /><br />
+                                                    <a href="#" onclick="$(this).parent().parent().hide();">Dismiss</a>
+                                                </p>
+                                            </div>
+
+                                            <div class="well custom rounded" style="width: auto; display: inline-block; padding: 30px;">
+                                                <form id="loyalty-setting-form">
+                                                    <div class="row">
+                                                        <div class="col-xs-12">
+                                                            <div class="form-group" style="margin: 0;">
+                                                                <label>Allow payment with store credit</label>
+                                                                <br />
+                                                                <p style="margin-bottom: 20px;">
+                                                                    If you disable this option, your customers will be unable to convert to, or use any existing store credit they may have.
+                                                                </p>
+                                                                <div class="checkbox toggle" id="toggle-container">
+                                                                    <label>
+                                                                        @{
+                                                                            var isDebitPaymentAllowed = domainLoyaltySetting.IsPaymentWithStoreCreditActive ? "checked" : "";
+                                                                        }
+                                                                        <input data-toggle="toggle" @isDebitPaymentAllowed id="allow-debitpayment-btn" data-onstyle="success" data-on="Yes" data-off="No" type="checkbox">
+                                                                    </label>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+
+
+                                                    <div class="creditinfo not-allow">
+
+                                                        <br /><br />
+
+                                                        <div class="row">
+                                                            <div class="col-xs-12 col-md-6">
+
+                                                                @{
+                                                                    var toggleStatusStr = domainLoyaltySetting.IsPaymentWithStoreCreditActive ? "disabled" : "now enabled";
+                                                                }
+
+                                                                <p class="" style="margin: 0; padding: 0 0 15px 0;">
+                                                                    Store credit is <span id="toggle-status">@toggleStatusStr</span>.
+                                                                    <span class="">Any conversions will make use of the preset conversation rate:</span>
+                                                                </p>
+                                                                <code class="" style="color: #000; background: rgba(255, 255, 255, 0.9); padding: 12px 15px; border-radius: 5px;">
+                                                                    <strong>
+                                                                        @(activeSysSettings?.Points ?? 1)
+                                                                    </strong> points =
+                                                                    <strong>
+                                                                        @(activeSysSettings?.Amount ?? 1)@currencySettings.CurrencySymbol
+                                                                    </strong> store credit
+                                                                </code>
+
+                                                            </div>
+                                                            <div class=" col-xs-12 col-md-6">
+                                                                <div class="form-group">
+                                                                    <label>Choose a workgroup</label>
+                                                                    <br />
+                                                                    <p style="margin-bottom: 20px;">
+                                                                        The people in this workgroup will be responsible for the conversion of customer account balance to store
+                                                                        credit. Without selecting a Workgroup, your customers will be unable to convert their balances.
+                                                                    </p>
+
+                                                                    <div class="form-group" style="margin: 0;">
+                                                                        <select name="debitwg" id="debitwg" onchange='$("#loyalty-setting-form").submit()' class="form-control select2" style="width: 100%;">
+                                                                            <option value=""></option>
+                                                                            @foreach (var workgroupItem in debitProcessWorkGroups)
+                                                                            {
+                                                                                var isSelected = domainLoyaltySetting.DebitProcessWorkGroup != null && workgroupItem.Id == domainLoyaltySetting.DebitProcessWorkGroup.Id ? "selected" : "";
+                                                                                <option value="@workgroupItem.Id" @isSelected>@workgroupItem.Name</option>
+                                                                            }
+                                                                        </select>
+                                                                        <label id="debitwg-error" style="display:none" class="error" for="debitwg">Please select a WorkGroup with the CreditNote process.</label>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+
+                                                    </div>
+                                                </form>
+                                            </div>
+
+                                        </div>
+                                        <!-- END Credit -->
+                                    </div>
+                                </div>
+
+                            </div>
+                        }
+                        <!--END Loyalty-->
+                        <!-- Promotions -->
+                        @if (currentDomainPlanLevel >= BusinessDomainLevelEnum.Starter)
+                        {
+                            <div class="tab-pane fade" id="profile-vouchers">
+
+                                <div class="activity-overview plain rounded" style="padding-bottom: 20px;">
+                                    <div class="titlezone">
+                                        <h5>Promotions &amp; vouchers</h5>
+                                    </div>
+
+                                    @*<div class="row">
+                                            <div class="col-xs-12">
+                                                <ul class="nav nav-pills traderv2 trading-promotions-tabs" style="padding-top: 0;">
+                                                    <li class="active"><a href="#promos-active" data-toggle="tab">Active</a></li>
+                                                    <li><a href="#promos-archive" data-toggle="tab">Archived</a></li>
+                                                </ul>
+                                            </div>
+                                        </div>
+
+                                        <br />*@
+
+
+                                    <div class="tab-content">
+
+                                        <!-- Active -->
+                                        <div class="tab-pane fade in active" id="promos-active">
+                                            <div class="well custom" style="padding-bottom: 5px;">
+
+                                                <div class="row">
+                                                    <div class="col-xs-12 col-sm-3">
+                                                        <div class="form-group">
+                                                            <label for="search">Search</label>
+                                                            <input type="text" name="search" class="form-control">
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-xs-12 col-sm-3">
+                                                        <label for="date">Date</label>
+                                                        <div class="input-group" style="margin-bottom: 15px;">
+                                                            <input type="text" name="scheduleddate" class="form-control daterange">
+                                                            <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-xs-12 col-sm-2">
+                                                        <div class="form-group" style="margin: 0;">
+                                                            <label for="type">Type</label>
+                                                            <select name="type" class="form-control select2" style="width: 100%;">
+                                                                <option value="0" selected>Show all</option>
+                                                                <option value="1">Item discount</option>
+                                                                <option value="2">Order discount</option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-xs-12 col-sm-2">
+                                                        <div class="form-group" style="margin: 0;">
+                                                            <label for="type">Status</label>
+                                                            <select name="status" class="form-control checkmulti" multiple style="width: 100%;">
+                                                                <option value=1 selected>Active</option>
+                                                                <option value=2>Pending</option>
+                                                                <option value=5>Stopped</option>
+                                                                <option value=3>Expired</option>
+                                                                <option value=4>Archived</option>
+                                                                <option value=6>Draft</option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-xs-12 col-sm-2">
+                                                        <label>Options</label><br />
+                                                        <button class="btn btn-success" onclick="loadModalPromotionAddEdit('')"><i class="fa fa-plus"></i> &nbsp; Add a Promotion</button>
+                                                    </div>
+                                                </div>
+
+                                            </div>
+                                            <br />
+                                            <div class="flex-grid-quarters-lg from-community c1" style="width: 100%;">
+                                            </div>
+                                        </div>
+                                        <!-- END Active -->
+
+                                        <!-- Archived -->
+                                        @*<div class="tab-pane fade" id="promos-archive">
+
+                                                <div class="well custom" style="padding-bottom: 5px;">
+
+                                                    <div class="row">
+                                                        <div class="col-xs-12 col-sm-3">
+                                                            <div class="form-group">
+                                                                <label for="search">Search</label>
+                                                                <input type="text" name="search" class="form-control">
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-xs-12 col-sm-3">
+                                                            <label for="date">Scheduled date</label>
+                                                            <div class="input-group" style="margin-bottom: 15px;">
+                                                                <input type="text" name="scheduleddate" class="form-control daterange">
+                                                                <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-xs-12 col-sm-3">
+                                                            <div class="form-group" style="margin: 0;">
+                                                                <label for="type">Type</label>
+                                                                <select name="type" class="form-control select2" style="width: 100%;">
+                                                                    <option value="0" selected>Show all</option>
+                                                                    <option value="1">Item discount</option>
+                                                                    <option value="2">Order discount</option>
+                                                                </select>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                </div>
+                                                <br />
+
+
+                                                <table class="datatable table-striped table-hover" id="tblArchivedPromotions" style="width: 100%;">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Title</th>
+                                                            <th>Type</th>
+                                                            <th>Started</th>
+                                                            <th>Ended</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody></tbody>
+                                                </table>
+
+                                            </div>*@
+                                        <!-- END Archived -->
+
+                                    </div>
+                                </div>
+
+
+                            </div>
+                       
+                            }
+                        <!-- END Promotions -->
+                    </div>
+
+                </div>
+
+
+
+
+            </div>
+
+            <br /><br /><br /><br /><br /><br />
+
+        </div>
+
+    </section>
+    <!-- ./content -->
+
+</div>
+<!-- /.content-wrapper -->
+<div class="modal fade left" id="app-location-add" role="dialog" aria-labelledby="app-location-add"></div>
+<!-- /.modal Add new location-->
+<div class="modal fade" id="app-location-confirm" role="dialog" aria-labelledby="app-location-confirm">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Delete location</h5>
+            </div>
+            <div class="modal-body">
+                <div class="col-xs-12 col-sm-12" style="margin-bottom: 30px;">
+                    <span id="label-confirm-location"></span>
+                    <input class="hidden" id="id-itemlocation-delete" />
+                </div>
+
+                <button class="btn btn-success" data-dismiss="modal" onclick="deletelocation()"><i class="fa fa-check"></i> &nbsp; OK</button>
+                <button class="btn btn-danger" data-dismiss="modal"><i class="fa fa-remove"></i> &nbsp; Cancel</button>
+
+            </div>
+        </div> <!-- /.modal-content -->
+    </div> <!-- /.modal-dialog -->
+</div>
+<div class="modal fade left" id="app-trader-cashbank" role="dialog" aria-labelledby="app-trader-cashbank"></div>
+<div class="modal fade" id="app-coa-tax-add" role="dialog" aria-labelledby="app-coa-tax-add">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">New Tax Rate</h5>
+            </div>
+            <div class="modal-body app-coa-tax-add">
+                <div class="activity-overview task" style="padding: 20px;">
+                    <form class="form-group" id="form_taxrate_add" style="padding: 0">
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="name">Display as <span>*</span></label>
+                                    <input type="text" name="Name" id="add-taxrate-name" required class="form-control" placeholder="Tax rate name">
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="number">Rate (%)</label>
+                                    <input type="number" name="rate" id="add-taxrate-rate" required class="form-control" placeholder="e.g. 25">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-4">
+                                <div class="form-group">
+                                    <label for="IsAccounted">Accounted for</label>
+                                    <select id="add-isAccounted" name="IsAccounted" class="form-control select2" style="width: 100%;" onchange="if($(this).val() == '1') { $('.transtype-add').fadeIn(); $('.associated-add').fadeIn(); } else { $('.transtype-add').hide(); $('.associated-add').hide(); }" tabindex="-1" aria-hidden="true">
+                                        <option value=""></option>
+                                        <option value="0">No</option>
+                                        <option value="1">Yes</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-4">
+                                <div class="form-group transtype-add" style="display: none;">
+                                    <label for="IsPurchaseTax">Transaction type</label>
+                                    <select id="add-isPurchaseTax" name="IsPurchaseTax" class="form-control select2" style="width: 100%;" onchange="if($(this).val() !== '') { $('.creditordebit-add').fadeIn(); } else { $('.creditordebit-add').hide(); }" tabindex="-1" aria-hidden="true">
+                                        <option value=""></option>
+                                        <option value="0">Sale</option>
+                                        <option value="1">Purchase</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-4">
+                                <div class="form-group creditordebit-add" style="display: none;">
+                                    <label for="IsCreditToTaxAccount">Credit or Debit</label>
+                                    <select id="add-isCreditToTaxAccount" name="IsCreditToTaxAccount" class="form-control select2" style="width: 100%;" tabindex="-1" aria-hidden="true">
+                                        <option value=""></option>
+                                        <option value="1">Credit</option>
+                                        <option value="0">Debit</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row associated-add" style="display: none;">
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="account_1">Associated account</label>
+                                    <br>
+                                    <button class="btn btn-info addbtnaccount" onclick="LoadAccountTree()" data-toggle="modal" data-target="#app-bookkeeping-treeview"><i class="fa fa-plus"></i> &nbsp; Choose account</button>
+                                    <p class="accountInfo" style="font-family: 'Roboto', Arial, sans-serif; font-size: 12px; display: inline-block; padding: 0 10px 0 0;"></p>
+                                    <button class="btn btn-small btn-warning editbtnaccount" data-toggle="modal" onclick="LoadAccountTree()" data-target="#app-bookkeeping-treeview"><i class="fa fa-pencil"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-12">
+                                <div class="form-group">
+                                    <label for="description">Description</label>
+                                    <textarea type="text" name="description" id="add-taxrate-description" rows="3" class="form-control"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <br />
+                <button class="btn btn-success" onclick="addTaxRate()"><i class="fa fa-check"></i> &nbsp; Add now</button>
+                <button class="btn btn-danger modal-tax-rate-add-cancel" data-dismiss="modal"><i class="fa fa-remove"></i> &nbsp; Cancel</button>
+
+            </div>
+        </div> <!-- /.modal-content -->
+    </div> <!-- /.modal-dialog -->
+</div> <!-- /.modal add tax rate-->
+<div class="modal fade" id="app-coa-tax-edit" role="dialog" aria-labelledby="app-coa-tax-edit">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Edit Tax Rate</h5>
+            </div>
+            <div class="modal-body app-coa-tax-edit">
+                <input id="edit-taxrate-id" class="hidden" />
+                <div class="activity-overview task" style="padding: 20px;">
+                    <form class="form-group" id="form_taxrate_edit" novalidate="novalidate" style="padding: 0">
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="name">Display as <span>*</span></label>
+                                    <input type="text" name="name" id="edit-taxrate-name" required class="form-control" placeholder="Tax rate name">
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="number">Rate (%)</label>
+                                    <input type="number" name="rate" id="edit-taxrate-rate" class="form-control" placeholder="e.g. 25">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-4">
+                                <div class="form-group">
+                                    <label for="accounted">Accounted for</label>
+                                    <select id="edit-isAccounted" name="IsAccounted" class="form-control select2" style="width: 100%;" onchange="if($(this).val() == '1') { $('.edit-transtype').fadeIn(); $('.edit-associated').fadeIn();$('.edit-creditordebit').fadeIn();} else { $('.edit-transtype').hide(); $('.edit-associated').hide();$('.edit-creditordebit').hide(); }" tabindex="-1" aria-hidden="true">
+                                        <option value=""></option>
+                                        <option value="0">No</option>
+                                        <option value="1">Yes</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-4">
+                                <div class="form-group edit-transtype" style="display: none;">
+                                    <label for="purchase">Transaction type</label>
+                                    <select id="edit-isPurchaseTax" name="IsPurchaseTax" class="form-control select2" style="width: 100%;" onchange="if ($(this).val() !== '' && $('#edit-isAccounted').val()=='1') { $('.edit-creditordebit').fadeIn(); } else { $('.edit-creditordebit').hide(); }" tabindex="-1" aria-hidden="true">
+                                        <option value=""></option>
+                                        <option value="0">Sale</option>
+                                        <option value="1">Purchase</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-4">
+                                <div class="form-group edit-creditordebit" style="display: none;">
+                                    <label for="sale">Credit or Debit</label>
+                                    <select id="edit-isCreditToTaxAccount" name="IsCreditToTaxAccount" class="form-control select2" style="width: 100%;" tabindex="-1" aria-hidden="true">
+                                        <option value=""></option>
+                                        <option value="1">Credit</option>
+                                        <option value="0">Debit</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row edit-associated" style="display: none;">
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="account_1">Associated account</label>
+                                    <br>
+                                    <button class="btn btn-info addbtnaccount" onclick="LoadAccountTree()" data-toggle="modal" data-target="#app-bookkeeping-treeview"><i class="fa fa-plus"></i> &nbsp; Choose account</button>
+                                    <p class="accountInfo" style="font-family: 'Roboto', Arial, sans-serif; font-size: 12px; display: inline-block; padding: 0 10px 0 0;"></p>
+                                    <button class="btn btn-small btn-warning editbtnaccount" data-toggle="modal" onclick="LoadAccountTree()" data-target="#app-bookkeeping-treeview"><i class="fa fa-pencil"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-12">
+                                <div class="form-group">
+                                    <label for="description">Description</label>
+                                    <textarea type="text" name="description" rows="3" id="edit-taxrate-description" class="form-control" placeholder="Description"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <br />
+                <button class="btn btn-success" onclick="updateTaxrate()"><i class="fa fa-check"></i> &nbsp; Save</button>
+                <button class="btn btn-danger modal-tax-rate-edit-cancel" data-dismiss="modal"><i class="fa fa-remove"></i> &nbsp; Cancel</button>
+
+            </div>
+        </div> <!-- /.modal-content -->
+    </div> <!-- /.modal-dialog -->
+</div> <!-- /.modal Edit Tax rate-->
+<div class="modal fade" id="app-taxrate-confirm" role="dialog" aria-labelledby="app-taxrate-confirm">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" onclick="closeSelected()" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Delete tax rate</h5>
+            </div>
+            <div class="modal-body">
+                <div class="col-xs-12 col-sm-12" style="margin-bottom: 30px;">
+                    <span id="label-confirm-taxrate"></span>
+                    <input class="hidden" id="id-itemtaxrate-delete" />
+                </div>
+                <button class="btn btn-success" id="confirmtaxrate-delete" data-dismiss="modal" onclick="deleteTaxRate()"><i class="fa fa-check"></i> &nbsp; OK</button>
+                <button class="btn btn-danger" data-dismiss="modal"><i class="fa fa-remove"></i> &nbsp; Cancel</button>
+            </div>
+        </div> <!-- /.modal-content -->
+    </div> <!-- /.modal-dialog -->
+</div> <!-- /.modal Confirm delete-->
+<div class="modal fade left" id="app-trader-item-additional" role="dialog" aria-labelledby="app-trader-item-additional"></div>
+<div class="modal fade left" id="app-trader-item-description" role="dialog" aria-labelledby="app-trader-item-description"></div>
+<div class="modal fade left" id="wizard-add-item" role="dialog" aria-labelledby="wizard-item-add">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header" style="padding-bottom: 0;">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Add an item</h5>
+            </div>
+            <div class="modal-body">
+
+
+                <section id="wizard" style="padding: 30px;">
+
+                    <h5>What type of item are you adding?</h5>
+                    <ul class="nav nav-pills audit-choices nav-justified" id="itemtype" style="margin: 0 -5px 30px -5px; font-family: 'Roboto';">
+                        <li><a href="#" class="primary" @*data-dismiss="modal" onclick="setType(1,'item-tab')"*@ data-value="ibuy">An item I buy</a></li>
+                        <li><a href="#" class="primary" @*data-dismiss="modal" onclick="setType(2,'item-tab')"*@ data-value="isell">An item I sell</a></li>
+                        <li><a href="#" class="primary" data-value="ibuysell">An item I buy &amp; sell</a></li>
+                        <li><a href="#" class="primary" data-value="icompound">A compound item</a></li>
+                    </ul>
+                    <div id="prodorserv" style="display: none;">
+                        <h5>This item is a...</h5>
+                        <ul class="nav nav-pills audit-choices nav-justified" id="productorservice" style="margin: 0 -5px 30px -5px; font-family: 'Roboto';">
+                            <li><a href="#" class="primary" data-value="product">Product</a></li>
+                            <li><a href="#" class="primary" data-value="service">Service</a></li>
+                            <li> </li>
+                            <li> </li>
+                        </ul>
+                    </div>
+                    <select id="sltype" style="display:none">
+                        <option value="ibuy">ibuy</option>
+                        <option value="isell">isell</option>
+                        <option value="ibuysell">ibuysell</option>
+                        <option value="icompound">icompound</option>
+                    </select>
+                    <input type="checkbox" id="chkIsProduct" style="display:none" />
+                    <br /><br /><br />
+                    <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                    <button class="btn btn-success wizard-start" style="display: none;" onclick="loadModalTradingItemAdd();">
+                        Proceed &nbsp; <i class="fa fa-angle-right"></i>
+                    </button>
+                </section>
+
+                <div id="theform" style="display: none;min-height:200px">
+
+                </div>
+
+            </div> <!-- /.modal-body -->
+
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+<div class="modal fade left" id="app-trader-inventory-item-add" role="dialog" aria-labelledby="app-trader-inventory-item-add"></div>
+<div class="modal fade" id="app-group-generic-add" tabindex="-1" role="dialog" aria-labelledby="app-group-generic-add">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Add a Group</h5>
+            </div>
+            <div class="modal-body">
+
+                <div class="activity-overview task" style="padding: 20px;">
+                    <div class="form-group" style="margin: 0;">
+                        <label for="title">Title</label>
+                        <input type="text" class="form-control" name="title">
+                    </div>
+                </div>
+
+                <br />
+                <button type="submit" class="btn btn-success"><i class="fa fa-save"></i> &nbsp; Finish &amp; save</button>
+                <button class="btn btn-danger" data-dismiss="modal"><i class="fa fa-remove"></i> &nbsp; Cancel</button>
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+<!-- modal for Items-->
+<div class="modal fade" id="app-group-add" role="dialog" aria-labelledby="app-group-add">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+                <h5 class="modal-title">Add a Group</h5>
+            </div>
+            <div class="modal-body">
+
+                <div class="activity-overview task" style="padding: 20px;">
+                    <form style="margin: 0;" class="form-group" id="form_group_add" novalidate="novalidate">
+                        <div class="form-group">
+                            <label for="name">Title<span>*</span></label>
+                            <input type="text" id="addnew-group-name" required name="Name" class="form-control" placeholder="" autofocus>
+                        </div>
+                    </form>
+                </div>
+                <br />
+                <button type="submit" class="btn btn-success" onclick="addgroup()"><i class="fa fa-check"></i> &nbsp; Add now</button>
+                <button class="btn btn-danger modal-group-add-cancel" data-dismiss="modal"><i class="fa fa-remove"></i> &nbsp; Cancel</button>
+
+            </div>
+        </div> <!-- /.modal-content -->
+    </div> <!-- /.modal-dialog -->
+</div>
+<!-- /.modal Add new group-->
+<div class="modal fade" id="app-group-edit" role="dialog" aria-labelledby="app-group-edit">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Edit Group</h5>
+            </div>
+            <div class="modal-body">
+                <div class="activity-overview task" style="padding: 20px;">
+                    <form style="padding: 0;" class="form-group" id="form_group_edit">
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="date">Create by</label>
+                                    <input type="text" id="group-edit-createby" disabled class="form-control" value="">
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="date">Created date</label>
+                                    <input type="text" id="group-edit-createdate" disabled class="form-control" value="">
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-12">
+                                <input class="hidden" name="Id" id="group-edit-id" />
+                                <div class="form-group">
+                                    <label for="number">Title <span>*</span></label>
+                                    <input type="text" name="Name" id="group-edit-name" class="form-control" required value="">
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <br />
+                <button class="btn btn-success" onclick="updategroup()"><i class="fa fa-check"></i> &nbsp; Save</button>
+                <button class="btn btn-danger modal-group-edit-cancel" data-dismiss="modal"><i class="fa fa-remove"></i> &nbsp; Cancel</button>
+
+            </div>
+        </div> <!-- /.modal-content -->
+    </div> <!-- /.modal-dialog -->
+</div>
+<!-- /.modal Edit group-->
+<div class="modal fade" id="app-group-confirm" role="dialog" aria-labelledby="app-group-confirm">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Delete group</h5>
+            </div>
+            <div class="modal-body">
+                <div class="col-xs-12 col-sm-12" style="margin-bottom: 30px;">
+                    <span id="label-confirm-group"></span>
+                    <input class="hidden" id="id-itemgroup-delete" />
+                </div>
+
+                <button class="btn btn-success" data-dismiss="modal" onclick="deletegroup()"><i class="fa fa-check"></i> &nbsp; OK</button>
+                <button class="btn btn-danger" data-dismiss="modal"><i class="fa fa-remove"></i> &nbsp; Cancel</button>
+
+            </div>
+        </div> <!-- /.modal-content -->
+    </div> <!-- /.modal-dialog -->
+</div>
+<!-- Begin Contact group -->
+<div class="modal fade" id="app-contact-group-edit" role="dialog" aria-labelledby="app-contact-group-edit">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title" id="title-contact-group">Edit Contact Group</h5>
+            </div>
+            <div class="modal-body">
+                <div class="activity-overview task" style="padding: 20px;">
+
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-12">
+                            <div class="form-group">
+                                <input type="hidden" id="contact-group-id" value="0" />
+                                <label for="number">Name <span>*</span></label>
+                                <input type="text" name="Name" id="contact-group-edit-name" class="form-control" required value="">
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+                <br />
+                <button class="btn btn-success" onclick="savecontactgroup(@(SalesChannelContactGroup.Unassigned.GetId()))"><i class="fa fa-check"></i> &nbsp; Save</button>
+                <button class="btn btn-danger modal-group-edit-cancel" data-dismiss="modal"><i class="fa fa-remove"></i> &nbsp; Cancel</button>
+
+            </div>
+        </div> <!-- /.modal-content -->
+    </div> <!-- /.modal-dialog -->
+</div>
+<div class="modal fade" id="app-contact-group-confirm" role="dialog" aria-labelledby="app-contact-group-confirm">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Delete Contact group</h5>
+            </div>
+            <div class="modal-body">
+                <div class="col-xs-12 col-sm-12" style="margin-bottom: 30px;">
+                    <span id="label-confirm-contact-group"></span>
+                    <input class="hidden" id="id-contact-group-delete" />
+                </div>
+
+                <button class="btn btn-success" data-dismiss="modal" onclick="deletecontactgroup()"><i class="fa fa-check"></i> &nbsp; OK</button>
+                <button class="btn btn-danger" data-dismiss="modal"><i class="fa fa-remove"></i> &nbsp; Cancel</button>
+
+            </div>
+        </div> <!-- /.modal-content -->
+    </div> <!-- /.modal-dialog -->
+</div>
+<div class="modal fade" id="group-items-view" role="dialog" aria-labelledby="group-items-view"></div><!-- /.modal -->
+<div class="modal fade left" id="b2b-charge-framework-port" role="dialog" aria-labelledby="b2b-charge-framework-port" style="display: none; padding-right: 17px;"></div>
+<div class="modal fade left " id="delivery-charge-framework-add" role="dialog" aria-labelledby="delivery-charge-framework-add" style="display: none; padding-right: 17px;"></div>
+<div class="modal fade left" id="moniback-promo-add" role="dialog" aria-labelledby="moniback-promo-add"></div>
+<div class="modal fade left" id="app-trader-pos-itemlist" role="dialog" aria-labelledby="app-trader-pos-itemlist"></div>
+<div class="modal fade left" id="delivery-charge-pricelist-add" role="dialog" aria-labelledby="delivery-charge-pricelist-add" style="display: none; padding-right: 17px;"></div>
+<div class="modal fade left" id="delivery-vehicle-add" role="dialog" aria-labelledby="delivery-vehicle-add" style="display: none; padding-right: 17px;"></div>
+<div class="modal fade left" id="b2b-driver-location-change" role="dialog" aria-labelledby="b2b-driver-location-change" style="display: none; padding-right: 17px;"></div>
+<div class="modal fade left" id="delivery-driver-add" role="dialog" aria-labelledby="delivery-driver-add" style="display: none; padding-right: 17px;">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+                <h5 class="modal-title">Add a Driver</h5>
+            </div>
+            <div class="modal-body">
+
+                <div class="activity-overview generic help-text animated bounce" style="margin-bottom: 0;">
+                    <i class="fa fa-info-circle"></i>
+                    <p>
+                        Your drivers must be existing Domain users in order to be added to your Logistics configuration. Please ensure any drivers you wish to add are already
+                        present in your Domain.
+                    </p>
+                </div>
+
+                <br>
+                <div class="well custom">
+                    <div class="form-group" style="margin: 0;">
+                        <label for="existing">Search Domain members</label>
+                        <input id="txtmembersearch" type="text" class="form-control" autocomplete="off" name="member-search" placeholder="Search by name...">
+                    </div>
+                </div>
+
+                <div class="existing-member" style="margin-top: 15px 0; display: none;">
+                    <div class="contact-list-found" style="margin-bottom: 30px;"></div>
+                    <div class="contact-add" style="display: none;"></div>
+                </div>
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+<div class="modal fade left" id="b2b-charge-framework-clone" role="dialog" aria-labelledby="b2b-charge-framework-clone" style="display: none; padding-right: 17px;">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+                <h5 class="modal-title">Clone this framework</h5>
+            </div>
+            <div class="modal-body">
+                <form id="frmPriceListCLocationClone" method="post" action="~/TraderChannels/ClonePricelist">
+                    <div class="choose-location">
+
+                        <div class="activity-overview generic help-text animated bounce">
+                            <i class="fa fa-info-circle"></i>
+                            <p>Create a clone of this framework in your current location by specifying a title for the new copy below...</p>
+                        </div>
+
+
+                        <div class="well custom" style="padding-bottom: 5px;">
+                            <div class="form-group">
+                                <label for="title">Title of new copy</label>
+                                <input type="hidden" name="cloneId" value="0" />
+                                <input type="hidden" name="locationId" value="0" />
+                                <input type="text" name="cloneName" class="form-control" value="">
+                            </div>
+                        </div>
+
+                        <button type="button" class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-success">Confirm</button>
+                    </div>
+                </form>
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+<div class="modal fade left" id="app-bookkeeping-treeview" role="dialog" aria-labelledby="app-bookkeeping-treeview"></div>
+<div class="modal fade left" id="promotion-message-modal" role="dialog" aria-labelledby="promotion-message-modal">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Let affected customers know</h5>
+            </div>
+            <div class="modal-body">
+
+                <div class="activity-overview generic help-text animated bounce">
+                    <i class="fa fa-info-circle"></i>
+                    <p>
+                        <strong id="message-title"></strong> this promotion may affect customers who hold valid associated vouchers.
+                        We've prepared a message you can post to them, or alternatively you can replace it with your own custom message to let them know.
+                    </p>
+                    <p><strong id="total-claimed"></strong> customers claimed <strong id="promotion-name"></strong> promoion.</p>
+                </div>
+
+                <div class="well custom">
+                    <div class="form-group" style="margin: 0;">
+                        <label for="name">Message text</label>
+                        <textarea id="promotion-message-text" name="message" class="form-control" style="max-width: 100%; min-height: 80px;">
+                             
+                        </textarea>
+                    </div>
+                </div>
+
+                <br />
+                <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                <button type="button" data-dismiss="modal" onclick="stopStartPromotion()" class="btn btn-success">Confirm</button>
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+<div class="modal fade left" id="app-trader-pos-menu-devices" role="dialog" aria-labelledby="app-trader-pos-menu-devices"></div>
+@{
+    <link href="~/Content/DesignStyle/css/bootstrap-multiselect.css" rel="stylesheet" />
+    <script src="~/Content/DesignStyle/js/html5tooltips.js"></script>
+    <script src="~/Content/DesignStyle/js/bootstrap-multiselect.min.js"></script>
+    @*<link rel="stylesheet" href="~/Content/DesignStyle/css/tagify.css">*@
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/businessprofileTrading.js"></script>
+        <script src="~/Scripts/dev/loyalty.pointconversion.js"></script>
+        <script src="~/Scripts/dev/pos.products.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/businessprofileTrading.js"></script>
+        <script src="~/Scripts/dev/loyalty.pointconversion.js"></script>
+        <script src="~/Scripts/dev/pos.products.js"></script>
+    }
+    <script src="https://maps.googleapis.com/maps/api/js?key=@apiKey" defer></script>
+}
+
+<script>
+    loadProfileTradingPage();
+</script>
+
+<style>
+    .decimal-input::-webkit-outer-spin-button,
+    .decimal-input::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+
+    .decimal-input[type=number] {
+        -moz-appearance: textfield; /* Firefox */
+    }
+</style>

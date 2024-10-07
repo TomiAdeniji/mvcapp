@@ -1,0 +1,418 @@
+﻿@model List<Qbicles.Models.MediaFolder>
+@{
+    ViewBag.Title = "Media Folder";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var api = (string)ViewBag.DocRetrievalUrl;
+
+}
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail cleanbooks">
+    <!-- Main content -->
+    <section class="content"
+             data-tooltip-animate-function="fadein" data-tooltip-delay="300" data-tooltip-stickTo="top" data-tooltip-stickDistance="30">
+        <br /><br />
+        <div class="mod_title">
+            <h5>Media</h5>
+            <h4>Folders</h4>
+        </div>
+
+        <div class="row">
+            <div class="col-xs-12">
+                <div class="app_filter">
+                    <div class="row">
+                        <div class="col-xs-5 col-sm-4 col-lg-8">
+                            <a href="javascript:void(0)" onclick="backToPreviousPageOfMediaFolder()" class="btn btn-info"><i class="fa fa-chevron-left"></i> &nbsp; Back</a>
+                        </div>
+                        <div class="col-xs-7 col-sm-8 col-lg-4">
+                            
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="folders media hidden-xs hidden-sm">
+            <ul id="list-mediaFolder">
+                @foreach (var MFolder in Model)
+                {
+                    <li id="media-@MFolder.Id">
+                        <a href="javascript:void(0)" onclick="mediaFolderSelected(@MFolder.Id)">
+                            <img src="~/Content/DesignStyle/img/icon_folder.png">
+                            <p id="name-media-folder-@MFolder.Id">@MFolder.Name</p>
+                        </a>
+                    </li>
+                }
+
+                <li id="add-media-folder-item">
+                    <a href="#" data-toggle="modal" data-target="#create-media-folder">
+                        <img src="~/Content/DesignStyle/img/icon_plus.png">
+                        <p>Add a folder</p>
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+
+        <div class="well tan visible-xs visible-sm" style="margin: 30px 0;">
+            <div class="form-group">
+                <label>Currently viewing</label>
+                <select name="folder" id="select-list-mediaFolder" class="form-control">
+                    @foreach (var mFolder in Model)
+                    {
+                        <option value="@mFolder.Id">@mFolder.Name</option>
+                    }
+                </select>
+            </div>
+            @*<a href="javascript:void(0)" onclick="showUploadMediaPopup()" class="btn btn-success"><i class="fa fa-upload"></i> &nbsp; Upload</a>*@
+            <a href="javascript:void(0)" class="btn btn-success" data-toggle="modal" data-target="#create-media-folder"><i class="fa fa-plus"></i> &nbsp; Add a folder</a>
+        </div>
+
+        
+
+        <div class="row">
+            <div class="col-xs-12">
+                
+                <a href="javascript:void(0)" id="btn-manage-folder" onclick="manageMediaFolderClick()" class="btn btn-info"><i class="fa fa-cog"></i> &nbsp; Manage folder</a>
+                <a href="javascript:void(0)" onclick="showUploadMediaPopup()" class="btn btn-success" ><i class="fa fa-upload"></i> &nbsp; Upload</a>
+            </div>
+        </div>
+
+        <br />
+
+        <div class="row">
+            <div class="col-xs-12">
+                <ul id="block-media-list" class="grid-list">
+                </ul>
+            </div>
+        </div>
+
+    </section>
+    <!-- ./content -->
+
+</div>
+<!-- /.content-wrapper -->
+<!-- /Media folder .modal-dialog -->
+
+<div class="modal fade" id="create-media-folder" role="dialog" aria-labelledby="create-media-folder">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Create a Folder</h5>
+            </div>
+            <div class="modal-body">
+                <div class="well">
+                    <form id="form-create-media-folder">
+                        <div class="form-group">
+                            <label for="name">Title</label>
+                            <input type="text" required class="form-control" name="name" id="mediaFolderName">
+                        </div>
+                    </form>
+                </div>
+                <button onclick="insertMediaFolder()" class="btn btn-success"><i class="fa fa-check"></i> &nbsp; Add now</button>
+                <button class="btn btn-danger" data-dismiss="modal"><i class="fa fa-remove"></i> &nbsp; Cancel</button>
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+<!-- /.modal-dialog manage folder -->
+<div class="modal fade" id="manage-media-folder" role="dialog" aria-labelledby="manage-media-folder">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Manage Folder</h5>
+            </div>
+            <div class="modal-body">
+
+                <div class="well">
+                    <form id="form-update-del-media-folder">
+                        <div class="form-group">
+                            <label for="title">Title</label>
+                            <input type="text" class="form-control" required name="nameMFedit" id="nameMFedit" value="Important">
+                        </div>
+                    </form>
+                </div>
+
+                <button class="btn btn-danger" onclick="deleteMediaFolder()"><i class="fa fa-remove"></i> &nbsp; Delete folder</button>
+                <button type="button" onclick="updateMediaFolder()" class="btn btn-success"><i class="fa fa-save"></i> &nbsp; Save</button>
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+@*modal move file*@
+<div class="modal fade" id="move-media" role="dialog" aria-labelledby="move-media">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Move file to another folder</h5>
+            </div>
+            <div class="modal-body">
+
+                <div class="well">
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label for="folder">Folder</label>
+                        <input type="hidden" name="idItem" value="" id="hdIdItemMedia">
+                        <select name="folder" id="selectMFolder-Move" class="form-control select2" style="width: 100%;">
+                            @foreach (var mFolder in Model)
+                            {
+                                <option hidden="hidden" value="@mFolder.Id">@mFolder.Name</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+
+                <button class="btn btn-danger" data-dismiss="modal"><i class="fa fa-remove"></i> &nbsp; Cancel</button>
+                <button type="button" class="btn btn-success" onclick="saveMoveMediasToOtherFolder()"><i class="fa fa-check"></i> &nbsp; Confirm</button>
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+<script>
+    function backToPreviousPageOfMediaFolder() {
+        window.location.href = getCookie("PreviousPageOfMediaFolder");
+    }
+
+    function saveMoveMediasToOtherFolder(){
+        var toFolder = $('#selectMFolder-Move').val();
+        var listMedias = [];
+        listMedias.push($("#hdIdItemMedia").val());
+
+        $.ajax({
+            type: 'post',
+            url: '/Qbicles/SaveMoveMediasToOtherFolder',
+            datatype: 'json',
+            data: {
+                toFolder: toFolder,
+                listMedias: listMedias
+            },
+            success: function (refModel) {
+                if (refModel.result) {
+                    $('#move-media').modal('hide');
+                    $('#select-list-mediaFolder').val(toFolder).trigger('change');
+                } 
+            },
+            error: function (err) {
+                cleanBookNotification.error(err.responseText, "Qbicles");                
+            }
+        });
+    }
+    
+    function showUploadMediaPopup() {
+        ClearMediaInputModalAddEdit();
+        $('#create-media').modal('show');
+        var folderCurrentId = $('#select-list-mediaFolder option:selected').val();
+        $('#add-media-select-media-folder').val(folderCurrentId).trigger('change');
+    }
+
+    function insertMediaFolder() {
+        if (!$("#form-create-media-folder").valid())
+            return;
+
+        $.ajax({
+            type: 'post',
+            url: '/Qbicles/InsertOrUpdateMediaFolder',
+            datatype: 'json',
+            data: {
+                mediaFolderId: 0,
+                mediaFolderName: $('#mediaFolderName').val()
+            },
+            success: function (refModel) {
+                if (refModel.result) {
+                    $('#create-media-folder').modal('hide');
+                    $('#mediaFolderName').val("");
+                    renderMediaFolderItem(refModel.Object);
+                } else {
+                    $("#form-create-media-folder").validate().showErrors({ name: refModel.msg });
+                }
+            },
+            error: function (err) {
+                cleanBookNotification.error(err.responseText, "Qbicles");
+            }
+        });
+    }
+
+    function updateMediaFolder() {
+        if (!$("#form-update-del-media-folder").valid())
+            return;
+        var folderId = $('#select-list-mediaFolder option:selected').val();
+        var folderName = $('#nameMFedit').val();
+        $.ajax({
+            type: 'post',
+            url: '/Qbicles/InsertOrUpdateMediaFolder',
+            datatype: 'json',
+            data: {
+                mediaFolderId: folderId,
+                mediaFolderName: folderName
+            },
+            success: function (refModel) {
+                if (refModel.result) {
+                    $('#manage-media-folder').modal('hide');
+                    $('#name-media-folder-' + folderId).text(folderName);
+                    $('#select-list-mediaFolder option:selected').text(folderName);
+                    // for popup add media file
+                    $("#add-media-select-media-folder option[value='" + folderId + "']").text(folderName);
+                    $("#selectMFolder-Move option[value='" + folderId + "']").text(folderName);
+                    $('#nameMFedit').val("");
+                } else {
+                    $("#form-update-del-media-folder").validate().showErrors({ nameMFedit: refModel.msg });
+                }
+            },
+            error: function (err) {
+                cleanBookNotification.error(err.responseText, "Qbicles");
+            }
+        });
+    }
+
+
+    function renderMediaFolderItem(mediaFolder) {
+        //render for small screen (mobile)
+        $('#select-list-mediaFolder').append($('<option>', {
+            value: mediaFolder.Id,
+            text: mediaFolder.Name
+        }));
+        // for popup add media file
+        $("#add-media-select-media-folder").append($('<option>', {
+            value: mediaFolder.Id,
+            text: mediaFolder.Name
+        }));
+
+        $("#selectMFolder-Move").append($('<option>', {
+            value: mediaFolder.Id,
+            text: mediaFolder.Name
+        }));
+
+        $('#select-list-mediaFolder').val(mediaFolder.Id).change();
+
+        //render for big screen
+        var htmlRender = "";
+        htmlRender += "<li class=\"active\" id=\"media-"+mediaFolder.Id+"\">                                                                     ";
+        htmlRender += "            <a href=\"javascript:void(0)\" onclick=\"mediaFolderSelected(" + mediaFolder.Id + ")\">    ";
+        htmlRender += "                <img src=\"../Content/DesignStyle/img/icon_folder.png\">                   ";
+        htmlRender += "                <p id=\"name-media-folder-" + mediaFolder.Id + "\">" + mediaFolder.Name + "</p>                                                          ";
+        htmlRender += "            </a>                                                                        ";
+        htmlRender += "         </li>                                                                          ";
+        $(htmlRender).insertBefore('ul#list-mediaFolder>li:last');
+    }
+
+    function mediaFolderSelected(mediaFolderId) {
+        $('#select-list-mediaFolder').val(mediaFolderId).change();
+    }
+
+    function showMediasByMediaFolderId(mediaFolderId) {
+        
+        $.ajax({
+            type: 'post',
+            url: '/Qbicles/GetMediaItemByFolderId',
+            datatype: 'json',
+            data: { mediaFolderId: mediaFolderId },
+            success: function (listMedia) {
+                $( "#block-media-list li" ).remove();
+                $('#table-media-item-by-folder').DataTable().clear().draw();
+                $.each(listMedia, function (index, media) {
+                    renderRowForTableMediaItems(media);
+                });
+            },
+            error: function (err) {
+                cleanBookNotification.error(err.responseText, "Qbicles");
+            }
+        });
+
+    }
+
+    $('#select-list-mediaFolder').change(function () {
+        $("ul#list-mediaFolder li.active").removeClass("active");
+        $('ul li#media-' + this.value).addClass("active");
+        if ($('#select-list-mediaFolder option:selected').text() == "General") {
+            $('#btn-manage-folder').addClass("disabled");
+        } else {
+            $('#btn-manage-folder').removeClass("disabled");
+        }
+        showMediasByMediaFolderId(this.value);
+    });
+    function renderRowForTableMediaItems(media) {
+        var boxHtml = "";
+        boxHtml +="<li class=\"grid-list-item\">";
+        boxHtml +=" <div class=\"media-folder-item activity-overview task\">";
+        boxHtml +="     <a href=\"javascript:void(0)\" onclick=\"javascript:ShowMediaPage('" + media.Key + "',false);\">";
+        boxHtml += "       <div class=\"preview\" style=\"background-image: url('" + media.ImgPath + "');\"></div>";
+        boxHtml +="     </a>";
+        boxHtml +="  <div class=\"meta_desc\">";
+        boxHtml +="     <h5>"+media.Name+"</h5>";
+        boxHtml +="     <small>"+ media.Type +" &nbsp; | &nbsp; "+ media.LastUpdate +"</small>";
+        boxHtml +="  </div>";
+        boxHtml +="  <a href=\"javascript:void(0)\"  onclick=\"showMovePopupItem("+media.Id+");\"  data-toggle=\"modal\" data-target=\"#move-media\" class=\"btn btn-warning move\"><i class=\"fa fa-exchange\"></i> &nbsp; Move</a>";
+        boxHtml +=" </div>";
+        boxHtml +="</li>";
+        $('#block-media-list').append(boxHtml);
+    }
+
+    function getMediaIdByLiTagId(liTagId) {
+        return liTagId.split("-")[1];
+    }
+    $(document).ready(function () {
+
+        var firstMFolderId = getMediaIdByLiTagId($("ul#list-mediaFolder li:first")[0].id);
+        mediaFolderSelected(firstMFolderId);
+    });
+
+    function manageMediaFolderClick() {
+        var selectedText = $("#select-list-mediaFolder option:selected").text();
+        if (selectedText !== "General") {
+            $('#manage-media-folder').modal('show');
+            $('#nameMFedit').val(selectedText);
+        }
+    }
+
+    function deleteMediaFolder() {
+        var folderId = $('#select-list-mediaFolder option:selected').val();
+        $.ajax({
+            type: 'post',
+            url: '/Qbicles/DeleteMediaFolderById',
+            datatype: 'json',
+            data: {
+                mFolderId: folderId
+            },
+            success: function (refModel) {
+                if (refModel.result) {
+                    $('#manage-media-folder').modal('hide');
+                    //remove item folder
+                    $('#media-' + folderId).remove();
+                    // select fisrt folder => general
+                    var firstMFolderId = getMediaIdByLiTagId($("ul#list-mediaFolder li:first")[0].id);
+                    mediaFolderSelected(firstMFolderId);
+
+                    // remove option in select list
+                    $("#select-list-mediaFolder option[value='" + folderId + "']").remove();
+                    // for popup add media file
+                    $("#add-media-select-media-folder option[value='" + folderId + "']").remove();
+                    $("#selectMFolder-Move option[value='" + folderId + "']").remove();
+
+                    // remove value textbox name folder in popup
+                    $('#nameMFedit').val("");
+
+                } else {
+                    $("#form-update-del-media-folder").validate().showErrors({ nameMFedit: refModel.msg });
+                }
+            },
+            error: function (err) {
+                cleanBookNotification.error(err.responseText, "Qbicles");
+            }
+        });
+    }
+    function showMovePopupItem(id) {
+            $('#hdIdItemMedia').val(id);
+            $('#move-media').modal('show');
+            var listMediaFolder = $('#select-list-mediaFolder option:not(:selected)');
+            var listFolderRemovedCurrent = [];
+            listMediaFolder.each(function () {
+                listFolderRemovedCurrent.push({ id: $(this).val(), text: $(this).text() });
+            });
+            $('#selectMFolder-Move').select2().empty();
+            $('#selectMFolder-Move').select2({data : listFolderRemovedCurrent});
+    }
+</script>

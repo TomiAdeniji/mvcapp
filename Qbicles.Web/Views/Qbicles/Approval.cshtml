@@ -1,0 +1,603 @@
+﻿@using Qbicles.Models;
+@using Qbicles.BusinessRules;
+@using Qbicles.Models.Form
+@{
+    var logoUri = (string)ViewBag.LogoUri;
+    var approval = (ApprovalReq)ViewBag.Approval;
+    var profilePic = (ApplicationUser)ViewBag.CurrentUserAvatar;
+    var currentUserId = (string)ViewBag.CurrentUserId;
+    var isReviewerApprover = (IsReviewerAndApproverModel)ViewBag.CurrentReviewerAndApprover;
+    var formDefinitions = (List<FormDefinition>)ViewBag.FormDefinition;
+    var approvedOrDeniedAppByName = HelperClass.GetFullNameOfUser(approval.ApprovedOrDeniedAppBy, currentUserId);
+    var approvalCreated = HelperClass.GetFullNameOfUser(approval.StartedBy, currentUserId);
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var pageSize = HelperClass.activitiesPageSize;
+    var dateFormat = (string)ViewBag.CurrentDateFormat;
+    var timeZone = (string)ViewBag.CurrentTimeZone;
+}
+<div class="content-wrapper qbicle-detail" style="min-height: 465px;">
+    <div class="tabnav-spacer">&nbsp;</div>
+    <!-- Main content -->
+    <section class="content">
+        <div class="row">
+            <div class="col-xs-12 item_detail">
+                <div class="heading-new">
+                    <div class="bg-avatar" style="background-image: url('@api@(approval.StartedBy.ProfilePic)&size=T');">&nbsp;</div>
+                    <div id="id-item_titling" class="title-detail">
+                        @if (approval.ApprovalRequestDefinition?.Type == ApprovalRequestDefinition.RequestTypeEnum.Procurement)
+                        {
+                            <span class="item_type">Approval @approval.ApprovalRequestDefinition.Type request</span>
+                        }
+                        else
+                        {
+                            <span class="item_type">Approval request</span>
+                        }
+
+                        <h3>@approval.Name</h3>
+                        @{
+                            var priorityCss = "danger";
+                            switch (approval.Priority)
+                            {
+                                case ApprovalReq.ApprovalPriorityEnum.Low:
+                                    priorityCss = "primary";
+                                    break;
+                                case ApprovalReq.ApprovalPriorityEnum.Medium:
+                                    priorityCss = "warning";
+                                    break;
+                                case ApprovalReq.ApprovalPriorityEnum.High:
+                                    priorityCss = "danger";
+                                    break;
+                                case ApprovalReq.ApprovalPriorityEnum.Urgent:
+                                    priorityCss = "success";
+                                    break;
+                            }
+                        }
+                        <span id="priority-title" class="label label-@priorityCss">@approval.Priority</span>
+                        @if (approval.ReviewedBy.Any(u => u.Id == currentUserId))
+                        {
+                            <span id="review-title" class="label label-primary">@ApprovalReq.RequestStatusEnum.Reviewed</span>
+                        }
+                        @switch (approval.RequestStatus)
+                        {
+                            case ApprovalReq.RequestStatusEnum.Pending:
+                                if (approval.ReviewedBy.Count == 0)
+                                {
+                                    <span id="pending-title" class="label label-warning">@ApprovalReq.RequestStatusEnum.Pending</span>
+                                }
+                                break;
+                            case ApprovalReq.RequestStatusEnum.Reviewed:
+
+                                break;
+                            case ApprovalReq.RequestStatusEnum.Approved:
+                                if (approval.ApprovedOrDeniedAppBy?.Id == currentUserId)
+                                {
+                                    <span id="approval-title" class="label label-success">@ApprovalReq.RequestStatusEnum.Approved</span>
+                                }
+                                else
+                                {
+                                    <span id="denie-title" class="label label-success">@ApprovalReq.RequestStatusEnum.Approved by @approvedOrDeniedAppByName</span>
+                                }
+                                break;
+                            case ApprovalReq.RequestStatusEnum.Denied:
+                                if (approval.ApprovedOrDeniedAppBy?.Id == currentUserId)
+                                {
+                                    <span id="status-title" class="label label-danger">@ApprovalReq.RequestStatusEnum.Denied</span>
+                                }
+                                else
+                                {
+                                    <span id="status-title" class="label label-danger">@ApprovalReq.RequestStatusEnum.Denied by @approvedOrDeniedAppByName</span>
+                                }
+                                break;
+                        }
+                    </div>
+                    <div class="clearfix"></div>
+                </div>
+
+                <div class="clearfix"></div>
+                <br />
+                <div class="row">
+                    <div class="col-xs-12">
+                        <div class="app_filter">
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-4 col-lg-4">
+                                    <a href="/Qbicles/Dashboard" class="btn btn-info"><i class="fa fa-angle-up"></i> &nbsp; View Qbicle</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <br /><br />
+                <div class="row">
+                    <div class="col-xs-12 col-sm-8">
+                        <div class="activity-overview task task-meta">
+                            <div class="flex-grid-fluid">
+                                <div class="col">
+                                    <span>Created</span>
+                                    <p>@approval.StartedDate.ToString(dateFormat+" h:mmtt").ToLower()</p>
+                                </div>
+                                <div class="col">
+                                    <span>Creator</span>
+                                    <p>@approvalCreated</p>
+                                </div>
+                                @if (approval.ClosedDate != null)
+                                {
+                                    <div class="col">
+                                        <span>Dates &amp; Times</span>
+                                        @if (approval.ClosedDate != null && (approval.StartedDate.Date == approval.ClosedDate.Value.Date))
+                                        {
+                                            <p>@HelperClass.DatetimeToOrdinal(approval.StartedDate.Date) - @approval.StartedDate.ToString("hh:mmtt") - @approval.ClosedDate.Value.ToString("hh:mmtt")</p>
+                                        }
+                                        else
+                                        {
+                                            if (approval.ClosedDate != null)
+                                            {
+                                                <p>@HelperClass.DatetimeToOrdinal(approval.StartedDate.Date) - @approval.StartedDate.ToString("hh:mmtt") - @HelperClass.DatetimeToOrdinal(approval.ClosedDate.Value.Date) @approval.ClosedDate.Value.ToString("hh:mmtt")</p>
+                                            }
+                                            else
+                                            {
+                                                <p>
+                                                    @HelperClass.DatetimeToOrdinal(approval.StartedDate.Date) - @approval.StartedDate.ToString("hh:mmtt")
+                                                </p>
+                                            }
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                        <br /><br />
+                        <div class="new-item-desc">
+                            <h5>Description</h5>
+                            <p>
+                                @Html.Raw(approval.Notes.Replace(Environment.NewLine, "<br/>"))
+                            </p>
+                        </div>
+                        <br class="visible-xs">
+                    </div>
+                    <div class="col-xs-12 col-sm-4">
+                        @if (isReviewerApprover.IsReviewer)
+                        {
+                            <div class="alert soft_tan reviewer">
+                                <img class="mobile-logo" style="background-image: url('@api@profilePic');">
+                                <strong>You</strong><br>
+                                <div id="review-div" class="item_options" style="margin-top: 5px;">
+                                    @if (!approval.ReviewedBy.Any(u => u.Id == currentUserId))
+                                    {
+                                        <button class="btn btn-success trigger_load" onclick="setRequestStatusForApprovalRequest(@approval.Id, '@ApprovalReq.RequestStatusEnum.Reviewed')"><i class="fa fa-thumbs-up"></i> &nbsp; Review</button>
+                                    }
+                                    else
+                                    {
+                                        <span class="span-button"><i class="fa fa-check green"></i> &nbsp; Reviewed</span>
+                                    }
+                                </div>
+                            </div>
+                        }
+                        @if (isReviewerApprover.IsApprover)
+                        {
+                            switch (approval.RequestStatus)
+                            {
+                                case ApprovalReq.RequestStatusEnum.Approved:
+                                    if (approval.ApprovedOrDeniedAppBy?.Id == currentUserId)
+                                    {
+                                        <div class="alert activity-overview approved reviewer" style="margin-bottom: 5px;">
+                                            <img class="mobile-logo" style="background-image: url('@api@(approval.ApprovedOrDeniedAppBy?.ProfilePic)');">
+                                            <strong>Me</strong><br />
+                                            <i class="fa fa-thumbs-up green"></i> Approved
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="alert activity-overview approved reviewer" style="margin-bottom: 5px;">
+                                            <img class="mobile-logo" style="background-image: url('@api@(approval.ApprovedOrDeniedAppBy.ProfilePic)');">
+                                            <strong>@approvedOrDeniedAppByName</strong><br />
+                                            <i class="fa fa-thumbs-up green"></i> Approved
+                                        </div>
+
+                                    }
+                                    break;
+                                case ApprovalReq.RequestStatusEnum.Denied:
+                                    if (approval.ApprovedOrDeniedAppBy?.Id == currentUserId)
+                                    {
+                                        <div class="alert activity-overview task reviewer" style="margin-bottom: 5px;">
+                                            <img class="mobile-logo" style="background-image: url('@api@(approval.ApprovedOrDeniedAppBy?.ProfilePic)');">
+                                            <strong>Me</strong><br />
+                                            <i class="fa fa-thumbs-down red"></i> Denied
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="alert activity-overview task reviewer" style="margin-bottom: 5px;">
+                                            <img class="mobile-logo" style="background-image: url('@api@(approval.ApprovedOrDeniedAppBy?.ProfilePic)');">
+                                            <strong>@approvedOrDeniedAppByName</strong><br />
+                                            <i class="fa fa-thumbs-down red"></i> Denied
+                                        </div>
+                                    }
+                                    break;
+                                default:
+                                    <div class="alert activity-overview generic reviewer" style="margin-bottom: 5px;">
+                                        <img class="mobile-logo" style="background-image: url('@api@profilePic');">
+                                        <strong>You</strong><br />
+                                        <div id="approval-div" class="item_options" style="margin-top: 5px;">
+                                            <button class="btn btn-success trigger_load" onclick="setRequestStatusForApprovalRequest(@approval.Id, '@ApprovalReq.RequestStatusEnum.Approved')"><i class="fa fa-thumbs-up"></i> &nbsp; Approve</button>
+                                            <button class="btn btn-danger trigger_load" onclick="setRequestStatusForApprovalRequest(@approval.Id, '@ApprovalReq.RequestStatusEnum.Denied')"><i class="fa fa-thumbs-down"></i> &nbsp; Deny</button>
+                                        </div>
+                                    </div>
+                                    break;
+                            }
+
+
+                        }
+                    </div>
+                </div>
+                <br /><br />
+                <hr />
+                @if (formDefinitions != null && formDefinitions.Count > 0)
+                {
+                    string closed = approval.ClosedBy != null ? "true" : "false";
+                    string css = "active";
+                    <h5 style="padding-top: 15px;">Associated forms</h5>
+                    <br />
+                    <section class="associated_forms soft_tan">
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <ul class="nav nav-tabs navigate_forms" role="navigation">
+                                    @foreach (var f in formDefinitions)
+                                    {
+                                        <li class="@css"><a href="#" data-toggle="tab" data-target="#formTab-@f.Id">@f.Title</a></li>
+                                        css = "";
+                                    }
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="tab-content">
+                            @foreach (var form in formDefinitions)
+                            {
+
+                                <!-- Form 1 -->
+                                <div id="formTab-@form.Id" class="tab-pane fade @(formDefinitions.FirstOrDefault() == form ? "in active" : "") " style="background: #fff; border: 1px solid #ddd; border-top: 0; padding: 20px 15px 15px 15px;">
+                                    <div class="row">
+                                        <div class="col-xs-12">
+                                            <h4>@form.Title</h4>
+                                            <hr />
+                                            <div class="well">
+                                                <form id="form-@form.Id" class="fb-render-@form.Id"></form>
+                                            </div>
+                                            <button class="btn btn-success" onclick="saveApprovalForm('@form.Id','@form.Definition')"><i class="fa fa-save"></i> &nbsp; Save Form @form.Title</button>
+                                            <div id="success-notify-@form.Id" class="activity-overview successful animated fadeInDown" style="display: none;">
+                                                <p><i class="fa fa-check green"></i> &nbsp; Your form was successfully saved!</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- END Form 1 -->
+                            }
+                        </div>
+                    </section>
+                }
+                <br /><hr />
+                @* comment and media*@
+                <div class="app_topnav entity_adds" style="background: #fff; padding: 0;">
+                    <ul class="nav nav-pills app_main_nav">
+                        <li role="presentation" class="active">
+                            <a href="#tab1" data-toggle="tab">
+                                <i class="fa fa-comments"></i>
+                                Comments
+                            </a>
+                        </li>
+                        <li role="presentation">
+                            <a href="#tab2" data-toggle="tab">
+                                <i class="fa fa-folder-open"></i>
+                                Files
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+                <br />
+                <div class="row">
+                    <div class="col-xs-12">
+                        <div class="tab-content">
+                            <div class="tab-pane fade in active" id="tab1">
+                                <div class="row">
+                                    <div class="col-xs-12">
+                                        <div class="well" style="max-width: 800px;">
+                                            <div class="form-group">
+                                                <label for="add-comment">Add a comment</label>
+                                                <textarea id="txt-comment-approval" name="add-comment" class="form-control"></textarea>
+                                            </div>
+                                            <button onclick="addCommentForApproval('@approval.Key')" class="btn btn-success">Submit</button>
+                                        </div>
+                                        <br />
+                                    </div>
+                                </div>
+                                <div id="list-comments-approval">
+                                    @foreach (var post in approval.Posts.OrderByDescending(x => x.StartedDate).Take(pageSize))
+                                    {
+
+                                        <!-- General post -->
+
+                                        var fullName = post.CreatedBy.Id == currentUserId ? "Me" : HelperClass.GetFullNameOfUser(post.CreatedBy);
+                                        <article id="post-@post.Id" class="activity post">
+                                            <div class="activity-avatar" style="background-image: url('@api@(post.CreatedBy.ProfilePic)&size=T');"></div>
+                                            <div class="activity-detail">
+                                                <div class="activity-meta">
+                                                    <h4>@fullName</h4>
+                                                    <small>@post.StartedDate.ConvertTimeFromUtc(timeZone).ToString(dateFormat + ", hh:mmtt").ToLower()</small>
+                                                </div>
+                                                <div class="activity-overview media-comment">
+                                                    <p>
+                                                        @Html.Raw(post.Message.Replace(Environment.NewLine, "<br/>"))
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div class="clearfix"></div>
+                                        </article>
+                                        <!-- END General post -->
+                                    }
+                                </div>
+                                @if (approval.Posts.Count() > pageSize)
+                                {
+                                    <button id="btnLoadPosts" onclick="LoadMorePosts('@approval.Key', @pageSize,'list-comments-approval')" class="btn btn-info trigger_load">Load older posts</button>
+                                }
+                            </div>
+
+                            <div class="tab-pane fade" id="tab2">
+                                @if (approval.ClosedBy == null)
+                                {
+                                    <br />
+                                    <a href="#" class="btn btn-success" id="btnAddFile" data-toggle="modal" data-target="#create-media"><i class="fa fa-upload"></i> &nbsp; Upload a file</a>
+                                }
+                                <br /><br />
+                                <div id="list-medias">
+                                    @if (approval.SubActivities.Count > 0)
+                                    {
+                                        foreach (var item in approval.SubActivities.OrderByDescending(x => x.Id).Take(pageSize))
+                                        {
+                                            var media = (QbicleMedia)item;
+                                            var createdByName = media.StartedBy.Id == currentUserId ? "Me" : HelperClass.GetFullNameOfUser(media.StartedBy);
+                                            var createdDate = media.StartedDate.Date == DateTime.UtcNow.Date ? "Today, " + media.StartedDate.ToString("hh:mmtt").ToLower() : media.StartedDate.ToString(dateFormat + " hh:mmtt").ToLower();
+                                            var mediaLastupdate = media.VersionedFiles.Where(e => !e.IsDeleted).OrderByDescending(x => x.UploadedDate).First() ?? null;
+                                            var lastUpdateFile = mediaLastupdate != null ? (mediaLastupdate.UploadedDate.Date == DateTime.UtcNow.Date ? "Today, " + mediaLastupdate.UploadedDate.ToString("hh:mmtt").ToLower() : mediaLastupdate.UploadedDate.ToString(dateFormat + " hh:mmtt").ToLower()) : createdDate;
+                                            //Media post
+                                            <article class="activity media">
+                                                <div class="activity-avatar" style="background-image: url('@api@(media.StartedBy.ProfilePic)&size=T');"></div>
+                                                <div class="activity-detail">
+                                                    <div class="activity-meta">
+                                                        <h4>@createdByName</h4>
+                                                        <small>@createdDate</small>
+                                                        <br class="visible-xs">
+                                                    </div>
+                                                    <div class="activity-overview media">
+                                                        <div class="row">
+                                                            <div class="col-xs-12 col-sm-5 col-md-6 col-lg-5">
+                                                                <a href="javascript:void(0)" onclick="ShowMediaPage('@media.Key')">
+                                                                    @if (media.FileType.Type == "Image File")
+                                                                    {
+                                                                        <img id="media-@item.Id" class="img-responsive" src='@api@mediaLastupdate.Uri' />
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <img src="@media.FileType.IconPath" class="img-responsive">
+                                                                    }
+                                                                </a>
+                                                            </div>
+                                                            <div class="col-xs-12 col-sm-7 col-md-6 col-lg-7 description">
+                                                                <h5>@media.Name</h5>
+                                                                <p>
+                                                                    @media.Description
+                                                                </p>
+                                                                <small>@media.FileType.Type | Update @lastUpdateFile</small>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="clearfix"></div>
+                                            </article>
+                                            <!-- END Media post -->
+
+
+                                        }
+                                    }
+                                </div>
+                                @if (approval.SubActivities.Count() > pageSize)
+                                {
+                                    <button id="btnLoadMedias" onclick="LoadMoreMedias(@approval.Id,@pageSize,'list-medias')" class="btn btn-info trigger_load">Load older medias</button>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+
+<div class="modal fade in" id="attendees-view" role="dialog" aria-labelledby="attachments-view">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+                <h5 class="modal-title">People attending this event</h5>
+            </div>
+            <div class="modal-body">
+                <ul class="domain-change-list unstyled attendees" style="margin-top: 0;">
+                    @foreach (var item in approval.ActivityMembers)
+                    {
+                        <li id="user-@item.Id">
+                            <a href="#">
+                                <img src='@api@item.ProfilePic' class="us-avata" />
+                                <div class="us-fullname">@HelperClass.GetFullNameOfUser(item)</div>
+                            </a>
+                        </li>
+                    }
+                </ul>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+@{
+    Html.RenderAction("GenerateModalMedia", "Qbicles");
+}
+<script src="~/Content/DesignStyle/js/form-builder.min.js"></script>
+<script src="~/Content/DesignStyle/js/form-render.min.js"></script>
+
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/qbicle.activity.loadmoreolder.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/qbicle.activity.loadmoreolder.min.js"></script>
+    }
+}
+
+<script>
+
+    function saveApprovalForm(id,definition){
+        var fbRender = $('form#form-'+id+'.fb-render-' + id);
+        var formBuilder = JSON.parse(definition);
+        var valueform = new FormData(fbRender[0]);
+
+        function getObj(objs, key, val) {
+            val = val.replace('[]', '');
+            return objs.filter(function (obj) {
+                var filter = false;
+                if (val) {
+                    filter = (obj[key] === val);
+                } else if (obj[key]) {
+                    filter = true;
+                }
+                return filter;
+            });
+        }
+
+        function setValue(name, value) {
+            field = getObj(formBuilder, 'name', name)[0];
+
+            if (!field) {
+                return;
+            }
+
+            if (['select', 'checkbox-group', 'radio-group'].indexOf(field.type) !== -1) {
+                for (var fieldOption of field.values) {
+                    if (value.indexOf(fieldOption.value) !== -1) {
+                        fieldOption.selected = true;
+                    } else {
+                        delete fieldOption.selected;
+                    };
+                }
+            } else {
+                field.value = value.toString();
+            }
+        }
+        for (var key of valueform.keys()) {
+            setValue(key, valueform.getAll(key));
+        }
+
+        function objectifyForm(formArray) {
+            var returnArray = {};
+            for (var i = 0; i < formArray.length; i++){
+                if(formArray[i]['value']){
+                    var key = formArray[i]['name'].replace(new RegExp('-','g'), '').replace('[]', '');
+                    var result = returnArray[key]  === undefined;
+                    if(result){
+                        returnArray[key] = formArray[i]['value'];
+                    }else{
+                        returnArray[key] = returnArray[key] + formArray[i]['value'];
+                    }
+                }
+            }
+            return returnArray;
+        }
+
+        formBuilder = JSON.stringify(formBuilder);
+        var formData = JSON.stringify(objectifyForm(fbRender.serializeArray()));
+        $.ajax({
+            url: "/ApprovalDefinitionRef/UpdateFormBuilder",
+            data: { Id: id, FormData: formData, FormBuilder: formBuilder },
+            type: "POST",
+            success: function (refModel) {
+                if (refModel) {
+                    $('#success-notify-'+ id).removeAttr("style");
+                    setTimeout(function(){ $('#success-notify-'+ id).css('display','none');}, 4000);
+                }
+                else
+                    cleanBookNotification.error(_L("ERROR_MSG_EXCEPTION_SYSTEM"), "Qbicles");
+            },
+            error: function (error) {
+                cleanBookNotification.error(error, "Qbicles");
+            }
+        })
+    }
+
+
+    jQuery(function ($) {
+
+
+        var fbTemplate =  @Html.Raw(Json.Encode(formDefinitions.Select(x => new { Id = x.Id, Definition = x.Definition}).ToList()));
+        fbTemplate.forEach(function(form) {
+            $('.fb-render-'+ form.Id).formRender({
+                dataType: 'json',
+                formData: form.Definition
+            });
+        });
+
+
+    });
+
+    $(document).ready(function () {
+        // set name,logo for Qbicle selected
+        $('#qbicleNameSelected').text('@approval.Qbicle.Name');
+
+                $("#qbicleLogoSelect").attr("src", "@logoUri");
+
+        setTimeout(function () {
+            $('html, body').animate({
+                scrollTop: $(document).height()
+            }, 0);
+        }, 300);
+
+    });
+    function setRequestStatusForApprovalRequest (apprKey, status ){
+        $.ajax({
+            url: "/Qbicles/SetRequestStatusForApprovalRequest",
+            type: "GET",
+            dataType: "json",
+            data: { appKey: apprKey, status : status },
+            success : function(rs){
+                if(rs >0){
+                    $("#pending-title").remove();
+                    switch (status) {
+                        case "Reviewed":
+                            $("#review-div").empty();
+                            var strReviewed = ' <span id="review-title" class="label label-primary">@ApprovalReq.RequestStatusEnum.Reviewed</span> ';
+                            $("#id-item_titling").append(strReviewed);
+                            var reviewDiv = ' <span class="span-button"><i class="fa fa-check green"></i> &nbsp; Reviewed</span> ';
+                            $("#review-div").append(reviewDiv).hide().fadeIn(1000);
+                            break;
+                        case "Approved":
+                            $("#approval-div").empty();
+                            var strApproved = ' <span id="approval-title" class="label label-success">@ApprovalReq.RequestStatusEnum.Approved</span> ';
+                            $("#id-item_titling").append(strApproved);
+                            var strApprovalDiv = ' <span class="span-button"><i class="fa fa-thumbs-up green"></i> &nbsp; Approved</span> ';
+                            $("#approval-div").append(strApprovalDiv).hide().fadeIn(1000);
+                            break;
+                        case "Denied":
+                            $("#approval-div").empty();
+                            var strDenied = ' <span id="denie-title" class="label label-danger">@ApprovalReq.RequestStatusEnum.Denied</span> ';
+                            $("#id-item_titling").append(strDenied);
+                            var approvalDiv = ' <span class="span-button"><i class="fa fa-thumbs-down red"></i> &nbsp; Denied</span> ';
+                            $("#approval-div").append(approvalDiv).hide().fadeIn(1000);
+                            break;
+                    }
+                }
+            },
+            error : function (err){
+                
+            }
+
+        });
+    }
+
+
+</script>

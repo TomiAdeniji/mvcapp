@@ -1,0 +1,173 @@
+﻿@using System.Diagnostics
+@using Qbicles.BusinessRules
+@using Qbicles.Models.Trader;
+@using Qbicles.Models.Trader.SalesChannel;
+@model List<TraderSale>
+@{
+    var workGroups = (List<WorkGroup>)ViewBag.WorkGroups ?? (new List<WorkGroup>());
+    var saleChannels = Enum.GetNames(typeof(SalesChannelEnum)).ToList();
+    var saleFilter = (SaleFilterParameter)ViewBag.SaleFilter;
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+}
+
+
+<br />
+
+<div class="well custom" style="padding-bottom: 5px;">
+
+    <div class="row">
+        <div class="col-xs-12 col-sm-6 col-md-3">
+            <div class="form-group">
+                <label for="search_dt">Search for something</label>
+                <input value="@saleFilter.Key" type="text" name="search_dt" id="search_dt" onchange="onKeySearchChanged(this)" class="form-control" placeholder="Search for something">
+            </div>
+        </div>
+        <div class="col-xs-12 col-sm-6 col-md-2">
+            <div class="form-group">
+                <label for="group">Filter Workgroup</label>
+                <select id="subfilter-group" onchange="onSelectWorkgroup(this)" name="group" class="form-control select2" style="width: 100%;" data-placeholder="Display Workgroup">
+                    <option value="0" selected>Show all</option>
+                    @foreach (var item in workGroups)
+                    {
+                        if (saleFilter.Workgroup == item.Id.ToString())
+                        {
+                            <option selected="" value="@item.Id">@item.Name</option>
+                        }
+                        else
+                        {
+                            <option value="@item.Id">@item.Name</option>
+                        }
+                    }
+                </select>
+            </div>
+        </div>
+        <div class="col-xs-12 col-sm-6 col-md-2">
+            <div class="form-group">
+                <label for="group">Filter Channel</label>
+                <select id="subfilter-channel" onchange="OnSaleChanelChange(this)" class="form-control select2" style="width: 100%;" data-placeholder="Display Channel">
+                    <option value=" " selected>Show all</option>
+                    @foreach (var item in saleChannels)
+                    {
+                        if (saleFilter.SaleChanel == item)
+                        {
+                            <option selected="" value="@item">@item</option>
+                        }
+                        else
+                        {
+                            <option value="@item">@item</option>
+                        }
+                    }
+                </select>
+            </div>
+        </div>
+        <div class="col-xs-12 col-sm-6 col-md-2">
+            <label for="datefilter">Filter by date</label>
+            <div class="input-group" style="margin-bottom: 15px;">
+                <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                <input value="@saleFilter.DateRange" type="text" name="datefilter" id="sale-input-datetimerange" class="form-control datetimerange" placeholder="Choose a range">
+            </div>
+        </div>
+        <div class="col-xs-12 col-md-3">
+            <label>Options</label>
+            <br />
+            <div class="form-group">
+                <button class="btn btn-success" data-toggle="modal" onclick="addSale()" data-target="#app-trader-sale-add"><i class="fa fa-plus"></i> &nbsp; Add a sale</button>
+                <div class="btn-group options">
+                    <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        <i class="fa fa-sliders"></i> &nbsp; Manage display
+                    </button>
+                    <ul class="dropdown-menu primary manage-columns">
+                        <li><label><input type="checkbox" data-column="1" checked> Workgroup</label></li>
+                        <li><label><input type="checkbox" data-column="2" checked> Created</label></li>
+                        <li><label><input type="checkbox" data-column="3" checked> Channel</label></li>
+                        <li><label><input type="checkbox" data-column="4" checked> Contact</label></li>
+                        <li><label><input type="checkbox" data-column="5" checked> Reporting Filters</label></li>
+                        <li><label><input type="checkbox" data-column="6" checked> Total</label></li>
+                        <li><label><input type="checkbox" data-column="7" checked> Status</label></li>
+                    </ul>
+                </div>
+                <!-- Export -->
+                <div class="btn-group options">
+                    <button type="button" class="btn btn-warning dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        <i class="fa fa-download"></i> &nbsp; Export
+                    </button>
+                    <div class="dropdown-menu" id="kt_datatable_example_export_menu" aria-labelledby="dropdownMenuButton" style="background-color: #a37a41;">
+                        <li>
+                            <a class="dropdown-item data-qb-excel" href="javascript:void(0)" onclick="GetDataTableContentExport()">Excel</a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item data-qb-csv" href="javascript:void(0)" onclick="GetDataTableContentExport(2)">CSV</a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item data-qb-pdf" href="javascript:void(0)" onclick="GetDataTableContentExport(3)">PDF</a>
+                        </li>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="visible-xs" style="width: 100%; height: 15px;">&nbsp;</div>
+
+</div>
+
+<!-- Dash -->
+<section class="app-dash">
+    <div id="section_dashboard">
+
+    </div>
+    <a href="javascript:void(0);" onclick="showDashboard();" class="dash-showhide" title="Toggle display of your Sales Summary"><i class="fa fa-ellipsis-h"></i></a>
+</section>
+
+
+
+<br />
+<div id="table_show" style="min-height:200px">
+    <table class="datatable table-striped table-hover" id="tb_trader_sales" style="width: 100%;">
+        <thead>
+            <tr>
+                <th data-priority="1">#</th>
+                <th data-priority="2">Workgroup</th>
+                <th data-priority="2">Created</th>
+                <th data-priority="2">Channel</th>
+                <th data-priority="1">Contact</th>
+                <th data-priority="3">Reporting Filters</th>
+                <th data-priority="2">Total <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                <th data-priority="1">Status</th>
+                <th data-priority="1" data-orderable="false">Options</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+</div>
+
+
+@{
+
+    if (Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/trader.sales.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/trader.sales.js"></script>
+    }
+}
+<style>
+    #tb_trader_sales_processing {
+        --margin-top: 100px;
+        background: #eeeeee;
+    }
+</style>
+
+<script>
+
+    if ('@saleFilter.Key' === ""||'@saleFilter.Workgroup' === ""||'@saleFilter.SaleChanel' === ""||'@saleFilter.DateRange' === "") {
+        var filter = {
+            Workgroup: "@saleFilter.Workgroup",
+            SaleChanel: "@saleFilter.SaleChanel",
+            Key: "@saleFilter.Key",
+            DateRange: "@saleFilter.DateRange"
+        };
+    }
+</script>

@@ -1,0 +1,319 @@
+﻿@using Qbicles.BusinessRules;
+@using Qbicles.Models.Trader;
+@{
+
+    var lstTraderGroupItems = (List<TraderConfigurationModel>)ViewBag.LstGroupItems;
+    var lstContactGroups = (List<ContactGroupModel>)ViewBag.LstContactGroups;
+    var dateFormat = (string)ViewBag.CurrentDateFormat;
+}
+
+<!-- Groups -->
+<div id="tab-groups-content">
+
+
+    <ul class="app_subnav" style="margin-top: -20px;">
+        <li class="active"><a href="#tab-groups-items" data-toggle="tab">Item &amp; Products</a></li>
+        <li><a href="#tab-groups-contacts" data-toggle="tab">Contacts</a></li>
+    </ul>
+
+
+    <br />
+
+    <div class="tab-content">
+
+        <!-- Groups (Items) -->
+        <div class="tab-pane fade in active" id="tab-groups-items">
+            <div class="activity-overview task" style="padding: 20px;">
+
+                <table class="table-hover datatable" style="width: 100%; background: #fff;">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Created</th>
+                            <th>Creator</th>
+                            <th data-orderable="false">Options</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in lstTraderGroupItems)
+                        {
+                            <tr>
+                                <td>@item.Name</td>
+                                <td data-sort="@item.CreatedDate.ToString("yyyy-MM-dd")">@item.CreatedDate.ToString(dateFormat)</td>
+                                <td>@item.CreatedBy.GetFullName()</td>
+                                <td>
+                                    <button class="btn btn-warning" onclick="Editgroup(@item.Id)" data-toggle="modal" data-target="#app-group-edit"><i class="fa fa-pencil"></i></button>
+                                    @if (item.CanDelete)
+                                    {
+                                        <button class="btn btn-danger" data-toggle="modal" data-target="#app-group-confirm" onclick="ConfirmDeletegroup(@item.Id, '@item.Name')"><i class="fa fa-trash"></i></button>
+                                    }
+                                    else
+                                    {
+                                        <button class="btn btn-danger"><i class="fa fa-trash"></i></button>
+                                    }
+                                </td>
+                            </tr>
+                        }
+
+                    </tbody>
+                </table>
+
+                <br />
+                <a href="javascript:void(0);" onclick="clickAddgroup()" class="btn btn-success" data-toggle="modal" data-target="#app-group-add"><i class="fa fa-plus"></i> &nbsp; Add new</a>
+            </div>
+        </div>
+        <!-- END Groups (Items) -->
+        <!-- Contact Groups -->
+        <div class="tab-pane fade" id="tab-groups-contacts">
+            <div class="activity-overview task" style="padding: 20px;">
+                <div id="table_ContactGroup">
+                    <table class="table-hover datatable" style="width: 100%; background: #fff;">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Created</th>
+                                <th>Creator</th>
+                                <th>Members</th>
+                                <th data-orderable="false">Options</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in lstContactGroups)
+                            {
+                                <tr id="tr_contact_group_@item.Id">
+                                    <td class="td_contact_group_name">@item.Name</td>
+                                    <td data-sort="@item.CreatedDate.ToString(" yyyy-MM-dd")">@item.CreatedDate.ToString(dateFormat) </td>
+                                    <td>@item.CreatedBy.GetFullName()</td>
+                                    <td>
+                                        <button data-toggle="modal" data-target="#group-items-view" onclick="ShowGroupMemberContact(@item.Id)" class="btn btn-info"><i class="fa fa-cube"></i> &nbsp; @item.Members members</button>
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-warning" data-toggle="modal" data-target="#app-contact-group-edit" onclick="editContactGroup(@item.Id, '@item.Name')"><i class="fa fa-pencil"></i></button>
+                                        @if (item.CanDelete)
+                                        {
+                                            <button class="btn btn-danger" data-toggle="modal" data-target="#app-contact-group-confirm" onclick="confirmDeleteContactGroup(@item.Id, '@item.Name')"><i class="fa fa-trash"></i></button>
+                                        }
+                                        else
+                                        {
+                                            <button disabled class="btn btn-danger"><i class="fa fa-trash"></i></button>
+                                        }
+
+                                    </td>
+                                </tr>
+                            }
+
+                        </tbody>
+                    </table>
+                </div>
+
+
+                <br />
+                <a href="#" class="btn btn-success" data-toggle="modal" data-target="#app-contact-group-edit" onclick="addContactGroup()"><i class="fa fa-plus"></i> &nbsp; Add new</a>
+            </div>
+        </div>
+        <!-- END Contact Groups -->
+
+
+    </div> <!-- /.tab-content -->
+
+
+
+
+</div>
+<!-- END Groups -->
+
+<div class="modal fade" id="app-group-generic-add" tabindex="-1" role="dialog" aria-labelledby="app-group-generic-add">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Add a Group</h5>
+            </div>
+            <div class="modal-body">
+
+                <div class="activity-overview task" style="padding: 20px;">
+                    <div class="form-group" style="margin: 0;">
+                        <label for="title">Title</label>
+                        <input type="text" class="form-control" name="title">
+                    </div>
+                </div>
+
+                <br />
+                <button type="submit" class="btn btn-success"><i class="fa fa-save"></i> &nbsp; Finish &amp; save</button>
+                <button class="btn btn-danger" data-dismiss="modal"><i class="fa fa-remove"></i> &nbsp; Cancel</button>
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+<!-- modal for Items-->
+<div class="modal fade" id="app-group-add" role="dialog" aria-labelledby="app-group-add">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+                <h5 class="modal-title">Add a Group</h5>
+            </div>
+            <div class="modal-body">
+
+                <div class="activity-overview task" style="padding: 20px;">
+                    <form style="margin: 0;" class="form-group" id="form_group_add" novalidate="novalidate">
+                        <div class="form-group">
+                            <label for="name">Title<span>*</span></label>
+                            <input type="text" id="addnew-group-name" required name="Name" class="form-control" placeholder="" autofocus>
+                        </div>
+                    </form>
+                </div>
+                <br />
+                <button type="submit" class="btn btn-success" onclick="addgroup()"><i class="fa fa-check"></i> &nbsp; Add now</button>
+                <button class="btn btn-danger modal-group-add-cancel" data-dismiss="modal"><i class="fa fa-remove"></i> &nbsp; Cancel</button>
+
+            </div>
+        </div> <!-- /.modal-content -->
+    </div> <!-- /.modal-dialog -->
+</div>
+<!-- /.modal Add new group-->
+
+<div class="modal fade" id="app-group-edit" role="dialog" aria-labelledby="app-group-edit">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Edit Group</h5>
+            </div>
+            <div class="modal-body">
+                <div class="activity-overview task" style="padding: 20px;">
+                    <form style="padding: 0;" class="form-group" method="POST" id="form_group_edit" action="/TraderConfiguration/SaveGroup" enctype="multipart/form-data" novalidate="novalidate">
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="date">Create by</label>
+                                    <input type="text" id="group-edit-createby" disabled class="form-control" value="">
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="date">Created date</label>
+                                    <input type="text" id="group-edit-createdate" disabled class="form-control" value="">
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-12">
+                                <input class="hidden" name="Id" id="group-edit-id" />
+                                <div class="form-group">
+                                    <label for="number">Title <span>*</span></label>
+                                    <input type="text" name="Name" id="group-edit-name" class="form-control" required value="">
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <br />
+                <button class="btn btn-success" onclick="updategroup()"><i class="fa fa-check"></i> &nbsp; Save</button>
+                <button class="btn btn-danger modal-group-edit-cancel" data-dismiss="modal"><i class="fa fa-remove"></i> &nbsp; Cancel</button>
+
+            </div>
+        </div> <!-- /.modal-content -->
+    </div> <!-- /.modal-dialog -->
+</div>
+<!-- /.modal Edit group-->
+
+<div class="modal fade" id="app-group-confirm" role="dialog" aria-labelledby="app-group-confirm">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Delete group</h5>
+            </div>
+            <div class="modal-body">
+                <div class="col-xs-12 col-sm-12" style="margin-bottom: 30px;">
+                    <span id="label-confirm-group"></span>
+                    <input class="hidden" id="id-itemgroup-delete" />
+                </div>
+
+                <button class="btn btn-success" data-dismiss="modal" onclick="deletegroup()"><i class="fa fa-check"></i> &nbsp; OK</button>
+                <button class="btn btn-danger" data-dismiss="modal"><i class="fa fa-remove"></i> &nbsp; Cancel</button>
+
+            </div>
+        </div> <!-- /.modal-content -->
+    </div> <!-- /.modal-dialog -->
+</div>
+
+<!-- Begin Contact group -->
+<div class="modal fade" id="app-contact-group-edit" role="dialog" aria-labelledby="app-contact-group-edit">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title" id="title-contact-group">Edit Contact Group</h5>
+            </div>
+            <div class="modal-body">
+                <div class="activity-overview task" style="padding: 20px;">
+
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-12">
+                            <div class="form-group">
+                                <input type="hidden" id="contact-group-id" value="0" />
+                                <label for="number">Name <span>*</span></label>
+                                <input type="text" name="Name" id="contact-group-edit-name" class="form-control" required value="">
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+                <br />
+                <button class="btn btn-success" onclick="savecontactgroup(@(SalesChannelContactGroup.Trader.GetId()))"><i class="fa fa-check"></i> &nbsp; Save</button>
+                <button class="btn btn-danger modal-group-edit-cancel" data-dismiss="modal"><i class="fa fa-remove"></i> &nbsp; Cancel</button>
+
+            </div>
+        </div> <!-- /.modal-content -->
+    </div> <!-- /.modal-dialog -->
+</div>
+<div class="modal fade" id="app-contact-group-confirm" role="dialog" aria-labelledby="app-contact-group-confirm">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Delete Contact group</h5>
+            </div>
+            <div class="modal-body">
+                <div class="col-xs-12 col-sm-12" style="margin-bottom: 30px;">
+                    <span id="label-confirm-contact-group"></span>
+                    <input class="hidden" id="id-contact-group-delete" />
+                </div>
+
+                <button class="btn btn-success" data-dismiss="modal" onclick="deletecontactgroup()"><i class="fa fa-check"></i> &nbsp; OK</button>
+                <button class="btn btn-danger" data-dismiss="modal"><i class="fa fa-remove"></i> &nbsp; Cancel</button>
+
+            </div>
+        </div> <!-- /.modal-content -->
+    </div> <!-- /.modal-dialog -->
+</div>
+<div class="modal fade" id="group-items-view" role="dialog" aria-labelledby="group-items-view">
+
+</div><!-- /.modal -->
+<!-- End modal Contact Group-->
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/trader.config.group.js"></script>
+
+    }
+    else
+    {
+        <script src="~/Scripts/dev/trader.config.group.min.js"></script>
+
+    }
+}
+<!-- End modal for Items -->
+
+<script>
+    $('#tab-groups-content .datatable').DataTable({
+        responsive: true,
+        "lengthChange": true,
+        "pageLength": 10,
+        "order": []
+    });
+    $('#tab-groups-content .datatable').show();
+</script>

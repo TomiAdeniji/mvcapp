@@ -1,0 +1,144 @@
+﻿@using Qbicles.Models.Operator.Compliance;
+@using Qbicles.BusinessRules;
+@using Qbicles.Models;
+@using Qbicles.Models.Form;
+@model ComplianceTask
+@{
+    var currentTaskInstance = (TaskInstance)ViewBag.TaskInstance;
+    var task = currentTaskInstance != null ? currentTaskInstance.AssociatedQbicleTask : null;
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var dateFormat = (string)ViewBag.CurrentDateFormat;
+    var currentTimeZone = (string)ViewBag.CurrentTimeZone;
+    ViewBag.Title = $"{Model.Domain.Name} > {task.Qbicle.Name} > {task.Name}";
+    var forms = (List<FormDefinition>)ViewBag.Forms;
+}
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail mdv2-wrapper" style="position: relative;">
+    <!-- Main content -->
+    <section class="mdv2 dash" data-tooltip-color="teal" data-tooltip-delay="300" data-tooltip-animate-function="spin" style="border-top: 1px solid #f1f1f1;">
+
+
+        <!-- App bar -->
+        <div class="mdv2-col-app" style="margin-bottom: 0;">
+
+            <div data-spy="affix" class="contained-sidebar">
+
+                <div class="activity-overview plain company-overview welcome-info" style="text-align: left !important; flex: none; margin: 0; padding-top: 30px; padding-bottom: 0;">
+
+                    <div class="pull-left" style="margin-bottom: 15px;">
+                        <a href="/Operator?tab=tasks-tasks" class="btn btn-primary"><i class="fa fa-angle-left"></i> &nbsp; Tasks</a>
+                        <a onclick="QbicleSelected('@Model.WorkGroup.SourceQbicle.Key','Dashboard')" class="btn btn-info"><i class="fa fa-eye"></i> &nbsp; View in Qbicle</a>
+                    </div>
+                    <div class="clearfix"></div>
+
+                    <br /><br />
+
+                    <h6 class="subhead">Operator &gt; Tasks</h6>
+                    <h1 style="line-height: 1.2;">@Model.Name</h1>
+
+                    <br />
+                    <p style="color: rgba(0, 0, 0, 0.5);">@Model.Description</p>
+
+
+
+                    <br /><br />
+                    <div class="row">
+                        <div class="col-xs-6">
+                            <label>Deadline</label>
+                            <p>@(task != null && task.ProgrammedEnd.HasValue ? task.ProgrammedEnd.Value.ToString(dateFormat + " hh:mmtt") : "")</p>
+                        </div>
+                        @if (task.isRecurs)
+                        {
+                            <div class="col-xs-6">
+                                <label>Recurring</label>
+                                <p>@Utility.ShowRecurring(task.AssociatedSet.Recurrance, task.ProgrammedStart.HasValue ? task.ProgrammedStart.Value.ToString("\"at\" h:mmtt").Replace(":00", "").ToLower() : "")</p>
+                            </div>
+                        }
+                    </div>
+
+                    <br />
+                    <div class="row">
+                        <div class="col-xs-12">
+                            <label>Assignee</label>
+                            <p><a href="/Community/UserProfilePage?uId=@Model.Assignee.Id">@HelperClass.GetFullNameOfUser(Model.Assignee)</a></p>
+                        </div>
+                    </div>
+
+
+                    <br /><br />
+                    <div class="well custom" style="padding-bottom: 5px;">
+                        <div class="form-group">
+                            <label for="Search">Search for something</label>
+                            <input type="text" name="Search" id="txtSearch" class="form-control" placeholder="Search for something">
+                        </div>
+                        <div class="form-group">
+                            <label for="Form">Filter by form</label>
+                            <select id="slform" name="Form" class="form-control select2" style="width: 100%;" data-placeholder="Display groups">
+                                <option value="0" selected>Show all</option>
+                                @if (forms != null)
+                                {
+                                    foreach (var item in forms)
+                                    {
+                                        <option value="@item.Id">@item.Title</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+                    </div>
+
+                </div>
+
+
+
+
+            </div>
+        </div>
+        <!-- END App bar -->
+        <!-- Main area -->
+        <div class="mdv2-col-dash">
+
+            <div class="spacing">
+
+                <div class="activity-overview generic help-text animated bounce">
+                    <i class="fa fa-info-circle"></i>
+                    <p>
+                        Whenever any forms that are part of this Task are submitted, they are automatically added to the list of <em>instances</em> below. You can view
+                        more information on a specific instance to see the responses.
+                    </p>
+                    <a href="#" onclick="$(this).parent().hide();">Dismiss</a>
+                </div>
+                <input type="hidden" id="iptaskId" value="@task.Id" />
+                <input type="hidden" id="ipcomplianceTaskId" value="@Model.Id" />
+                <table class="table-striped table-hover datatable" style="width: 100%;" id="tblTaskInstances">
+                    <thead>
+                        <tr>
+                            <th>Form</th>
+                            <th>Submitted</th>
+                            <th>Score</th>
+                            <th data-orderable="false">Options</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+
+            </div>
+
+        </div>
+
+
+
+    </section>
+    <!-- ./content -->
+
+</div>
+<!-- /.content-wrapper -->
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/operator.compliance-taskinstances.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/operator.compliance-taskinstances.min.js"></script>
+    }
+}

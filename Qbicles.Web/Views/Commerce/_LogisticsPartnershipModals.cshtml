@@ -1,0 +1,283 @@
+﻿@using Qbicles.Models.Trader
+@using Qbicles.Models.B2B
+@using Qbicles.Models
+@using Qbicles.BusinessRules
+@using Qbicles.BusinessRules.Model
+@model LogisticsPartnership
+@{
+    var currentDomain = (QbicleDomain)ViewBag.CurrentDomain;
+    var providerBusinessProfile = Model.ProviderDomain.Id.BusinesProfile();
+    var providerBusinessName = providerBusinessProfile?.BusinessName ?? Model.ProviderDomain.Name;
+    var currentLogisticsAgreement = Model.LogisticsAgreements.FirstOrDefault(s => s.Status == AgreementStatus.IsDraft);
+    var providerLocations = (List<TraderLocation>)ViewBag.ProviderLocations;
+    var verhicleTypeIcons = B2bVerhicleTypeIcon.vehicleTypes;
+    var currencySettings = (CurrencySetting)ViewBag.CurrencySettings;
+}
+@if (currentDomain.Id == Model.ConsumerDomain.Id)
+{
+    if (currentLogisticsAgreement != null && currentLogisticsAgreement.PriceList != null)
+    {
+        <div class="modal fade right" id="b2b-delivery-charge-list" role="dialog" aria-labelledby="b2b-delivery-charge-list" style="display: none;">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+                        <h5 class="modal-title">@currentLogisticsAgreement.PriceList.PriceList.Name for your location</h5>
+                    </div>
+                    <div class="modal-body">
+
+
+                        <div class="flex-grid-fluid-lg qbicles-dash-grid criteria-tables">
+                            @foreach (var item in currentLogisticsAgreement.PriceList.ChargeFrameworks.Where(s=>s.IsActive))
+                            {
+                                <article class="col">
+                                    <a href="#" style="cursor: initial !important;">
+                                        <div class="avatar" style="border-radius: 0; background-image: url('@(Url.Content(verhicleTypeIcons.FirstOrDefault(s=>s.Key==item.VehicleType).Value))');">&nbsp;</div>
+                                        <h1 style="color: #333;">@item.Name</h1>
+                                    </a>
+                                    <br>
+
+                                    <div class="text-left">
+                                        <table class="table app_specific table-borderless">
+                                            <thead>
+                                                <tr>
+                                                    <th colspan="2">Distance travelled</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr>
+                                                    <td style="width: 70%;">Flat fee</td>
+                                                    <td>@item.DistanceTravelledFlatFee.ToCurrencySymbol(currencySettings)</td>
+                                                </tr>
+                                                <tr>
+                                                    <td style="width: 70%;">Per km</td>
+                                                    <td>@item.DistanceTravelPerKm.ToCurrencySymbol(currencySettings)</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+
+
+                                        <table class="table app_specific table-borderless">
+                                            <thead>
+                                                <tr>
+                                                    <th colspan="2">Time taken</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr>
+                                                    <td style="width: 70%;">Flat fee</td>
+                                                    <td>@item.TimeTakenFlatFee.ToCurrencySymbol(currencySettings)</td>
+                                                </tr>
+                                                <tr>
+                                                    <td style="width: 70%;">Per second</td>
+                                                    <td>@item.TimeTakenPerSecond.ToCurrencySymbol(currencySettings)</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+
+
+                                        <table class="table app_specific table-borderless" style="margin-bottom: 0;">
+                                            <thead>
+                                                <tr>
+                                                    <th colspan="2">Value of delivery</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr>
+                                                    <td style="width: 70%;">Flat fee</td>
+                                                    <td>@item.ValueOfDeliveryFlatFee.ToCurrencySymbol(currencySettings)</td>
+                                                </tr>
+                                                <tr>
+                                                    <td style="width: 70%;">Percentage</td>
+                                                    <td>@item.ValueOfDeliveryPercentTotal%</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                </article>
+                            }
+                        </div>
+
+                        <br>
+                        <button class="btn btn-primary" data-dismiss="modal">Close</button>
+
+                    </div>
+                </div><!-- /.modal-content -->
+            </div><!-- /.modal-dialog -->
+        </div>
+    }
+}
+else if (currentDomain.Id == Model.ProviderDomain.Id)
+{
+    if (currentLogisticsAgreement != null && currentLogisticsAgreement.PriceList != null)
+    {
+        <div class="modal fade right" id="b2b-delivery-charge-mgmt" role="dialog" aria-labelledby="b2b-delivery-charge-mgmt" style="display: none;">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+                        <h5 class="modal-title">Manage your offered prices</h5>
+                    </div>
+                    <div class="modal-body">
+
+
+                        <div class="flex-grid-fluid-lg qbicles-dash-grid criteria-tables">
+                            @foreach (var item in currentLogisticsAgreement.PriceList.ChargeFrameworks)
+                            {
+                                <article data-id="@item.Id" class="col">
+                                    <div class="qbicle-opts">
+                                        <div class="checkbox toggle">
+                                            <label>
+                                                <input name="IsActive" value="true" @(item.IsActive?"checked":"") data-toggle="toggle" data-onstyle="success" data-offstyle="danger" data-off="<i class='fa fa-remove'></i>" data-on="<i class='fa fa-check'></i>" type="checkbox">
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <a href="#" style="cursor: initial !important;">
+                                        <div class="avatar" style="border-radius: 0; background-image: url('@(Url.Content(verhicleTypeIcons.FirstOrDefault(s=>s.Key==item.VehicleType).Value))');">&nbsp;</div>
+                                        <h1 style="color: #333;">@item.Name</h1>
+
+                                    </a>
+                                    <br>
+
+                                    <div class="text-left">
+                                        <table class="table app_specific table-borderless">
+                                            <thead>
+                                                <tr>
+                                                    <th colspan="2">Distance travelled</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr>
+                                                    <td style="width: 70%;">Flat fee</td>
+                                                    <td>
+                                                        <div class="input-group">
+                                                            <input name="DistanceTravelledFlatFee" type="number" class="form-control" value="@item.DistanceTravelledFlatFee.ToInputNumberFormat(currencySettings)">
+                                                            <span class="input-group-addon">@currencySettings.CurrencySymbol</span>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td style="width: 70%;">Per km</td>
+                                                    <td>
+                                                        <div class="input-group">
+                                                            <input name="DistanceTravelPerKm" type="number" class="form-control" value="@item.DistanceTravelPerKm.ToInputNumberFormat(currencySettings)">
+                                                            <span class="input-group-addon">@currencySettings.CurrencySymbol</span>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+
+
+                                        <table class="table app_specific table-borderless">
+                                            <thead>
+                                                <tr>
+                                                    <th colspan="2">Time taken</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr>
+                                                    <td style="width: 70%;">Flat fee</td>
+                                                    <td>
+                                                        <div class="input-group">
+                                                            <input name="TimeTakenFlatFee" type="number" class="form-control" value="@item.TimeTakenFlatFee.ToInputNumberFormat(currencySettings)">
+                                                            <span class="input-group-addon">@currencySettings.CurrencySymbol</span>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td style="width: 70%;">Per second</td>
+                                                    <td>
+                                                        <div class="input-group">
+                                                            <input name="TimeTakenPerSecond" type="number" class="form-control" value="@item.TimeTakenPerSecond.ToInputNumberFormat(currencySettings)">
+                                                            <span class="input-group-addon">@currencySettings.CurrencySymbol</span>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+
+
+                                        <table class="table app_specific table-borderless" style="margin-bottom: 0;">
+                                            <thead>
+                                                <tr>
+                                                    <th colspan="2">Value of delivery</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr>
+                                                    <td style="width: 70%;">Flat fee</td>
+                                                    <td>
+                                                        <div class="input-group">
+                                                            <input name="ValueOfDeliveryFlatFee" type="number" class="form-control" value="@item.ValueOfDeliveryFlatFee.ToInputNumberFormat(currencySettings)">
+                                                            <span class="input-group-addon">@currencySettings.CurrencySymbol</span>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td style="width: 70%;">Percentage</td>
+                                                    <td>
+                                                        <div class="input-group">
+                                                            <input name="ValueOfDeliveryPercentTotal" type="number" min="0" max="100" class="form-control" value="@item.ValueOfDeliveryPercentTotal">
+                                                            <span class="input-group-addon">%</span>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                </article>
+                            }
+                        </div>
+
+                        <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                        <button class="btn btn-success" onclick="updateProviderChargeFrameworks(@Model.Id);">Confirm</button>
+
+                    </div>
+                </div><!-- /.modal-content -->
+            </div><!-- /.modal-dialog -->
+        </div>
+    }
+    else
+    {
+        <div class="modal fade left" id="b2b-choose-prices" role="dialog" aria-labelledby="b2b-choose-prices" style="display: none;">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+                        <h5 class="modal-title">Choose a price list</h5>
+                    </div>
+                    <div class="modal-body">
+                        <form id="frmProviderPriceList">
+                            <div class="well custom" style="padding-bottom: 5px;">
+                                <div class="form-group">
+                                    <label for="locations">Location</label>
+                                    <select name="locations" required class="form-control select2" style="width: 100%;" onchange="loadPriceListsByLocationId(this);" tabindex="-1" aria-hidden="true">
+                                        <option value=""></option>
+                                        @foreach (var item in providerLocations)
+                                        {
+                                            <option value="@item.Id">@item.Name</option>
+                                        }
+                                    </select>
+                                    <label id="locations-error" class="error" for="locations" style="display:none">This field is required.</label>
+                                </div>
+
+                                <div class="form-group plist" style="display: none;">
+                                    <label for="loc">Price list to use</label>
+                                    <select id="slPriceList" required name="loc" class="form-control select2" style="width: 100%;" @*onchange="$('.plist').fadeIn();"*@ tabindex="-1" aria-hidden="true"></select>
+                                    <label id="slPriceList-error" class="error" for="slPriceList" style="display:none">This field is required.</label>
+                                </div>
+
+                            </div>
+
+                            <button class="btn btn-danger" type="button" data-dismiss="modal">Cancel</button>
+                            <button class="btn btn-success" type="button" onclick="addPriceListLogisticsAgreement(@Model.Id)">Confirm</button>
+                        </form>
+                    </div>
+                </div><!-- /.modal-content -->
+            </div><!-- /.modal-dialog -->
+        </div>
+    }
+}

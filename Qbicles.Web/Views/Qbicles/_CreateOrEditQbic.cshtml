@@ -1,0 +1,172 @@
+﻿@using Qbicles.Models;
+@{
+    var currentDomain = (QbicleDomain)ViewBag.CurrentDomain;
+    var logoUri = (string)ViewBag.LogoUri;
+    string currentUserId = (string)ViewBag.CurrentUserId;
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var profilePic = (string)ViewBag.CurrentUserAvatar;
+    var lstUser = (List<ApplicationUser>)ViewBag.DomainUsers;
+    var existedQbicName = (string)ViewBag.ExistedQbicleNameStr;
+}
+<link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/smoothness/jquery-ui.css">
+<div class="modal fade left" id="create-qbicle" role="dialog" aria-labelledby="create-qbicle">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Create a Qbicle</h5>                
+            </div>
+            <div class="modal-body">
+
+                <div class="row">
+                    <div class="col-xs-12">
+                        <ul id="app_subnav" class="app_subnav admintabs" style="padding-top: 0;">
+                            <li class="active"><a href="#qbicle-1" data-toggle="tab">Specifics</a></li>
+                            <li><a href="#qbicle-2" data-toggle="tab" style="cursor:not-allowed;pointer-events:none;">Members</a></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <br />
+
+
+                <div class="tab-content">
+                    <!-- Specifics -->
+                    <div class="tab-pane fade in active" id="qbicle-1">
+                        <div class="well custom">
+                            <form id="form_qbicle_addedit2" name="form_qbicle_addedit2" enctype="multipart/form-data">
+                                @*<input id="qbicId2" type="hidden" name="Id" />*@
+                                <input type="hidden" id="domainId" name="domainId" value="@currentDomain.Id" />
+                                <input type="hidden" id="domain-key" name="domainKey" value="@currentDomain.Key" />
+                                <input id="input_group_logopath" type="hidden" name="qbicleLogo" />
+                                <input type="hidden" id="qbicle-domain-logo-uri" name="LogoUri"/>
+                                <div class="row">
+                                    <div class="col-xs-12">
+                                        <div class="form-group">
+                                            <label for="account_number">Featured image</label>
+                                            <input type="file" id="qbicImage2" class="form-control" name="qbicleLogo" accept=".jpg,.jpeg,.png,.webp">
+                                        </div>
+                                        <img id="qbicleImg2" alt="Your image" src="" style="display: none; width: 100%; height: auto; margin-bottom: 30px;">
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-xs-12">
+                                        <div class="form-group">
+                                            <label for="media-title">Title</label>
+                                            <input type="text" id="qbicName2" name="Name" class="form-control" tabindex="1" required>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-xs-12">
+                                        <div class="form-group">
+                                            <label for="media-description">Add a description</label>
+                                            <textarea id="qbicDescription2" name="Description" class="form-control" tabindex="2"></textarea>
+                                        </div>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+
+
+                        <br />
+                        <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                        <a href="#qbicle-2" class="btn btn-success btnNext" data-toggle="tab">Next &nbsp; <i class="fa fa-angle-right"></i></a>
+
+                    </div>
+                    <!-- END Specifics -->
+                    <!-- Members -->
+                    <div class="tab-pane fade" id="qbicle-2">
+
+                        <div class="tab-content">
+
+                            <!-- Members view -->
+                            <div class="tab-pane fade in active" id="members-view">
+
+                                <div class="well custom avatarpicker">
+                                    <div class="form-group" style="margin: 0;">
+                                        <label for="assignee">Manager</label>
+                                        <select id="managerId" name="managerId" class="form-control select2avatar" style="width: 100%;" form="form_qbicle_addedit2">
+                                            
+                                                <option LogoUri="@profilePic" api="@api" value="@currentUserId" selected>Me</option>
+                                           
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="well custom avatarpickermulti">
+                                    <div class="form-group" style="margin: 0;">
+                                        <label for="assignee">Add people (optional)</label>
+                                        <select id="qbicUserDomainSelect2" data-placeholder="..." name="userQbicle[]" class="form-control select2avatar" multiple style="width:100%;" tabindex="4" form="form_qbicle_addedit2">
+                                            @if (lstUser != null && lstUser.Any())
+                                            {
+                                                foreach (var item in lstUser)
+                                                {
+                                                    if (item.Id == currentUserId)
+                                                    {
+                                                        <option LogoUri="@(item.ProfilePic)" api="@api" value="@item.Id" selected>Me</option>
+                                                    }
+                                                    else
+                                                    {
+                                                        <option LogoUri="@(item.ProfilePic)" api="@api" value="@item.Id">@(item.Forename + " " + item.Surname)</option>
+                                                    }
+                                                }
+                                            }
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <br />
+                                <a id="btnPrevious" href="#qbicle-1" data-toggle="tab" class="btn btn-warning btnPrevious"><i class="fa fa-angle-left"></i> &nbsp; Previous</a>
+                                <button class="btn btn-danger" data-dismiss="modal" onclick="ClearInputModalAddEdit()">Cancel</button>
+                                <button class="btn btn-success" onclick="SaveQbicleFromDomain()">Finish</button>
+
+                            </div>
+                            <!-- END Members view -->
+
+
+                        </div>
+
+                    </div>
+                    <!-- END Members -->
+
+                </div>
+            </div><!-- /.modal-content -->
+        </div><!-- /.modal-dialog -->
+    </div><!-- /.modal -->
+</div>
+
+<style>
+
+    .ui-autocomplete {
+        z-index: 50000 !important;
+    }
+
+    .ui-menu-item-wrapper {
+        font-family: "Roboto", Arial, sans-serif;
+        font-size: 12px;
+        padding: 15px 12px !important;
+        border: 0 !important;
+        margin: 0 !important;
+        font-weight: 400 !important;
+    }
+
+
+        .ui-menu-item-wrapper.ui-state-active {
+            background: #f5f5f5 !important;
+            padding: 15px 12px !important;
+            border: 0 !important;
+            margin: 0 !important;
+        }
+</style>
+
+<script>
+    $(document).ready(function () {
+        var existedQbicleName = '@existedQbicName';
+        var availableTags = existedQbicleName.split(',');
+
+        $("#qbicName2").autocomplete({
+            source: availableTags
+        });
+    })
+</script>

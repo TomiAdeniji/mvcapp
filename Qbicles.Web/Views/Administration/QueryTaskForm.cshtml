@@ -1,0 +1,218 @@
+﻿@using Qbicles.Models;
+@{
+    ViewBag.Title = ViewBag.PageTitle;
+    var CurrentDomain = ViewBag.CurrentDomain;
+    var Domains = ViewBag.Domains;
+}
+
+<div class="content-wrapper qbicle-detail" style="min-height: 465px;">
+    <div class="tabnav-spacer">&nbsp;</div>
+
+    <!-- Main content -->
+    <section class="content">
+        <div class="row">
+            <div class="col-xs-12 col-sm-7 col-md-12 item_detail">
+                <h4>Query Task Forms</h4>
+                <br />
+                <div class="form-group">
+                    <div class="col-md-6 col-xs-6 col-sm-6">
+                        <label>Current Domain</label>
+                        <select @(CurrentDomain != null ? "disabled" : "") class="form-control" id="current-domain">
+                            @if (CurrentDomain != null)
+                            {
+                                var currentDomain = (QbicleDomain)CurrentDomain;
+                                <option value="@currentDomain.Id" selected="selected">@currentDomain.Name</option>
+                            }
+                            else
+                            {
+                                var domains = (List<QbicleDomain>)Domains;
+                                foreach (var item in domains)
+                                {
+                                    <option value="@item.Id">@item.Name</option>
+                                }
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-6 col-xs-6 col-sm-6">
+                        <label>Select task form</label>
+                        <select class="form-control" id="task-form"></select>
+                    </div>
+                </div>
+                <br />
+
+                <div class="form-group">
+                    <h5>Task form</h5>
+                    <div id="date-query" style="display:none;" class="form-group">
+                        <div class="row">
+                            <div class="col-md-6 col-xs-6 col-sm-6">
+                                <label>Start date between</label>
+                                <input type="text" name="fromDate" placeholder="yyyy-mm-dd" id="from-date" class="form-control datepicker">
+                            </div>
+                            <div class="col-md-6 col-xs-6 col-sm-6">
+                                <label for="end-date">And</label>
+                                <input type="text" name="endDate" placeholder="yyyy-mm-dd" id="end-date" class="form-control datepicker">
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 col-xs-6 col-sm-6">
+                                <label>End date between</label>
+                                <input type="text" name="fromDate2" placeholder="yyyy-mm-dd" id="from-date2" class="form-control datepicker">
+                            </div>
+                            <div class="col-md-6 col-xs-6 col-sm-6">
+                                <label for="end-date">And</label>
+                                <input type="text" name="endDate2" placeholder="yyyy-mm-dd2" id="end-date2" class="form-control datepicker">
+                            </div>
+                        </div>
+                    </div>
+                   
+                    <div class="form-group col-md-12 col-xs-12 col-sm-12">
+                        <form class="fb-render"></form>
+                    </div>
+
+                    <br />
+                    <div class="form-group col-md-12 col-xs-12 col-sm-12">
+                        <button type="button" class="btn btn-primary" onclick="ExecuteQuery()">Execute Query</button>
+                    </div>
+                </div>
+
+                <h5>Tasks Found</h5>
+                <div class="table-responsive">
+                    <table id="tableManageForm" class="table t1style no-margin-top userTable" cellspacing="0" style="width:100%">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Description</th>
+                                <th>Options</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbodyManageForm"></tbody>
+                    </table>
+                </div>
+
+            </div>
+        </div>
+    </section>
+</div>
+
+<script src="~/Content/DesignStyle/js/vendor.js"></script>
+<script src="~/Content/DesignStyle/js/form-builder.min.js"></script>
+<script src="~/Content/DesignStyle/js/form-render.min.js"></script>
+<script src="~/Content/DesignStyle/js/jquery.datetimepicker.full.min.js"></script>
+<script>
+    var $fbRender = $('.fb-render'),
+        $currentDomain = $("#current-domain"),
+        $taskForm = $("#task-form"),
+        $formDefinitionId = 0,
+        $showQueryDate = false;
+    jQuery(function ($) {
+        $('.datepicker').datetimepicker({
+            lang: 'en',
+            format: 'Y-m-d',
+
+            onShow: function (ct) {
+                this.setOptions({
+                    maxDate: jQuery('#date_timepicker_end').val() ? jQuery('#date_timepicker_end').val() : false
+                })
+            },
+            timepicker: false
+        });
+
+
+        $currentDomain.change();
+        getFormDefinition($currentDomain.val());
+
+        document.getElementById('task-form').addEventListener('change', function () {
+            var selected = $(this).find('option:selected');
+            $formDefinitionId = selected.data('id');
+            $showQueryDate = selected.attr('data-date');
+            TaskFormChange(this, true);
+        });
+        document.getElementById('current-domain').addEventListener('change', function () {
+            CurrentDomainChange(this);
+        });
+
+        function TaskFormChange(element, isValue) {
+            if (element === undefined)
+                formDefinition = $taskForm.val();
+            else {
+                if (isValue)
+                    formDefinition = element.value;
+                else
+                    formDefinition = element;
+            }
+            if ($showQueryDate == 1)
+                $("#date-query").show();
+            else
+                $("#date-query").hide();
+
+            $("#from-date").val('');
+            $("#from-date2").val('');
+            $("#end-date").val('');
+            $("#end-date2").val('');
+            $('#tbodyManageForm').html("");
+            $('.fb-render').formRender({
+                dataType: 'json',
+                formData: formDefinition
+            });
+        }
+
+        function getFormDefinition(domainId) {
+            $.ajax({
+                type: 'GET',
+                url: '/FormDefinition/GetFormDefinitionByDomain',
+                datatype: 'json',
+                data: { domainId: domainId },
+                success: function (refModel) {
+                    if (refModel.result) {
+                        $taskForm.html(refModel.msg);
+                        $formDefinitionId = refModel.msgId;
+                        $showQueryDate = refModel.actionVal;
+                        TaskFormChange(refModel.Object, false);
+                    }
+                    else {
+                        TaskFormChange("", false);
+                        $formDefinitionId = 0;
+                    }
+                }
+            });
+        }
+        function CurrentDomainChange(elememt) {
+            getFormDefinition($(elememt).val());
+        }
+    });
+
+    function ExecuteQuery() {
+        var formArray = JSON.stringify($fbRender.serializeArray());
+        $.ajax({
+            type: 'GET',
+            url: '/TaskFormDefinitionRef/ExecuteQuery',
+            datatype: 'json',
+            data: {
+                formDefinitionId: $formDefinitionId,
+                domainId: $currentDomain.val(),
+                formQuery: formArray,
+                fromDate1: $("#from-date").val(),
+                fromDate2: $("#from-date2").val(),
+                endDate1: $("#end-date").val(),
+                endDate2: $("#end-date2").val(),
+            },
+            success: function (refModel) {
+                if (refModel.result) {
+                    $('#tbodyManageForm').html(refModel.Object);
+                    var $target = $('html,body');
+                    $target.animate({ scrollTop: $target.height() }, 1000);
+                }
+                else {
+                    $('#tbodyManageForm').html("");
+                }
+            }
+        });
+
+    }
+</script>
+
+<style>
+    .fb-render .fb-date {
+        display: none !important;
+    }
+</style>

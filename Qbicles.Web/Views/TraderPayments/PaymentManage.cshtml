@@ -1,0 +1,423 @@
+﻿@using Qbicles.BusinessRules
+@using Qbicles.Models.Trader
+@model CashAccountTransaction
+@{
+    ViewBag.Title = ViewBag.TraderTitle;
+
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var sourceTitle = "";
+    var sourceContent = "";
+    var today = (DateTime)ViewBag.Today;
+    var timeline = (List<ApprovalStatusTimeline>)ViewBag.Timeline;
+    var timelineDate = (List<DateTime>)ViewBag.TimelineDate;
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+    var goBackPage = (string)ViewBag.GoBackPage;
+}
+
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail" id="discussion-thread">
+    <div class="tabnav-spacer hidden-xs"></div>
+
+    <!-- Main content -->
+    <section class="content">
+
+        <div class="row">
+            <div class="col-xs-12 item_detail" style="padding-left: 15px;">
+
+                <br />
+
+                <div class="item_type_icon">
+                    <img src="/Content/DesignStyle/img/icon_payments.png">
+                </div>
+                <div class="item_titling">
+                    <span class="item_type">@ViewBag.TraderTitle</span>
+                    <h3>Payment #@Model.Reference</h3>
+                    @{
+                        var css = "";
+                        var statusString = Model.Status.GetDescription();
+                        switch (Model.Status)
+                        {
+                            case TraderPaymentStatusEnum.PendingReview:
+                                css = StatusLabelStyle.Pending;
+                                break;
+                            case TraderPaymentStatusEnum.PendingApproval:
+                                css = StatusLabelStyle.Reviewed;
+                                break;
+                            case TraderPaymentStatusEnum.PaymentApproved:
+                                css = StatusLabelStyle.Approved;
+                                break;
+                            case TraderPaymentStatusEnum.Draft:
+                                css = StatusLabelStyle.Draft;
+                                break;
+                            case TraderPaymentStatusEnum.PaymentDenied:
+                                css = StatusLabelStyle.Denied;
+                                break;
+                            case TraderPaymentStatusEnum.PaymentDiscarded:
+                                css = StatusLabelStyle.Discarded;
+                                break;
+                        }
+                    }
+                    <span class="label @css">@statusString</span>
+                </div>
+                <div class="clearfix"></div>
+                <br />
+
+                <div class="row">
+                    <div class="col-xs-12">
+                        <div class="app_filter">
+                            <div class="row">
+                                <div class="col-xs-12">
+                                    @if (!string.IsNullOrEmpty(goBackPage) && goBackPage == "BusinessReports")
+                                    {
+                                        <a href="~/BusinessReports?tab=payments" class="btn btn-primary"><i class="fa fa-angle-left"></i> &nbsp; Payments</a>
+                                    }
+                                    else
+                                    {
+                                        <a href="/Trader/AppTrader" onclick="setTabTrader('cashbank')" class="btn btn-primary"><i class="fa fa-th"></i> &nbsp; Cash &amp; Bank</a>
+                                    }
+                                    @{
+                                        if (Model.AssociatedInvoice != null && Model.Type != CashAccountTransactionTypeEnum.Transfer)
+                                        {
+                                            <a href="/TraderInvoices/InvoiceManage?key=@Model.AssociatedInvoice.Key" class="btn btn-info"><i class="fa fa-eye"></i> &nbsp; View Invoice</a>
+                                        }
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+            <div class="col-xs-12">
+
+
+                <br /><br />
+
+                <div class="row">
+                    <div class="col-xs-12 col-sm-8">
+
+
+
+                        <div class="app_upper_dash text-center">
+
+                            @if (Model.Type == CashAccountTransactionTypeEnum.Transfer)
+                            {
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-6 col-lg-6">
+                                        <div class="stat_label">
+                                            <span>Payment total</span>
+                                            <h3>@Model.Amount.ToCurrencySymbol(currencySettings)</h3>
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-6 col-lg-6">
+                                        <div class="stat_label" style="padding-bottom: 10px;">
+                                            <span>Type</span>
+                                            @{
+
+                                                switch (Model.Type)
+                                                {
+                                                    case CashAccountTransactionTypeEnum.PaymentIn:
+                                                        <h3>Payment In</h3>
+                                                        break;
+                                                    case CashAccountTransactionTypeEnum.PaymentOut:
+                                                        <h3>Payment Out</h3>
+                                                        break;
+                                                    case CashAccountTransactionTypeEnum.Transfer:
+                                                        <h3>Transfer</h3>
+                                                        break;
+                                                    default:
+                                                        <h3></h3>
+                                                        break;
+                                                }
+                                            }
+
+                                        </div>
+                                    </div>
+                                </div>
+
+                            }
+                            else
+                            {
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-4">
+                                        <div class="stat_label">
+                                            <span>Payment total</span>
+                                            <h3>@Model.Amount.ToCurrencySymbol(currencySettings)</h3>
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-4">
+                                        <div class="stat_label">
+                                            <span>For</span>
+                                            @if (Model.AssociatedInvoice != null && Model.AssociatedInvoice.Reference != null)
+                                            {
+                                                <h3>Invoice #@(Model.AssociatedInvoice.Reference.FullRef)</h3>
+                                            }
+                                            else
+                                            {
+                                                <h3>Payment on account</h3>
+                                            }
+
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-4">
+                                        <div class="stat_label" style="padding-bottom: 10px;">
+                                            <span>Type</span>
+                                            @{
+
+                                                switch (Model.Type)
+                                                {
+                                                    case CashAccountTransactionTypeEnum.PaymentIn:
+                                                        <h3>Payment In</h3>
+                                                        break;
+                                                    case CashAccountTransactionTypeEnum.PaymentOut:
+                                                        <h3>Payment Out</h3>
+                                                        break;
+                                                    case CashAccountTransactionTypeEnum.Transfer:
+                                                        <h3>Transfer</h3>
+                                                        break;
+                                                    default:
+                                                        <h3></h3>
+                                                        break;
+                                                }
+                                            }
+
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-4">
+                                        <div class="stat_label" style="padding-bottom: 10px;">
+                                            <span>Reference</span>
+                                            <h3>
+                                                @{ var reference = string.IsNullOrEmpty(Model.Reference) ? "N/A" : Model.Reference;}
+                                                @reference
+                                            </h3>
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-4">
+                                        <div class="stat_label" style="padding-bottom: 10px;">
+                                            <span>Payment method</span>
+                                            <h3>
+                                                @{
+                                                    var method = Model.PaymentMethod?.Name ?? "N/A";
+                                                }
+                                                @method
+                                            </h3>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+
+                        </div>
+
+                        <br />
+
+
+                        <div class="row">
+                            <div class="col-xs-12 col-md-6">
+
+                                <article class="community-feature">
+
+                                    <div class="content-block transfer">
+                                        <div class="content-block-upper">
+                                            <smaller>Source</smaller>
+                                            @{
+                                                if (Model.Type == CashAccountTransactionTypeEnum.PaymentIn && Model.AssociatedInvoice == null)
+                                                {
+                                                    sourceTitle = "No account details available";
+                                                }
+                                                else if (Model.Type == CashAccountTransactionTypeEnum.PaymentIn && Model.AssociatedInvoice?.Id > 0 && Model.AssociatedInvoice.Sale != null)
+                                                {
+                                                    sourceTitle = Model.AssociatedInvoice.Sale.Purchaser.Name;
+                                                    sourceContent = Model.AssociatedInvoice.Sale.Purchaser.Address.ToAddress();
+                                                }
+                                                else if (Model.Type == CashAccountTransactionTypeEnum.PaymentOut || Model.Type == CashAccountTransactionTypeEnum.Transfer)
+                                                {
+                                                    if (Model.OriginatingAccount != null)
+                                                    {
+                                                        sourceTitle = Model.OriginatingAccount.Name;
+                                                        if (Model.OriginatingAccount.AssociatedBKAccount != null)
+                                                        {
+                                                            sourceContent = Model.OriginatingAccount.AssociatedBKAccount.Number + " - " + Model.OriginatingAccount.AssociatedBKAccount.Name;
+                                                        }
+                                                        else
+                                                        {
+                                                            sourceContent = "No associated bookkeeping account";
+                                                        }
+
+                                                    }
+
+                                                }
+                                            }
+                                            <h2>@sourceTitle</h2>
+                                            <p>@sourceContent</p>
+                                        </div>
+                                    </div>
+                                </article>
+
+                            </div>
+                            <div class="col-xs-12 col-md-6">
+
+                                <article class="community-feature">
+
+                                    <div class="content-block transfer">
+                                        <div class="content-block-upper">
+                                            <smaller>Destination</smaller>
+                                            @{
+                                                sourceTitle = "";
+                                                sourceContent = "";
+                                                if (Model.Type == CashAccountTransactionTypeEnum.PaymentOut && Model.AssociatedInvoice == null)
+                                                {
+                                                    sourceTitle = "No account details available";
+                                                }
+                                                else if (Model.Type == CashAccountTransactionTypeEnum.PaymentOut && Model.AssociatedInvoice?.Purchase?.Vendor != null)
+                                                {
+                                                    sourceTitle = Model.AssociatedInvoice.Purchase?.Vendor?.Name;
+                                                    sourceContent = Model.AssociatedInvoice.Purchase?.Vendor?.Address.ToAddress();
+                                                }
+                                                else if (Model.Type == CashAccountTransactionTypeEnum.PaymentIn || Model.Type == CashAccountTransactionTypeEnum.Transfer)
+                                                {
+                                                    if (Model.DestinationAccount != null)
+                                                    {
+                                                        sourceTitle = Model.DestinationAccount.Name;
+                                                        if (Model.DestinationAccount.AssociatedBKAccount != null)
+                                                        {
+                                                            sourceContent = Model.DestinationAccount.AssociatedBKAccount.Number + " - " + Model.DestinationAccount.AssociatedBKAccount.Name;
+                                                        }
+                                                        else
+                                                        {
+                                                            sourceContent = "No associated bookkeeping account";
+                                                        }
+
+                                                    }
+                                                }
+                                            }
+                                            <h2>@sourceTitle</h2>
+                                            <p>@sourceContent</p>
+                                        </div>
+                                    </div>
+                                </article>
+
+                            </div>
+                        </div>
+
+
+                        <div class="activity-overview task" style="padding: 20px; margin-top: 5px;">
+                            <div class="row">
+                                <div class="col-xs-12 col-lg-6">
+
+                                    <div class="flex-avatar">
+                                        <div class="col-thumb" style="flex: 0 0 80px;">
+                                            @{
+                                                if (Model.Contact != null)
+                                                {
+                                                    <a href="#"><img src="@api@Model.Contact.AvatarUri&size=T" class="img-circle img-responsive"></a>
+                                                }
+                                            }
+
+                                        </div>
+                                        <div class="col">
+                                            @{
+                                                if (Model.Contact != null)
+                                                {
+                                                    <h5 style="font-family: 'Roboto'; margin-top: 0;">Contact: @Model.Contact.Name</h5>
+                                                }
+                                            }
+
+                                            <p>
+                                                @{
+                                                    var add = Model.Contact?.Address?.ToAddress();
+                                                }
+                                                @add
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <br class="hidden-lg">
+
+                                </div>
+                                <div class="col-xs-12 col-lg-6">
+                                    <div class="form-group" style="margin: 0;">
+                                        <label for="description">Description</label>
+                                        <p class="p-multiple-line">@Model.Description</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+
+                        <br /><br />
+
+                        <h5>Attachments</h5>
+                        @{
+                            if (Model.AssociatedFiles.Count > 0)
+                            {
+                                <ul class="domain-change-list unstyled" style="margin-top: 0; border: 0;">
+                                    @foreach (var media in Model.AssociatedFiles)
+                                    {
+                                        <li style="display: inline-block; max-width: 300px;">
+                                            <a href="javascript:void(0);" onclick="ShowMediaPage('@media.Key', false);">
+                                                <img src="@media.FileType.IconPath" style="max-width: 80px; height: auto; padding-right: 10px;"> @media.Name
+                                            </a>
+                                        </li>
+                                    }
+                                </ul>
+
+                            }
+                            else
+                            {
+                                <p>No attachment</p>
+                            }
+                        }
+
+                    </div>
+                    <div class="col-xs-12 col-sm-4">
+
+                        <ul class="timeline">
+
+                            @foreach (var date in timelineDate)
+                            {
+                                var dateStart = @HelperClass.DatetimeToOrdinal(date);
+                                var dateStr = date.Date == today.Date ? "Today" : dateStart;
+
+                                <li class="time-label">
+                                    <span class="label label-lg label-primary">
+                                        @dateStr
+                                    </span>
+                                </li>
+                                foreach (var tl in timeline.Where(d => d.LogDate.Date == date.Date))
+                                {
+                                    <li>
+                                        <i class="@tl.Icon"></i>
+                                        <div class="timeline-item">
+                                            <span class="time"><i class="fa fa-clock-o"></i> @tl.Time</span>
+                                            <h4 class="timeline-header">@tl.Status</h4>
+                                        </div>
+                                    </li>
+                                }
+                                <br />
+                            }
+
+                        </ul>
+
+
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </section>
+    <!-- ./content -->
+
+</div>
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/trader.domain.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/trader.domain.min.js"></script>
+    }
+}

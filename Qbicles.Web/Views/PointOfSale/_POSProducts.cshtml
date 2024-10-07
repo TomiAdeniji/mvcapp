@@ -1,0 +1,220 @@
+﻿@using Qbicles.Models.Bookkeeping
+@using Qbicles.Models.Trader.PoS
+@using Qbicles.Models.Trader
+@using Qbicles.Models.Trader.SalesChannel;
+@using Qbicles.Models.Catalogs
+@{
+    var posMenu = (List<Catalog>)ViewBag.Menu;
+    var timeZone = (string)ViewBag.CurrentTimeZone;
+    var dimensions = (List<TransactionDimension>)ViewBag.Dimensions ?? new List<TransactionDimension>();
+    var locations = (List<TraderLocation>)ViewBag.Locations;
+    var defaultChannel = (int)SalesChannelEnum.POS;
+}
+
+<!-- Products -->
+<div class="tab-pane fade in active" id="tab-products">
+
+    <div class="well custom" style="padding-bottom: 10px;">
+        <div class="row">
+            <div class="col-xs-12 col-sm-3">
+                <div class="form-group">
+                    <label for="search">Search catalogs</label>
+                    <input type="text" id="search-name" class="form-control">
+                </div>
+            </div>
+            <div class="col-xs-12 col-sm-3">
+                <label for="search">Sales channel</label>
+                <select name="salechannel" id="search-salechannel" class="form-control select2" onchange="SearchMenu()" style="width: 100%;">
+                    <option value="0">Show all</option>
+                    <option value="@((int)SalesChannelEnum.B2B)">B2B</option>
+                    <option value="@((int)SalesChannelEnum.B2C)">B2C</option>
+                    <option value="@((int)SalesChannelEnum.POS)" selected="">POS</option>
+                </select>
+            </div>
+
+            <div class="col-xs-12 col-sm-2">
+
+                <label>Options</label><br />
+
+
+                <div class="btn-group options">
+                    <button type="button" class="btn btn-success dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        New Catalogue &nbsp; <i class="fa fa-angle-down"></i>
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a href="#" onclick="CatalogueQuickAddShow()">Quick mode</a></li>
+                        <li><a href="#" onclick="CreateMenu(0);">Expert mode</a></li>
+                    </ul>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <br />
+
+    <div id="pos-menu-list" class="flex-grid-thirds-lg qbicles-dash-grid pos-devices" style="min-height:200px">
+
+        @{
+            Html.RenderAction("LoadPosMenu", "PointOfSaleMenu", new { keyword = "", status = "All", salesChannel = defaultChannel });
+        }
+
+    </div>
+
+</div>
+<!-- END Products -->
+
+<div class="modal fade left" id="app-trader-pos-menu-modal" role="dialog" aria-labelledby="app-trader-pos-menu-modal">
+    <input type="hidden" id="catalog-type-value" value="" />
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 id="menu-modal-title" class="modal-title bbbb">Add a catalog</h5>
+            </div>
+            <div class="modal-body">
+
+                <div class="well custom">
+
+                    <form id="pos-menu-form" class="row">
+                        <div class="col-xs-12">
+                            <div class="form-group">
+                                <label for="name">Catalog name <span>*</span></label>
+                                <input type="text" id="menu-name" name="menuname" class="form-control" required="">
+                            </div>
+                        </div>
+                        <div class="col-xs-12">
+                            <div class="form-group">
+                                <label for="fimg">Featured image (optional)</label>
+                                <input type="file" name="fimg" id="expert-catalog-img" accept=".jpeg,.jpg,.png,.webp" class="form-control">
+                            </div>
+                        </div>
+                        <div class="col-xs-12">
+                            <div class="form-group">
+                                <label for="name">Sales channel <span class="red">*</span></label>
+                                <select name="salechanel" id="menu-salechannel" class="form-control select2" style="width: 100%;">
+                                    <option value="@SalesChannelEnum.B2B.ToString()">B2B</option>
+                                    <option value="@SalesChannelEnum.B2C.ToString()">B2C</option>
+                                    <option value="@SalesChannelEnum.POS.ToString()" selected>POS</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-xs-12 display-report-filters">
+                            <div class="form-group validate-control">
+                                <label for="name">Reporting filter(s) <span class="red">*</span></label>
+                                <select name="filters" id="report_filters" class="form-control select2" multiple style="width: 100%;">
+                                    @if (dimensions.Count > 0)
+                                    {
+                                        foreach (var transactionDimension in dimensions)
+                                        {
+                                            <option value="@transactionDimension.Id">@transactionDimension.Name</option>
+
+                                        }
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-xs-12 display-locations" style="display:none">
+                            <div class="form-group">
+                                <label for="Locations">Location<span>*</span></label>
+                                <select name="Locations" onchange="$(this).valid()" class="form-control select2" style="width: 100%;">
+                                    @if (locations != null)
+                                    {
+                                        foreach (var item in locations)
+                                        {
+                                            <option value="@item.Id">@item.Name</option>
+                                        }
+                                    }
+                                </select>
+                                <label id="Locations-error" class="error" for="Locations" style="display: none;">This field is required.</label>
+                            </div>
+                        </div>
+                        <div class="col-xs-12">
+                            <div class="form-group" style="margin: 0;">
+                                <label for="name">Catalog summary</label>
+                                <textarea id="menu-summary" class="form-control"></textarea>
+                            </div>
+                        </div>
+                    </form>
+
+                </div>
+
+
+                <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                <button class="btn btn-success" onclick="SavePosMenu()">Save &amp; proceed</button>
+
+
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+
+<div class="modal fade" id="confirm-delete" role="dialog" aria-labelledby="confirm-delete">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-body">
+
+                <div class="activity-overview generic help-text" style="margin: 0;">
+                    <i class="fa fa-info-circle"></i>
+                    <p>You are about to delete this <strong><span id="name-delete"></span></strong> permanently. This action cannot be undone. If you are sure you wish to proceed, please confirm below...</p>
+
+
+                    <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                    <button class="btn btn-success" onclick="DeleteMenu()">Confirm &amp; Delete</button>
+                </div>
+
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+
+
+<div class="modal fade" id="pos-menu-updadte-pos-menu-modal" role="dialog" aria-labelledby="pos-menu-updadte-pos-menu-modal" style="display: none;">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+                <h5 class="modal-title">Confirm Update POS Catalog</h5>
+            </div>
+            <div class="modal-body">
+
+                <div class="activity-overview alert-detail animated bounce" style="padding: 20px;">
+                    <h5>Warning!</h5>
+                    <p>
+                        Are you sure you want to update the POS catalog?
+                    </p>
+
+                </div>
+                <br />
+                <div class="text-right">
+                    <button class="btn btn-success" onclick="UpdatePosMenuProduct()"><i class="fa fa-refresh"></i> &nbsp; Update</button>
+                    <button class="btn btn-danger" data-dismiss="modal"><i class="fa fa-close"></i> &nbsp; Cancel</button>
+                </div>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+
+<!--Modal-->
+<div class="modal fade left" locationAdd="TraderUI" id="bprofile-menu-quick-add" role="dialog" aria-labelledby="bprofile-menu-quick-add"></div>
+<!--End Modal-->
+
+<div class="modal fade left" id="consumer-businesses" role="dialog" aria-labelledby="consumer-businesses">
+</div><!-- /.modal -->
+
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/pos.products.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/pos.products.js"></script>
+    }
+    <script>
+        //$("#search-active").select2();
+        $('select.select2').select2({ placeholder: 'Please select' });
+    </script>
+}

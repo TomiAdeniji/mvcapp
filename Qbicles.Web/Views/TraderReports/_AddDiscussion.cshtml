@@ -1,0 +1,179 @@
+﻿@using Qbicles.BusinessRules
+@using Qbicles.Models
+@model Qbicles.Models.Trader.ODS.QueueOrder
+@{
+    var lstUser = (List<ApplicationUser>)ViewBag.DomainUser;
+    var lstTopics = (List<Topic>)ViewBag.Topics;
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var lstUserIds = new List<string>();
+    if (Model.Discussion.ActivityMembers.Any())
+    {
+        lstUserIds = Model.Discussion.ActivityMembers.Select(q => q.Id).ToList();
+    }
+    string currentUserId = (string)ViewBag.CurrentUserId;
+    string dateFormat = (string) ViewBag.CurrentDateFormat;
+    var displayExpiryDate = "none";
+    var valueExpiryDate = "";
+}
+<div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <input type="hidden" id="queueId" value="@Model.Id" />
+            <input type="hidden" id="queue-discussionId" value="@Model.Discussion.Id" />
+            @if (Model.Discussion.Id > 0)
+            {
+                <h5 class="modal-title">Edit a discussion</h5>
+            }
+            else
+            {
+                <h5 class="modal-title">Add a discussion</h5>
+            }
+        </div>
+        <div class="modal-body">
+
+            <div class="well custom">
+                <form name="task-overview">
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group">
+                                <label for="event-title">Discussion title <span class="red">*</span></label>
+                                <input type="text" name="discussion-title" id="discussion-name" class="form-control" value="@Model.Discussion.Name">
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group">
+                                <label for="event-title">Choose a Topic <span class="red">*</span></label>
+                                <select name="topic" class="form-control select2" id="discussion-topic" style="width: 100%;">
+                                    <option value=""></option>
+                                    @if (lstTopics.Any())
+                                    {
+                                        foreach (var lstTopic in lstTopics)
+                                        {
+                                            if (lstTopic.Id == Model.Discussion.Topic.Id)
+                                            {
+                                                <option value="@lstTopic.Id" selected>@lstTopic.Name</option>
+                                            }
+                                            else
+                                            {
+                                                <option value="@lstTopic.Id">@lstTopic.Name</option>
+                                            }
+                                        }
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-xs-12">
+                            <div class="form-group">
+                                <label for="event-title">Add an opening comment (also used as its description) <span class="red">*</span></label>
+                                <textarea name="discussion-firstcomment" id="discussion-summary" class="form-control" style="min-height: 80px;">@Model.Discussion.Summary</textarea>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-xs-12">
+                            <div class="avatarpickermulti">
+                                <div class="form-group">
+                                    <label for="assignee">Add Contacts to your discussion</label>
+                                    <select name="assignee" class="form-control select2avatar" id="discussion-contact" data-placeholder="Click to add" multiple style="width: 100%;">
+                                        @if (lstUser != null && lstUser.Any())
+                                        {
+                                            foreach (var item in lstUser)
+                                            {
+                                                if (lstUserIds.Contains(item.Id))
+                                                {
+                                                    <option LogoUri="@(item.ProfilePic)" api="@api" value="@item.Id" selected>@(HelperClass.GetFullNameOfUser(item, currentUserId))</option> 
+                                                }
+                                                else
+                                                {
+                                                    <option LogoUri="@(item.ProfilePic)" api="@api" value="@item.Id">@(HelperClass.GetFullNameOfUser(item, currentUserId))</option>
+                                                }
+                                            }
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-6">
+                            <label>Set an expiry date (optional)</label><br />
+                            <div class="checkbox toggle" onclick="$('.setexpiry').toggle();">
+                                <label>
+                                    @if (Model.Discussion.ExpiryDate != null)
+                                    {
+                                        <input data-toggle="toggle" id="expiryDate" checked class="toggle-switch" data-onstyle="success" type="checkbox">
+                                    }
+                                    else
+                                    {
+                                        <input data-toggle="toggle" id="expiryDate" class="toggle-switch" data-onstyle="success" type="checkbox">
+                                    }
+                                </label>
+                            </div>
+                            @if (Model.Discussion.ExpiryDate != null)
+                            {
+                                displayExpiryDate = "block";
+                                valueExpiryDate = Model.Discussion.ExpiryDate.Value.FormatDateTimeByUser(dateFormat);
+                            }
+
+                            <div class="setexpiry" style="display: @displayExpiryDate;">
+                                <div class="form-group">
+                                    <label>Choose when this discussion should expire</label>
+                                    <input type="text" id="discussion-expirydate" value="@valueExpiryDate" name="discussion-expiry" class="form-control singledateandtime">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <a href="javascript:void(0)" class="btn btn-danger" data-dismiss="modal">Cancel</a>
+            <a href="javascript:void(0)" onclick="saveDiscussion(event)" class="btn btn-success">Confirm</a>
+
+
+        </div>
+    </div><!-- /.modal-content -->
+</div><!-- /.modal-dialog -->
+<script>
+    $('.toggle-switch').bootstrapToggle();
+    $('.singledateandtime').daterangepicker({
+        singleDatePicker: true,
+        timePicker: true,
+        autoApply: true,
+        showDropdowns: true,
+        autoUpdateInput: true,
+        cancelClass: "btn-danger",
+        opens: "left",
+        locale: {
+            cancelLabel: 'Clear',
+            format: $dateFormatByUser.toUpperCase()
+        }
+    });
+    $('.select2').select2({
+        placeholder: 'Please select'
+    });
+    $('.select2avatar').select2({
+        placeholder: 'Please select',
+        templateResult: formatOptions,
+        templateSelection: formatSelected
+    });
+    function formatOptions(state) {
+    
+        if (!state.id) { return state.text; }
+        var $state = $(
+            '<div class="select2imgwrap"><div class="select2img" style="background-image: url(\'' + ($(state.element).attr('LogoUri') === '' ? '/Content/DesignStyle/img/icon_domain_default.png' : ($(state.element).attr('api')+''+$(state.element).attr('LogoUri'))) + '\');"></div> <span class="select2text">' + state.text + '</span></div>'
+        );
+        return $state;
+    }
+
+    function formatSelected(state) {
+        if (!state.id) { return state.text; }
+        var $state = $(
+            '<div class="select2imgwrap"><div class="select2img mini" style="background-image: url(\'' + ($(state.element).attr('LogoUri') === '' ? '/Content/DesignStyle/img/icon_domain_default.png' : ($(state.element).attr('api') + '' + $(state.element).attr('LogoUri'))) + '\');"></div> <span class="select2text">' + state.text + '</span></div>'
+        );
+        return $state;
+    }
+</script>

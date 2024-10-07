@@ -1,0 +1,58 @@
+﻿@using Qbicles.BusinessRules;
+@using Qbicles.Models;
+@using Qbicles.Models.Invitation;
+@model List<InvitationCustom>
+@{
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var dateFormat = (string)ViewBag.CurrentDateFormat;
+}
+<table class="datatable table-hover table-striped" id="lstInvitation" style="width: 100%; background: #fff;" data-searching="false" data-order='[[ 3, "desc" ]]'>
+    <thead>
+        <tr>
+            <th data-priority="3" data-orderable="false" style="width: 30px;"></th>
+            <th data-priority="1">Name</th>
+            <th data-priority="1">Email address</th>
+            <th data-priority="4">Invite date</th>
+            <th data-priority="3">Notes</th>
+            <th data-priority="1">Status</th>
+            <th data-priority="1" data-orderable="false"></th>
+        </tr>
+    </thead>
+    <tbody>
+        @if (Model != null && Model.Any())
+        {
+            foreach (var item in Model)
+            {
+                <tr>
+                    <td><div class="table-avatar mini" style="background-image: url('@(string.IsNullOrEmpty(item.ProfilePic)?"../Content/DesignStyle/img/icon_contact.png": api+item.ProfilePic+"&size=T")');">&nbsp;</div></td>
+                    <td><a href="/Community/UserProfilePage?uId=@item.UserId">@((string.IsNullOrEmpty(item.Forename) || string.IsNullOrEmpty(item.Surname)) ? item.UserName : item.Forename + " " + item.Surname)</a></td>
+                    <td><a href="mailto:@item.Email">@item.Email</a></td>
+                    <td data-sort="@item.CreatedDate.Ticks">@item.CreatedDate.ToString(dateFormat.Replace("/", "."))</td>
+                    <td>@item.Note</td>
+                    <td>
+                        @if (item.Status == InvitationStatusEnum.Accepted)
+                        {
+                            <span class="label label-lg label-success">Accepted</span>
+                        }
+                        else if (item.Status == InvitationStatusEnum.Pending)
+                        {
+                            <span class="label label-lg label-warning">Pending</span>
+                        }
+                        else if (item.Status == InvitationStatusEnum.Rejected || item.Status == InvitationStatusEnum.Discarded)
+                        {
+                            <span class="label label-lg label-danger">Rejected</span>
+                        }
+                    </td>
+                    <td>
+                        @if (item.Status == InvitationStatusEnum.Pending || item.Status == InvitationStatusEnum.Rejected)
+                        {
+                            <button class="btn btn-primary" onclick="reSendEmail(@item.Id, '@item.Email', '@((string.IsNullOrEmpty(item.Forename) || string.IsNullOrEmpty(item.Surname)) ? item.UserName : item.Forename + " " + item.Surname)')"><i class="fa fa-redo"></i> &nbsp; Resend</button>
+                        }
+                    </td>
+                </tr>
+            }
+
+        }
+    </tbody>
+</table>
+

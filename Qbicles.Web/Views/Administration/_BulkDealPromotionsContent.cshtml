@@ -1,0 +1,152 @@
+﻿@using Qbicles.BusinessRules.Model
+@using Qbicles.BusinessRules
+@model List<PromotionModel>
+@{
+    var extraCol = (Model.Count() % 4 == 0 ? 0 : 4) - Model.Count() % 4;
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var dateformat = (string)ViewBag.CurrentDateFormat;
+    var currentDate = DateTime.UtcNow;
+    var timezone = (string)ViewBag.CurrentTimeZone;
+}
+@foreach (var item in Model)
+{
+    <div class="col article-feature">
+        <a href="javascript:;" onclick="OpenPromotion('@item.PromotionKey')">
+            <div class="article-feature-img" style="background: url('@(item.FeaturedImageUri)');">
+            </div>
+        </a>
+
+        <div class="info">
+            @{
+                var promotionOption = false;
+                if (currentDate < item.StartDate) { promotionOption = true; };
+                if (item.IsHalted && currentDate <= item.EndDate) { promotionOption = true; };
+                if (!item.IsHalted && currentDate <= item.EndDate) { promotionOption = true; };
+                if (!item.IsArchived && (currentDate > item.EndDate || item.IsHalted)) { promotionOption = true; };
+
+                if (promotionOption)
+                {
+                        <div class="btn-group optsnew defaulted dropdown">
+                            <button type="button" class="btn btn-default">
+                                <i class="fa fa-@item.PlanType.Icon"></i>
+                            </button>                            
+                            <button class="btn btn-default dropdown-toggle" data-toggle="dropdown">
+                                <i class="fa fa-cog"></i>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-right">
+                                @if (currentDate < item.StartDate)
+                                {
+                                    <li><a href="javascript:void(0)" onclick="loadModalPromotionAddEdit('@item.PromotionKey')">Edit</a></li>
+                                }
+                                @if (item.IsHalted && currentDate <= item.EndDate)
+                                {
+                                    <li><a href="javascript:void(0)" onclick="openPromotionMessageModel('@item.PromotionKey','@item.Name', @item.TotalClaimed,false)">Start</a></li>
+                                }
+                                @if (!item.IsHalted && currentDate <= item.EndDate)
+                                {
+                                    <li><a href="javascript:void(0)" onclick="openPromotionMessageModel('@item.PromotionKey','@item.Name', @item.TotalClaimed,true)">Stop</a></li>
+                                }
+                                @if (!item.IsArchived && (currentDate > item.EndDate || item.IsHalted))
+                                {
+                                    <li><a href="javascript:void(0)" onclick="archivePromotion('@item.PromotionKey')">Archive</a></li>
+                                }
+                            </ul>
+                        </div>
+                }
+            }
+
+
+            <a href="javascript:;" onclick="OpenPromotion('@item.PromotionKey')">
+                <h1>@item.Name</h1>
+                <p class="text-detail">@item.Description</p>
+            </a>
+            <a href="javascript:;" onclick="OpenPromotion('@item.PromotionKey')">
+                <div style="padding: 0 15px;">
+                    <table class="table table-condensed table-borderless" style="margin: 0 0 15px 0; color: #828da0; font-size: 12px; font-family: 'Roboto';">
+                        <tr>
+                            <td><strong>@(currentDate > item.StartDate ? "Started" : "Starts")</strong></td>
+                            <td>@(item.StartDate.ConvertTimeFromUtc(timezone).ToString(dateformat + " hh:mmtt"))</td>
+                        </tr>
+                        <tr>
+                            <td><strong>@(currentDate > item.EndDate ? "Ended" : "Ends")</strong></td>
+                            <td>@(item.EndDate.ConvertTimeFromUtc(timezone).ToString(dateformat + " hh:mmtt"))</td>
+                        </tr>
+                        @if (item.StartDate != item.DisplayDate)
+                        {
+                            <tr>
+                                <td><strong>@(currentDate > item.DisplayDate ? "Displayed" : "Displays")</strong></td>
+                                <td>@(item.DisplayDate.ConvertTimeFromUtc(timezone).ToString(dateformat + " hh:mmtt"))</td>
+                            </tr>
+                        }
+                        else
+                        {
+                            <tr>
+                                <td><strong>Displayed</strong></td>
+                                <td>@(item.DisplayDate.ConvertTimeFromUtc(timezone).ToString(dateformat + " hh:mmtt"))</td>
+                            </tr>
+                        }
+                        @{
+                            var status = "";
+                            //var status1 = ""; var statusCss = "";
+                            if (item.StartDate <= currentDate && item.EndDate >= currentDate && !item.IsHalted && !item.IsArchived)
+                            {
+                                status = "<span class='label label-lg label-success' style='position: relative; top: -2px;'>Active</span>";
+                            }
+                            else if (item.StartDate > currentDate)
+                            {
+                                status = "<span class='label label-lg label-info' style='position: relative; top: -2px;'>Pending</span>";
+                            }
+                            else if (item.EndDate < currentDate && !item.IsHalted && !item.IsArchived)
+                            {
+                                status = "<span class='label label-lg label-danger' style='position: relative; top: -2px;'>Ended</span>";
+                            }
+                            else if (item.EndDate < currentDate && item.IsHalted && item.IsArchived)
+                            {
+                                status = "<span class='label label-lg label-danger' style='position: relative; top: -2px;'>Stopped</span>";
+                                status += "&nbsp;<span class='label label-lg label-danger' style='position: relative; top: -2px;'>Ended</span>";
+                                status += "&nbsp;<span class='label label-lg label-warning' style='position: relative; top: -2px;'>Archived</span>";
+                            }
+                            else if (item.EndDate < currentDate && item.IsHalted && !item.IsArchived)
+                            {
+                                status = "<span class='label label-lg label-danger' style='position: relative; top: -2px;'>Stopped</span>";
+                                status += "&nbsp;<span class='label label-lg label-danger' style='position: relative; top: -2px;'>Ended</span>";
+                            }
+                            else if (item.EndDate < currentDate && !item.IsHalted && item.IsArchived)
+                            {
+                                status = "<span class='label label-lg label-danger' style='position: relative; top: -2px;'>Ended</span>";
+                                status += "&nbsp;<span class='label label-lg label-warning' style='position: relative; top: -2px;'>Archived</span>";
+                            }
+                            else if (item.IsHalted && item.IsArchived)
+                            {
+                                status = "<span class='label label-lg label-danger' style='position: relative; top: -2px;'>Stopped</span>";
+                                status += "&nbsp;<span class='label label-lg label-warning' style='position: relative; top: -2px;'>Archived</span>";
+                            }
+                            else if (item.IsHalted && !item.IsArchived)
+                            {
+                                status = "<span class='label label-lg label-danger' style='position: relative; top: -2px;'>Stopped</span>";
+                            }
+                            if (!item.IsHalted && item.IsArchived)
+                            {
+                                status = "<span class='label label-lg label-warning' style='position: relative; top: -2px;'>Archived</span>";
+                                //status = "Archived"; statusCss = "warning";
+                            }
+                        }
+                        <tr>
+                            <td><strong>Status</strong></td>
+                            <td>
+                                @Html.Raw(status)
+                                @*<span class="label label-lg label-" style="position: relative; top: -2px;"> @status</span>*@
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </a>
+
+
+        </div>
+    </div>
+}
+@for (int i = 1; i <= extraCol; i++)
+{
+    <div class="col">&nbsp;</div>
+}

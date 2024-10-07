@@ -1,0 +1,710 @@
+﻿@using Qbicles.Models;
+@using Qbicles.BusinessRules;
+@{
+    ViewBag.Title = ViewBag.PageTitle;
+    var CurrentDomain = ViewBag.CurrentDomain == null ? null : (QbicleDomain)ViewBag.CurrentDomain;
+    var taskPrioritys = (ICollection<HelperClass.EnumModel>)ViewBag.taskPrioritys;
+    var taskRepeats = (ICollection<HelperClass.EnumModel>)ViewBag.taskRepeats;
+    var api = (string)ViewBag.DocRetrievalUrl;
+}
+
+<div class="content-wrapper qbicle-detail" style="min-height: 465px;">
+    <div class="tabnav-spacer">&nbsp;</div>
+    <br />
+
+    <!-- Main content -->
+    <section class="content">
+        <div class="mod_title">
+            <h5>Task Forms</h5>
+            <h4>Queries/Reports</h4>
+        </div>
+        <div class="app_topnav restyle">
+            <ul class="nav nav-pills app_main_nav hidden-xs hidden-sm">
+                <li role="presentation">
+                    <a href="/Administration/ManageTaskForms">
+                        <i class="fa fa-file-code-o"></i>
+                        Manage Forms
+                    </a>
+                </li>
+                <li role="presentation" class="active">
+                    <a href="/Administration/QueryTasksForm">
+                        <i class="fa fa-question"></i>
+                        Queries/Reports
+                    </a>
+                </li>
+                <li role="presentation">
+                    <a href="/Administration/ManageFormEditors">
+                        <i class="fa fa-lock"></i>
+                        Permissions
+                    </a>
+                </li>
+            </ul>
+
+            <select name="app_tab" class="form-control visible-xs visible-sm">
+                <option value="/Administration/ManageTaskForms">Manage Forms</option>
+                <option value="/Administration/QueryTasksForm" selected>Queries/Reports</option>
+                <option value="/Administration/ManageFormEditors">Permissions</option>
+            </select>
+        </div>
+        <div class="row">
+            <div class="col-xs-12">
+                <div class="app_filter">
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-4 col-lg-4 button_options" style="padding-bottom: 0;">
+                            <a href="/Apps/AppManagement" class="btn btn-info"><i class="fa fa-th"></i> &nbsp; All apps</a>
+                            <button class="btn btn-warning query_reset" onclick="window.location.href = '/Administration/QueryTasksForm';" style="display: none;">
+                                <i class="fa fa-warning"></i> &nbsp; Reset query
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <br /><br />
+        <div class="domain_flash">
+            @if (CurrentDomain != null)
+            {
+                var currentDomain = (QbicleDomain)CurrentDomain;
+                <img id="media-@currentDomain.Id" src='@api@currentDomain.LogoUri' class="img-circle icon" />
+                <h5><input type="hidden" id="current-domain" name="id_domain" value="@currentDomain.Id">@currentDomain.Name</h5>
+            }
+        </div>
+        <div class="row" id="query">
+            <div class="col-xs-12 col-sm-4">
+                <div class="form-group">
+                    <label for="task_form">Choose a Task Form</label>
+                    <select id="task-form" name="task_form" class="form-control select2" style="width: 100%;">
+                    </select>
+                </div>
+                <br />
+                <label style="display: block; margin-bottom: 10px;">Query type(s)</label>
+                <div class="row">
+                    <div class="col-xs-12 col-lg-6">
+                        <div class="checkbox toggle">
+                            <label>
+                                <input data-toggle="toggle" data-onstyle="success" type="checkbox" id="fqt" value="true" checked="">
+                                Task parameters
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-xs-12 col-lg-6">
+                        <div class="checkbox toggle">
+                            <label>
+                                <input data-toggle="toggle" data-onstyle="success" type="checkbox" id="fqf">
+                                Form parameters
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+            <div class="col-xs-12 col-sm-8">
+                <div class="task_parameters" style="margin-bottom: 30px;">
+                    <h5>Query Task Parameters</h5>
+                    <div class="well">
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label for="fqt_form_qbicle">Qbicle</label>
+                                        <select class="form-control" name="qbicle" id="select-qbicle" aria-invalid="true" tabindex="-1" style="width: 100%;">
+                                            <option value="0">Please select</option>
+                                            @foreach (var cube in CurrentDomain.Qbicles)
+                                            {
+                                                <option value="@cube.Id">@cube.Name</option>
+                                            }
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label>Name</label>
+                                        <input type="text" id="task-name" placeholder="Task name" class="form-control">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label>Priority</label>
+                                        <select class="form-control valid" id="select-taskPriority" aria-invalid="false">
+                                            <option value="0">Please select</option>
+                                            @foreach (var pri in taskPrioritys)
+                                            {
+                                                <option value="@pri.Key">@pri.Value</option>
+                                            }
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label>Recurring?</label>
+                                        <select id="select-taskRecurring" class="form-control valid" aria-invalid="false">
+                                            <option value="0">Please select</option>
+                                            @foreach (var rp in taskRepeats)
+                                            {
+                                                <option value="@rp.Key">@rp.Value</option>
+                                            }
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label>Create by</label>
+                                        <select id="select-taskCreated" data-placeholder="Created by..." multiple style="width:100%;"></select>
+                                        <div style="clear: both;"></div>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label>Assign to</label>
+                                        <select id="select-taskAssign" data-placeholder="Assign to..." multiple style="width:100%;"></select>
+                                        <div style="clear: both;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label>Created between</label>
+                                        <input class="form-control daterange-task" placeholder="Created between" id="created-between" />
+                                        <input type="hidden" id="hdcreatedbetween" />
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label>Deadline between</label>
+                                        <input class="form-control daterange-task" placeholder="Deadline between" id="deadline-between" />
+                                        <input type="hidden" id="hddeadlinebetween" />
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-xs-12">
+                                    <div class="form-group">
+                                        <label>Description</label>
+                                        <textarea class="form-control" rows="3" id="task-description" placeholder="Task description"></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                    </div>
+
+                </div>
+                <div class="form_parameters" style="display: none;">
+                    <h5>Query Form Parameters</h5>
+                    <div class="well">
+                            <div class="row">
+                                <div class="col-xs-12">
+                                    <div id="date-query" style="display:none;" class="form-group"> 
+                                    </div>
+                                </div>
+                                <div class="col-xs-12">
+                                    <div class="form-group">
+                                        <form class="fb-render"></form>
+                                    </div>
+                                </div>
+                            </div>
+                </div>
+            </div>
+                <button id="btnExecuteQuery" type="button" class="btn btn-success execute" onclick="ExecuteQuery()"><i class="fa fa-play"></i> &nbsp; Execute query</button>
+                <div id="loadingAddEditGif1" style="text-align: center; display:none;">
+                    <img src="~/Content/DesignStyle/img/loading.gif" />
+                </div>
+        </div>
+    </div>
+        <div class="row hidden" id="task-found">
+            <div class="col-xs-12">
+                <br>
+                <h5>Tasks Found</h5>
+                <br>
+                <table class="datatable table-hover table-striped no-footer dtr-inline" width="100%" cellspacing="0" id="tableManageForm" role="grid" aria-describedby="DataTables_Table_0_info" style="width: 100%;">
+                    <thead>
+                        <tr role="row">
+                            <th data-priority="1" style="width: 0px;" class="sorting_asc" tabindex="0" aria-controls="tableManageForm" rowspan="1" colspan="1" aria-sort="ascending" aria-label="Name: activate to sort column descending">Name</th>
+                            <th data-priority="2" style="width: 0px;" class="sorting" tabindex="0" aria-controls="tableManageForm" rowspan="1" colspan="1" aria-label="Description: activate to sort column ascending">Description</th>
+                            <th data-priority="1" style="width: 0px;" data-orderable="false" class="sorting_disabled" rowspan="1" colspan="1" aria-label="Options">Options</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbodyManageForm"></tbody>
+                </table>
+
+                <br />
+                <a href="#" class="btn btn-success"><i class="fa fa-cog"></i> &nbsp; Generate report for all tasks</a>
+            </div>
+        </div>
+        <div class="row hidden" id="task-report">
+            <div class="col-xs-12">
+                <br><hr><br>
+                <h5>Tasks Report</h5>
+                <br>
+                <table class="datatable table-hover table-striped no-footer dtr-inline" width="100%" cellspacing="0" id="tableTaskReport" role="grid" aria-describedby="DataTables_Table_1_info" style="width: 100%;">
+                    <thead>
+                        <tr role="row">
+                            <th data-priority="1" class="sorting_asc" tabindex="0" aria-controls="tableTaskReport" rowspan="1" colspan="1" style="width: 0px;" aria-sort="ascending" aria-label="Name: activate to sort column descending">Name</th>
+                            <th data-priority="1" class="sorting" tabindex="0" aria-controls="tableTaskReport" rowspan="1" colspan="1" style="width: 0px;" aria-label="Type: activate to sort column ascending">Priority</th>
+                            <th data-priority="1" class="sorting" tabindex="0" aria-controls="tableTaskReport" rowspan="1" colspan="1" style="width: 0px;" aria-label="Recurring: activate to sort column ascending">Recurring</th>
+                            <th data-priority="2" class="sorting" tabindex="0" aria-controls="tableTaskReport" rowspan="1" colspan="1" style="width: 0px;" aria-label="Deadline: activate to sort column ascending">Deadline</th>
+                            <th data-priority="2" class="sorting" tabindex="0" aria-controls="tableTaskReport" rowspan="1" colspan="1" style="width: 0px;" aria-label="Assign task to: activate to sort column ascending">Assign task to</th>
+                            <th data-priority="2" class="sorting" tabindex="0" aria-controls="tableTaskReport" rowspan="1" colspan="1" style="width: 0px;" aria-label="Included forms: activate to sort column ascending">Included forms</th>
+                            <th data-priority="2" class="sorting" tabindex="0" aria-controls="tableTaskReport" rowspan="1" colspan="1" style="width: 0px;" aria-label="Description: activate to sort column ascending">Description</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbodyTaskReport"></tbody>
+                </table>
+                <br>
+
+                <button class="btn btn-warning query_reset" onclick="window.location.href = '/Administration/QueryTasksForm';" style="display: none;">
+                    <i class="fa fa-warning"></i> &nbsp; Reset query
+                </button>
+
+            </div>
+
+
+        </div>
+    </section>
+
+
+</div>
+
+<div id="modal-form" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="lblcreate-alert" data-focus-on="input:first" data-keyboard="true" data-backdrop="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Task form</h5>
+            </div>
+            <div class="modal-body">
+                <div class="well" id="modal-form-body">
+                    <form class="fb-render-form"></form>
+                </div>
+
+                <button class="btn btn-success" type="button" onclick="showModal()"><i class="fa fa-check"></i>&nbsp; Close</button>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+
+
+
+<script src="~/Content/DesignStyle/js/form-builder.min.js"></script>
+<script src="~/Content/DesignStyle/js/form-render.min.js"></script>
+<script>
+    var $target = $('html,body');
+    var $fbRender = $('.fb-render'),
+        $currentDomain = $("#current-domain"),
+        $taskForm = $("#task-form"),
+        $formDefinitionId = 0,
+        $showQueryDate = false,
+        $filterTask = true,
+        $filterTaskForm = false;
+    jQuery(function ($) {
+        $(".daterange-task").daterangepicker({
+            locale: {
+                format: 'DD/MM/YYYY',
+                cancelLabel: 'Clear'
+            },
+            open: function (event, data) {
+            },
+            change: function (event, data) {
+                if ($(this).val() != "") {
+                }
+            },
+            clear: function (event, data) {
+            },
+            cancel: function (event, data) { },
+            close: function (event, data) {
+                if ($(this).val() != "") {
+                }
+            }
+        });
+        $('#created-between').on('cancel.daterangepicker', function (ev, picker) {
+            $('#created-between').val('');
+        });
+        $('#deadline-between').on('cancel.daterangepicker', function (ev, picker) {
+            $('#deadline-between').val('');
+        });
+        $('.datepicker').datetimepicker({
+            lang: 'en',
+            format: 'd-m-Y',
+            onShow: function (ct) {
+                this.setOptions({
+                    maxDate: jQuery('#date_timepicker_end').val() ? jQuery('#date_timepicker_end').val() : false
+                })
+            },
+            timepicker: false
+        });
+        $(".daterange-task").val('');
+
+        $currentDomain.change();
+        getFormDefinition($currentDomain.val());
+
+        document.getElementById('task-form').addEventListener('change', function () {
+
+            var selected = $(this).find('option:selected');
+            $formDefinitionId = selected.data('id');
+            $showQueryDate = selected.attr('data-date');
+            TaskFormChange(this, true);
+        });
+        document.getElementById('current-domain').addEventListener('change', function () {
+            CurrentDomainChange(this);
+        });
+
+        function TaskFormChange(element, isValue) {
+
+            if (element === undefined)
+                formDefinition = $taskForm.val();
+            else {
+                if (isValue)
+                    formDefinition = element.value;
+                else
+                    formDefinition = element;
+            }
+            if ($showQueryDate == 1) {
+                $("#date-query").show();
+            }
+            else {
+                $("#date-query").hide();
+            }
+
+            $('#tbodyManageForm').html("");
+            
+            $('.fb-render').formRender({
+                dataType: 'json',
+                formData: jQuery.parseJSON(formDefinition)
+            });
+           
+            generateFillter(jQuery.parseJSON(formDefinition));
+        }
+
+        function generateFillter(arrDateFields) {
+            
+            arrDateFields.forEach(function (element) {
+    if(element.type == "date"){
+        $('<input>').attr({
+            type: 'text',
+            id: element.name + '-filter',
+            name: element.name + '-filter',
+            class: 'form-control daterange-filter'
+        }).insertBefore('#' + element.name);
+             }
+            });
+            
+
+            $(document).on('focus', ".daterange-filter", function () {
+                $(this).daterangepicker({
+                    locale: {
+                        format: 'DD/MM/YYYY',
+                        cancelLabel: 'Clear'
+                    },
+                    open: function (event, data) {
+                    },
+                    change: function (event, data) {
+                        if ($(this).val() != "") {
+                        }
+                    },
+                    clear: function (event, data) {
+                    },
+                    cancel: function (event, data) { },
+                    close: function (event, data) {
+                        if ($(this).val() != "") {
+                        }
+                    }
+                });
+            });
+        }
+
+        function isDateField(obj) {
+            return obj.type == "date";
+        }
+        function getFormDefinition(domainId) {
+            $.ajax({
+                type: 'GET',
+                url: '/FormDefinition/GetFormDefinitionByDomain',
+                datatype: 'json',
+                data: { domainId: domainId },
+                success: function (refModel) {
+                    if (refModel.result) {
+                        $taskForm.html(refModel.msg);
+                        $formDefinitionId = refModel.msgId;
+                        $showQueryDate = refModel.actionVal;
+                        TaskFormChange(refModel.Object, false);
+                    }
+                    else {
+                        TaskFormChange("", false);
+                        $formDefinitionId = 0;
+                    }
+                }
+            });
+        }
+        function CurrentDomainChange(elememt) {
+            getFormDefinition($(elememt).val());
+        }
+
+
+        ShowFormBuilder2 = function (taskId, currentFormId) {
+
+            // append html to tabs content
+            $.ajax({
+                type: 'post',
+                url: '/Qbicles/GennarateAllReportByTaskIdToTabs',
+                datatype: 'json',
+                data: {
+                    taskId: taskId, currentFormId: currentFormId
+                },
+                success: function (refModel) {
+                    if (refModel) {
+                        $("#modal-form-body").empty().append(refModel);
+                    }
+                    else {
+                    }
+                    $("#loadingAddEditGif").hide();
+                },
+                error: function (xhr, status, error) {
+                    $("#loadingAddEditGif").hide();
+                }
+            });
+            
+            showModal();
+        }
+
+
+        ShowFormBuilder = function (formBuilder) {
+            $('.fb-render-form').empty();
+            $('.fb-render-form').formRender({
+                dataType: 'json',
+                formData: formBuilder
+            });
+            showModal();
+           
+        }
+
+
+        ////get list users associated with the qbicle has selected in the dropdown
+        $("#select-qbicle").change(function () {
+            $("#select-taskAssign").empty().change();
+            $("#select-taskAssign").select2().val(['']).change();
+            $("#select-taskCreated").empty().change();
+            $("#select-taskCreated").select2().val(['']).change();
+            $("#loadingAddEditGif").show();
+            var qbicleSelected = $(this).find("option:selected");
+
+            $.ajax({
+                type: 'post',
+                url: '/Qbicles/GetUsersByQbicle',
+                datatype: 'json',
+                data: {
+                    qbicleId: qbicleSelected.val()
+                },
+                success: function (refModel) {
+                    if (refModel.result) {
+                        $("#select-taskCreated").empty().append(refModel.Object);
+                        $("#select-taskAssign").empty().append(refModel.Object);
+                    }
+                    else {
+                    }
+                    $("#loadingAddEditGif").hide();
+                },
+                error: function (xhr, status, error) {
+                    $("#loadingAddEditGif").hide();
+                }
+            });
+        }).change();
+            $("#fqf").change(function () {
+            $filterTaskForm = this.checked;
+        });
+            $("#fqt").change(function () {
+            $filterTask = this.checked;
+        });
+        setTimeout(function () {
+            $('html, body').animate({
+                scrollTop: 100
+            }, 0);
+        }, 300);
+    });
+
+    function isControlFilter(idElement, array) {
+        var result = $.grep(array, function (e) { return e.name == idElement; });
+        if (result.length > 0) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    function removeFilterNotValue(array) {
+        return jQuery.grep(array, function (element) {
+            return element.value.trim() !="";
+        });
+    }
+
+    function objectifyForm(formArr) {
+        var returnArray = [];
+        formArr.forEach(function (item, index) {
+            if (item.value) {
+
+                var name = item.name.replace(new RegExp('-', 'g'), '').replace('[]', '');
+                var objIndex = returnArray.findIndex(x => x.name == name);
+                if (objIndex == -1) {
+                    returnArray.push({ name: name, value: item.value });
+                } else {
+                    returnArray[objIndex].value = returnArray[objIndex].value + item.value;
+                }
+            }
+        });
+        return returnArray;
+    }
+    function ExecuteQuery() {
+        $("#task-report").addClass("hidden");
+        $("#loadingAddEditGif1").show();
+        
+        var arrDateFields = [];
+        $("input.daterange-filter").each(function (index, elem) {
+         
+            arrDateFields.push({ name: elem.id, value: elem.value });
+           
+        });
+
+        var formArray = $fbRender.serializeArray();
+         formArray.forEach(function (element) {
+            if (isControlFilter(element.name, arrDateFields) == true) {
+                formArray = jQuery.grep(formArray, function (value) {
+                    return value != element;
+                });
+            }
+        });
+        var taskFormParameter = {}; var taskParameter = {};
+        if ($filterTaskForm)
+           
+        
+            taskFormParameter = {
+                formDefinitionId: $formDefinitionId,
+                domainId: $currentDomain.val(),
+                formQuery:  JSON.stringify(objectifyForm(formArray)),
+                arrDateFields: JSON.stringify(removeFilterNotValue(arrDateFields))
+                
+            };
+        if ($filterTask) {
+            var createdDate = []; var deadlineDate = [];
+            if ($("#created-between").val().length > 0)
+                createdDate = $.trim($("#created-between").val()).split('-');
+            if ($("#deadline-between").val().length > 0)
+                deadlineDate = $.trim($("#deadline-between").val()).split('-');
+
+            taskParameter = {
+                qbicleId: $("#select-qbicle").val(),
+                taskName: $("#task-name").val(),
+                priority: $("#select-taskPriority").val(),
+                recurring: $("#select-taskRecurring").val(),
+                createdBy: $("#select-taskCreated").val(),
+                asssignTo: $("#select-taskAssign").val(),
+                createdDateStart: createdDate.length == 0 ? '' : createdDate[0].trim(),
+                createdDateEnd: createdDate.length == 0 ? '' : createdDate[1].trim(),
+                deadlineDateStart: deadlineDate.length == 0 ? '' : deadlineDate[0].trim(),
+                deadlineDateEnd: deadlineDate.length == 0 ? '' : deadlineDate[1].trim(),
+                description: $("#task-description").val()
+            };
+        }
+        $.ajax({
+            type: 'post',
+            url: '/TaskFormDefinitionRef/ExecuteQuery',
+            datatype: 'json',
+            data: {
+                taskFormParameter: taskFormParameter,
+                taskParameter: taskParameter,
+                filterTask: $filterTask,
+                filterTaskForm: $filterTaskForm
+            },
+            success: function (refModel) {
+                if (refModel.result) {
+                    $("#task-found").removeClass("hidden");
+                    $('#general-all-report').removeClass("hidden");
+                    var tbl = $("#tableManageForm").DataTable();
+                    tbl.clear().draw();
+                    var rows_table = refModel.Object;
+                    rows_table.forEach(function (item) {
+                        tbl.row.add([item.Name,item.Description,item.Options]).draw( false );
+                    });
+                    $("#loadingAddEditGif1").hide();
+                    $target.animate({ scrollTop: $target.height() }, 1000);
+
+                    $("#generateAllReport").click(function () {
+                        GenerateAllReport(refModel.Object);
+
+                       
+                    });
+                }
+                else {
+                    $("#task-found").addClass("hidden");
+                    $("#task-report").addClass("hidden");
+                    $('#general-all-report').addClass("hidden");
+                    $("#loadingAddEditGif1").hide();
+                    $('#tbodyManageForm').html("");
+                }
+            }
+        });
+        GenerateReport = function (taskId) {
+            $("#loadingAddEditGif1").show();
+            $.ajax({
+                type: 'post',
+                url: '/Tasks/GenerateTaskReport',
+                datatype: 'json',
+                data: {
+                    taskId: taskId
+                },
+                success: function (refModel) {
+                    if (refModel.result) {        
+                        $("#task-report").removeClass("hidden");
+                        var tbl = $("#tableTaskReport").DataTable();
+                        tbl.clear().draw();
+                        var rows_table = refModel.Object;
+                        if (rows_table!=null)
+                            tbl.row.add([rows_table.Name, rows_table.Priority, rows_table.Recurring, rows_table.Deadline, rows_table.Assign, rows_table.Included_forms, rows_table.Description]).draw(false);
+                        $("#loadingAddEditGif1").hide();
+                        $target.animate({ scrollTop: $target.height() }, 1000);
+                    }
+                    else {
+                        $("#loadingAddEditGif1").hide();
+                        $('#tbodyTaskReport').html("");
+                    }
+                }
+            });
+            $target.animate({ scrollTop: $target.height() }, 1000);
+            
+        }
+
+        GenerateAllReport = function (arrTaskId) {
+            $("#loadingAddEditGif1").show();
+            $.ajax({
+                type: 'post',
+                url: '/Tasks/GenerateAllTaskReport',
+                datatype: 'json',
+                data: {
+                    listTaskId: arrTaskId
+                },
+                success: function (refModel) {
+                    if (refModel.result) {
+                        $("#task-report").removeClass("hidden");
+                        $('#tbodyTaskReport').html(refModel.Object);
+                        $("#loadingAddEditGif1").hide();
+                        $target.animate({ scrollTop: $target.height() }, 1000);
+                    }
+                    else {
+                        $("#loadingAddEditGif1").hide();
+                        $('#tbodyTaskReport').html("");
+                    }
+                }
+            });
+            $target.animate({ scrollTop: $target.height() }, 1000);
+        }
+
+        showModal = function () { $('#modal-form').modal('toggle'); }
+        
+    }
+</script>
+
+<style>
+    .fb-render .fb-date input[type="date"]{
+        display: none !important;
+    }
+</style>

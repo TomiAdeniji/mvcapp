@@ -1,0 +1,614 @@
+﻿@using CleanBooksData;
+@using Qbicles.Models;
+@using Qbicles.BusinessRules
+@model List<taskgroup>
+@{
+    ViewBag.Title = "Cleanbooks - Manage Tasks";
+    var wgsGroups = (List<CBWorkGroup>)ViewBag.CBWorkGroups;
+    var memberAssigns = (List<ApplicationUser>) ViewBag.MemberAssigns;
+    var memberTask = (bool)ViewBag.MemberTask;
+    var memberTaskExecution = (bool)ViewBag.MemberTaskExecution;
+    var taskexecutioninterval = (IEnumerable<taskexecutioninterval>)ViewBag.taskexecutioninterval;
+    var taskgroup = (IEnumerable<taskgroup>)ViewBag.taskgroup;
+    var taskaccount = (List<Account>)ViewBag.taskaccount;
+    var transactionmatching = (List<transactionmatchingtype>)ViewBag.transactionmatching;
+    var tasktype = (List<tasktype>)ViewBag.tastype;
+    var qbicles = (List<Qbicle>)ViewBag.Qbicles;
+    var taskPrioritys = (ICollection<HelperClass.EnumModel>)ViewBag.taskPrioritys;
+
+    var rightRunTask = memberTaskExecution ? "" : "isDisabled";
+}
+
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail cleanbooks">
+    <!-- Main content -->
+    <section class="content" data-tooltip-animate-function="fadein" data-tooltip-delay="300" data-tooltip-stickTo="top" data-tooltip-stickDistance="30">
+        <input hidden="" id="right-run-task" value="@rightRunTask" />
+        <br /><br />
+
+        <div class="mod_title">
+            <img src="~/Content/DesignStyle/images/cleanbooks_logo.png" style="width: 200px; height: auto; margin-bottom: 30px;">
+        </div>
+
+        <div class="app_topnav restyle" id="navigationcleanBook">
+            @{ Html.RenderAction("NavigationCleanBooksPartial", "Apps", new { tab = "task" });}
+        </div>
+
+        <div class="row">
+            <div class="col-xs-12">
+                <div class="app_filter">
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-4 col-lg-4 button_options">
+                            <a href="javascript:void(0)" onclick="window.location.href = '/Apps/AppManagement';" class="btn btn-info"><i class="fa fa-th"></i> &nbsp; All apps</a>
+                            @if (memberTask)
+                            {
+                                <div class="btn-group options">
+                                    <button type="button" class="btn btn-success dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                        Create a new &nbsp; <i class="fa fa-angle-down"></i>
+                                    </button>
+                                    <ul class="dropdown-menu">
+                                        <li><a href="javascript:void(0)" id="button_add_group">Group</a></li>
+                                        @if (Model != null && Model.Count > 0)
+                                        {
+                                            <li><a id="button_add_task_0" href="javascript:void(0)" onclick="AddTask(0,'button_add_task_0')">Task</a></li>
+                                        }
+                                    </ul>
+                                </div>
+                            }
+
+                        </div>
+                        <div class="col-xs-12 col-sm-8 col-lg-8 block_filters">
+                            <form class="form-inline">
+                                <div class="form-group">
+                                    <select name="groups" id="filter-group" class="single-select form-control select2">
+                                        <option value="0" selected>Show all groups</option>
+                                        @foreach (var item in Model)
+                                        {
+                                            <option value="@item.Id"> @item.Name</option>
+                                        }
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <select name="ordering" id="filter-order" class="single-select form-control select2">
+                                        <option value="@Enums.SortOrderBy.NameAZ" selected>Order alphabetically A-Z</option>
+                                        <option value="@Enums.SortOrderBy.NameZA">Order alphabetically Z-A</option>
+                                        <option value="@Enums.SortOrderBy.UnmatchedMost">Order by Unmatched (Most-Least)</option>
+                                        <option value="@Enums.SortOrderBy.UnmatchedLeast">Order by Unmatched (Least-Most)</option>
+                                        <option value="@Enums.SortOrderBy.InstancesMost">Order by Instances (Most-Least)</option>
+                                        <option value="@Enums.SortOrderBy.InstancesLeast">Order by Instances (Least-Most)</option>
+                                    </select>
+                                </div>
+                                <div class="form-group views">
+                                    <a id="grid-view" href="#grid_view" onclick="DisplayView('grid')" class="toggle_view">
+                                        <i class="fa fa-th-large"></i>
+                                    </a>
+                                    <a id="list-view" href="#list_view" onclick="DisplayView('list')" class="toggle_view">
+                                        <i class="fa fa-list"></i>
+                                    </a>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <br /><br />
+        <div id="task-page-display">
+            <div id="task-content">
+            </div>
+        </div>
+
+
+    </section>
+    <!-- ./content -->
+
+</div>
+<!-- /.content-wrapper -->
+<div class="modal fade left" id="modal_reconciliationtask" role="dialog" aria-labelledby="app-cb-task-add">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 id="task-modal-title" class="modal-title"></h5>
+            </div>
+            <div class="modal-body">
+                <form id="form_reconciliationtask" method="post">
+                    <input type="hidden" name="Id" id="hdReconciliationTaskId" value="0" />
+                    <input type="hidden" id="hdTransactionMatching" value="@Enums.TypeOfTask.TransactionMatching" />
+                    <input type="hidden" id="hdTransactionAnlysis" value="@Enums.TypeOfTask.TransactionAnlysis" />
+                    <input type="hidden" id="hdControlReport" value="@Enums.TypeOfTask.ControlReport" />
+                    <input type="hidden" id="hdBalanceAnalysis" value="@Enums.TypeOfTask.BalanceAnalysis" />
+                    <input type="hidden" id="hdTaskTypeIdOld" name="TaskTypeIdOld" />
+                    <input type="hidden" id="hdCreatedById" name="CreatedById" />
+                    <input type="hidden" id="hdCreatedDate" name="CreatedDate" />
+                    <input type="hidden" name="IsActionNewLedger" id="IsActionNewLedger" value="1" />
+                    <input type="hidden" name="IsActionNotify" id="IsActionNotify" value="1" />
+                    <input type="hidden" name="IsActionReport" id="IsActionReport" value="1" />
+                    <input type="hidden" id="hdtransactionmatchingtaskrulesaccessId" name="transactionmatchingtaskrulesaccessId" />
+                    <div class="row">
+                        <div class="col-xs-12">
+                            <ul class="app_subnav">
+                                <li id="step_1" class="active">
+                                    <a id="step1-vtab" href="#tab1" data-toggle="tab">Details</a>
+                                </li>
+                                <li id="step_2" style="display:none;">
+                                    <a id="step2-vtab" href="#tab2" data-toggle="tab">Rules</a>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <br />
+
+                    <div class="tab-content">
+                        <div class="tab-pane fade in active" id="tab1">
+
+                            <div class="well">
+                                <div class="row">
+
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group validate-control">
+                                            <label for="task_name">Name <span>*</span></label>
+                                            <input type="text" name="Name" class="form-control" required id="task_Name" maxlength="45" />
+                                        </div>
+                                    </div>
+
+
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="task_group">Group<span>*</span></label>
+                                            <select id="SelectGroup" name="ReconciliationTaskGroupId" required class="form-control" style="width: 100%;">
+                                                @foreach (var item in taskgroup)
+                                                {
+                                                    <option value="@item.Id">@item.Name</option>
+                                                }
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                </div>
+                                @*<div class="row">
+                                        <div class="col-xs-12 col-sm-6">
+                                            <div class="form-group">
+                                                <label for="task_qbicle">Qbicle<span>*</span></label>
+                                                <select id="SelectQbicle" name="QbicleId" class="form-control" style="width: 100%;">
+                                                    @foreach (var item in qbicles)
+                                                    {
+                                                        <option value="@item.Id">@item.Name</option>
+                                                    }
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="col-xs-12 col-sm-6">
+                                            <div class="form-group" id="topic-title">
+                                                <label for="media-title">Topic <span>*</span></label>
+                                                <input type="text" id="task-topic-value" name="topic-title" required class="form-control typeahead" value="">
+                                            </div>
+                                        </div>
+                                    </div>*@
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group validate-control">
+                                            <label for="task_priority">Priority<span>*</span></label>
+                                            <select id="SelectPriority" required="" name="PriorityId" class="form-control" style="width: 100%;">
+                                                @foreach (var item in taskPrioritys.ToList())
+                                                {
+                                                    <option value="@item.Key">@item.Value</option>
+                                                }
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group" id="Deadline">
+                                            <label for="task_Deadline">Deadline&nbsp;</label>
+                                            <input id="task-Deadline" name="task-Deadline" class="form-control singledateandtime">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="task_type">Type of Task <span>*</span></label>
+                                            <select id="typeoftask" name="TaskTypeId" class="switch_select form-control" required style="width: 100%;">
+                                                @foreach (var b in tasktype)
+                                                {
+                                                    <option value="@b.Id">@b.Name</option>
+                                                }
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group validate-control">
+                                            <label for="task_workgroup">Select Workgroup <span>*</span></label>
+                                            <select id="task_workgroup" name="task_workgroup" class="select2 form-control chosen-select" style="width: 100%;">
+                                                @foreach (var wg in wgsGroups)
+                                                {
+                                                    <option value="@wg.Id">@wg.Name</option>
+                                                }
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+
+                            <div class="well tan task_route task-account" style="display: none;">
+                                <p class="newtext">Please select the two accounts to perform matching against, then which type of matching you wish to occur in this task...</p>
+
+                                <div class="row">
+                                    <div id="taskcount1" class="col-xs-12 col-sm-6">
+                                        <div class="form-group validate-control">
+                                            <label for="task_account1">First account <span>*</span></label>
+                                            <select id="AccountId1" name="AccountId1" required="" class="single-select form-control chosen-select" style="width: 100%;">
+                                                <option></option>
+                                                @foreach (var b in taskaccount)
+                                                {
+                                                    <option value="@b.Id">@(b.Name + " - " + b.Number)</option>
+                                                }
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div id="taskcount2" class="col-xs-12 col-sm-6">
+                                        <div class="form-group validate-control">
+                                            <label for="task_account2">Second account <span>*</span></label>
+                                            <select id="AccountId2" name="AccountId2" required="" class="single-select form-control chosen-select" style="width: 100%;">
+                                                <option></option>
+                                                @foreach (var b in taskaccount)
+                                                {
+                                                    <option value="@b.Id">@(b.Name + " - " + b.Number)</option>
+                                                }
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div id="taskcount3" class="col-xs-12 col-sm-6">
+                                        <div class="form-group validate-control">
+                                            <label for="task_matching">Matching type &nbsp;<span>*</span></label>
+                                            <select id="TransactionMatchingTypeId" required name="TransactionMatchingTypeId" class="form-control select2" style="width: 100%;">
+                                                @foreach (var b in transactionmatching)
+                                                {
+                                                    <option value="@b.Id">@b.Name</option>
+                                                }
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group validate-control" id="lblInitialTransactionDate">
+                                            <label for="task_startdate">Start analysis from&nbsp;<span>*</span></label>
+                                            <input id="InitialTransactionDate" required name="InitialTransactionDate" class="form-control singledate" placeholder="Start analysis from...">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div id="taskcount4" class="row">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div id="pnDateVariance" class="checkbox toggle" style="padding-top: 15px; margin-bottom: 0;">
+                                            <label>
+                                                <input type="hidden" value="0" id="DateVariance" name="DateVariance" />
+                                                <input id="chkDateVariance" name="chkDateVariance" onchange="checkAmount(this,0)" data-toggle="toggle" data-onstyle="success" type="checkbox">
+                                                Allow date variance when matching
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div id="pnamounVariance" class="checkbox toggle" style="padding-top: 15px; margin-bottom: 0;">
+                                            <label>
+                                                <input type="hidden" value="0" id="amounVariance" name="amounVariance" />
+                                                <input id="chkamounVariance" name="chkamounVariance" onchange="checkAmount(this,1)" data-toggle="toggle" data-onstyle="success" type="checkbox">
+                                                Allow amount variance when matching
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div> <!-- ./well tan -->
+
+
+                            <div id="balance_analysis" class="well tan task_route" style="display: none;">
+                                <p class="newtext">Please select the account you wish to analyse, and from which date...</p>
+
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="task_ta_account">Account</label>
+                                            <select name="task_ta_account" class="form-control select2" style="width: 100%;">
+                                                <option value=""></option>
+                                                <option value="StopShop Main Account - 0198292822">StopShop Main Account - 0198292822</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="task_ta_start">Start analysis from</label>
+                                            <input type="text" name="task_ta_start" class="form-control dtpicker2">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div> <!-- ./well tan -->
+
+
+
+
+                            <div class="well">
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="task_execution">Automatic execution interval&nbsp;<span>*</span></label>
+                                            <select name="TaskExecutionIntervalId" id="TaskExecutionIntervalId" required="" class="form-control" style="width: 100%;">
+                                                @foreach (var b in taskexecutioninterval)
+                                                {
+                                                    <option value="@b.Id">@b.Interval</option>
+                                                }
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group validate-control">
+                                            <label for="task_assignee">Assign to&nbsp;<span>*</span></label>
+                                            <select class="single-select form-control chosen-select" required name="AssignedUserId" style="width: 100%;" id="AssignedUserId">
+                                                @if (memberAssigns != null)
+                                                {
+                                                    foreach (var applicationUser in memberAssigns)
+                                                    {
+                                                        <option value="@applicationUser.Id">@(applicationUser.Forename + " "+ applicationUser.Surname)</option>
+                                                    }
+                                                }
+                                            </select>
+
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-xs-12">
+                                        <div class="form-group">
+                                            <label for="task_description">Description&nbsp;<span>*</span></label>
+                                            <textarea name="Description" id="Task-Description" class="form-control" required maxlength="3000"></textarea>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div id="save-tab-div-1" style="display: none;" class="pull-right">
+                                <a href="javascript:void(0)" onclick="save_task()" class="btnNextTask btn btn-success trigger_load">
+                                    <span id="save-tab-1"></span>
+                                    <i class="fa fa-chevron-right"></i>
+                                </a>
+                            </div>
+                            <div class="clearfix"></div>
+
+                        </div>
+
+
+
+                        <div class="tab-pane fade" id="tab2">
+                            <p>TBC</p>
+
+                            <br />
+
+                            <div class="pull-left">
+                                <a href="#" class="btnPreviousTask btn btn-warning"><i class="fa fa-chevron-left"></i> &nbsp; Previous</a>
+                            </div>
+                            <div class="pull-right">
+                                <a id="save-tab-2" href="javascript:void(0)" class="btnNextTask btn btn-success trigger_load" data-dismiss="modal">
+                                    <i class="fa fa-check"></i> &nbsp; Finish and Save
+                                </a>
+                            </div>
+                            <div class="clearfix"></div>
+
+                        </div>
+
+
+                    </div>
+                </form>
+
+            </div>
+        </div> <!-- /.modal-content -->
+    </div> <!-- /.modal-dialog -->
+</div> <!-- /.modal -->
+<!-- /.modal -->
+
+<div id="modal-delete" class="modal fade" role="dialog">
+    <div class="modal-dialog">
+
+        <!-- Modal content-->
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4 class="modal-title">Delete Task</h4>
+            </div>
+            <div class="modal-body">
+
+                <div id="confirm-del" class="alert alert-danger">
+                    <p>You are about to delete Task: <strong><span id="task-name-confirm"></span></strong></p>
+                    <br />
+                    <button data-dismiss="modal" class="btn btn-warning">Cancel</button>
+                    <button onclick="deleteTask()" class="btn btn-danger">Confirm Delete</button>
+                </div>
+
+                <div id="permission-del" class="alert alert-warning">
+                    <p>You may not delete Task: <strong><span id="task-name-permission"></span></strong></p>
+                    <label>The task is in use.</label>
+                    <br />
+                    <button data-dismiss="modal" class="btn btn-success">OK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div id="modal-warning" class="modal fade" role="dialog">
+    <div class="modal-dialog">
+
+        <!-- Modal content-->
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4 class="modal-title">Warning Edit Task</h4>
+            </div>
+            <div class="modal-body">
+                <div id="permission-del" class="alert alert-warning">
+                    <p>You may not edit Task: <strong><span id="task-name-info"></span></strong></p>
+                    <label>
+                        The task has a status of 'In Progress'
+                    </label>
+                    <br />
+                    <button data-dismiss="modal" class="btn btn-success">OK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- /.modal -->
+<!-- Add/Edit group modal -->
+<div class="modal fade left" id="modal_group" role="dialog" aria-labelledby="app-group-generic-add">
+    <div class="modal-dialog" role="document">
+
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title"></h5>
+            </div>
+            <div class="modal-body">
+                <form id="form_group" name="form_reconciliationtaskgroup" method="post" action="/Tasks/save_reconciliationtaskgroups">
+                    <input type="hidden" id="input_rectaskgroup_id" name="Id" value="0" />
+                    <input type="hidden" id="input_rectaskgroup_createddate" name="CreatedDate" />
+                    <input type="hidden" id="input_rectaskgroup_createdbyid" name="CreatedById" />
+
+                    <div class="well">
+                        <div class="form-group">
+                            <label for="title">Title</label>
+                            <input type="text" id="input_rectaskgroup_name" name="Name" class="form-control" />
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-success tab-next" onclick="save_recGroup()"><span id="save-group"></span></button>
+                    <button class="btn btn-danger" data-dismiss="modal"><i class="fa fa-remove"></i> &nbsp; Cancel</button>
+                </form>
+            </div>
+        </div>
+
+
+        <!-- /.modal-content -->
+    </div>
+    <!-- /.modal-dialog -->
+</div><!-- /.modal -->
+<!-- /.modal -->
+<!-- /.modal -->
+<div class="modal fade cleanbooks" id="modal-task-instances" role="dialog" aria-labelledby="app-cb-task-instances">
+    <div class="modal-dialog modal-xl" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Instance History</h5>
+            </div>
+            <div class="modal-body">
+
+                <table id="tblInstanceTask" class="datatable table-hover table-striped" style="width: 100%;">
+                    <thead>
+                        <tr>
+                            <th data-priority="1">Date &amp; time</th>
+                            <th data-priority="3">Run by</th>
+                            <th data-priority="1">Status</th>
+                            <th data-priority="2" data-orderable="false"></th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+<div class="modal fade cleanbooks" id="app-cb-task-profiles" role="dialog" aria-labelledby="app-cb-task-profiles">
+    <div class="modal-dialog modal-xl" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Manage Profiles</h5>
+            </div>
+            <div class="modal-body">
+
+                <div class="activity-overview alert-detail" style="padding: 20px 20px 10px 20px;">
+                    <p>Below are all the profiles associated with your account. You can edit and remove them here.</p>
+                </div>
+
+                <br />
+
+                <table class="datatable table-hover table-striped" style="width: 100%;">
+                    <thead>
+                        <tr>
+                            <th data-priority="1">Name</th>
+                            <th data-priority="2">Filter(s)</th>
+                            <th data-priority="3">Created</th>
+                            <th data-priority="3">Edited</th>
+                            <th data-priority="1" data-orderable="false"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Cash</td>
+                            <td><em>WHERE Description LIKE ('%CASH%')</em></td>
+                            <td>15/03/2017 by <a href="#">Donnacha Nelan</a></td>
+                            <td></td>
+                            <td>
+                                <div class="btn-group options">
+                                    <button type="button" class="btn btn-success dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                        Options &nbsp; <i class="fa fa-angle-down"></i>
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-right" style="right: 0;">
+                                        <li><a href="#">Edit</a></li>
+                                        <li><a href="#">Delete</a></li>
+                                    </ul>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+<!-- /.modal -->
+<div id="modal_error" class="modal fade" role="dialog">
+    <div class="modal-dialog large">
+
+        <!-- Modal content-->
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4 class="modal-title"></h4>
+            </div>
+            <div class="modal-body">
+
+                <div class="row">
+                    <div class="col-md-12 col-lg-12">
+                        <p id="ReportError" style="color:red; font-size:13px">We found an error in the file upload. Please download the file bug reports here to check: <a id="linkerrorfile">File error reports</a></p>
+
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<script src="~/Scripts/jquery.number.min.js"></script>
+<script src="~/Content/DesignStyle/js/jasny-bootstrap.min.js"></script>
+
+
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/cleanbooks.task.js"></script>
+        <script src="~/Scripts/dev/cleanbook.task.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/cleanbooks.task.min.js"></script>
+        <script src="~/Scripts/dev/cleanbook.task.min.js"></script>
+    }
+}

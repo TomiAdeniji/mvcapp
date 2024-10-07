@@ -1,0 +1,172 @@
+﻿@*@using Qbicles.Models.B2B
+@using Qbicles.BusinessRules
+@using Qbicles.BusinessRules.Model;
+@model B2BInvitation
+@{
+    var providerLocations =(List<B2bLocationsModel>)ViewBag.providerLocations;
+    var consumerLocations = Model.Relationship.Partnerships.Select(s => s.ConsumerLocation).Distinct().ToList();
+    var profileProvider = (B2BProfile)ViewBag.profileProvider;
+    var firstrow = 0;
+}
+<div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+            <h5 class="modal-title">Choose a charge framework</h5>
+        </div>
+        <div class="modal-body">
+            <form id="frmInvitationChargeFramework" action="~/Commerce/SaveInviLogisticsPartnershipAccept" method="post">
+                <div class="choose-location">
+
+                    <div class="activity-overview generic help-text animated bounce">
+                        <i class="fa fa-info-circle"></i>
+                        <p>
+                            Before you can finalise your new logistics partnership with <strong>@profileProvider.BusinessName</strong>, you first need to provide them
+                            with a charging framework proposal for each location they need covered. Once they accept your proposal you'll be notified and good to go.
+                        </p>
+                    </div>
+
+
+                    <div class="row">
+                        <div class="col-xs-12">
+                            <ul id="tabConsumer" class="app_subnav admintabs" style="padding-top: 0;">
+                                @foreach (var item in providerLocations)
+                                {
+                                    <li class="@(firstrow==0?"active":"")"><a href="#partner-loc-@item.Id" data-toggle="tab" aria-expanded="false">@item.Name</a></li>
+                                    firstrow++;
+                                }
+                            </ul>
+                        </div>
+                    </div>
+
+
+                    <br><br>
+
+
+                        <div class="tab-content">
+                            <input type="hidden" name="InvitationId" value="@Model.Id" />
+                            @{
+                                firstrow = 0;
+                            }
+                            @foreach (var l in consumerLocations)
+                            {
+                            <input type="hidden" name="ConsumerLocations[@(firstrow)]" value="@l.Id" />
+                            }
+                            @{
+                                firstrow = 0;
+                                var lastcount = providerLocations.Count;
+                            }
+                            @foreach (var item in providerLocations)
+                            {
+                                var location = item.Location;
+                                <div class="tab-pane fade @(firstrow==0?"active in":"")" id="partner-loc-@item.Id">
+                                    <div class="activity-overview plain" style="padding: 10px 0;">
+                                        <div class="row">
+                                            <div class="col-xs-12 col-sm-4">
+
+                                                <h5>Address</h5>
+                                                <p>
+                                                    @Html.Raw(location.TraderLocationToAddress())
+                                                </p>
+
+                                            </div>
+                                            <div class="col-xs-12 col-sm-4">
+
+                                                <table class="table table-condensed table-borderless" style="font-family: 'Roboto', Arial; font-size: 12px; color: #676767;">
+                                                    <tbody>
+                                                        <tr>
+                                                            <td><strong>Tel</strong></td>
+                                                            <td>@location.Address.Phone</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td><strong>Email</strong></td>
+                                                            <td><a href="#">@location.Address.Email</a></td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td><strong>Geolocated</strong></td>
+                                                            <td>@(location.Address.Latitude != 0 && location.Address.Longitude != 0 ? "Yes" : "No")</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td><strong>Map</strong></td>
+                                                            <td>
+                                                                @if (location.Address.Latitude != 0 && location.Address.Longitude != 0)
+                                                                {
+                                                                    <a href="https://www.google.com/maps/search/?api=1&query=@(location.Address.Latitude),@(location.Address.Longitude)" target="_blank">Click to view</a>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <span>Unavailable</span>
+                                                                }
+                                                            </td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+
+                                            </div>
+                                        </div>
+
+                                        <h5>Proposed by @profileProvider.BusinessName</h5>
+                                        @foreach (var l in consumerLocations)
+                                        {
+                                            <p>@l.Name</p>
+                                        }
+                                    </div>
+
+                                    <br>
+
+                                    <div class="well custom proposed-provider" data-index="@(firstrow)" style="padding-bottom: 5px;">
+                                        <div class="row">
+                                            <div class="col-xs-12 col-sm-6">
+                                                <div class="form-group proposedloc">
+                                                    <label>Proposed provider</label>
+                                                    <select required name="ProposedList[@(firstrow)].ProviderId" class="form-control select2" style="width: 100%;" onchange="loadPriceListByLocationId($(this), @(firstrow));">
+                                                        <option value=""></option>
+                                                        @foreach (var l in providerLocations)
+                                                        {
+                                                            <option value="@l.Id" @(!l.AllowSelect?"disabled":"")>@l.Name</option>
+                                                        }
+                                                    </select>
+                                                    <label id="ProposedList[@(firstrow)].ProviderId-error" class="error" for="ProposedList[@(firstrow)].ProviderId" style="display:none">This field is required.</label>
+                                                </div>
+                                            </div>
+                                            <div class="col-xs-12 col-sm-6">
+                                                <div class="form-group priceloc_row@(firstrow)" style="display:none">
+                                                    <label for="ProposedList[@(firstrow)].PricelisId">Price list to use</label>
+                                                    <select name="ProposedList[@(firstrow)].PricelisId" class="form-control select2 pricelistbyloc" style="width: 100%;">
+                                                        <option value=""></option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <button type="button" class="btn btn-info" onclick="addProposedProvider($(this),@Model.Id)"><i class="fa fa-plus"></i> &nbsp; Add another</button>
+
+                                    <br><br><br><br>
+                                    @if (firstrow == 0)
+                                    {
+                                        <button type="button" class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                                    }
+                                    else
+                                    {
+                                        <a href="#" data-toggle="tab" class="btn btn-warning btnPrevious" aria-expanded="true"><i class="fa fa-angle-left"></i> &nbsp; Previous</a>
+                                    }
+                                    @if ((firstrow + 1) == lastcount)
+                                    {
+                                        <button type="submit" class="btn btn-success">Send proposal</button>
+                                    }
+                                    else
+                                    {
+                                        <a href="#" data-toggle="tab" class="btn btn-success btnNext" aria-expanded="false">Next location &nbsp; <i class="fa fa-angle-right"></i></a>
+                                    }
+
+
+                                </div>
+                                firstrow++;
+                            }
+                        </div>
+
+                </div>
+            </form>
+        </div>
+    </div><!-- /.modal-content -->
+</div><!-- /.modal-dialog -->*@

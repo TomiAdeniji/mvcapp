@@ -1,0 +1,264 @@
+﻿@using Qbicles.BusinessRules
+@using Qbicles.Models.Trader
+
+//@model  List<TraderPurchase>
+@{
+    var key = (string)ViewBag.Key;
+    //var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+}
+
+<div class="modal-dialog modal-xl" role="document">
+    <div class="modal-content">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <h5 class="modal-title">Find a Purchase</h5>
+        </div>
+        <div class="modal-body">
+
+            <div class="well custom" style="padding-bottom: 5px;">
+
+                <div class="row">
+                    <div class="col-xs-12 col-sm-6">
+                        <div class="form-group">
+                            <label for="search_dt">Search for a purchase</label>
+                            <input type="text" name="search_dt" id="search_dt_purchase" value="@key" class="form-control invoice-ref" placeholder="Search for...">
+                        </div>
+                    </div>
+                    <div class="col-xs-12 col-sm-6">
+                        <div class="form-group">
+                            <label for="daterange">Date range</label>
+                            <input type="text" id="search_purchase_datetime" class="form-control daterange" value="@DateTime.UtcNow.AddDays(-60).ToString("dd/MM/yyyy") - @DateTime.UtcNow.ToString("dd/MM/yyyy")" placeholder="Limit to a date range">
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <br />
+            <div class="invoice-select">
+                <table class="datatable table-striped table-hover" id="community_list_find_purchase" style="background: #fff; width: 100%;">
+                    <thead>
+                        <tr>
+                            <th>Ref</th>
+                            <th>Date created</th>
+                            <th>Reporting Filters</th>
+                            <th>Amount <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                            <th data-orderable="false">Use</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @*@foreach (var item in Model)
+                        {
+                            var refId = 0;
+                            var refFull = "";
+                            <tr id="find_sale_@item.Id">
+                                <td class="find_sale_ref_@item.Id">
+                                    @if (item.Reference != null)
+                                    {
+                                        refId = item.Reference.Id;
+                                        refFull = item.Reference.FullRef;
+                                    }
+                                    @refFull
+                                </td>
+                                <td class="hidden">@item.CreatedDate.ToString("dd.MM.yyyy")</td>
+                                <td>
+                                    <div class="find_sale_createdate_@item.Id">
+                                        <span class="hidden">@item.CreatedDate.ToString("yyyy.MM.dd")</span>@item.CreatedDate.ToString("dd.MM.yyyy")
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="find_sale_dimensions_@item.Id">
+                                        @{
+                                            var dimensionItems = new List<string>();
+                                            foreach (var saleitem in item.PurchaseItems)
+                                            {
+                                                if (saleitem.Dimensions.Any())
+                                                {
+                                                    dimensionItems.AddRange(saleitem.Dimensions.Select(q => q.Name).ToList());
+                                                }
+                                            }
+                                            dimensionItems = dimensionItems.Distinct().ToList();
+                                            foreach (var dimen in dimensionItems)
+                                            {
+                                                <span class="label label-lg label-primary">@dimen</span>
+                                            }
+                                        }
+                                    </div>
+                                </td>
+                                <td class="find_sale_amount_@item.Id">@item.PurchaseTotal.ToDecimalPlace(currencySettings)</td>
+                                <td><button class="btn btn-success" onclick="selectChoisePurchse(@item.Id, @refId)"><i class="fa fa-check"></i></button></td>
+                            </tr>
+                        }*@
+                    </tbody>
+                </table>
+            </div>
+
+
+            <div class="selected-invoice" style="display: none;">
+                <table class="datatable app_specific" id="community-list" style="background: #fff; width: 100%;" data-paging="false">
+                    <thead>
+                        <tr>
+                            <th data-orderable="false">Ref</th>
+                            <th data-orderable="false">Date created</th>
+                            <th data-orderable="false">Reporting Filters</th>
+                            <th data-orderable="false">Amount <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                            <th data-orderable="false">Options</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <input type="hidden" value="0" id="sale_choise_id" />
+                            <td id="sale_choise_ref"><input type="hidden" value="" /> <span></span></td>
+                            <td id="sale_choise_cretedate"></td>
+                            <td id="sale_dimensions">
+                                <span class="label label-lg label-primary">Reporting Filter 1</span>
+                                <span class="label label-lg label-primary">Reporting Filter 2</span>
+                            </td>
+                            <td id="sale_choise_amount"></td>
+                            <td>
+                                <button class="btn btn-warning" onclick="reSelectPurchase()"><i class="fa fa-pencil"></i> &nbsp; Change purchase</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <br /><br />
+            <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+            <button class="btn btn-success" onclick="confirmSelectPurchase()" data-dismiss="modal">Confirm</button>
+
+        </div>
+    </div><!-- /.modal-content -->
+</div><!-- /.modal-dialog -->
+
+<script>
+    var $formatDate = 'DD/MM/YYYY';
+    $(function () {
+        $('#search_purchase_datetime').daterangepicker({
+            autoUpdateInput: true,
+            timePicker: true,
+            cancelClass: "btn-danger",
+            opens: "right",
+            autoUpdateInput: false,
+            locale: {
+                cancelLabel: 'Clear',
+                format: $formatDate
+            }
+        });
+        $('#search_purchase_datetime').on('apply.daterangepicker', function (ev, picker) {
+            $(this).val(picker.startDate.format($formatDate) + ' - ' + picker.endDate.format($formatDate));
+            $('#search_purchase_datetime').html(picker.startDate.format($formatDate) + ' - ' + picker.endDate.format($formatDate));
+
+            $("#community_list_find_purchase").DataTable().ajax.reload();
+        });
+        $('#search_purchase_datetime').on('cancel.daterangepicker', function (ev, picker) {
+            $(this).val(null);
+            $('#search_purchase_datetime').html('full history');
+            $("#community_list_find_purchase").DataTable().ajax.reload();
+        });
+    });
+
+    $("#search_dt_purchase").keyup(searchThrottle(function () {
+        reloadDataTable();
+    }));
+
+    function reloadDataTable() {
+        $("#community_list_find_purchase").DataTable().ajax.reload(null, false);
+    }
+
+    function searchThrottle(f, delay) {
+        var timer = null;
+        return function () {
+            var context = this, args = arguments;
+            clearTimeout(timer);
+            timer = window.setTimeout(function () {
+                f.apply(context, args);
+            },
+                delay || 1000);
+        };
+    }
+
+    GetDataToTable();
+
+    function GetDataToTable() {
+        $("#community_list_find_purchase").on('processing.dt', function (e, settings, processing) {
+            if (processing) {
+                $('#community_list_find_purchase').LoadingOverlay("show", { minSize: "70x60px" });
+            } else {
+                $('#community_list_find_purchase').LoadingOverlay("hide", true);
+            }
+        }).DataTable({
+            "destroy": true,
+            "serverSide": true,
+            "paging": true,
+            "searching": false,
+            "responsive": true,
+            "lengthMenu": [[10, 20, 50, 100], [10, 20, 50, 100]],
+            "pageLength": 10,
+            "ajax": {
+                "url": '/TraderContact/FindPurchaseCreditServerSide',
+                "type": 'POST',
+                "dataType": 'json',
+                "data": function (d) {
+                    return $.extend({}, d, {
+                        "keyword": $("#search_dt_purchase").val(),
+                        "contactId": $("#contact-id").val(),
+                        "dateRange": $("#search_purchase_datetime").val()
+                    });
+                }
+            },
+            "columns": [
+                {
+                    name: "FullRef",
+                    data: "FullRef",
+                    orderable: true,
+                    render: function (value, type, row) {
+                        return "<span class='find_sale_ref_" + row.Id + "'>" + row.FullRef + "</span>";
+                    }
+                },
+                {
+                    name: "CreatedDate",
+                    data: "CreatedDate",
+                    orderable: true,
+                    render: function (value, type, row) {
+                        return "<span class='find_sale_createdate_" + row.Id + "'>" + row.CreatedDate + "</span>";
+                    }
+                },
+                {
+                    name: null,
+                    data: null,
+                    orderable: false,
+                    render: function (value, type, row) {
+                        var reporting = "<div class='find_sale_dimensions_" + row.Id + "'>";
+                        _.forEach(row.ReportingFilters, r => {
+                            reporting += "<span class='label label-lg label-primary'>" + r + "</span>";
+                        });
+                        return reporting += "</div>";
+                    }
+                },
+                {
+                    name: "PurchaseTotal",
+                    data: "PurchaseTotal",
+                    orderable: true,
+                    render: function (value, type, row) {
+                        return "<span class='find_sale_amount_" + row.Id + "'>" + row.PurchaseTotal + "</span>";
+                    }
+                },
+                {
+                    name: null,
+                    data: null,
+                    orderable: false,
+                    width: "100px",
+                    render: function (value, type, row) {
+                        return "<button class='btn btn-success' onclick='selectChoisePurchse(" + row.Id + "," + row.ReferenceId + ")'><i class='fa fa-check'></i></button>";
+                    }
+                }
+            ],
+            "drawCallback": function (settings) {
+                //$.getScript("/Content/DesignStyle/js/html5tooltips.js");
+            },
+            "order": [[1, "desc"]]
+        });
+    }
+</script>

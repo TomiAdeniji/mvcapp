@@ -1,0 +1,110 @@
+﻿@using Qbicles.Models.B2B
+@using Qbicles.Models
+@using Qbicles.BusinessRules
+@model B2BRelationship
+@{
+    var currentDomain = (QbicleDomain)ViewBag.CurrentDomain;
+    var partnerDomain = Model.Domain1.Id == currentDomain.Id ? Model.Domain2 : Model.Domain1;
+    var currentBusinesProfile = currentDomain.Id.BusinesProfile();
+    var partnerBusinessProfile = partnerDomain.Id.BusinesProfile();
+    var currentBusinessName = currentBusinesProfile?.BusinessName ?? currentDomain.Name;
+    var partnerBusinessName = partnerBusinessProfile?.BusinessName ?? partnerDomain.Name;
+    var timezone = (string)ViewBag.CurrentTimeZone;
+    var dateFormat = (string)ViewBag.CurrentDateFormat;
+}
+<br /><br />
+@if (Model.Partnerships.Any(s => s.IsConsumerConfirmed || s.IsProviderConfirmed))
+{
+    <div class="row">
+
+        <div class="col-xs-12">
+
+            <ul class="audit-steps infoblob" style="max-width: 700px;">
+
+                <li style="padding: 35px 40px;">
+                    <h5>B2B Partnerships</h5>
+                    <br />
+
+                    <p>A variety of different partnership opportunities exist in Qbicles B2B. Whether you want to buy or sell items with your partner, or want to provide or acquire various logistics solutions you'll find the necessary configuration options below.</p>
+
+                    <br />
+                    <p>Your active (and inactive) partnerships are listed below, with their status and any options available to you. If you want to immediately terminate all partnerships with this business hit the button below.</p>
+
+                    <br /><br />
+                    <button onclick="haltAll(@Model.Id)" class="btn btn-danger community-button w-auto"><i class="fa fa-exclamation-triangle"></i> &nbsp; Halt all</button>
+                </li>
+            </ul>
+
+        </div>
+
+    </div>
+}
+<table class="datatable" id="tblParnership-list" style="width: 100%;">
+    <thead>
+        <tr>
+            <th>Partnership type</th>
+            <th>Request initiated</th>
+            <th>Last updated</th>
+            <th>Status</th>
+            <th data-orderable="false">Options</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model.Partnerships)
+        {
+            var ptype = "";
+            var ordernum = 0;
+            if (item.ProviderDomain.Id == currentDomain.Id && item.Type == Qbicles.Models.B2B.B2BService.Products)
+            {
+                ptype = $"{currentBusinessName} sell to {partnerBusinessName}";
+                ordernum = 1;
+            }
+            else if (item.ConsumerDomain.Id == currentDomain.Id && item.Type == Qbicles.Models.B2B.B2BService.Products)
+            {
+                ptype = $"{currentBusinessName} buy from {partnerBusinessName}";
+                ordernum = 2;
+            }
+            else if (item.ProviderDomain.Id == currentDomain.Id && item.Type == Qbicles.Models.B2B.B2BService.Logistics)
+            {
+                ptype = $"{currentBusinessName} provide logistics to {partnerBusinessName}";
+                ordernum = 3;
+            }
+            else if (item.ConsumerDomain.Id == currentDomain.Id && item.Type == Qbicles.Models.B2B.B2BService.Logistics)
+            {
+                ptype = $"{currentBusinessName} acquire logistics from {partnerBusinessName}";
+                ordernum = 4;
+            }
+            var isCurrentDomainActive = (item.IsProviderConfirmed && item.ProviderDomain.Id == currentDomain.Id) || (item.IsConsumerConfirmed && item.ConsumerDomain.Id == currentDomain.Id);
+            <tr>
+                <td data-order="@ordernum">@ptype</td>
+                <td data-sort="@item.CreatedDate.ToString("yyyy-MM-dd hh:mm")">@item.CreatedDate.ConvertTimeFromUtc(timezone).ToString(dateFormat + " hh:mmtt")</td>
+                <td>@item.LastUpdatedDate.ConvertTimeFromUtc(timezone).GetTimeRelative()</td>
+                <td>
+                    <label class="label label-xl label-soft"><i class="fa @(isCurrentDomainActive?"fa-check green":"fa-exclamation-triangle red")"></i> &nbsp; @currentBusinessName</label>
+                    <label class="label label-xl label-soft"><i class="fa @((item.IsProviderConfirmed&&item.ProviderDomain.Id == partnerDomain.Id)||(item.IsConsumerConfirmed&&item.ConsumerDomain.Id == partnerDomain.Id)?"fa-check green":"fa-exclamation-triangle red")"></i> &nbsp; @partnerBusinessName</label>
+                </td>
+                <td>
+                    @if (item.IsProviderConfirmed || item.IsConsumerConfirmed)
+                    {
+                        <button class="btn btn-danger" onclick="halt(@item.Id)">Halt</button>
+                    }
+                    else
+                    {
+                        var sclick = item.Type == B2BService.Products ? "$('#tradepartner).trigger('click');" : $"$('#logistics).trigger('click');loadLogisticsPartnershipContent({item.Id});";
+                        <button class="btn btn-info" onclick="tabActive('@(item.Type == B2BService.Products ?"tradepartner":"logistics")',@item.Id)">Start</button>
+                    }
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+<script>
+    $(function () {
+        if ($('#hdfParnershipId').length == 0) {
+            @{
+                var logisticsPartnership=(LogisticsPartnership)ViewBag.CurrentLogisticsAgreement;
+            }
+            loadLogisticsPartnershipContent(@(logisticsPartnership?.Id??0), false);
+        }
+    });
+</script>

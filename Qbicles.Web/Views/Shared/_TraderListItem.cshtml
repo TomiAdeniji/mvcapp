@@ -1,0 +1,291 @@
+﻿@using Qbicles.Models.Trader;
+@using Qbicles.Models.Trader.Resources
+@model List<TraderItem>
+@{
+    var location = (TraderLocation)ViewBag.Location ?? (new TraderLocation());
+    var traderGroups = (List<TraderGroup>)ViewBag.TraderGroups ?? (new List<TraderGroup>());
+    var additionals = (List<AdditionalInfo>)ViewBag.AdditionalInfos ?? (new List<AdditionalInfo>());
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var callBack = (bool)(ViewBag.CallBack ?? false);
+}
+<style>
+    select.checkmulti {
+        display: none;
+    }
+
+    .itemOverviewFilterRemove {
+        display: none;
+    }
+</style>
+<div class="well custom" style="padding-bottom: 5px;">
+    <input type="hidden" id="api" value="@api" />
+    <div class="row">
+        <div class="col-xs-12 col-sm-6 col-md-4">
+            <div class="form-group">
+                <label for="search_dt">Search for something</label>
+                <input type="text" name="search_dt" id="search_dt" class="form-control" placeholder="Search for something">
+            </div>
+        </div>
+        @*<div class="col-xs-12 col-sm-6 col-md-3">
+                <div class="form-group">
+                    <label for="group">Filter groups</label>
+                    <select id="subfilter-group" name="group" onchange="onSelectWorkgroupItem(this)" class="form-control select2" style="width: 100%;" data-placeholder="Display groups">
+                        <option value=" " selected>Show all groups</option>
+                        @foreach (var traderGroup in traderGroups)
+                        {
+                            <option value="@traderGroup.Name">@traderGroup.Name</option>
+                        }
+                    </select>
+                </div>
+            </div>*@
+        <div class="col-xs-12 col-md-5">
+            <label>Options</label>
+            <br />
+            <div class="form-group">
+                <div class="btn-group options">
+                    <button type="button" class="btn btn-success dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        Create a new &nbsp; <i class="fa fa-angle-down"></i>
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a href="#" data-toggle="modal" onclick="setType(1,'item-tab')">Item I buy</a>
+                        <li><a href="#" data-toggle="modal" onclick="setType(2,'item-tab')">Item I sell</a>
+                    </ul>
+                </div>
+                <div class="btn-group options">
+                    <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        <i class="fa fa-sliders"></i> &nbsp; Manage display
+                    </button>
+                    <ul class="dropdown-menu primary manage-columns">
+                        <li><label><input type="checkbox" data-column="1" checked> Item</label></li>
+                        <li><label><input type="checkbox" data-column="2" checked> SKU</label></li>
+                        <li><label><input type="checkbox" data-column="3" checked> Barcode</label></li>
+                        <li><label><input type="checkbox" data-column="4" checked> Type</label></li>
+                        <li><label><input type="checkbox" data-column="5" checked> Group</label></li>
+                        <li><label><input type="checkbox" data-column="6" checked> Description</label></li>
+                        <li><label><input type="checkbox" data-column="7" checked> Primary vendor(s)</label></li>
+                        <li><label><input type="checkbox" data-column="8" checked> Additional</label></li>
+                        <li><label><input type="checkbox" data-column="9" checked> Active in location</label></li>
+                    </ul>
+                </div>
+                <button class="btn btn-info" data-toggle="modal" data-target="#app-trader-item-filters"><i class="fa fa-filter"></i> &nbsp; Filters</button>
+                <button class="btn btn-danger itemOverviewFilterRemove" onclick="$('#btn_resetform').click();"><i class="fa fa-remove"></i> &nbsp; Remove filters</button>
+
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<br />
+
+<div class="activity-overview generic help-text animated bounce itemOverviewFilterRemove">
+    <i class="fa fa-info-circle"></i>
+    <p>
+        Your view has been filtered using your <a href="#" data-toggle="modal" data-target="#app-trader-item-filters">specified criteria</a>. You can reset your display
+        using the <em>Remove filters</em> button above.
+    </p>
+</div>
+
+<table class="datatable table-hover" id="tb_trader_items" style="width: 100%;">
+    <thead>
+        <tr>
+            <th data-priority="3" style="width: 90px;"></th>
+            <th data-priority="1">Item</th>
+            <th data-priority="1">SKU</th>
+            <th data-priority="1">Barcode</th>
+            <th data-priority="1">Type</th>
+            <th data-priority="3">Group</th>
+            <th style="width:150px !important" data-priority="3">Description</th>
+            <th data-priority="3">Primary vendor(s)</th>
+            <th data-priority="3">Additional</th>
+            <th data-priority="1">Active in location</th>
+            <th data-priority="1"></th>
+        </tr>
+    </thead>
+    <tbody>
+    </tbody>
+</table>
+
+<div class="modal fade left" id="app-trader-item-additional" role="dialog" aria-labelledby="app-trader-item-additional"></div><!-- /.modal -->
+
+<div class="modal fade left" id="app-trader-item-description" role="dialog" aria-labelledby="app-trader-item-description"></div>
+<div class="modal right fade" id="app-trader-item-filters" role="dialog" aria-labelledby="app-trader-item-filters">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Filter Items &amp; Products</h5>
+            </div>
+            <div class="modal-body">
+
+                <div class="row">
+                    <div class="col-xs-12">
+                        <form>
+                            <div class="well custom" style="padding-bottom: 5px;">
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="groups">Filter by Group(s)</label>
+                                            <select name="groups" id="itemoverview-filter-group" class="form-control checkmulti" multiple>
+                                                @foreach (var traderGroup in traderGroups)
+                                                {
+                                                    <option value="@traderGroup.Id">@traderGroup.Name</option>
+                                                }
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-lg-6">
+                                        <div class="form-group">
+                                            <label for="group">Types</label>
+                                            <select id="itemoverview-filter-type" name="group" class="form-control checkmulti" multiple>
+                                                <option value="0">Items I Buy</option>
+                                                <option value="1">Items I Sell</option>
+                                                <option value="2">Items I Buy &amp; Sell</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-xs-12 col-lg-6">
+                                        <div class="form-group">
+                                            <label for="brands">Brands 000</label>
+                                            <select name="brands" id="itemoverview-filter-brand" class="form-control checkmulti" multiple>
+                                                @foreach (var item in additionals.Where(q => q.Type == AdditionalInfoType.Brand))
+                                                {
+                                                    <option value="@item.Id">@item.Name</option>
+                                                }
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-lg-6">
+                                        <div class="form-group">
+                                            <label for="group">Needs fulfilled</label>
+                                            <select id="itemoverview-filter-need" name="group" class="form-control checkmulti" multiple>
+                                                @foreach (var item in additionals.Where(q => q.Type == AdditionalInfoType.Need))
+                                                {
+                                                    <option value="@item.Id">@item.Name</option>
+                                                }
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-lg-6">
+                                        <div class="form-group">
+                                            <label for="group">Rating</label>
+                                            <select name="rating" id="itemoverview-filter-rating" class="form-control checkmulti" multiple>
+                                                @foreach (var item in additionals.Where(q => q.Type == AdditionalInfoType.QualityRating))
+                                                {
+                                                    <option value="@item.Id">@item.Name</option>
+                                                }
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-lg-6">
+                                        <div class="form-group">
+                                            <label for="tags">Additional tags</label>
+                                            <select name="tags" id="itemoverview-filter-tag" class="form-control checkmulti" multiple>
+                                                @foreach (var item in additionals.Where(q => q.Type == AdditionalInfoType.ProductTag))
+                                                {
+                                                    <option value="@item.Id">@item.Name</option>
+                                                }
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-lg-6">
+                                        <div class="form-group">
+                                            <label for="ActiveInLocation">Active in location</label>
+                                            <select id="itemoverview-filter-activeinlocation" name="ActiveInLocation" class="form-control select2" style="width: 100%;" tabindex="-1" aria-hidden="true">
+                                                <option value="1" selected="">Show all</option>
+                                                <option value="2">Active only</option>
+                                                <option value="3">Inactive only</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button type="reset" id="btn_resetform" class="btn btn-danger" onclick="setDefaultFilter(false)">Reset</button>
+                            <button type="button" class="btn btn-success" onclick="applyItemOverviewFilter()" data-dismiss="modal">Apply filters</button>
+                        </form>
+                    </div>
+                </div>
+
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+<script src="~/Content/DesignStyle/js/bootstrap-multiselect.min.js"></script>
+
+
+@if (callBack)
+{
+    <script>
+        setDefaultFilter(true);
+        $(".image-pop").fancybox({
+            beforeLoad: function () {
+                var el, id = $(this.element).data('title-id');
+
+                if (id) {
+                    el = $('#' + id);
+
+                    if (el.length) {
+                        this.title = el.html();
+                    }
+                }
+            },
+            padding: 0
+        });
+        FilterDataItemOverViewByServerSide();
+        $("#search_dt").keyup(delay(function () {
+            CallBackFilterDataItemOverViewServeSide();
+        },
+            1000));
+
+        $('#itemoverview-filter-activeinlocation').select2();
+        $(".checkmulti").multiselect({
+            includeSelectAllOption: false,
+            enableFiltering: false,
+            buttonWidth: '100%',
+            maxHeight: 400,
+            enableClickableOptGroups: true
+        });
+
+        // ----------------------------------------
+        //         EXPORT FUNCTIONALITY
+        // ----------------------------------------
+        function GetDataTableContentExport(exportType = 1) {
+            $.LoadingOverlay("show");
+
+            //Get table params
+            var params = $('#tb_trader_items').DataTable().ajax.params();
+            console.log(params, "params");
+
+            //init params
+            var _parameter = {
+                ...params,
+                "export": exportType
+            };
+
+            $.ajax({
+                type: 'GET',
+                url: '/Report/GetTraderListItemTableContentExport',
+                dataType: 'json',
+                data: _parameter,
+                success: function (response) {
+                    if (response.result == true) {
+                        console.log(response, 'response');
+                        window.location.href = response.Object;
+                        cleanBookNotification.success("Export downloaded successfully!", "Qbicles");
+                    }
+                    $.LoadingOverlay("hide");
+                },
+                error: function (err) {
+                    console.log(err, 'error');
+                    $.LoadingOverlay("hide");
+                }
+            });
+        }
+
+
+    </script>
+}

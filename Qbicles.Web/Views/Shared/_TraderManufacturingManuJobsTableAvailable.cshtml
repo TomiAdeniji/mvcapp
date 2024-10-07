@@ -1,0 +1,189 @@
+﻿@using Qbicles.Models.Trader;
+@{
+    var wGroups = (List<TraderGroup>)ViewBag.WorkGroups;
+}
+<style>
+    .dataTables_filter {
+        display: none;
+    }
+</style>
+
+<div class="well custom" style="padding-bottom: 5px;">
+    <input type="hidden" value="@ViewBag.LocationId" id="available-location-id" />
+    <div class="row">
+        <div class="col-xs-12 col-sm-6 col-lg-4">
+            <div class="form-group">
+                <label for="search_dt">Search items</label>
+                <input type="text" name="search_dt" id="search_item_list" class="form-control" placeholder="Search for...">
+            </div>
+        </div>
+        <div class="col-xs-12 col-sm-6 col-lg-3">
+            <div class="form-group">
+                <label for="group">Filter groups</label>
+                <select name="group" id="workgroup_item_list" onchange="onFilterWorkgroupManuAvai()" class="form-control select2" style="width: 100%;" data-placeholder="Display groups">
+                    <option value="0" selected>Show all groups</option>
+                    @foreach (var item in wGroups)
+                    {
+                        <option value="@item.Id">@item.Name</option>
+                    }
+                </select>
+            </div>
+        </div>
+        <div class="col-xs-12 col-sm-6 col-lg-5">
+            <label>Options</label>
+            <br />
+            <div class="form-group">
+                <div class="btn-group options">
+                    <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        <i class="fa fa-sliders"></i> &nbsp; Manage display
+                    </button>
+                    <ul class="dropdown-menu primary manage-columns-available v2">
+                        <li><label><input type="checkbox" data-column="1" checked> Item</label></li>
+                        <li><label><input type="checkbox" data-column="2" checked> Group</label></li>
+                        <li><label><input type="checkbox" data-column="3" checked> Description</label></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<br />
+<div id="manujob_available">
+    <table class="datatable table-striped table-hover" id="community-list-abailable" style="width: 100%;" data-order='[[1, "asc"]]'>
+        <thead>
+            <tr>
+                <th data-priority="3" style="width: 90px;" data-orderable="false"></th>
+                <th data-priority="1">Item</th>
+                <th data-priority="3">Group</th>
+                <th data-priority="3">Description</th>
+                <th data-priority="1" data-orderable="false">Options</th>
+            </tr>
+        </thead>
+        <tbody>
+            
+        </tbody>
+    </table>
+</div>
+
+
+
+
+<script>
+
+    $('#workgroup_item_list').select2();
+
+    $("#search_item_list").keyup(searchThrottle(function () {
+        $("#community-list-abailable").DataTable().search($(this).val()).draw();
+    }));
+    function searchThrottle(f, delay) {
+        var timer = null;
+        return function () {
+            var context = this, args = arguments;
+            clearTimeout(timer);
+            timer = window.setTimeout(function () {
+                f.apply(context, args);
+            },
+                delay || 800);
+        };
+    }
+    $('.manage-columns-available input[type="checkbox"]').on('change', function () {
+        var table = $('#community-list-abailable').DataTable();
+        var column = table.column($(this).attr('data-column'));
+        column.visible(!column.visible());
+    });
+    $('.manage-columns-available').addClass('manage-columns');
+
+
+    function onFilterWorkgroupManuAvai() {
+        $("#community-list-abailable").DataTable().ajax.reload(); //Reload data
+    }
+    $(document).ready(function () {
+        filterJournalEntries();
+    });
+
+    function filterJournalEntries() {
+        
+        $("#community-list-abailable")
+            .on('processing.dt', function (e, settings, processing) {
+                $('#processingIndicator').css('display', 'none');
+                if (processing && $('.loadingoverlay').length === 0) {
+                    $(e.currentTarget).LoadingOverlay("show");
+                } else {
+                    $(e.currentTarget).LoadingOverlay("hide", true);
+                }
+            })
+            .DataTable({
+                "destroy": true,
+                "dom": '<"top"fl<"clear">>rt<"bottomtable"ip<"clear">>',
+                "processing": true,
+                "serverSide": true,
+                "info": false,
+                "stateSave": false,
+                "bLengthChange": true,
+                "paging": true,
+                "searching": false,
+                "responsive": true,
+                "scrollX": false,
+                "autoWidth": true,
+                "deferLoading": 30,
+                "pageLength": 10,
+                "lengthMenu": [[10, 20, 50, 100], [10, 20, 50, 100]],
+                "ajax": {
+                    "url": '/Manufacturing/GetDataManuJoAvailable',
+                    "type": 'POST',
+                    "data": function (d) {
+                        
+                        return $.extend({}, d, {
+                            "locationId": $("#available-location-id").val(),
+                            "keyword": $("#search_item_list").val(),
+                            "groupId": $("#workgroup_item_list").val()
+                        });
+                    },
+                    "dataSrc": function (data) {
+                        //$("#total-journals").text(data.recordsTotal);
+                        return data.data;
+                    }
+                },
+                "columns": [{
+                    data: null,
+                    orderable: false,
+                    width: "150px",
+                    render: function (value, type, row) {
+                        var str = "<div class='table-avatar' style='background-image: url(\"" + row.ImageUri + "\");'></div>";
+                        return str;
+                    }
+                },
+                {
+                    data: "Name",
+                    orderable: true
+                },
+                {
+                    data: "Group",
+                    orderable: true
+                },
+                {
+                    data: "Description",
+                    orderable: true
+                },
+                {
+                    data: null,
+                    orderable: false,
+                    width: "150px",
+                    render: function (value, type, row) {
+                        var str = "<button class='btn btn-success' data-toggle='modal' onclick='addEditManufacturing(0," + row.Id + ")' data-target='#app-trader-inventory-manufacturing'><i class='fa fa-hammer'></i> &nbsp; Assemble</button>";
+                        return str;
+                    }
+                },
+                ],
+                "drawCallback": function (settings) {
+                    //console.log('setting', settings);
+                },
+                "initComplete": function (settings, json) {
+                    $('#community-list-abailable').DataTable().ajax.reload();
+                },
+                "order": [[1, "asc"]]
+            });
+    };
+</script>

@@ -1,0 +1,184 @@
+﻿@using Qbicles.Models.SalesMkt;
+@{
+    var _lstAreas = (List<Area>)ViewBag.Areas;
+    var Criterias = (List<CustomCriteriaDefinition>)ViewBag.Criterias;
+}
+@model Segment
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">@(Model != null && Model.Id > 0 ? "Edit Customer Segment" : "Add a Customer Segment")</h5>
+            </div>
+            <div class="modal-body">
+                <form id="frm-segment"  enctype="multipart/form-data">
+                    <div class="row">
+                        <div class="col-xs-12">
+                            <ul id="tabSegment" class="app_subnav admintabs" style="padding-top: 0;">
+                                <li class="active"><a href="#segment-1" data-toggle="tab">Overview</a></li>
+                                <li><a href="#segment-2" data-toggle="tab" style="cursor:not-allowed;pointer-events:none;">Criteria</a></li>
+                                <li><a href="#segment-3" data-toggle="tab" style="cursor:not-allowed;pointer-events:none;">Results</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                    <br />
+                    <div class="tab-content">
+                        <!-- Overview -->
+                        <div class="tab-pane fade in active" id="segment-1">
+                            <div class="well custom">
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="segment">Name your new segment</label>
+                                            <input required type="text" name="Name" value="@(Model!=null?Model.Name:"")" class="form-control">
+                                            <input type="hidden" name="Id" value="@(Model!=null?Model.Id:0)" />
+
+                                            <input type="hidden" id="sm-segment-object-key" name="mediaObjectKey" />
+                                            <input type="hidden" id="sm-segment-object-name" name="mediaObjectName" />
+                                            <input type="hidden" id="sm-segment-object-size" name="mediaObjectSize" />
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group" style="margin: 0;">
+                                            <label for="FeaturedImg">Featured image</label>
+                                            <input id="sm-segment-upload-media" type="file" name="FeaturedImg" @(Model!=null&&(Model.FeaturedImageUri)!=null?"":"required") class="form-control">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="segment">Segment type</label>
+                                            <select name="Type" id="segmentType" onchange="$('#segment-1 select[name=Type]').valid();" required class="form-control select2 select2-hidden-accessible" style="width: 100%;" tabindex="-1" aria-hidden="true">
+                                                <option value=""></option>
+                                                <option value="1" @(Model != null && Model.Type == SegmentType.Behavioural ? "selected" : "")>Behavioural</option>
+                                                <option value="2" @(Model != null && Model.Type == SegmentType.Demographic ? "selected" : "")>Demographic</option>
+                                                <option value="3" @(Model != null && Model.Type == SegmentType.Geographic ? "selected" : "")>Geographic</option>
+                                                <option value="4" @(Model != null && Model.Type == SegmentType.Psychographic ? "selected" : "")>Psychographic</option>
+                                            </select>
+                                            <label id="segmentType-error" class="error" for="segmentType" style="display: none;">This field is required.</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="Areas">Target specific Area(s)</label>
+                                            @{
+                                                var areas = Model != null ? Model.Areas : null;
+                                            }
+                                            <select name="Areas" onchange="$('#segment-1 select[name=Areas]').valid();" class="form-control checkmulti" multiple="" style="width: 100%;display:none">
+                                                @foreach (var item in _lstAreas)
+                                                {
+                                                    <option value="@item.Id" @(areas != null && areas.Any(s => s.Id == item.Id) ? "selected" : "")>@item.Name</option>
+                                                }
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-xs-12">
+                                        <div class="form-group" style="margin: 0;">
+                                            <label for="Summary">Summary</label>
+                                            <textarea required name="Summary" class="form-control" style="height: 80px;">@(Model!=null?Model.Summary:"")</textarea>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <br />
+                            <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                            <a href="#segment-2" class="btn btn-success" onclick="if ($('#frm-segment').valid()) { $('#tabSegment a[href=\'#segment-2\']').tab('show'); } else { return false; }">Next &nbsp; <i class="fa fa-angle-right"></i></a>
+                        </div>
+                        <!-- END Overview -->
+                        <!-- Criteria -->
+                        <div class="tab-pane fade" id="segment-2">
+                            <div class="activity-overview generic help-text animated bounce">
+                                <i class="fa fa-info-circle"></i>
+                                <h5 style="margin: 0; padding: 0 0 10px 0;">Segmenting Customers</h5>
+                                <p>Specify criteria below to build a list of matching Contacts. These people can then be assigned to your new Segment.</p>
+                            </div>
+                            <div class="well custom">
+                                <div id="more-criteria-content">
+                                    @if (Model != null)
+                                    {
+                                        var clauses = Model.Clauses;
+                                        var index = 0;
+                                        foreach (var item in clauses)
+                                        {
+                                            var _criteria = item.CriteriaDefinition;
+                                            var _cusoptions = item.Options;
+                                            <div class="row criteria-el">
+                                                <div class="col-xs-12 col-sm-4">
+                                                    <div class="form-group">
+                                                        <select name="Criterias[@index].CriteriaId" required onchange="SocialLoadOptionVal(this,'slCriterias@(index)');$(this).valid()" data-placeholder="Choose criteria" class="form-control select2" style="width: 100%;">
+                                                            <option value=""></option>
+                                                            @foreach (var cr in Criterias)
+                                                            {
+                                                                <option value="@cr.Id" @(_criteria.Id == cr.Id ? "selected" : "")>@cr.Label</option>
+                                                            }
+                                                        </select>
+                                                        <label id="Criterias[@index].CriteriaId-error" class="error" for="Criterias[@index].CriteriaId" style="display:none">This field is required.</label>
+                                                    </div>
+                                                </div>
+                                                <div class="col-xs-12 col-sm-8">
+                                                    <div class="form-group">
+                                                        <select name="Criterias[@index].CriteriaValues" required id="slCriterias@(index)" onchange="$(this).valid();" class="form-control checkmulti" multiple style="width: 100%;display:none">
+                                                            @if (_criteria != null)
+                                                            {
+                                                                foreach (var co in _criteria.CustomOptions)
+                                                                {
+                                                                    <option value="@co.Id" @(_cusoptions != null && _cusoptions.Any(s => s.Id == co.Id) ? "selected" : "")>@co.Label</option>
+                                                                }
+                                                            }
+                                                        </select>
+                                                        <label id="slCriterias@(index).CriteriaValues-error" class="error" for="slCriterias@(index)" style="display:none">This field is required.</label>
+                                                    </div>
+                                                </div>
+                                                <div class="col-xs-12">
+                                                    @if (index > 0)
+                                                    {
+                                                        <label class="label label-lg label-primary" style="display: inline-block; margin-bottom: 15px;">AND</label>
+                                                    }
+                                                    <a href="#" onclick="$(this).parent().parent().remove();" class="label label-lg label-danger" style="display: inline-block; margin-bottom: 15px;"><i class="fa fa-trash"></i></a>
+                                                </div>
+                                            </div>
+                                            index++;
+                                        }
+                                    }
+                                </div>
+                                <br />
+                                <button class="btn btn-info" data-toggle="dropdown" onclick="SocialMoreCriteria();">
+                                    <i class="fa fa-plus"></i> &nbsp; Add more criteria
+                                </button>
+
+                            </div>
+
+                            <br />
+                            <a href="#segment-1" class="btn btn-warning" onclick="$('#tabSegment a[href=\'#segment-1\']').tab('show');"><i class="fa fa-angle-left"></i> &nbsp; Previous</a>
+                            @if (Model != null)
+                            {
+                                var jsonSerialiser = new System.Web.Script.Serialization.JavaScriptSerializer();
+                                var sContacts= jsonSerialiser.Serialize((Model.Contacts.Any()? Model.Contacts.Select(s=>s.Id).ToArray():null));
+                                <a href="#segment-3" id="btnContactsGenerateList" class="btn btn-success" onclick="SocialGenerateList(@sContacts);">Generate list &nbsp; <i class="fa fa-angle-right"></i></a>
+                            }
+                            else
+                            {
+                                <a href="#segment-3" id="btnContactsGenerateList" class="btn btn-success" onclick="SocialGenerateList([]);">Generate list &nbsp; <i class="fa fa-angle-right"></i></a>
+                            }
+
+                        </div>
+                        <!-- END Overview -->
+                        <!-- Results -->
+                        <div class="tab-pane fade" id="segment-3">
+                            <br />
+                            <div id="lst-contact-content"></div>
+                            <br />
+                            <a href="#segment-2" data-toggle="tab" class="btn btn-warning btnPrevious"><i class="fa fa-angle-left"></i> &nbsp; Previous</a>
+                            <a class="btn btn-success" onclick="ProcessSegmentAdd()">Save changes</a>
+                        </div>
+                        <!-- END Attachments -->
+
+                    </div>
+                </form>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->

@@ -1,0 +1,67 @@
+﻿@using Qbicles.Models.Trader
+@using Qbicles.BusinessRules
+@model TraderPurchase
+@{
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+}
+<div class="modal-dialog modal-xl" role="document">
+    <div class="modal-content">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+            <h5 class="modal-title">Items in your Purchase</h5>
+        </div>
+        <div class="modal-body">
+
+            <table class="datatable table-striped table-hover" style="width: 100%;" data-order='[[1, "asc"]]'>
+                <thead>
+                    <tr>
+                        <th style="width: 40px;" data-orderable="false"></th>
+                        <th data-priority="1">Item</th>
+                        <th data-priority="1">Unit</th>
+                        <th data-priority="2">Quantity</th>
+                        <th data-priority="2">Unit price <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                        <th data-priority="3">Discount</th>
+                        <th data-priority="2">Tax <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                        <th data-priority="3">Total <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @{
+                        foreach (var item in Model.PurchaseItems)
+                        {
+                            string taxrateName = "0";
+                            if (item.Taxes != null)
+                            {
+                                taxrateName = item.StringTaxRates(currencySettings);
+                            }
+                            <tr>
+                                <td>
+                                    <div class="table-avatar" style="background-image: url('@api@item.TraderItem.ImageUri');">&nbsp;</div>
+                                </td>
+                                <td>@item.TraderItem.Name</td>
+                                <td>
+                                    @if (item.Unit != null)
+                                    {
+                                        @item.Unit.Name
+                                    }
+
+                                </td>
+                                <td>@item.Quantity.ToDecimalPlace(currencySettings)</td>
+                                <td>@item.CostPerUnit.ToDecimalPlace(currencySettings)</td>
+                                <td>@item.Discount.ToDecimalPlace(currencySettings)%</td>
+                                <td class="row_taxname">
+                                    @Html.Raw(taxrateName)
+                                </td>
+                                <td>@item.Cost.ToDecimalPlace(currencySettings)</td>
+                            </tr>
+                        }
+                    }
+
+                </tbody>
+            </table>
+
+        </div>
+    </div><!-- /.modal-content -->
+</div>

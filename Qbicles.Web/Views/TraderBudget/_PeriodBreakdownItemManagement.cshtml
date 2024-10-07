@@ -1,0 +1,623 @@
+﻿@using Qbicles.BusinessRules
+@using Qbicles.Models.Trader.Budgets;
+@model List<ItemProjection>
+@{
+    var type = (int)ViewBag.Type;
+    var scenarioItem = Model.FirstOrDefault()?.BudgetScenarioItem ?? new BudgetScenarioItem();
+    var reportingPeriod = Model.FirstOrDefault()?.BudgetScenarioItem?.BudgetScenarioItemGroup?.BudgetScenario?.ReportingPeriod ?? ReportingPeriodEnum.Monthly;
+
+
+
+    var itemType = "";
+    var reportingPeriodLable = "";
+    switch (reportingPeriod)
+    {
+        case ReportingPeriodEnum.Weekly:
+            reportingPeriodLable = "Week";
+            break;
+        case ReportingPeriodEnum.Monthly:
+            reportingPeriodLable = "Month";
+            break;
+        case ReportingPeriodEnum.Quarterly:
+            reportingPeriodLable = "Quarter";
+            break;
+    }
+    if (type == 1)
+    {
+        itemType = "Item I Buy";
+    }
+    else if (type == 2)
+    {
+        itemType = "Item I Sell";
+    }
+    else
+    {
+        itemType = "Item I Buy & Sell";
+    }
+
+    var purchaseQuantity = scenarioItem.PurchaseQuantity;
+    var purchaseExpenditureQuantity = Model.Sum(p => p.ExpenditureQuantity);
+
+    var purchaseAllocated = scenarioItem.PurchaseQuantity * scenarioItem.AveragePurchaseCost;
+    var purchaseExpenditureValue = Model.Sum(p => p.ExpenditureValue);
+
+
+    var saleQuantity = scenarioItem.SaleQuantity;
+    var saleExpenditureQuantity = Model.Sum(p => p.RevenueQuantity);
+
+    var saleAllocated = scenarioItem.SaleQuantity * scenarioItem.AverageSalePrice;
+    var saleExpenditureValue = Model.Sum(p => p.RevenueValue);
+
+
+
+    //var quantityTotal = (int)(purchaseQuantity + saleQuantity);
+
+    //var amountActual = purchaseAllocated + saleAllocated;
+
+    var startingQuantity = scenarioItem.StartingQuantity?.Quantity ?? 0;
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+}
+
+
+<div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <h5 class="modal-title">Provide period breakdown for item</h5>
+        </div>
+        <div class="modal-body">
+
+            <input hidden="" id="scenario-item-id" value="@scenarioItem.Id" />
+            <div class="app_upper_dash text-center">
+                <div class="row">
+                    <div class="col-xs-12 col-sm-7">
+                        <div class="stat_label">
+                            <span>Item</span>
+                            <h3>@scenarioItem.Item.Name<br /><small style="font-style: italic;">@itemType</small></h3>
+                        </div>
+                    </div>
+                    <div class="col-xs-12 col-sm-5">
+                        <div class="stat_label">
+                            <span>Starting quantity</span>
+                            <h3>@startingQuantity.ToDecimalPlace(currencySettings)</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+
+            <br />
+            @{
+                if (type == 1)
+                {
+
+                    <div class="row">
+                        <div class="col-md-6">
+
+                            <div class="well custom">
+
+                                <table class="table table-borderless" style="margin-bottom: 0; font-size: 14px !important; font-family: 'Roboto' !important;">
+                                    <thead>
+                                        <tr>
+                                            <th></th>
+                                            <th>Allocated</th>
+                                            <th>Total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td><strong>Quantity</strong></td>
+                                            <td><span class="calc-quantity-purchase">@((purchaseQuantity + saleQuantity).ToDecimalPlace(currencySettings))</span></td>
+                                            <td>@((purchaseExpenditureQuantity + saleExpenditureQuantity).ToDecimalPlace(currencySettings))</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Amount</strong></td>
+                                            <td><span class="calc-amount-purchase">@((purchaseAllocated + saleAllocated).ToDecimalPlace(currencySettings))</span></td>
+                                            <td>@((purchaseExpenditureValue + saleExpenditureValue).ToDecimalPlace(currencySettings))</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+
+                            </div>
+
+                        </div>
+                    </div>
+                }
+                else if (type == 2)
+                {
+
+                    <div class="row">
+                        <div class="col-md-6">
+
+                            <div class="well custom">
+
+                                <table class="table table-borderless" style="margin-bottom: 0; font-size: 14px !important; font-family: 'Roboto' !important;">
+                                    <thead>
+                                        <tr>
+                                            <th></th>
+                                            <th>Allocated</th>
+                                            <th>Total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td><strong>Quantity</strong></td>
+                                            <td><span class="calc-quantity-sale">@((purchaseQuantity + saleQuantity).ToDecimalPlace(currencySettings))</span></td>
+                                            <td>@((purchaseExpenditureQuantity + saleExpenditureQuantity).ToDecimalPlace(currencySettings))</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Amount</strong></td>
+                                            <td><span class="calc-amount-sale">@((purchaseAllocated + saleAllocated).ToDecimalPlace(currencySettings))</span></td>
+                                            <td>@((purchaseExpenditureValue + saleExpenditureValue).ToDecimalPlace(currencySettings))</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+
+                            </div>
+
+                        </div>
+                    </div>
+                }
+                else
+                {
+
+                    <div class="row">
+                        <div class="col-xs-12 col-md-6">
+
+                            <h5>I Buy...</h5>
+                            <div class="well custom">
+                                <table class="table table-borderless" legend="Buy" style="margin-bottom: 0; font-size: 14px !important; font-family: 'Roboto' !important;">
+                                    <thead>
+                                        <tr>
+                                            <th></th>
+                                            <th>Allocated</th>
+                                            <th>Total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td><strong>Quantity</strong></td>
+                                            <td><span class="calc-quantity-purchase">@purchaseQuantity.ToDecimalPlace(currencySettings)</span></td>
+                                            <td>@purchaseExpenditureQuantity.ToDecimalPlace(currencySettings)</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Amount</strong></td>
+                                            <td><span class="calc-amount-purchase">@purchaseAllocated.ToDecimalPlace(currencySettings)</span></td>
+                                            <td>@purchaseExpenditureValue.ToDecimalPlace(currencySettings)</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                        </div>
+                        <div class="col-xs-12 col-md-6">
+
+                            <h5>I Sell...</h5>
+                            <div class="well custom">
+                                <table class="table table-borderless" legend="Buy" style="margin-bottom: 0; font-size: 14px !important; font-family: 'Roboto' !important;">
+                                    <thead>
+                                        <tr>
+                                            <th></th>
+                                            <th>Allocated</th>
+                                            <th>Total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td><strong>Quantity</strong></td>
+                                            <td><span class="calc-quantity-sale">@saleQuantity.ToDecimalPlace(currencySettings)</span></td>
+                                            <td>@saleExpenditureQuantity.ToDecimalPlace(currencySettings)</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Amount</strong></td>
+                                            <td><span class="calc-amount-sale">@saleAllocated.ToDecimalPlace(currencySettings)</span></td>
+                                            <td>@saleExpenditureValue.ToDecimalPlace(currencySettings)</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                        </div>
+                    </div>
+                }
+            }
+
+
+
+
+
+
+
+            <br />
+
+            <table id="projection-item-table" class="datatable table-striped table-hover" style="width: 100%;">
+                <thead>
+                    <tr>
+                        <th>@reportingPeriodLable</th>
+                        <th class="purchase-col-qty" data-orderable="false" style="width: 150px;">Purchase quantity</th>
+                        <th class="purchase-col-cost" data-orderable="false">Purchase amount <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                        <th hidden="">Purchase price</th>
+                        <th class="sale-col-qty" data-orderable="false" style="width: 150px;">Sale quantity</th>
+                        <th class="sale-col-price" data-orderable="false">Sale amount <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                        <th hidden="">Sale price</th>
+                        <th data-orderable="false">Cumulative</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @{
+                        var index = -1;
+                        decimal cumulative = 0;
+                        foreach (var projection in Model)
+                        {
+                            index++;
+                            //purchase as a positive +
+                            //sale as a negative -
+                            var cumulativePurchase = projection.ExpenditureQuantity;
+                            var cumulativeSale = projection.RevenueQuantity;
+                            if (index == 0)
+                            {
+                                switch (type)
+                                {
+                                    case 1:
+                                        cumulative = startingQuantity + cumulativePurchase;
+                                        break;
+
+                                    case 2:
+                                        cumulative = startingQuantity + cumulativeSale;
+                                        break;
+
+                                    case 3:
+                                        cumulative = startingQuantity + cumulativePurchase - cumulativeSale;
+                                        break;
+                                }
+                                //cumulative = (purchase * startingQuantity + cumulativePurchase) - (sale * startingQuantity + cumulativeSale);
+
+                            }
+                            else
+                            {
+                                switch (type)
+                                {
+                                    case 1:
+                                        cumulative = cumulative + cumulativePurchase;
+                                        break;
+
+                                    case 2:
+                                        cumulative = cumulative + cumulativeSale;
+                                        break;
+
+                                    case 3:
+                                        cumulative = cumulative + cumulativePurchase - cumulativeSale;
+                                        break;
+                                }
+
+                            }
+
+                            <tr>
+                                <td data-order="0" class="projection-id">
+                                    @projection.ReportingPeriod.Name
+                                    <input hidden="" id="projection-@projection.Id" value="@projection.Id" />
+                                </td>
+                                <td class="purchase-qty purchase-col-qty">
+                                    <input id="purchase-qty-@projection.Id" onchange="ChangeQuantity(@projection.Id,'purchase')" type="number" class="form-control" min="0" style="width: 100%;"
+                                           value="@projection.ExpenditureQuantity">
+                                </td>
+                                <td class="purchase-amount purchase-col-cost">
+                                    <span id="purchase-amount-@projection.Id">@projection.ExpenditureValue.ToDecimalPlace(currencySettings)</span>
+                                    <input hidden="" id="purchase-amount-value-@projection.Id" value="@projection.ExpenditureValue" />
+                                </td>
+                                <td hidden="">
+                                    <input hidden="" id="price-purchase-@projection.Id" value="@projection.BudgetScenarioItem.AveragePurchaseCost" />
+                                </td>
+                                <td class="sale-qty sale-col-qty">
+                                    <input id='sale-qty-@projection.Id' onchange="ChangeQuantity(@projection.Id,'sale')" type="number" class="form-control" min="0" style="width: 100%;"
+                                           value="@projection.RevenueQuantity">
+                                </td>
+                                <td class="sale-amount sale-col-price">
+                                    <span id="sale-amount-@projection.Id">@projection.RevenueValue.ToDecimalPlace(currencySettings)</span>
+                                    <input hidden="" id="sale-amount-value-@projection.Id" value="@projection.RevenueValue" />
+                                </td>
+                                <td hidden="">
+                                    <input hidden="" id="price-sale-@projection.Id" value="@projection.BudgetScenarioItem.AverageSalePrice" />
+                                </td>
+                                <td>
+                                    <span id="cumulative-@index">
+                                        @cumulative.ToDecimalPlace(currencySettings)
+                                    </span>
+                                </td>
+                            </tr>
+                        }
+                    }
+
+                </tbody>
+            </table>
+
+
+            <br />
+            <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+            @*<button id="btn-period-confirm" class="btn btn-success" data-dismiss="modal" onclick="$('.state').toggleClass('fa-calendar').toggleClass('fa-check');ConfirmPeriodChange()">Confirm</button>*@
+            <button id="btn-period-confirm" class="btn btn-success" onclick="ConfirmPeriodChange()">Confirm</button>
+
+        </div>
+    </div><!-- /.modal-content -->
+</div>
+
+
+<script>
+
+
+    var $table;
+
+   $(document).ready(function() {
+       var colVisible = [];
+       if ('@type' === "1") {
+           colVisible = [4,5];
+       } else if ('@type' === "2") {
+           colVisible = [1,2];
+       } else {
+           colVisible = [];
+       }
+       $table = $("#projection-item-table").DataTable({
+           responsive: true,
+           "lengthChange": true,
+           "pageLength": 12,
+           "columnDefs": [
+               {
+                   "targets": colVisible,
+                   "visible": false
+               }
+           ],
+           "order": []
+       });
+
+   });
+
+    ChangeQuantity = function (id, col) {
+
+           //recal amount
+
+           var qty = $("#purchase-qty-" + id).val();
+           var amount = @scenarioItem.AveragePurchaseCost;
+           var value = qty * amount;
+           $("#purchase-amount-" + id).text((value).toFixed($decimalPlace).replace(/\d(?=(\d{3})+\.)/g, '$&,'));
+           $("#purchase-amount-value-" + id).val(value);
+
+           qty = $("#sale-qty-" + id).val();
+           amount = @scenarioItem.AverageSalePrice;
+           value = qty * amount;
+           $("#sale-amount-" + id).text((value).toFixed($decimalPlace).replace(/\d(?=(\d{3})+\.)/g, '$&,'));
+           $("#sale-amount-value-" + id).val(value);
+
+        var totalQtyPurchase = 0; var totalAmountPurchase = 0;
+        var totalQtySale = 0; var totalAmountSale = 0;
+
+           var items = $table.$("tr");
+           //var items = $('#projection-item-table tbody tr');
+           var index = -1;
+           var cumulative = 0;
+           if (items.length > 0) {
+
+
+               for (var i = 0; i < items.length; i++) {
+                   var purchaseQty = "0";
+                   var purchaseAmount = "0";
+
+                   var saleQty = "0";
+                   var saleAmount = "0";
+
+                   if ('@type' === "1") {
+                       purchaseQty = $($(items[i]).find('td.purchase-qty input')).val();
+                       purchaseAmount = $($(items[i]).find('td.purchase-amount input')).val();
+                   } else if ('@type' === "2") {
+                       saleQty = $($(items[i]).find('td.sale-qty input')).val();
+                       saleAmount = $($(items[i]).find('td.sale-amount input')).val();
+                   } else {
+                       purchaseQty = $($(items[i]).find('td.purchase-qty input')).val();
+                       purchaseAmount = $($(items[i]).find('td.purchase-amount input')).val();
+
+                       saleQty = $($(items[i]).find('td.sale-qty input')).val();
+                       saleAmount = $($(items[i]).find('td.sale-amount input')).val();
+                   }
+                   index++;
+                   //purchase as a positive +
+                   //sale as a negative -
+                   var cumulativePurchase = parseInt(purchaseQty);
+                   var cumulativeSale = parseInt(saleQty);
+                   if (index === 0)
+                       {
+                           switch (@type)
+                           {
+                               case 1:
+                                   cumulative =  @startingQuantity + cumulativePurchase ;
+                                   break;
+
+                               case 2:
+                                   cumulative =  @startingQuantity + cumulativeSale;
+                                   break;
+
+                               case 3:
+                                   cumulative =  @startingQuantity + cumulativePurchase -  cumulativeSale;
+                                   break;
+                               }
+                           //cumulative =  @startingQuantity + cumulativePurchase -  cumulativeSale;
+                       }
+                       else
+                       {
+                           switch (@type)
+                           {
+                               case 1:
+                                   cumulative = cumulative + cumulativePurchase;
+                                   break;
+
+                               case 2:
+                                   cumulative = cumulative + cumulativeSale;
+                                   break;
+
+                               case 3:
+                                   cumulative = cumulative + cumulativePurchase - cumulativeSale;
+                                   break;
+                           }
+
+                       }
+                   $("#cumulative-" + index).text(cumulative);
+
+                   totalQtyPurchase = totalQtyPurchase + parseInt(purchaseQty);
+
+                   totalQtySale = totalQtySale + parseInt(saleQty);
+                   //var quantity = $($(items[i]).find('td.row_quantity input'));
+                   //var id = parseInt($($(items[i]).find('td.row_button input.row_id')).val());
+
+                   totalAmountPurchase = totalAmountPurchase + parseFloat(purchaseAmount);
+                   totalAmountSale = totalAmountSale + parseFloat(saleAmount);
+               }
+        }
+
+
+           var totalQtyPeriod = totalQtyPurchase + totalQtySale;
+           //var totalAmountPeriod = totalAmountPurchase + totalAmountSale;
+
+           var purchaseSaleQty =@purchaseQuantity + @saleQuantity;
+           //var purchaseSaleAllocated = @purchaseAllocated + @saleAllocated;
+
+           if (totalQtyPeriod > purchaseSaleQty) {
+               $("#btn-period-confirm").hide();
+           } else {
+               $("#btn-period-confirm").show();
+           }
+
+
+           switch (@type)
+           {
+               case 1:
+                   //Purchase
+                   $('.calc-quantity-purchase').html(totalQtyPurchase.toFixed($decimalPlace).replace(/\d(?=(\d{3})+\.)/g, '$&,'));
+                   if (totalQtyPurchase > @purchaseQuantity) {
+                       $('.calc-quantity-purchase').addClass('red');
+                   } else {
+                       $('.calc-quantity-purchase').removeClass('red');
+                   }
+
+
+                   $('.calc-amount-purchase').html(totalAmountPurchase.toFixed($decimalPlace).replace(/\d(?=(\d{3})+\.)/g, '$&,'));
+                   if (totalAmountPurchase > @purchaseAllocated) {
+                       $('.calc-amount-purchase').addClass('red');
+                   } else {
+                       $('.calc-amount-purchase').removeClass('red');
+                   }
+                   break;
+
+               case 2:
+
+                   //Sale
+                   $('.calc-quantity-sale').html(totalQtySale.toFixed($decimalPlace).replace(/\d(?=(\d{3})+\.)/g, '$&,'));
+                   if (totalQtySale > @saleQuantity) {
+                       $('.calc-quantity-sale').addClass('red');
+                   } else {
+                       $('.calc-quantity-sale').removeClass('red');
+                   }
+
+
+                   $('.calc-amount-sale').html(totalAmountSale.toFixed($decimalPlace).replace(/\d(?=(\d{3})+\.)/g, '$&,'));
+                   if (totalAmountSale > @saleAllocated) {
+                       $('.calc-amount-sale').addClass('red');
+                   } else {
+                       $('.calc-amount-sale').removeClass('red');
+                   }
+                   break;
+
+               case 3:
+                   //Purchase
+                   if(col==='purchase')
+                   {
+                       $('.calc-quantity-purchase').html(totalQtyPurchase.toFixed($decimalPlace).replace(/\d(?=(\d{3})+\.)/g, '$&,'));
+                       if (totalQtyPurchase > @purchaseQuantity) {
+                           $('.calc-quantity-purchase').addClass('red');
+                       } else {
+                           $('.calc-quantity-purchase').removeClass('red');
+                       }
+
+
+                       $('.calc-amount-purchase').html(totalAmountPurchase.toFixed($decimalPlace).replace(/\d(?=(\d{3})+\.)/g, '$&,'));
+                       if (totalAmountPurchase > @purchaseAllocated) {
+                           $('.calc-amount-purchase').addClass('red');
+                       } else {
+                           $('.calc-amount-purchase').removeClass('red');
+                       }
+                   }
+                   //Sale
+                   if (col === 'sale') {
+                       $('.calc-quantity-sale').html(totalQtySale.toFixed($decimalPlace).replace(/\d(?=(\d{3})+\.)/g, '$&,'));
+                       if (totalQtySale > @saleQuantity) {
+                           $('.calc-quantity-sale').addClass('red');
+                       } else {
+                           $('.calc-quantity-sale').removeClass('red');
+                       }
+
+
+                       $('.calc-amount-sale').html(totalAmountSale.toFixed($decimalPlace).replace(/\d(?=(\d{3})+\.)/g, '$&,'));
+                       if (totalAmountSale > @saleAllocated) {
+                           $('.calc-amount-sale').addClass('red');
+                       } else {
+                           $('.calc-amount-sale').removeClass('red');
+                       }
+                   }
+                   break;
+           }
+
+    };
+
+
+    ConfirmPeriodChange = function() {
+        var itemProjections = [];
+        var items = $table.$("tr");
+
+        if (items.length > 0) {
+
+            for (var i = 0; i < items.length; i++) {
+                var id = $($(items[i]).find('td.projection-id input')).val();
+                var purchaseQty = $($(items[i]).find('td.purchase-qty input')).val();
+                var purchaseAmount = $($(items[i]).find('td.purchase-amount input')).val();
+
+                var saleQty = $($(items[i]).find('td.sale-qty input')).val();
+                var saleAmount = $($(items[i]).find('td.sale-amount input')).val();
+                var itemProjection = {
+                    Id: id,
+                    RevenueQuantity: saleQty,
+                    RevenueValue: saleAmount,
+                    ExpenditureQuantity: purchaseQty,
+                    ExpenditureValue: purchaseAmount,
+                    BudgetScenarioItem: {
+                        Id: $("#scenario-item-id").val()
+                    }
+                };
+                itemProjections.push(itemProjection);
+            }
+        }
+
+        $.ajax({
+            async: false,
+            type: 'post',
+            url: '/TraderBudget/ConfirmPeriodChange',
+            data: { itemProjections: itemProjections },
+            dataType: 'json',
+            success: function(response) {
+
+                if (response.result) {
+                    cleanBookNotification.updateSuccess();
+                    $('.state').toggleClass('fa-calendar').toggleClass('fa-check');
+
+                    $('#app-trader-budget-item-breakdown-buysell').modal('hide');
+                } else {
+                    cleanBookNotification.error("Have an error, detail: " + response.msg, "Qbicles");
+                    return;
+                }
+            },
+            error: function(er) {
+                cleanBookNotification.error("Have an error, detail: " + response.error, "Qbicles");
+            }
+        }).always(function() {
+            LoadingOverlayEnd();
+        });
+    }
+</script>

@@ -1,0 +1,218 @@
+@using Qbicles.Models.SalesMkt;
+@model SocialCampaign
+@{
+    var setting = (Settings)ViewBag.Setting;
+    var workgroups = setting != null ? setting.WorkGroups.Where(w => w.Processes.Any(p => p.Id == 1)).ToList() : new List<SalesMarketingWorkGroup>();
+    var targetNetwork = Model.TargetNetworks;
+    var networkType = (List<NetworkType>)ViewBag.networkType;
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var brands = (List<Brand>)ViewBag.Brands;
+    var ideathemes = (List<IdeaTheme>)ViewBag.IdeaThemes;
+    if (Model.IdeaTheme != null && ideathemes != null && !ideathemes.Any(s => s.Id == Model.IdeaTheme.Id))
+    {
+        ideathemes.Add(Model.IdeaTheme);
+    }
+}
+<div class="modal-dialog modal-xl" role="document">
+    <div class="modal-content">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <h5 class="modal-title">Edit Manual Social Campaign</h5>
+        </div>
+        <div class="modal-body">
+            <div class="row">
+                <div class="col-xs-12">
+                    <ul class="app_subnav admintabs" style="padding-top: 0;">
+                        <li class="active"><a href="#social-overview" data-toggle="tab">Overview</a></li>
+                        <li><a href="#social-theme" data-toggle="tab">Theme</a></li>
+                    </ul>
+                </div>
+            </div>
+            <br />
+            <form id="frm_marketing-social-campaign_addedit" method="post" action="/SalesMarketing/SaveCampain" enctype="multipart/form-data">
+                <div class="tab-content">
+                    <!-- Overview -->
+                    <div class="tab-pane fade in active" id="social-overview">
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-4">
+                                <div class="activity-overview generic" style="padding: 20px; margin-bottom: 30px;">
+                                    <div class="form-group" style="margin: 0;">
+                                        <label for="workgroup">Assign a Workgroup to this Campaign</label>
+                                        <select id="social-campaign-workgroup" name="workgroup" class="form-control select2" style="width: 100%;" onchange="$('.preview-workgroup').show();isValidWorkgroup();" tabindex="-1" aria-hidden="true">
+                                            @foreach (var item in workgroups)
+                                            {
+                                                var sprocess = item.Processes != null && item.Processes.Count() > 0 ? string.Join("</br>", item.Processes.Select(s => s.Name).ToArray()) : "";
+                                                <option members="@item.Members.Count()" process="@sprocess" qbicleid="@(setting.SourceQbicle != null ? setting.SourceQbicle.Id: 0)" topicid="@(setting.DefaultTopic != null ? setting.DefaultTopic.Id: 0)" @(item.Id == Model.WorkGroup.Id ? "selected" : "") value="@item.Id">@item.Name</option>
+                                            }
+                                        </select>
+                                    </div>
+
+                                    <div class="preview-workgroup">
+                                        <br>
+                                        <table class="table app_specific" style="margin: 0;">
+                                            <tbody>
+                                                <tr>
+                                                    <td><h5>Process(es)</h5></td>
+                                                    <td>Create Social Media Campaigns</td>
+                                                </tr>
+                                                <tr>
+                                                    <td><h5>Members</h5></td>
+                                                    <td>11</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-8">
+                                <div class="well custom">
+                                    <div class="row">
+                                        <div class="col-xs-12">
+                                            <div class="form-group">
+                                                <label for="campaigntitle">Name your campaign</label>
+                                                <input type="text" name="Name" class="form-control" value="@Model.Name">
+                                                <input type="hidden" name="Id" value="@Model.Id" />
+                                                <input type="hidden" id="sm-social-campaign-object-key" name="mediaObjectKey" />
+                                                <input type="hidden" id="sm-social-campaign-object-name" name="mediaObjectName" />
+                                                <input type="hidden" id="sm-social-campaign-object-size" name="mediaObjectSize" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-xs-12 col-sm-6">
+                                            <div class="form-group">
+                                                <label for="resourcesfolder">Resource folder (for storing and retrieving your files) <span class="red">*</span></label>
+                                                <input type="hidden" id="CurrentFolderId" name="CurrentFolderId" value="@Model.ResourceFolder.Id" />
+                                                <select id="social-campaign-folders" name="resourcesfolder" class="form-control select2" style="width: 100%;" onchange="if($(this).val() == 0) { $('.foldername').show();AutoGenerateFolderName(); } else { $('.foldername').hide(); }"></select>
+                                            </div>
+                                        </div>
+                                        <div class="col-xs-12 col-sm-6">
+                                            <div class="form-group foldername" style="display: none;">
+                                                <label for="resourcesfolder">Enter a name for your new folder <span class="red">*</span></label>
+                                                <input type="text" id="social-newfolder-name" name="newfoldername" class="form-control" value="">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-xs-12">
+                                            <div class="form-group">
+                                                <label for="account_number">Featured image <span class="red">*</span></label>
+                                                <input @(Model?.FeaturedImageUri == null ? "required" : "") id="sm-social-campaign-upload-media" type="file" class="form-control" name="featuredimg" data-target='.featuredpreview'>
+                                            </div>
+                                            <img class="featuredpreview" src="@(api + Model.FeaturedImageUri)" alt="Your image" style="display: block; width: 100%; height: auto; margin-bottom: 30px;" />
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-xs-12">
+                                            <div class="form-group">
+                                                <label for="campaignsummary">Campaign details</label>
+                                                <textarea name="Details" class="form-control" style="height: 80px;">@Model.Details</textarea>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-xs-12">
+                                            <div class="form-group">
+                                                <label for="campaignatts">Target networks</label>
+                                                <select name="networktype" class="checkmulti" multiple style="display:none">
+                                                    @foreach (var item in networkType)
+                                                    {
+                                                        if (item.AllowedCampaignType == CampaignType.Manual || item.AllowedCampaignType == CampaignType.Both)
+                                                        {
+                                                            <option value="@item.Id" @(targetNetwork.Any(s => s.Id == item.Id) ? "selected" : "")>@(item.Name == "FaceBook" ? "Facebook" : item.Name)</option>
+                                                        }
+                                                    }
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="col-xs-12 col-sm-6">
+                                            <div class="form-group">
+                                                <label for="campaignatts">Brand</label>
+                                                <select id="slBrandCampaign" name="brandId" style="width: 100%;" onchange="SocialBrandOptionsLoad(this);" allowClear="true" class="form-control select2">
+                                                    <option value=""></option>
+                                                    @foreach (var item in brands)
+                                                    {
+                                                        <option value="@item.Id" @(Model.Brand != null && Model.Brand.Id == item.Id ? "selected" : "")>@item.Name</option>
+                                                    }
+                                                </select>
+                                                <input type="hidden" id="hdfBrandId" value="@(Model.Brand != null ? Model.Brand.Id:0)" />
+                                                <input type="hidden" id="hdfBrandProducts" value="@(Model.BrandProducts!=null?string.Join(",",Model.BrandProducts.Select(s=>s.Id).ToList()):"")" />
+                                                <input type="hidden" id="hdfValuePropositons" value="@(Model.ValuePropositons!=null?string.Join(",",Model.ValuePropositons.Select(s=>s.Id).ToList()):"")" />
+                                                <input type="hidden" id="hdfAttributes" value="@(Model.Attributes!=null?string.Join(",",Model.Attributes.Select(s=>s.Id).ToList()):"")" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row" style="display: none;" id="brandoptions">
+
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <br />
+                        <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                        <a href="#social-theme" data-toggle="tab" onclick="$('.admintabs a[href=#social-theme]').tab('show');" class="btn btn-success" aria-expanded="true">Next &nbsp; <i class="fa fa-angle-right"></i></a>
+                    </div>
+                    <!-- END Overview -->
+                    <!-- Theme -->
+                    <div class="tab-pane fade" id="social-theme">
+
+                        <div class="activity-overview generic help-text animated bounce">
+                            <i class="fa fa-info-circle"></i>
+                            <p>You can (optionally) choose a theme to associate with your Campaign. If you don't select a theme below the system default "General" theme will be used.</p>
+                        </div>
+                        <input type="hidden" value="@(Model.IdeaTheme!=null?Model.IdeaTheme.Id:0)" id="ideaId" name="ideaId" />
+                        <div class="flex-grid-thirds-lg from-community c1" style="width: 100%;">
+
+                            @foreach (var item in ideathemes)
+                            {
+                                var showidea = Model.IdeaTheme == null || (Model.IdeaTheme != null && Model.IdeaTheme.Id == item.Id) ? true : false;
+                                <div id="rs-@item.Id" class="col other" style="display:@(showidea?"block":"none")">
+                                    <a href="#" class="article-feature">
+                                        <div class="article-feature-img" style="background: url('@(api+item.FeaturedImageUri + "&size=M")');">
+                                        </div>
+                                        <div class="info">
+                                            <h1>@item.Name</h1>
+                                            <p>
+                                                @item.Explanation
+                                            </p>
+
+                                            <div style="padding: 0 20px;">
+                                                <button type="button" class="btn btn-info community-button usetheme@(item.Id)" onclick="socialIdeaUseInCampaign(@item.Id,true);" style="display:@((Model.IdeaTheme != null&&showidea)?"none":"inline-block")">
+                                                    <i class="fa fa-check"></i> &nbsp; Use this theme
+                                                </button>
+
+                                                <button type="button" class="btn btn-warning community-button change@(item.Id)" style="display: @(Model.IdeaTheme != null&&showidea?"block":"none");" onclick="socialIdeaUseInCampaign(@item.Id,false);">
+                                                    <i class="fa fa-pencil"></i> &nbsp; Change theme
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </a>
+                                </div>
+                            }
+
+                        </div>
+
+
+                        <br />
+                        <a href="#social-overview" data-toggle="tab" onclick="$('.admintabs a[href=#social-overview]').tab('show');" class="btn btn-warning"><i class="fa fa-angle-left"></i> &nbsp; Previous</a>
+
+                        <a class="btn btn-success" onclick="ProcessSocialCampaign('app-marketing-manual-social-campaign-edit')">Confirm</a>
+                    </div>
+                    <!-- END Theme -->
+                </div>
+            </form>
+
+        </div>
+    </div><!-- /.modal-content -->
+</div><!-- /.modal-dialog -->
+
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/salesmarketing.social.app.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/salesmarketing.social.app.min.js"></script>
+    }
+}

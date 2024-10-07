@@ -1,0 +1,181 @@
+﻿@using Qbicles.Models.Qbicles
+@using Qbicles.BusinessRules;
+@using Qbicles.Models.Trader;
+@model TraderContact
+@{
+    if(Model.Address == null) { Model.Address = new TraderAddress();}
+    var groups = (List<TraderContactGroup>)ViewBag.Groups;
+    var countries = (List<Country>) ViewBag.Countries;
+}
+<div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+        <div class="modal-header">
+            <button type="button" class="close" onclick="cancelContact()" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            @if (Model.Id > 0)
+            {
+                <h5 class="modal-title">Edit a contact</h5>
+            }
+            else
+            {
+                <h5 class="modal-title">Add a contact</h5>
+            }
+            <input type="hidden" id="form_traderitem_contact_id" value="@Model.Id" />
+        </div>
+        <div class="modal-body">
+            <form id="form_add_contact_traderItem">
+
+                <div class="activity-overview task" style="padding: 20px;">
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group">
+                                <label for="group">Assign to a group</label>
+                                <select name="group" id="form_traderitem_contact_group" class="form-control select2" style="width: 100%;">
+                                    @foreach (var item in groups)
+                                    {
+                                        if (Model.ContactGroup != null && item.Id == Model.ContactGroup.Id)
+                                        {
+                                            <option value="@item.Id" selected>@item.Name</option>
+                                        }
+                                        else
+                                        {
+                                            <option value="@item.Id">@item.Name</option>
+                                        } 
+                                    } 
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group">
+                                <label for="name">Name <span>*</span></label>
+                                <input type="text" id="form_traderitem_contact_name" value="@Model.Name" name="name" class="form-control">
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group">
+                                <label for="avatar">Avatar</label>
+                                <input type="hidden" value="@Model.AvatarUri" id="form_traderitem_contact_avataruri"/>
+                                <input type="file" id="form_traderitem_contact_avataruri_file" name="avatar" class="form-control">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group">
+                                <label for="company">Company</label>
+                                <input type="text" name="company" id="form_traderitem_contact_company" value="@Model.CompanyName" class="form-control">
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group">
+                                <label for="job">Job title</label>
+                                <input type="text" name="job" value="@Model.JobTitle" id="form_traderitem_contact_jpbtitle" class="form-control">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group">
+                                <label for="phone">Phone <span>*</span></label>
+                                <input type="text" name="phone" value="@Model.PhoneNumber" id="form_traderitem_contact_phone" class="form-control">
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group">
+                                <label for="email">Email <span>*</span></label>
+                                <input type="text" name="email" id="form_traderitem_contact_email" value="@Model.Email" class="form-control" required="">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group">
+                                <label for="address1">Address line 1<span>*</span></label>
+                                <input type="hidden" value="@Model.Address.Id" id="form_traderitem_contact_address_id"/>
+                                <input type="text" id="form_traderitem_contact_address1" value="@Model.Address.AddressLine1" required="" name="address1" class="form-control">
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group">
+                                <label for="address2">Address line 2</label>
+                                <input type="text" id="form_traderitem_contact_address2" value="@Model.Address.AddressLine2" name="address2" class="form-control">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group">
+                                <label for="city">City</label>
+                                <input type="text" id="form_traderitem_contact_city" value="@Model.Address.City" name="city" class="form-control">
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group">
+                                <label for="state">State</label>
+                                <input type="text" name="state" id="form_traderitem_contact_state" value="@Model.Address.State" class="form-control">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group">
+                                <label for="country">Country</label>
+                                <select name="country" id="form_traderitem_contact_country" class="form-control select2" style="width: 100%;">
+                                    <option value=""></option>
+                                    @foreach (var item in countries)
+                                    {
+                                        if(Model.Address != null && Model.Address.Country != null && item.CommonName == Model.Address.Country.CommonName)
+                                        {
+                                            <option value="@item.CommonName" selected>@item.CommonName</option>
+                                        }
+                                        else
+                                        {
+                                            <option value="@item.CommonName">@item.CommonName</option>
+                                        }
+
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group">
+                                <label for="postcode">Postcode</label>
+                                <input type="text" id="form_traderitem_contact_postcode" value="@Model.Address.PostCode" name="postcode" class="form-control">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-xs-12">
+                            <div class="form-group" id="form_trader_account" style="margin: 0;">
+                                <label for="customer-account">Select customer account</label><br/>
+                                @if (Model.CustomerAccount != null)
+                                {
+                                    <button id="btn_addcontact_account" class="btn btn-info hidden" onclick="LoadAccountTree(); idAccount = 'form_traderitem_contact_account';" data-toggle="modal">Choose account</button>
+                                                        <button id="btn_editcontact_account" class="btn btn-small btn-warning btn-edit" onclick="LoadAccountTree(); idAccount = 'form_traderitem_contact_account'" data-toggle="modal"><i class="fa fa-pencil"></i></button>
+                                                        <input type="hidden" id="form_traderitem_contact_account" value="@Model.CustomerAccount.Id" />
+                                                        <p style="display: inline; padding-left: 5px;">@Model.CustomerAccount.Name</p>
+                                }
+                                else
+                                {
+                                    <button id="btn_addcontact_account" class="btn btn-info" onclick="LoadAccountTree(); idAccount = 'form_traderitem_contact_account'" data-toggle="modal">Choose account</button>
+                                                        <button id="btn_editcontact_account" class="btn btn-small btn-warning btn-edit hidden" onclick="LoadAccountTree(); idAccount = 'form_traderitem_contact_account'" data-toggle="modal"><i class="fa fa-pencil"></i></button>
+                                                        <input type="hidden" id="form_traderitem_contact_account" value="0" />
+                                                        <p style="display: inline; padding-left: 5px;">No account selected</p>
+                                } 
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </form>
+            <br />
+            <a href="javascrip:void()" class="btn btn-danger" onclick="cancelContact()"><i class="fa fa-remove"></i> &nbsp; Cancel</a>
+            <button onclick="AddContact()" class="btn btn-success trigger-setup"><i class="fa fa-save"></i> &nbsp; Save</button>
+
+
+
+        </div>
+    </div><!-- /.modal-content -->
+</div><!-- /.modal-dialog -->
+ 

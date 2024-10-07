@@ -1,0 +1,239 @@
+﻿@using Qbicles.BusinessRules;
+@using Qbicles.Models;
+@model IEnumerable<DateTime>
+@{
+     <!--Acivities data-->
+    var activitiesDateCount = (int)ViewBag.AcivitiesDateCount;
+
+    var subActivities = (List<object>)ViewBag.subActivities;
+    var pinnedDiscussions = (List<QbicleActivity>)ViewBag.myPinnedDiscussions;
+    var pinnedAlerts = (List<QbicleActivity>)ViewBag.myPinnedAlerts;
+    var pinnedEvents = (List<QbicleActivity>)ViewBag.myPinnedEvents;
+    var pinnedMedias = (List<QbicleActivity>)ViewBag.myPinnedMedias;
+    var pinnedTasks = (List<QbicleActivity>)ViewBag.myPinnedTasks;
+    var currentUserId = (string)ViewBag.CurrentUserId;
+
+    string css = "";
+    string dateStr = "";
+    string dateStart = "";
+    var today = (DateTime)ViewBag.Today;
+}
+
+@foreach (var dates in Model.OrderBy(d => d.Date).Batch(HelperClass.qbiclePageSize))
+            {
+                foreach (var date in dates)
+                {
+                    dateStart = @HelperClass.DatetimeToOrdinal(date);
+                    if (date.Date == today.Date)
+                        dateStr = "Today";
+                    else
+                        dateStr = dateStart;
+                    <div class="day-block"  id=@(dateStr == "Today"? "discussion-date-today" : dateStr)  style="margin-bottom: 0;">
+                        <div class="day-date">
+                            <span class="date">@dateStr</span>
+                        </div>
+                        @foreach (var item in subActivities)
+                        {
+                            <div class="clearfix"></div>
+                            if (item is QbiclePost)
+                            {
+                                var post = (QbiclePost)item;
+                                if (post.CreatedBy != null && post.CreatedBy.Id == currentUserId)
+                                { css = "mypost"; }
+                                else { css = "reply"; }
+                                if (post.StartedDate.Date == date)
+                                {
+                                    <div class="@css">
+                                        <div class="poster">
+                                            <img src="@post.CreatedBy.ProfilePic" class="img-circle icon">
+                                        </div>
+                                        <div class="content">
+                                            <div class="bubble-marker"></div>
+                                            <small>
+                                                @post.CreatedBy.Forename  @post.CreatedBy.Surname &nbsp; | &nbsp;@post.StartedDate.ToString("hh:mmtt")
+                                            </small>
+                                            <p>@post.Message</p>
+                                        </div>
+                                        <div class="clearfix"></div>
+                                    </div>
+                                    <div class="clearfix"></div>
+                                }
+                            }
+
+                            if (item is QbicleActivity)
+                            {
+                                var activity = (QbicleActivity)item;
+                                if (activity.StartedBy.Id == currentUserId)
+                                { css = "mypost"; }
+                                else { css = "reply"; }
+                                if (activity.TimeLineDate.Date == date)
+                                {
+                                    switch (activity.ActivityType)
+                                    {
+                                        case QbicleActivity.ActivityTypeEnum.TaskActivity:
+                                            var tk = (QbicleTask)activity;
+                                            <div class="@css is_task" onclick="ShowTaskPage('@tk.Key');");">
+                                                <div class="poster">
+                                                    <img src="~/Content/DesignStyle/img/icon_tasks_lg.png">
+                                                </div>
+                                                <div class="content task">
+                                                    <a href="javascript:void(0);" onclick="PinnedActivity('@tk.Id',false,event)" class="pin">
+                                                        @if (pinnedTasks != null && pinnedTasks.Any(e => e.Id == tk.Id))
+                                                        {
+                                                            <i id="pinIcon-@tk.Id" class="fa fa-check green"></i>
+                                                        }
+                                                        else
+                                                        {
+                                                            <i id="pinIcon-@tk.Id" class="fa fa-thumb-tack"></i>
+                                                        }
+                                                    </a>
+                                                    <div class="bubble-marker"></div>
+                                                    <small>
+                                                        @tk.StartedBy.Forename @tk.StartedBy.Surname &nbsp; | &nbsp; @tk.TimeLineDate.ToString("hh:mmtt")
+                                                    </small>
+                                                    <p><a href="#" onclick="ShowTaskPage('@tk.Key');">@tk.Description</a> was added as a task</p>
+                                                    <div class="info_labels">
+                                                        <span class="label label-primary">@tk.Priority</span>
+                                                        @{
+                                                            if (tk.Repeat != QbicleTask.TaskRepeatEnum.No)
+                                                            {
+                                                                <span class="due label label-warning">@tk.Repeat</span>
+                                                            }
+                                                            var assignMe = tk.ActivityMembers.Any(u => u.Id == currentUserId);
+                                                            if (assignMe)
+                                                            {
+                                                                <span class="label label-danger">My Task</span>
+                                                            }
+                                                        }
+                                                    </div>
+                                                </div>
+                                                <div class="clearfix"></div>
+                                            </div>
+                                                            break;
+                                                        case QbicleActivity.ActivityTypeEnum.AlertActivity:
+                                                            var al = (QbicleAlert)activity;
+                                                            <div class="@css" onclick="ShowAlertPage('@al.Key');">
+                                                                <div class="poster">
+                                                                    <img src="~/Content/DesignStyle/img/icon_alert_2.png" class="img-circle icon">
+                                                                </div>
+                                                                <div class="content task">
+                                                                    <a href="javascript:void(0);" onclick="PinnedActivity('@al.Id',false,event)" class="pin">
+                                                                        @if (pinnedAlerts != null && pinnedAlerts.Any(e => e.Id == al.Id))
+                                                                        {
+                                                                            <i id="pinIcon-@al.Id" class="fa fa-check green"></i>
+                                                                        }
+                                                                        else
+                                                                        {
+                                                                            <i id="pinIcon-@al.Id" class="fa fa-thumb-tack"></i>
+                                                                        }
+                                                                    </a>
+
+                                                                    <div class="bubble-marker"></div>
+                                                                    <small>
+                                                                        @al.StartedBy.Forename @al.StartedBy.Surname &nbsp; | &nbsp;@al.TimeLineDate.ToString("hh:mmtt")
+                                                                    </small>
+                                                                    <p><a href="#" onclick="ShowAlertPage('@al.Key');">@al.Name</a> was added as an alert</p>
+                                                                    <div class="info_labels">
+                                                                        @{
+                                                                            <span class="due label label-warning">@al.Type</span>
+                                                                            var assignMeal = al.ActivityMembers.Any(u => u.Id == currentUserId);
+                                                                            if (assignMeal)
+                                                                            {
+                                                                                <span class="label label-danger">My alert</span>
+                                                                            }
+                                                                        }
+                                                                    </div>
+                                                                </div>
+                                                                <div class="clearfix"></div>
+                                                            </div>
+                                                                            break;
+                                                                        case QbicleActivity.ActivityTypeEnum.EventActivity:
+                                                                            var ev = (QbicleEvent)activity;
+                                                                            <div class="@css" onclick="ShowEventPage('@ev.Key');">
+                                                                                <div class="poster">
+                                                                                    <img src="~/Content/DesignStyle/img/icon_meeting.png" class="img-circle icon">
+                                                                                </div>
+                                                                                <div class="content task">
+                                                                                    <a href="javascript:void(0);" onclick="PinnedActivity('@ev.Id',false,event)" class="pin">
+                                                                                        @if (pinnedEvents != null && pinnedEvents.Any(e => e.Id == ev.Id))
+                                                                                        {
+                                                                                            <i id="pinIcon-@ev.Id" class="fa fa-check green"></i>
+                                                                                        }
+                                                                                        else
+                                                                                        {
+                                                                                            <i id="pinIcon-@ev.Id" class="fa fa-thumb-tack"></i>
+                                                                                        }
+                                                                                    </a>
+
+                                                                                    <div class="bubble-marker"></div>
+                                                                                    <small>
+                                                                                        @ev.StartedBy.Forename @ev.StartedBy.Surname &nbsp; | &nbsp;@ev.TimeLineDate.ToString("hh:mmtt")
+                                                                                    </small>
+                                                                                    <p><a href="#" onclick="ShowEventPage('@ev.Key');">@ev.Name</a> was added as an event</p>
+                                                                                    <div class="info_labels">
+                                                                                        @{
+                                                                                            int totalattend = ev.ActivityMembers.Count();
+                                                                                            if (totalattend > 0)
+                                                                                            {
+                                                                                                <span class="label label-primary">@totalattend attending</span>
+                                                                                            }
+                                                                                            var assignEvent = ev.ActivityMembers.Any(u => u.Id == currentUserId);
+                                                                                            if (assignEvent)
+                                                                                            {
+                                                                                                <span class="label label-success">I'm attending</span>
+                                                                                            }
+                                                                                        }
+                                                                                    </div>
+                                                                                </div>
+                                                                                <div class="clearfix"></div>
+                                                                            </div>
+                                                                            break;
+                                                                        case QbicleActivity.ActivityTypeEnum.MediaActivity:
+                                                                            var ma = (QbicleMedia)activity;
+                                                                            <div class="@css" onclick="ShowMediaPage('@ma.Key');">
+                                                                                <div class="poster">
+                                                                                    <img src="@ma.FileType.IconPath" class="img-circle icon">
+                                                                                </div>
+                                                                                <div class="content task">
+                                                                                    <a href="javascript:void(0);" onclick="PinnedActivity('@ma.Id',false,event)" class="pin">
+                                                                                        @if (pinnedMedias != null && pinnedMedias.Any(e => e.Id == ma.Id))
+                                                                                        {
+                                                                                            <i id="pinIcon-@ma.Id" class="fa fa-check green"></i>
+                                                                                        }
+                                                                                        else
+                                                                                        {
+                                                                                            <i id="pinIcon-@ma.Id" class="fa fa-thumb-tack"></i>
+                                                                                        }
+                                                                                    </a>
+
+                                                                                    <div class="bubble-marker"></div>
+                                                                                    <small>
+                                                                                        @ma.StartedBy.Forename @ma.StartedBy.Surname &nbsp; | &nbsp;@ma.TimeLineDate.ToString("hh:mmtt")
+                                                                                    </small>
+                                                                                    <p><a href="#">@ma.Name</a> was added</p>
+                                                                                    <div class="info_labels">
+                                                                                        <span class="label label-primary">@ma.FileType.Type</span>
+                                                                                        @{
+                                                                                            var assignMema = ma.ActivityMembers.Any(u => u.Id == currentUserId);
+                                                                                            if (assignMema)
+                                                                                            {
+                                                                                                <span class="label label-danger">My Media</span>
+                                                                                            }
+                                                                                        }
+                                                                                    </div>
+                                                                                    
+                                                                                </div>
+                                                                                <div class="clearfix"></div>
+                                                                            </div>
+                                                                                            break;
+                                                                                        default:
+                                                                                            <div class="clearfix"></div>
+                                                                                                            break;
+                                                                                                    }
+                                                                                                }
+                                                                                            }
+                                                                                        }
+                        <div class="clearfix"></div>
+                    </div>
+                                                                                            }
+                                                                                        }

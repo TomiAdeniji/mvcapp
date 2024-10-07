@@ -1,0 +1,335 @@
+﻿@using Qbicles.Models.Trader;
+@{
+
+    var search = ViewBag.Search;
+    var locationId = ViewBag.LocationId;
+    var categoryItemId = ViewBag.CategoryItemId;
+    var selectItemType = ViewBag.SelectItemType;
+
+    var position = (int)(ViewBag.Position ?? 0);
+
+    var itemGroups = (List<TraderGroup>)ViewBag.ItemGroups;
+    var api = (string)ViewBag.DocRetrievalUrl;
+}
+<style>
+    #traderitem_filter_list_filter {
+        display: none;
+    }
+</style>
+
+<div class="modal-dialog modal-xl" role="document" style="width:100%">
+    <div class="modal-content">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <h5 class="modal-title">Trader Product Finder</h5>
+        </div>
+        <div class="modal-body">
+            <div class="row">
+                <div class="col-xs-12">
+                    <ul class="app_subnav admintabs" style="padding-top: 0;">
+                        <li class="active"><a href="#invenory-item" data-toggle="tab">Inventory Items/Products</a></li>
+                        <li><a href="#non-invenory-item" data-toggle="tab">Non-Inventory Items/Products</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <br />
+
+            <div class="tab-content">
+
+                <!-- Inventory -->
+                <div class="tab-pane fade in active" id="invenory-item">
+
+                    <div class="well custom">
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group" style="margin: 0;">
+                                    <label for="search">Search for...</label>
+                                    <input type="text" name="search" id="search_inventory" value="@search" class="form-control">
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group" style="margin: 0;">
+                                    <label for="catfilter">Filter by Product Group</label>
+                                    <select name="catfilter" id="search_category_inventory" class="form-control select2" style="width: 100%;">
+                                        <option value=0>Show all</option>
+                                        @foreach (var item in itemGroups)
+                                        {
+                                            <option value="@item.Id">@item.Name</option>
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <br />
+
+                    <table class="datatable table-striped table-hover" id="traderitem_table_inventory" style="width: 100%;" data-order='[[1, "asc"]]'>
+                        <thead>
+                            <tr>
+                                <th data-priority="3" data-orderable="false" style="width: 80px;"></th>
+                                <th data-priority="2">Name</th>
+                                <th data-priority="1">SKU</th>
+                                <th data-priority="3">Product Group</th>
+                                <th data-priority="1">Selection</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    </table>
+
+                </div>
+                <!-- END Inventory -->
+                <!-- Non-Inventory -->
+                <div class="tab-pane fade" id="non-invenory-item">
+
+                    <div class="well custom">
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group" style="margin: 0;">
+                                    <label for="search">Search for...</label>
+                                    <input type="text" name="search" id="search_none_inventory" value="@search" class="form-control">
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group" style="margin: 0;">
+                                    <label for="catfilter">Filter by Product Group</label>
+                                    <select name="catfilter" id="search_category_none_inventory" class="form-control select2" style="width: 100%;">
+                                        <option value=0>Show all</option>
+                                        @foreach (var item in itemGroups)
+                                        {
+                                            <option value="@item.Id">@item.Name</option>
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <br />
+
+                    <table class="datatable table-striped table-hover" id="traderitem_table_none_inventory" style="width: 100%;" data-order='[[1, "asc"]]'>
+                        <thead>
+                            <tr>
+                                <th data-priority="3" data-orderable="false" style="width: 80px;"></th>
+                                <th data-priority="2">Name</th>
+                                <th data-priority="1">SKU</th>
+                                <th data-priority="3">Product Group</th>
+                                <th data-priority="1">Selection</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    </table>
+
+                </div>
+                <!-- END Non-Inventory -->
+
+
+            </div>
+
+
+        </div>
+    </div><!-- /.modal-content -->
+</div><!-- /.modal-dialog -->
+<script>
+
+
+    $(function () {
+        function searchThrottle(f, delay) {
+            var timer = null;
+            return function () {
+                var context = this, args = arguments;
+                clearTimeout(timer);
+                timer = window.setTimeout(function () {
+                    f.apply(context, args);
+                },
+                    delay || 800);
+            };
+        }
+        $('#search_none_inventory').keyup(searchThrottle(function () {
+            $('#traderitem_table_none_inventory').DataTable().ajax.reload();
+        }));
+
+        $('#search_category_none_inventory').change(function () {
+            $('#traderitem_table_none_inventory').DataTable().ajax.reload();
+        });
+
+        $('#search_inventory').keyup(searchThrottle(function () {
+            $('#traderitem_table_inventory').DataTable().ajax.reload();
+        }));
+
+        $('#search_category_inventory').change(function () {
+            $('#traderitem_table_inventory').DataTable().ajax.reload();
+        });
+        $("#search_category_inventory").select2();
+        $("#search_category_none_inventory").select2();
+
+        LoadDataTraderItemInventory();
+        LoadDataTraderItemNonInventory();
+    });
+
+
+
+    function LoadDataTraderItemInventory() {
+
+        $("#traderitem_table_inventory").on('processing.dt', function (e, settings, processing) {
+            if (processing && $('.loadingoverlay').length === 0) {
+                $("#traderitem_table_inventory").LoadingOverlay("show");
+            } else {
+                $("#traderitem_table_inventory").LoadingOverlay("hide", true);
+            }
+        }).DataTable({
+            "destroy": true,
+            "dom": '<"top"fl<"clear">>rt<"bottomtable"ip<"clear">>',
+            "serverSide": true,
+            "info": false,
+            "stateSave": false,
+            "bLengthChange": true,
+            "paging": true,
+            "searching": false,
+            "responsive": true,
+            "scrollX": false,
+            "autoWidth": true,
+            "deferLoading": 30,
+            "lengthMenu": [[10, 20, 50, 100], [10, 20, 50, 100]],
+            "pageLength": 10,
+            "ajax": {
+                "url": '/PointOfSaleMenu/FindItemServerside',
+                "type": 'POST',
+                "data": function (d) {
+                    return $.extend({}, d, {
+                        search: $("#search_inventory").val(),
+                        locationId: @locationId,
+                        nonInventory: false,
+                        productGroupId: $("#search_category_inventory").val()
+                    });
+                }
+            },
+            "columns": [
+                {
+                    data: null,
+                    orderable: false,
+                    width: "100px",
+                    render: function (value, type, row) {
+                        return "<div class='table-avatar mini 111' style='background-image: url(\"@api" + row.ImageUri + "\");'></div>";
+                    }
+                },
+                {
+                    name: "Name",
+                    data: "Name",
+                    orderable: true,
+                },
+                {
+                    name: "SKU",
+                    data: "SKU",
+                    orderable: true,
+                },
+                {
+                    name: "Group",
+                    data: "Group",
+                    orderable: true
+                },
+                {
+                    data: null,
+                    orderable: false,
+                    width: "100px",
+                    render: function (value, type, row) {
+                        //1- Add new item, 2 - add extra, 3 - add variant
+                        if (@selectItemType==1)
+                            return "<button class='btn btn-success' data-dismiss='modal' onclick=\"selectItem('" + row.Id + "','" + row.SKU + "','" + row.ImageUri +"')\" ><i class='fa fa-check'></i></button>";
+                        else if(@selectItemType==2)
+                            return "<button class='btn btn-success' data-dismiss='modal' onclick=\"selectItemDetail('" + row.Id + "','" + row.SKU + "','" + row.ImageUri +"')\" ><i class='fa fa-check'></i></button>";
+                        return "<button class='btn btn-success' data-dismiss='modal' onclick=\"selectItemToTable('" + @position + "'," + row.Id + ",'" + row.SKU + "','" + row.ImageUri +"')\" ><i class='fa fa-check'></i></button>";
+                    }
+                }
+            ],
+            "order": [[1, "desc"]],
+            "initComplete": function (settings, json) {
+                $('#traderitem_table_inventory').DataTable().ajax.reload();
+            }
+        });
+    }
+    function LoadDataTraderItemNonInventory() {
+
+        $("#traderitem_table_none_inventory").on('processing.dt', function (e, settings, processing) {
+            if (processing && $('.loadingoverlay').length === 0) {
+                $("#traderitem_table_none_inventory").LoadingOverlay("show");
+            } else {
+                $("#traderitem_table_none_inventory").LoadingOverlay("hide", true);
+            }
+        }).DataTable({
+            "destroy": true,
+            "dom": '<"top"fl<"clear">>rt<"bottomtable"ip<"clear">>',
+            "serverSide": true,
+            "info": false,
+            "stateSave": false,
+            "bLengthChange": true,
+            "paging": true,
+            "searching": false,
+            "responsive": true,
+            "scrollX": false,
+            "autoWidth": true,
+            "deferLoading": 30,
+            "lengthMenu": [[10, 20, 50, 100], [10, 20, 50, 100]],
+            "pageLength": 10,
+            "ajax": {
+                "url": '/PointOfSaleMenu/FindItemServerside',
+                "type": 'POST',
+                "data": function (d) {
+                    return $.extend({}, d, {
+                        search: $("#search_none_inventory").val(),
+                        locationId: @locationId,
+                        nonInventory: true,
+                        productGroupId: $("#search_category_none_inventory").val()
+                    });
+                }
+            },
+            "columns": [
+                {
+                    data: null,
+                    orderable: false,
+                    width: "100px",
+                    render: function (value, type, row) {
+                        return "<div class='table-avatar mini 111' style='background-image: url(\"@api" + row.ImageUri + "\");'></div>";
+                    }
+                },
+                {
+                    name: "Name",
+                    data: "Name",
+                    orderable: true,
+                },
+                {
+                    name: "SKU",
+                    data: "SKU",
+                    orderable: true,
+                },
+                {
+                    name: "Group",
+                    data: "Group",
+                    orderable: true
+                },
+                {
+                    data: null,
+                    orderable: false,
+                    width: "100px",
+                    render: function (value, type, row) {
+                        //1- Add new item, 2 - add extra, 3 - add variant
+                        if (@selectItemType==1)
+                            return "<button class='btn btn-success' data-dismiss='modal' onclick=\"selectItem('" + row.Id + "','" + row.SKU + "','" + row.ImageUri +"')\" ><i class='fa fa-check'></i></button>";
+                        else if(@selectItemType==2)
+                            return "<button class='btn btn-success' data-dismiss='modal' onclick=\"selectItemDetail('" + row.Id + "','" + row.SKU + "','" + row.ImageUri +"')\" ><i class='fa fa-check'></i></button>";
+                        return "<button class='btn btn-success' data-dismiss='modal' onclick=\"selectItemToTable('" + @position + "'," + row.Id + ",'" + row.SKU + "','" + row.ImageUri +"')\" ><i class='fa fa-check'></i></button>";
+                    }
+                }
+            ],
+            "order": [[1, "desc"]],
+            "initComplete": function (settings, json) {
+                $('#traderitem_table_none_inventory').DataTable().ajax.reload();
+            }
+        });
+    }
+
+
+</script>

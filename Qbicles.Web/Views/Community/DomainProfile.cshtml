@@ -1,0 +1,195 @@
+﻿@using Qbicles.BusinessRules
+@using Qbicles.Models.Community
+@model Qbicles.Models.Community.DomainProfile
+@{
+    ViewBag.Title = "Qbicle Community | Domain profile";
+    var thisDomain = (bool)(ViewBag.ThisDomain ?? false);
+    var pages = (List<CommunityPage>)ViewBag.CommunityPages;
+    var locations = (List<Location>)ViewBag.Locations;
+    var userId = ViewBag.CurrentUserId;
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var UserRoleRights = (List<string>)ViewBag.UserRoleRights;
+    var rightAddEditDomainProfile = UserRoleRights.Any(r => r == RightPermissions.CMAddEditDomainProfile) ? "" : "a-btn-disabled";
+}
+
+<div class="community-profile-upper" style="background-image: url('@api@Model.StoredFeaturedImageName');"></div>
+
+
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail">
+
+
+    <!-- Main content -->
+    <section class="content nopad">
+
+        <div class="row">
+            <div class="col-xs-12 col-md-4 col-lg-3 community-side">
+                <div class="community-avatar" style="background-image: url('@api@Model.StoredLogoName"></div>
+
+                <div class="visible-xs visible-sm text-center">
+                    <h2>@Model.Domain.Name</h2>
+
+                    <div class="community-profile text-center hidden-md hidden-lg">
+                        <div class="inline-details" style="margin-bottom: 40px;">
+
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-center community-profile-pad">
+                    @foreach (var tag in Model.Tags)
+                    {
+                        <a href="javascript:void(0);" class="topic-label">
+                            <span class="label label-info">@tag.Name</span>
+                        </a>
+                    }
+
+                    <br /><br />
+                    @if (!Model.Followers.Any(u => u.Id == userId))
+                    {
+                        <a id="button-follow" href="javascript:void(0);" onclick="FollowDomain('@Model.Id')" class="btn btn-lg btn-success">
+                            <i class="fa fa-plus"></i>
+                            &nbsp; Follow
+                        </a>
+                    }
+                </div>
+
+                <h6>Profile</h6>
+                <p>@Html.Raw(Model.ProfileText.Replace(Environment.NewLine, "<br/>").Replace("\n", "<br/>"))</p>
+
+            </div>
+            <div class="col-xs-12 col-md-8 col-lg-9 community-profile">
+
+                <div class="hidden-xs hidden-sm">
+
+                    <div class="top" style="padding: 30px 0 10px 0;">
+                        <h1>@Model.Domain.Name</h1>
+                        <div class="inline-details">
+                            <h5>@Model.StrapLine</h5>
+                        </div>
+                    </div>
+
+                </div>
+
+                <div class="row" style="margin-top: 15px; margin-bottom: 40px;">
+                    <div class="col-xs-12">
+                        <div class="app_filter">
+                            <div class="row">
+                                <div class="col-xs-12">
+                                    <a href="/Community/CommunityApps" class="btn btn-primary"><i class="fa fa-th"></i> &nbsp; Dashboard</a>
+                                    @if (thisDomain)
+                                    {
+                                        <a href="/Community/DomainProfileSetup" class="btn btn-warning @rightAddEditDomainProfile"><i class="fa fa-pencil"></i> &nbsp; Edit profile</a>
+                                    }
+
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+
+                <div class="row profile-view" data-tooltip-delay="0" data-tooltip-maxwidth="200" data-tooltip-color="slate">
+                    <div class="col-xs-12 col-lg-7">
+
+                        <h4>Team</h4>
+
+                        <ul class="followers" data-tooltip-color="slate" data-tooltip-delay="100" data-tooltip-animate-function="foldin">
+                            @foreach (var user in Model.Domain.Users)
+                            {
+                                <li>
+                                    <a style="background-image: url('@api@user.ProfilePic');"
+                                       data-tooltip="@HelperClass.GetFullNameOfUser(user)">
+                                    </a>
+                                </li>
+                            }
+
+
+                        </ul>
+
+                        <br />
+
+                        <h4>Pages</h4>
+                        <hr />
+                        <div class="previewDomainProfile">
+                            <div class="community-carousel owl-theme">
+                                @foreach (var page in pages)
+                                {
+                                    <div class="item" id="preview-page-@page.Id">
+                                        <div class="community-card">
+                                            <a href="/Community/CommunityPage?id=@page.Id">
+                                                <div class="upper" style="background-image: url('@api@page.FeaturedImage');">
+                                                    &nbsp;
+                                                </div>
+                                            </a>
+                                            <section class="info">
+                                                <a href="/Community/CommunityPage?id=@page.Id">
+                                                    <h2>@page.Title</h2>
+                                                </a>
+                                                <span>@page.Followers.Count followers</span>
+                                            </section>
+                                            <section class="meta">
+                                                @foreach (var tag in page.Tags)
+                                                {
+                                                    <a href="/Community/CommunityPage?id=@page.Id" class="topic-label">
+                                                        <span class="label label-info">@tag.Name</span>
+                                                    </a>
+                                                }
+                                            </section>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                            <br /><br />
+                        </div>
+
+                        <br /><br />
+
+                    </div>
+                    <div class="col-xs-12 col-lg-5 reviews shunt-lg">
+
+                        <h4>Business locations</h4>
+                        <hr />
+                        @foreach (var location in locations)
+                        {
+                            <div class="office-location">
+                                <i class="fa fa-map-marker"></i>
+                                <p>
+                                    <strong>@location.Name</strong>
+                                    <br />
+                                    @Html.Raw(location.Address.Replace(Environment.NewLine, "<br/>").Replace("\n", "<br/>"))
+                                    <br />
+                                    @*<a href="https://goo.gl/maps/gGbWUyHAym92" target="_blank">View map</a>*@
+                                </p>
+                            </div>
+                            <div class="clearfix"></div>
+
+                            <br />
+                        }
+
+
+                        <br /><br />
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+    </section>
+    <!-- ./content -->
+
+</div>
+<!-- /.content-wrapper -->
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/community.domainprofile.js"></script>
+
+    }
+    else
+    {
+        <script src="~/Scripts/dev/community.domainprofile.min.js"></script>
+
+    }
+}

@@ -1,0 +1,325 @@
+﻿@using Qbicles.BusinessRules;
+@using Qbicles.Models;
+
+@{
+    var packgeType = AccountPackage.PackgeTypeEnum.ActivityGuests;
+    var currentQbicleId = (int)ViewBag.CurrentQbicleId;
+    var currentUserId = (string)ViewBag.CurrentUserId;
+
+    var typeOfRequest = (ICollection<HelperClass.EnumModel>)ViewBag.typeOfRequest;
+    <!--domain user-->
+    //var userDomains = (List<QbicleDomain>)ViewBag.Domains;
+    <!--list of user in domain not exist the discussion -->
+    var usersDomainNotInDiscussion = (List<ApplicationUser>)ViewBag.UsersDomainNotInDiscussion;
+
+    //var currentUser = (ApplicationUser)ViewBag.CurrentUser;
+    var listUserByQbicle = (List<ApplicationUser>)ViewBag.listUserByQbicle;
+    var listFileType = (List<string>)ViewBag.listFileType;
+    string fileAccept = listFileType.Count() > 0 ? ("." + string.Join(",.", listFileType)) : "";
+}
+
+
+<input type="hidden" value="@Newtonsoft.Json.JsonConvert.SerializeObject(listFileType)" id="listIDAccept" />
+<input type="hidden" value="@packgeType" id="packgeType" />
+@*Create user Modal*@
+<div id="create-user" class="modal fade" role="dialog" aria-labelledby="lblcreate-event" data-focus-on="input:first" data-keyboard="true" data-backdrop="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+                <h5 class="modal-title">Create User</h5>
+
+            </div>
+            <div class="modal-body">
+                <form id="create-user-main" name="create-user-main" method="post" enctype="multipart/form-data">
+                    <div class="row">
+                        <div class="col-xs-12 col-md-12">
+                            <div class="form-group">
+                                <label for="email">Email <span>*</span></label>
+                                <input type="email" id="email" name="email" class="form-control">
+                                <div style="clear: both;"></div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <br>
+                    <button class="btn btn-success" type="button" onclick="SaveNewUser('@AccountPackage.PackgeTypeEnum.Members')"><i class="fa fa-check"></i>&nbsp; Add User</button>
+                    <a href="javascript:void(0);" class="btn btn-danger" onclick="ClearUserInputModalAddEdit()" data-dismiss="modal">Cancel</a>
+                </form>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+<!--End modal create event-->
+@*Create new Participant to a Discussion*@
+<div id="create-participant" class="modal fade" role="dialog" aria-labelledby="lblcreate-event" data-focus-on="input:first" data-keyboard="true" data-backdrop="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="row">
+                    <div class="col-xs-4">
+                        <img src="/Content/DesignStyle/img/logo_sm.png" style="width: 80px;">
+                    </div>
+                    <div class="col-xs-8">
+                        <div class="alert-soft text-right" style="padding-top: 10px !important;">
+                            Add new participant
+                            <a class="close" data-dismiss="modal" aria-label="Close" style="margin-left: 5px;">
+                                <span aria-hidden="true">&times;</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-body">
+                <form id="create-participant-domain" name="create-participant-domain" method="post" enctype="multipart/form-data">
+                    <div class="row">
+                        <div class="col-xs-12 col-md-12">
+                            <div class="form-group">
+                                <label>Add participant to this discussion <span>*</span></label>
+                                <select id="selectUsersDomains" class="select2" data-placeholder="..." name="usersDomainAssign[]" multiple style="width:100%;">
+                                    @foreach (var u in usersDomainNotInDiscussion)
+                                    {
+                                        <option value="@u.Id">@HelperClass.GetFullNameOfUser(u)</option>
+                                    }
+                                </select>
+                                <div style="clear: both;"></div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <br>
+                    <button class="btn btn-success" type="button" onclick="SaveParticipantUsersToDiscussion()"><i class="fa fa-check"></i>&nbsp; Add User</button>
+                    <a href="javascript:void(0);" class="btn btn-danger" onclick="ClearUserInputModalAddEdit()" data-dismiss="modal">Cancel</a>
+                </form>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+@*Create new Guest to a Discussion*@
+<div id="create-guest" class="modal fade" role="dialog" aria-labelledby="lblcreate-event" data-focus-on="input:first" data-keyboard="true" data-backdrop="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="row">
+                    <div class="col-xs-4">
+                        <img src="/Content/DesignStyle/img/logo_sm.png" style="width: 80px;">
+                    </div>
+                    <div class="col-xs-8">
+                        <div class="alert-soft text-right" style="padding-top: 10px !important;">
+                            Add Guest
+                            <a class="close" data-dismiss="modal" aria-label="Close" style="margin-left: 5px;">
+                                <span aria-hidden="true">&times;</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-body">
+                <form id="create-guest-discussion-main" name="create-guest-discussion-main" method="post" enctype="multipart/form-data">
+                    <div class="row">
+                        <div class="col-xs-12 col-md-12">
+                            <div class="form-group">
+                                <label for="email">Email <span>*</span></label>
+                                <input type="email" id="emailGuest" name="emailGuest" class="form-control">
+                                <div style="clear: both;"></div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <br>
+                    <button class="btn btn-success" type="button" onclick="SaveNewGuestDiscussion('@AccountPackage.PackgeTypeEnum.ActivityGuests')"><i class="fa fa-check"></i>&nbsp; Add User</button>
+                    <a href="javascript:void(0);" class="btn btn-danger" onclick="ClearUserInputModalAddEdit()" data-dismiss="modal">Cancel</a>
+                </form>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+@*Modal for notifications*@
+<div class="modal fade left" id="notifications" role="dialog" aria-labelledby="notifications">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">My Notifications</h5>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-xs-12">
+
+                        <div class="well custom" style="padding: 20px 20px 10px 20px;">
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label for="order">Order</label>
+                                        <select name="order" id="orderNotification" class="form-control select2" style="width: 100%;">
+                                            <option value="0" selected>Latest first</option>
+                                            <option value="1">Oldest first</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label>Options</label><br />
+                                        <button class="btn btn-primary checkall" data-checked="false">Check visible</button>
+                                        <button id="btnRemoveallNotification" class="btn btn-warning removeall" disabled onclick="DeleteAllNotification()">Delete selected</button>
+                                        <button class="btn btn-danger" onclick="DeleteAllNotifications()">Delete all</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xs-12">
+                    <div id="data-container-notifications" style="min-height:106px"></div>
+                    <br />
+                    <div id="pagiation-notifications" class="pagination pull-right" style="position: relative;right: -4px;"></div>
+                </div>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+<!--Send invite modal-->
+<div class="modal fade" id="send-invite" role="dialog" aria-labelledby="send-invite" style="display: none;">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content" style="border-radius: 15px;">
+            <div class="modal-body" style="padding: 50px 30px;">
+                <form id="frmJoinQbicles" method="post" action="~/OurPeople/InvitationJoinQbicles">
+                    <a href="#" data-dismiss="modal" style="position: absolute; top: 15px; right: 20px; font-size: 28px; color: #333;"><i class="fa fa-remove"></i></a>
+                    <img src="~/Content/DesignStyle/img/invite.jpg" style="max-width: 100%; height: auto;">
+                    <h1 class="text-center">Invite someone to join Qbicles</h1>
+                    <br>
+
+                    <div class="activity-overview generic help-text animated bounce" id="invitesent" style="display:none">
+                        <i class="fa fa-info-circle"></i>
+                        <p>An invite has been sent to <strong class="email-invite">person@website.com</strong>. If they register a Qbicles account they'll be automatically added to your list of contacts.</p>
+                    </div>
+                    <div class="well custom">
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label for="email">The person's email address</label>
+                                    <input type="email" name="email" class="form-control" placeholder="email@address.com">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label for="message">Include a message</label>
+                                    <textarea name="message" class="form-control" style="height: 80px;"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                        <br>
+                        <button type="submit" class="btn btn-success community-button"><i class="fa fa-send"></i> &nbsp; Send invite</button>
+                    </div>
+                </form>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+<!--End invite modal-->
+<div class="modal fade left" id="domain-invites" role="dialog" aria-labelledby="domain-invites" data-focus-on="input:first" data-keyboard="true" data-backdrop="true" style="z-index:9999;">
+
+</div>
+<div class="modal in" id="domain-invite-rejection" role="dialog" aria-labelledby="domain-invite-rejection" style="display: none;">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+                <h5 class="modal-title">Reject this invitation</h5>
+            </div>
+            <div class="modal-body">
+
+                <input type="hidden" id="hdInvitationId" />
+                <input type="hidden" id="hdInvitationStatus" />
+                <input type="hidden" id="hdInvitationDomainName" />
+                <input type="hidden" id="hdInvitationStatusName" />
+                <input type="hidden" id="hdInvitationDomainId" />
+                <div class="activity-overview generic help-text animated bounce">
+                    <i class="fa fa-info-circle"></i>
+                    <p>Please confirm your rejection of this invite and optionally include a note to the person who issued the invite to you...</p>
+                </div>
+
+
+                <div class="well custom">
+                    <div class="form-group" style="margin: 0;">
+                        <label for="note">Note</label>
+                        <textarea id="txtInvitationNote" name="note" class="form-control" style="height: 80px;"></textarea>
+                    </div>
+                </div>
+
+                <br>
+
+                <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                <button class="btn btn-success" onclick="RejectInvitation()">Reject invitation</button>
+
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+<div class="modal fade left" id="domain-history" role="dialog" aria-labelledby="domain-history">
+    <div class="modal-dialog modal-xl cx" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">My Domain request decision log</h5>
+            </div>
+            <div class="modal-body">
+
+
+                <div class="activity-overview generic help-text animated bounce">
+                    <i class="fa fa-info-circle"></i>
+                    <p>Below is your history of Domain requests, and the resulting decisions made by Qbicles. Please contact us if you need to query any decisions or have any other questions.</p>
+                </div>
+
+
+                <div class="well custom" style="padding-bottom: 5px;">
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-6 col-lg-4">
+                            <div class="form-group">
+                                <label for="search">Search</label>
+                                <input type="text" id="domain-request-key" name="bSearch" class="form-control">
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-sm-6 col-lg-4">
+                            <label for="creator">Date range</label><br />
+                            <div class="input-group" style="margin-bottom: 15px;">
+                                <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                                <input type="text" id="domain-request-daterange" class="form-control daterange">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <br />
+
+                <table class="datatable table-hover table-striped" id="domain-request-history" style="width: 100%;">
+                    <thead>
+                        <tr>
+                            <th data-priority="1">Date &amp; time</th>
+                            <th data-priority="2">Domain</th>
+                            <th data-priority="2">Type</th>
+                            <th data-priority="2">Decision</th>
+                            <th data-priority="1" data-orderable="false">Options</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                </table>
+
+
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+
+<div class="modal fade right" id="orders-bview" role="dialog" aria-labelledby="orders-bview">
+    
+</div>

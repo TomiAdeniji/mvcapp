@@ -1,0 +1,442 @@
+﻿@using Qbicles.Models.SalesMkt;
+@model SMContact
+@{
+    var areas = (List<Area>)ViewBag.Areas;
+    var criterias = (List<CustomCriteriaDefinition>)ViewBag.Criterias;
+    var customCriterias = criterias.Where(c => c.IsAgeRange == false && c.Status == CustomCriteriaStatus.Active).ToList();
+    var ageRanges = (List<CustomOption>)ViewBag.AgeRange;
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var imgAcceptedFile = (string)ViewBag.ImageAcceptedExtensions;
+}
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail mdv2-wrapper" style="position: relative;">
+
+
+    <!-- Main content -->
+    <section class="mdv2 dash" data-tooltip-color="teal" data-tooltip-delay="300" data-tooltip-animate-function="spin" style="border-top: 1px solid #f1f1f1;">
+
+
+        <!-- App bar -->
+        <div class="mdv2-col-app" style="margin-bottom: 0;">
+
+            <div data-spy="affix" class="contained-sidebar">
+
+                <div class="activity-overview plain company-overview welcome-info" style="text-align: left !important; flex: none; margin: 0; padding-top: 30px; padding-bottom: 0;">
+
+                    <div class="pull-left" style="margin-bottom: 15px;">
+                        <a href="/SalesMarketing/SMApps" class="btn btn-info"><i class="fa fa-angle-left"></i> &nbsp; Contacts</a>
+                    </div>
+                    <div class="clearfix"></div>
+
+                    <br />
+
+
+                    <img src="@(api + Model.AvatarUri + "&size=M")" class="img-responsive" style="min-width: 100%; margin-bottom: 30px;">
+                    <h1 style="line-height: 1.2;">@Model.Name</h1>
+                    <br />
+
+                    <p style="color: rgba(0, 0, 0, 0.5);">
+                        Manage this Contact's information here. If you add new information, be sure to refresh the Contact List in any Segments
+                        it may affect, to ensure this Contact is added (or removed) from the appropriate Segments.
+                    </p>
+                </div>
+
+            </div>
+        </div>
+        <!-- END App bar -->
+        <!-- Main area -->
+        <div class="mdv2-col-dash">
+            <form id="frm-smcontact-add" enctype="multipart/form-data">
+                <input type="hidden" name="Id" value="@Model.Id">
+                <div class="spacing">
+
+                    <h5>General information</h5>
+                    <div class="well custom" style="padding-bottom: 5px;">
+
+                        <input type="hidden" id="sm-contact-object-key" name="mediaObjectKey" />
+                        <input type="hidden" id="sm-contact-object-name" name="mediaObjectName" />
+                        <input type="hidden" id="sm-contact-object-size" name="mediaObjectSize" />
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="avatar">Avatar</label>
+                                    <input id="sm-contact-upload-media" type="file" name="avatar" class="form-control" accept="@imgAcceptedFile" onchange="showImageFromInputFile(this, '#img_avatar')" />
+                                </div>
+                            </div>
+                            <img id="img_avatar" src="@(api + Model.AvatarUri)" alt="Your image" style="display: none; width: 100%; height: auto; margin-bottom: 30px;" />
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="Name">Name <span class="red">*</span></label>
+                                    <input required type="text" name="Name" class="form-control" value="@Model.Name">
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="Email">Email <span class="red">*</span></label>
+                                    <input required type="text" name="Email" class="form-control" value="@Model.Email">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="DateOfBirth">Date of birth</label>
+                                    <input type="text" id="DateOfBirth" name="DateOfBirth" onchange="changeBirthDay()" value="@(String.Format("{0:dd/MM/yyyy}", Model.BirthDay))" class="form-control" placeholder="Select a date">
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="AgeRanges">Age range</label>
+                                    <select id="AgeRanges" name="AgeRanges" class="form-control select2" style="width: 100%;">
+                                        <option value=""></option>
+                                        @if (ageRanges != null)
+                                        {
+                                            foreach (var range in ageRanges)
+                                            {
+                                                <option value="@(range.CustomCriteriaDefinition.Id+"_"+range.Id)" @(Model.CriteriaValues.Any(c => c.Option.Id == range.Id) ? "selected" : "")>@range.Label</option>
+                                            }
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="Phone">Phone</label>
+                                    <input type="text" name="Phone" class="form-control" value="@Model.PhoneNumber">
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="Source">Source</label>
+                                    <select name="Source" class="form-control select2" style="width: 100%;" onchange="if ($(this).val() == '4') { $('.description').show();$('#description').val('');} else { $('.description').hide();$('#description').val(''); }">
+                                        <option value=""></option>
+                                        <option value="0" @(Model.Source == ContactSourceEnum.Customer ? "selected" : "")>Customer</option>
+                                        <option value="1" @(Model.Source == ContactSourceEnum.Trader ? "selected" : "")>Trader</option>
+                                        <option value="2" @(Model.Source == ContactSourceEnum.EnquiryForm ? "selected" : "")>Enquiry form</option>
+                                        <option value="3" @(Model.Source == ContactSourceEnum.SalesCall ? "selected" : "")>Sales call</option>
+                                        <option value="4" @(Model.Source == ContactSourceEnum.Other ? "selected" : "")>Other</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+
+
+
+                            <div class="col-xs-12 col-sm-6 place">
+                                <div class="form-group">
+                                    <label for="Places">Place(s) of interest</label>
+                                    <select name="Places" id="Places" class="form-control checkmulti" multiple="" style="width: 100%; display: none">
+                                        @if (areas.Any())
+                                        {
+                                            foreach (var area in areas)
+                                            {
+                                                if (area.Places.Any())
+                                                {
+                                                    <optgroup label="@area.Name">
+                                                        @foreach (var place in area.Places)
+                                                        {
+                                                            <option value="@place.Id" @(Model.Places.Any(p => p.Id == place.Id) ? "selected" : "")>@place.Name</option>
+                                                        }
+                                                    </optgroup>
+                                                }
+                                            }
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+
+                            @if (Model.Source == ContactSourceEnum.Other)
+                            {
+                                <div class="col-xs-12 col-sm-6 description">
+                                    <div class="form-group">
+                                        <label for="SourceDescription">Please specify</label>
+                                        <input type="text" id="description" name="SourceDescription" class="form-control" value="@Model.SourceDescription" placeholder="e.g. Business card">
+                                    </div>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="col-xs-12 col-sm-6 description" style="display: none">
+                                    <div class="form-group">
+                                        <label for="SourceDescription">Please specify</label>
+                                        <input type="text" id="description" name="SourceDescription" class="form-control" value="@Model.SourceDescription" placeholder="e.g. Business card">
+                                    </div>
+                                </div>
+                            }
+
+                        </div>
+
+                    </div>
+
+
+                    <br />
+                    @if (customCriterias.Any())
+                    {
+                        var numberOfRowEven = customCriterias.Count() / 2;
+                        var maximumRow = numberOfRowEven + customCriterias.Count() % 2;
+
+                        <select id="Options" name="Options" class="form-control" style="width: 100%;display:none" multiple>
+                            @foreach (var criteria in customCriterias)
+                            {
+                                if (criteria.CustomOptions.Any())
+                                {
+                                    foreach (var option in criteria.CustomOptions)
+                                    {
+                                        <option value="@(option.CustomCriteriaDefinition.Id+"_"+ option.Id)">@option.Label</option>
+                                    }
+                                }
+                            }
+                        </select>
+
+                        <label>Custom criteria</label><br />
+                        <div class="well custom" style="padding-bottom: 5px;">
+                            @for (var i = 0; i < numberOfRowEven * 2; i += 2)
+                            {
+                                <div class="row">
+                                    @{
+                                        var cc1 = customCriterias[i].CustomOptions;
+                                        var cc2 = customCriterias[i + 1].CustomOptions;
+                                    }
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="Options">@customCriterias[i].Label</label>
+                                            <select name="Options" class="form-control criteria select2" onchange="changeCustomCriteria()" style="width: 100%;">
+                                                <option value=""></option>
+                                                @foreach (var option in cc1)
+                                                {
+                                                    <option value="@(option.CustomCriteriaDefinition.Id+"_"+ option.Id)" @(Model.CriteriaValues.Any(c => c.Option.Id == option.Id) ? "selected" : "")>@option.Label</option>
+                                                }
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="Options">@customCriterias[i + 1].Label</label>
+                                            <select name="Options" class="form-control criteria select2" onchange="changeCustomCriteria()" style="width: 100%;">
+                                                <option value=""></option>
+                                                @foreach (var option in cc2)
+                                                {
+                                                    <option value="@(option.CustomCriteriaDefinition.Id+"_"+ option.Id)" @(Model.CriteriaValues.Any(c => c.Option.Id == option.Id) ? "selected" : "")>@option.Label</option>
+                                                }
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                            @if (maximumRow > numberOfRowEven)
+                            {
+                                <div class="row">
+                                    @{
+                                        var cc1 = customCriterias[numberOfRowEven * 2].CustomOptions;
+                                    }
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="Options">@customCriterias[numberOfRowEven * 2].Label</label>
+                                            <select name="Options" class="form-control criteria select2" onchange="changeCustomCriteria()" style="width: 100%;">
+                                                <option value=""></option>
+                                                @foreach (var option in cc1)
+                                                {
+                                                    <option value="@(option.CustomCriteriaDefinition.Id+"_"+ option.Id)" @(Model.CriteriaValues.Any(c => c.Option.Id == option.Id) ? "selected" : "")>@option.Label</option>
+                                                }
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+
+
+                    <br />
+                    <a href="/SalesMarketing/SMApps#sm-contacts" class="btn btn-danger">Cancel</a>
+                    <a class="btn btn-success" onclick="ProcessContactEdit()">Save changes</a>
+                </div>
+            </form>
+        </div>
+        <!-- END Main Area -->
+
+
+
+        <div class="mdv2-col-user">
+
+            <h5 style="margin: 0; padding: 0 0 20px 0;">Linked Segments</h5>
+
+            <div class="flex-grid-fluid from-community c1" style="width: 100%;">
+                @foreach (var segment in Model.Segments)
+                {
+                    <div class="col" style="flex: 0 0 100%;">
+                        <a href="/SalesMarketingSegment/Detail?id=@segment.Id" class="article-feature">
+                            <div class="article-feature-img" style="background: url('@(api + segment.FeaturedImageUri + "&size=S")');">
+                                <span class="label label-lg event">
+                                    @{
+                                        var segmentType = "";
+                                        switch (segment.Type)
+                                        {
+                                            case SegmentType.Behavioural: segmentType = "Behavioural"; break;
+                                            case SegmentType.Demographic: segmentType = "Demographic"; break;
+                                            case SegmentType.Geographic: segmentType = "Geographic"; break;
+                                            case SegmentType.Psychographic: segmentType = "Psychographic"; break;
+                                        }
+                                    }
+                                    @segmentType
+                                </span>
+                            </div>
+                            <div class="info">
+                                <smaller>@(String.Format("{0:n0}", segment.Contacts.Count())) contacts</smaller>
+                                <smaller></smaller>
+                                <h1>@segment.Name</h1>
+                                <p>@segment.Summary</p>
+                            </div>
+                        </a>
+                    </div>
+                }
+
+            </div>
+
+        </div>
+
+
+    </section>
+    <!-- ./content -->
+
+</div>
+<!-- /.content-wrapper -->
+@{
+    <script>
+        $(document).ready(function () {
+            $("#Places").multiselect({
+                includeSelectAllOption: false,
+                enableFiltering: false,
+                buttonWidth: '100%',
+                maxHeight: 400,
+                enableClickableOptGroups: true
+            });
+
+            $(".multi").multiselect({
+                includeSelectAllOption: false,
+                enableFiltering: false,
+                buttonWidth: '100%',
+                maxHeight: 400
+            });
+
+            $(".select2").select2({
+                placeholder: "Please select"
+            });
+
+            $('#DateOfBirth').daterangepicker({
+                singleDatePicker: true,
+                timePicker: false,
+                autoApply: true,
+                showDropdowns: true,
+                autoUpdateInput: true,
+                cancelClass: "btn-danger",
+                opens: "left",
+                minDate: '01/01/1900',
+                maxDate: '@ViewBag.MaxDate',
+                locale: {
+                    cancelLabel: 'Clear',
+                    format: 'DD-MM-YYYY'
+                }
+            });
+
+        });
+
+
+        function ProcessContactEdit() {
+
+            if ($('#frm-smcontact-add').valid()) {
+                $.LoadingOverlay("show");
+                var files = document.getElementById("sm-contact-upload-media").files;
+                if (files && files.length > 0) {
+
+                    UploadMediaS3ClientSide("sm-contact-upload-media").then(function (mediaS3Object) {
+
+                        if (mediaS3Object.objectKey === "no_image" || mediaS3Object.objectKey === "no-image") {
+                            LoadingOverlayEnd('hide');
+                            cleanBookNotification.error(_L("ERROR_MSG_S3_UPLOAD"), "Qbicles");
+                            return;
+                        }
+                            $("#sm-contact-object-key").val(mediaS3Object.objectKey);
+                            $("#sm-contact-object-name").val(mediaS3Object.fileName);
+                            $("#sm-contact-object-size").val(mediaS3Object.fileSize);
+                            SubmitSaleMarketingContactEdit();
+
+                    });
+
+                } else
+                    SubmitSaleMarketingContactEdit();
+
+            }
+
+
+        }
+
+        SubmitSaleMarketingContactEdit = function () {
+            var form_data = new FormData($('#frm-smcontact-add')[0]);
+            $.ajax({
+                type: "post",
+                url: "/SalesMarketing/SaveSMContact",
+                data: form_data,
+                cache: false,
+                enctype: 'multipart/form-data',
+                processData: false,
+                contentType: false,
+                beforeSend: function (xhr) {
+                    isBusyAddTaskForm = true;
+                },
+                success: function (data) {
+                    if (data.result) {
+                        location.reload();
+                        cleanBookNotification.success(_L("ERROR_MSG_664"), "Sales Marketing");
+                    } else {
+                        cleanBookNotification.error(_L("ERROR_MSG_EXCEPTION_SYSTEM"), "Sales Marketing");
+                    }
+                },
+                error: function (data) {
+                    
+                    cleanBookNotification.error(_L("ERROR_MSG_EXCEPTION_SYSTEM"), "Sales Marketing");
+                }
+            }).always(function () {
+                isBusyAddTaskForm = false;
+                LoadingOverlayEnd();
+            });
+        };
+        function changeCustomCriteria() {
+            var selectedOption = [];
+            $(".criteria.select2").each(function () {
+                if ($(this).val() != null) selectedOption.push($(this).val());
+            });
+            $("#Options").val(selectedOption);
+        }
+
+        function changeBirthDay() {
+            var arr = $("#DateOfBirth").val().split("-");
+            var birthDay = new Date(arr[2], arr[1] - 1, arr[0]);
+            var ageDifMs = Date.now() - birthDay.getTime();
+            var ageDate = new Date(ageDifMs); // miliseconds from epoch
+            var age = Math.abs(ageDate.getUTCFullYear() - 1970);
+            var flag = false;
+            $("#AgeRanges option").each(function () {
+                var ageArr = $(this).text().split("-");
+                if (!flag && ageArr && age >= parseInt(ageArr[0]) && age <= parseInt(ageArr[1])) {
+                    $('#AgeRanges').val($(this).val()).trigger('change');
+                    flag = true;
+                }
+            });
+        }
+    </script>
+
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Content/DesignStyle/js/bootstrap-multiselect.js"></script>
+    }
+    else
+    {
+        <script src="~/Content/DesignStyle/js/bootstrap-multiselect.min.js"></script>
+    }
+}

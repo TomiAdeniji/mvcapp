@@ -1,0 +1,228 @@
+﻿@using Qbicles.BusinessRules
+@using Qbicles.Models.Trader
+
+//@model  List<TraderSale>
+@{
+    //var key = (string)ViewBag.Key;
+    //var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+}
+<div class="modal-dialog modal-xl" role="document">
+    <div class="modal-content">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <h5 class="modal-title">Find a Sale</h5>
+        </div>
+        <div class="modal-body">
+
+            <div class="well custom" style="padding-bottom: 5px;">
+
+                <div class="row">
+                    <div class="col-xs-12 col-sm-6">
+                        <div class="form-group">
+                            <label for="search_dt">Search for a sale</label>
+                            <input type="text" name="search_dt" id="search_dt_sale" class="form-control invoice-ref" placeholder="Search for...">
+                        </div>
+                    </div>
+                    <div class="col-xs-12 col-sm-6">
+                        <div class="form-group">
+                            <label for="daterange">Date range</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="search_sale_datetime" value="@DateTime.UtcNow.AddDays(-60).ToString("dd/MM/yyyy") - @DateTime.UtcNow.ToString("dd/MM/yyyy")" placeholder="Limit to a date range">
+                                <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <br />
+            <div class="invoice-select" id="sale_table_find">
+                <table class="datatable table-striped table-hover" id="community_list_find_sale" style="background: #fff; width: 100%;">
+                    <thead>
+                        <tr>
+                            <th>Ref</th>                            
+                            <th>Date created</th>
+                            <th>Reporting Filters</th>
+                            <th>Amount <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                            <th data-orderable="false">Use</th>
+                        </tr>
+                    </thead>
+                    <tbody>                        
+                    </tbody>
+                </table>
+            </div>
+
+
+            <div class="selected-invoice" style="display: none;">
+                <table class="datatable app_specific" id="community_list_sale_choise" style="background: #fff; width: 100%;" data-paging="false">
+                    <thead>
+                        <tr>
+                            <th data-orderable="false">Ref</th>
+                            <th data-orderable="false">Date created</th>
+                            <th data-orderable="false">Reporting Filters</th>
+                            <th data-orderable="false">Amount <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                            <th data-orderable="false">Options</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <input type="hidden" value="0" id="sale_choise_id" />
+                            <td id="sale_choise_ref"><input type="hidden" value="" /> <span></span></td>
+                            <td id="sale_choise_cretedate"></td>
+                            <td id="sale_dimensions">
+                                <span class="label label-lg label-primary">Reporting Filter 1</span>
+                                <span class="label label-lg label-primary">Reporting Filter 2</span>
+                            </td>
+                            <td id="sale_choise_amount"></td>
+                            <td>
+                                <button class="btn btn-warning" onclick="reSelectSale()"><i class="fa fa-pencil"></i> &nbsp; Change sale</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <br /><br />
+            <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+            <button class="btn btn-success" onclick="confirmSelectSale()" data-dismiss="modal">Confirm</button>
+
+        </div>
+    </div><!-- /.modal-content -->
+</div><!-- /.modal-dialog -->
+
+
+
+<script>
+
+    var $formatDate = 'DD/MM/YYYY';
+    $(function () {
+        $('#search_sale_datetime').daterangepicker({
+            autoUpdateInput: true,
+            timePicker: true,
+            cancelClass: "btn-danger",
+            opens: "right",
+            autoUpdateInput: false,
+            locale: {
+                cancelLabel: 'Clear',
+                format: $formatDate
+            }
+        });
+        $('#search_sale_datetime').on('apply.daterangepicker', function (ev, picker) {
+            $(this).val(picker.startDate.format($formatDate) + ' - ' + picker.endDate.format($formatDate));
+            $('#search_sale_datetime').html(picker.startDate.format($formatDate) + ' - ' + picker.endDate.format($formatDate));
+
+            $("#community_list_find_sale").DataTable().ajax.reload();
+        });
+        $('#search_sale_datetime').on('cancel.daterangepicker', function (ev, picker) {
+            $(this).val(null);
+            $('#search_sale_datetime').html('full history');
+            $("#community_list_find_sale").DataTable().ajax.reload();
+        });
+    });
+
+    $("#search_dt_sale").keyup(searchThrottle(function () {
+        reloadDataTable();
+    }));
+
+    function reloadDataTable() {
+        $("#community_list_find_sale").DataTable().ajax.reload(null, false);
+    }
+
+    function searchThrottle(f, delay) {
+        var timer = null;
+        return function () {
+            var context = this, args = arguments;
+            clearTimeout(timer);
+            timer = window.setTimeout(function () {
+                f.apply(context, args);
+            },
+                delay || 1000);
+        };
+    }
+
+    GetDataToTable();
+
+    function GetDataToTable() {
+        $("#community_list_find_sale").on('processing.dt', function (e, settings, processing) {
+            if (processing) {
+                $('#community_list_find_sale').LoadingOverlay("show", { minSize: "70x60px" });
+            } else {
+                $('#community_list_find_sale').LoadingOverlay("hide", true);
+            }
+        }).DataTable({
+            "destroy": true,
+            "serverSide": true,
+            "paging": true,
+            "searching": false,
+            "responsive": true,
+            "lengthMenu": [[10, 20, 50, 100], [10, 20, 50, 100]],
+            "pageLength": 10,
+            "ajax": {
+                "url": '/TraderContact/FindSaleCreditServerSide',
+                "type": 'POST',
+                "dataType": 'json',
+                "data": function (d) {
+                    return $.extend({}, d, {
+                        "keyword": $("#search_dt_sale").val(),
+                        "contactId": $("#contact-id").val(),
+                        "dateRange": $("#search_sale_datetime").val()
+                    });
+                }
+            },
+            "columns": [
+                {
+                    name: "FullRef",
+                    data: "FullRef",
+                    orderable: true,
+                    render: function (value, type, row) {                       
+                        return "<span class='find_sale_ref_" + row.Id + "'>" + row.FullRef+"</span>";
+                    }
+                },
+                {
+                    name: "CreatedDate",
+                    data: "CreatedDate",
+                    orderable: true,
+                    render: function (value, type, row) {
+                        return "<span class='find_sale_createdate_" + row.Id + "'>" + row.CreatedDate + "</span>";
+                    }
+                },
+                {
+                    name: null,
+                    data: null,
+                    orderable: false,
+                    render: function (value, type, row) {                        
+                        var reporting = "<div class='find_sale_dimensions_"+row.Id+"'>";
+                        _.forEach(row.ReportingFilters, r => {
+                            reporting += "<span class='label label-lg label-primary'>"+r+"</span>";
+                        });
+                        return reporting+="</div>";
+                    }
+                },
+                {
+                    name: "SaleTotal",
+                    data: "SaleTotal",
+                    orderable: true,
+                    render: function (value, type, row) {
+                        return "<span class='find_sale_amount_" + row.Id + "'>" + row.SaleTotal + "</span>";
+                    }
+                },
+                {
+                    name: null,
+                    data: null,
+                    orderable: false,
+                    width: "100px",
+                    render: function (value, type, row) {
+                        return "<button class='btn btn-success' onclick='selectChoiseSale(" + row.Id + "," + row.ReferenceId + ")'><i class='fa fa-check'></i></button>";
+                    }
+                }
+            ],
+            "drawCallback": function (settings) {
+                //$.getScript("/Content/DesignStyle/js/html5tooltips.js");
+            },
+            "order": [[1, "desc"]]
+        });
+    }
+
+</script>

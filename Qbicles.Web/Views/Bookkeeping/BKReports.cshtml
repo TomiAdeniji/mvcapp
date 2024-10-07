@@ -1,0 +1,415 @@
+﻿@using Qbicles.Models.Bookkeeping;
+@using Qbicles.BusinessRules;
+@{
+    ViewBag.Title = "Bookkeeping - Reports";
+    var expenses = (BKGroup)ViewBag.Expenses;
+    var revenues = (BKGroup)ViewBag.Revenue;
+    var assets = (BKGroup)ViewBag.Assets;
+    var liabilities = (BKGroup)ViewBag.Liabilities;
+    var equity = (BKGroup)ViewBag.Equity;
+    var dimensions = (List<TransactionDimension>)ViewBag.dimensions;
+    var userRoleRights = (List<string>)ViewBag.UserRoleRights;
+    var rightShowJournalTab = (bool)ViewBag.rightShowJournalTab;
+    var rightShowAccountTab = (bool)ViewBag.rightShowAccountTab;
+    var rightShowReportsTab = (bool)ViewBag.rightShowReportsTab;
+    var rightShowConfigurationTab = userRoleRights.Any(r => r == RightPermissions.BKManageAppSettings);
+}
+@helper ChildNodes(List<CoANode> lstNodes)
+{
+    foreach (var item in lstNodes)
+    {
+        string icon_type = "tree-bank.png";
+        if (item.NodeType == CoANode.BKCoANodeTypeEnum.SubGroup)
+        {
+            icon_type = "tree-group.png";
+        }
+        <li id="ic-@item.Id" data-jstree='{"icon":"/Content/DesignStyle/img/@icon_type","opened":false}'>
+            <h5>@item.Name</h5>
+            <span>@item.Number</span>
+            @if (item.Children != null && item.Children.Any())
+            {
+                <ul>
+                    @ChildNodes(item.Children)
+                </ul>
+            }
+        </li>
+    }
+}
+<div class="content-wrapper qbicle-detail" style="min-height: 452px;">
+
+    <!-- Main content -->
+    <section class="content">
+
+        <br><br>
+
+        <div class="mod_title">
+            <h5>Bookkeeping</h5>
+            <h4>Reports</h4>
+        </div>
+
+        @Html.Partial("_BookkeepingNavigatePartial", new ViewDataDictionary
+        {
+            {"tabSelected", 3 },
+            { "rightShowJournalTab", rightShowJournalTab },
+            { "rightShowAccountTab", rightShowAccountTab },
+            { "rightShowReportsTab", rightShowReportsTab },
+            { "rightShowConfigurationTab", rightShowConfigurationTab }
+        })
+
+        <div class="row">
+            <div class="col-xs-12">
+                <div class="app_filter">
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-6 col-lg-9">
+                            <a href="/Apps/AppManagement" class="btn btn-info"><i class="fa fa-th"></i> &nbsp; All apps</a>
+                            @if (rightShowAccountTab)
+                            {
+                                <a href="/Bookkeeping/BKApps" class="btn btn-primary"><i class="fa fa-home"></i> &nbsp; App home</a>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <br>
+
+        <div class="row">
+            <div class="col-xs-12 col-sm-4 col-md-3">
+                <ul class="nav nav-stacked nav-pills nav-marketing" style="margin-bottom: 30px;">
+                    <li class="active"><a href="#" data-toggle="tab" data-target="#tab-custom">All reports</a></li>
+                    <li><a href="#" data-toggle="tab" data-target="#tab-tools">Other tools</a></li>
+                </ul>
+            </div>
+            <div class="col-xs-12 col-sm-8 col-lg-9">
+
+                <div class="tab-content">
+
+
+                    <!-- Snapshots -->
+                    <div class="tab-pane fade" id="tab-tools">
+
+                        <ul class="grid-list flattened" style="margin-top: -15px;">
+                            <li class="grid-list-item">
+                                <a href="app_bookkeeping_report_income_comparison.php" class="coa-overview text-center">
+                                    <div class="grid-list-content coa-item coa-overview-detail">
+                                        <div class="cb-grid-details">
+                                            <img src="~/Content/DesignStyle/img/icon_report_snapshot.png">
+                                            <br><br>
+                                            <h3>Comparison</h3>
+                                            <p>Compare 2 or more reports for a more customised approach to analysing your finances.</p>
+                                        </div>
+                                    </div>
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                    <!-- END Snapshots -->
+                    <!-- Custom reports -->
+                    <div class="tab-pane fade in active" id="tab-custom">
+
+                        <div class="flex-grid-thirds-lg flattened">
+                            <div class="col">
+                                <a href="#" class="coa-overview text-center" data-toggle="modal" data-target="#report-choose-template-preset-income">
+                                    <div class="grid-list-content coa-item coa-overview-detail" style="padding-top: 45px; padding-bottom: 35px;">
+                                        <div class="cb-grid-details">
+                                            <img src="~/Content/DesignStyle/img/icon_trader.png">
+                                            <br><br>
+                                            <h3>Income statement</h3>
+                                            <p>Analyse your income and expenditure to determine your profitability with a customised Income Statement template.</p>
+                                        </div>
+                                    </div>
+                                </a>
+                            </div>
+                            <div class="col">
+                                <a href="#" class="coa-overview text-center" data-toggle="modal" data-target="#report-choose-template-preset-balance">
+                                    <div class="grid-list-content coa-item coa-overview-detail" style="padding-top: 45px; padding-bottom: 35px;">
+                                        <div class="cb-grid-details">
+                                            <img src="~/Content/DesignStyle/img/icon_statement.png">
+                                            <br><br>
+                                            <h3>Balance sheet</h3>
+                                            <p>Covers what you own (assets), your debts (liabilities) and your investments (equity) in a fully customisable report.</p>
+                                        </div>
+                                    </div>
+                                </a>
+                            </div>
+                            <div class="col">
+                                <a href="" class="coa-overview text-center">
+                                    <div class="grid-list-content coa-item coa-overview-detail" style="padding-top: 45px; padding-bottom: 35px;">
+                                        <div class="cb-grid-details">
+                                            <img src="~/Content/DesignStyle/img/icon_review.png">
+                                            <br><br>
+                                            <h3>Expenses by vendor summary</h3>
+                                            <p>Build a new template for viewing your expenses for each vendor as a way of performing some quick analysis.</p>
+                                        </div>
+                                    </div>
+                                </a>
+                            </div>
+                        </div>
+
+                    </div>
+                    <!-- END Custom reports -->
+
+
+                </div> <!-- ./tab-content -->
+
+            </div>
+        </div>
+
+
+
+    </section>
+    <!-- ./content -->
+
+</div>
+<div class="modal fade left" id="report-choose-template-preset-income" role="dialog" aria-labelledby="report-choose-template-preset-income" style="display: none;">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+                <h5 class="modal-title">Configure your new report</h5>
+            </div>
+            <div class="modal-body">
+                <form id="frm-execute-report" method="post" action="/Bookkeeping/BKReportsIncome">
+                    <div class="row">
+                        <div class="col-xs-12">
+                            <ul id="navtab-income" class="app_subnav admintabs" style="padding-top: 0;">
+                                <li class="active"><a href="#incomerep1" data-toggle="tab">Specifics</a></li>
+                                <li><a href="#incomerep2" data-toggle="tab">Configure display</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                    <br>
+                    <div class="tab-content">
+
+                        <!-- Specifics -->
+                        <div class="tab-pane fade in active" id="incomerep1">
+
+                            <div class="well custom">
+                                <div class="row">
+                                    <div class="col-xs-12">
+                                        <div class="form-group">
+                                            <label for="period">Report period</label>
+                                            <select name="period" class="form-control select2 report_date_type" onchange="$('#incomerep1 select[name=period]').valid()" required style="width: 100%;" data-placeholder="Limit report to a date range" tabindex="-1" aria-hidden="true">
+                                                <option value=""></option>
+                                                <option value="Custom date range">Custom date range</option>
+                                                <option value="this-year-to-date">This year to-date</option>
+                                                <option value="this-month">This month</option>
+                                                <option value="this-week">This week</option>
+                                            </select>
+                                            <label id="period-error" class="error" for="period" style="display:none;">This field is required.</label>
+                                        </div>
+                                    </div>
+                                    <div class="date_type_2" style="display: none;">
+                                        <div class="col-xs-12 col-sm-6">
+                                            <label for="start_date">Start date</label><br>
+                                            <div class="input-group" style="margin-bottom: 15px;">
+                                                <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                                                <input type="text" name="start_date" class="form-control singledate">
+                                            </div>
+                                        </div>
+                                        <div class="col-xs-12 col-sm-6">
+                                            <label for="end_date">End date</label><br>
+                                            <div class="input-group" style="margin-bottom: 15px;">
+                                                <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                                                <input type="text" name="end_date" class="form-control singledate">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-xs-12">
+                                        <div class="form-group" style="margin-bottom: 0;">
+                                            <label for="dimensions">Reporting Filter(s)</label>
+                                            <select name="dimensions" class="form-control select2" multiple="" style="width: 100%;" tabindex="-1" aria-hidden="true">
+                                                <option value=""></option>
+                                                @foreach (var item in dimensions)
+                                                {
+                                                <option value="@(item.Id)">@item.Name</option>
+                                                }
+
+                                            </select>
+                                            <label id="dimensions-error" class="error" for="dimensions" style="display:none">This field is required.</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+
+                            <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                            <a href="#incomerep2" data-toggle="tab" class="btn btn-success btnNext">Next &nbsp; <i class="fa fa-angle-right"></i></a>
+
+
+                        </div>
+                        <!-- END Specifics -->
+                        <!-- Display config -->
+                        <div class="tab-pane fade" id="incomerep2">
+
+                            <div class="activity-overview generic help-text animated bounce">
+                                <i class="fa fa-info-circle"></i>
+                                <p>
+                                    Expanding a group below indicates it should display its contents in your Report. Likewise collapsing a group will hide its contents in the resulting Report.
+                                    Please expand/collapse groups until you are happy with what information is displayed before proceeding.
+                                </p>
+                            </div>
+
+
+                            <div class="row">
+                                <div class="col-xs-12">
+                                    <input id="treevalue" name="incomeReportEntry" value="" type="hidden" />
+                                    <div id="jstree-icreportentry" class="jstree" style="padding: 30px; background: #f5f5f5;">
+                                        <ul>
+                                            @if (revenues != null)
+                                            {
+                                                <li id="ic-@revenues.Id" data-jstree='{"icon":"/Content/DesignStyle/img/tree-group.png", "opened":true, "disabled":true}'>
+                                                    <h5 style="padding-top: 17px;">Revenue</h5>
+                                                    <ul>
+                                                        @ChildNodes(revenues.Children)
+                                                    </ul>
+                                                </li>
+                                            }
+                                            @if (expenses != null)
+                                            {
+                                                <li id="ic-@expenses.Id" data-jstree='{"icon":"/Content/DesignStyle/img/tree-group.png", "opened":true, "disabled":true}'>
+                                                    <h5 style="padding-top: 17px;">Expenses</h5>
+                                                    <ul>
+                                                        @ChildNodes(expenses.Children)
+                                                    </ul>
+                                                </li>
+                                            }
+                                        </ul>
+                                    </div>
+
+                                </div>
+                            </div>
+
+
+                            <br><br>
+
+                            <a href="#incomerep1" data-toggle="tab" class="btn btn-warning btnPrevious"><i class="fa fa-angle-left"></i> &nbsp; Previous</a>
+                            <button type="submit" class="btn btn-success">Confirm</button>
+
+                        </div>
+                        <!-- END Display config -->
+                    </div>
+                </form>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+<div class="modal fade left" id="report-choose-template-preset-balance" role="dialog" aria-labelledby="report-choose-template-preset-balance" style="display: none;">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+                <h5 class="modal-title">Configure your new report</h5>
+            </div>
+            <div class="modal-body">
+                <form id="frm-execute-report-balance" method="post" action="/Bookkeeping/BKReportsBalance">
+                    <div class="row">
+                        <div class="col-xs-12">
+                            <ul id="navtab-balance" class="app_subnav admintabs" style="padding-top: 0;">
+                                <li class="active"><a href="#balancerep1" data-toggle="tab" aria-expanded="true">Specifics</a></li>
+                                <li class=""><a href="#balancerep2" data-toggle="tab" aria-expanded="false">Configure display</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                    <br>
+                    <div class="tab-content">
+
+                        <!-- Specifics -->
+                        <div class="tab-pane fade active in" id="balancerep1">
+
+                            <div class="well custom">
+                                <div class="row">
+                                    <div class="col-xs-12">
+                                        <div class="form-group">
+                                            <label for="period">Report date</label>
+                                            <input type="text" name="start_date" required class="form-control singledate">
+                                            <label id="start_date-error" class="error" for="start_date" style="display:none;">This field is required.</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                            <a href="#balancerep2" data-toggle="tab" class="btn btn-success btnNext" aria-expanded="true">Next &nbsp; <i class="fa fa-angle-right"></i></a>
+
+                        </div>
+                        <!-- END Specifics -->
+                        <!-- Display config -->
+                        <div class="tab-pane fade" id="balancerep2">
+
+                            <div class="row">
+                                <div class="col-xs-12">
+
+                                    <div class="activity-overview generic help-text animated bounce">
+                                        <i class="fa fa-info-circle"></i>
+                                        <p>
+                                            Expanding a group below indicates it should display its contents in your Report. Likewise collapsing a group will hide its contents in the resulting Report.
+                                            Please expand/collapse groups until you are happy with what information is displayed before proceeding.
+                                        </p>
+                                    </div>
+                                    <input id="treevaluebalance" name="balanceReportEntry" value="" type="hidden" />
+                                    <input id="lstANodes" name="allNodeIds" value="" type="hidden" />
+                                    <div id="jstree-blreportentry" class="jstree" style="padding: 30px; background: #f5f5f5;">
+                                        <ul>
+                                            @if (assets != null)
+                                            {
+                                                <li id="ic-@assets.Id" data-jstree='{"icon":"dist/img/tree-group.png", "opened":true, "disabled":true}'>
+                                                    <h5 style="padding-top: 17px;">Assets</h5>
+                                                    <ul>
+                                                        @ChildNodes(assets.Children)
+                                                    </ul>
+                                                </li>
+                                            }
+                                            @if (liabilities != null)
+                                            {
+                                                <li id="ic-@liabilities.Id" data-jstree='{"icon":"dist/img/tree-group.png", "opened":true, "disabled":true}'>
+                                                    <h5 style="padding-top: 17px;">Liabilities</h5>
+                                                    <ul>
+                                                        @ChildNodes(liabilities.Children)
+                                                    </ul>
+                                                </li>
+                                            }
+                                            @if (equity != null)
+                                            {
+                                                <li id="ic-@equity.Id" data-jstree='{"icon":"dist/img/tree-group.png", "opened":true, "disabled":true}'>
+                                                    <h5 style="padding-top: 17px;">Equity</h5>
+                                                    <ul>
+                                                        @ChildNodes(equity.Children)
+                                                    </ul>
+                                                </li>
+                                            }
+                                        </ul>
+                                    </div>
+
+
+                                </div>
+                            </div>
+                            <br><br>
+                            <a href="#balancerep1" data-toggle="tab" class="btn btn-warning btnPrevious" aria-expanded="false"><i class="fa fa-angle-left"></i> &nbsp; Previous</a>
+                            <button type="submit" class="btn btn-success">Confirm</button>
+
+                        </div>
+                        <!-- END Display config -->
+
+                    </div>
+                </form>
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/bookkeeping-reports.js"></script>
+        <script src="~/Scripts/dev/trader.domain.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/bookkeeping-reports.min.js"></script>
+        <script src="~/Scripts/dev/trader.domain.min.js"></script>
+    }
+}

@@ -1,0 +1,89 @@
+﻿@using Qbicles.Models;
+@using Qbicles.BusinessRules;
+@{
+    var currentDomainPlan = (DomainPlan)ViewBag.CurrentDomainPlan ?? null;
+    var newDomainPlanLevel = (BusinessDomainLevel)ViewBag.NewDomainPlanLevel ?? null;
+    var currentDomain = (QbicleDomain)ViewBag.CurrentDomain ?? null;
+    var currentSubscription = (Subscription)ViewBag.CurrentSubscription;
+
+    var extraUserNumber = currentDomainPlan?.NumberOfExtraUsers ?? 0;
+    var includedUserNumberNewDomainPlanLevel = newDomainPlanLevel?.NumberOfUsers ?? 0;
+    var currentDomainUserNumber = currentDomain?.Users?.Count ?? 0;
+    var newUserNumber = extraUserNumber + includedUserNumberNewDomainPlanLevel;
+    decimal newDomainPlanCost = (decimal)ViewBag.NewDomainPlanCost;
+}
+
+<div class="modal-dialog modal-xl cx" role="document">
+    <div class="modal-content">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <h5 class="modal-title">Upgrade to @(newDomainPlanLevel.Name ?? "")</h5>
+        </div>
+        <div class="modal-body">
+
+            <table class="table table-hover table-borderless table-striped trestyle valignm" style="margin: 0; padding: 0;">
+                <thead>
+                    <tr>
+                        <th>Item</th>
+                        <th>Quantity</th>
+                        <th>Monthly cost</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><span class="previously">@(currentDomainPlan?.Level?.Name ?? "")</span> &nbsp; <strong>@(newDomainPlanLevel?.Name ?? "")</strong></td>
+                        <td>--</td>
+                        <td><span class="previously">@((currentDomainPlan?.Level?.Cost ?? 0) > 0 ? $"{(currentDomainPlan?.Level?.Cost ?? 0).ToDecimalPlace(0)}{currentDomainPlan.Level.Currency}" : "Free")</span> &nbsp; <strong>@((newDomainPlanLevel?.Cost ?? 0) > 0 ? $"{(newDomainPlanLevel?.Cost ?? 0).ToDecimalPlace(0)}{newDomainPlanLevel.Currency}" : "Free")</strong></td>
+                    </tr>
+                    <tr>
+                        <td>Included user slots</td>
+                        <td><span class="previously">@(currentDomainPlan?.Level?.NumberOfUsers ?? 0)</span> &nbsp; <strong>@(newDomainPlanLevel?.NumberOfUsers ?? 0)</strong></td>
+                        <td>0NGN</td>
+                        <td></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <br /><br />
+            <div class="well custom rounded" style="margin: 0;">
+                <table class="table table-condensed table-borderless trestyle" style="margin: 0 0 30px 0; padding: 0; max-width: 450px;">
+                    <tbody>
+                        <tr>
+                            <td><strong>Next billing date</strong></td>
+                            <td>@(currentSubscription?.NexPaymentDate.DatetimeToOrdinal())</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Amount due</strong></td>
+                            <td><span class="previously">@($"{(currentDomainPlan?.CalculatedCost ?? 0).ToDecimalPlace(0)}{currentDomainPlan?.Level?.Currency ?? ""}")</span> &nbsp; <strong id="due">@($"{newDomainPlanCost.ToDecimalPlace(0)}{newDomainPlanLevel.Currency}")</strong></td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <p>
+                    By clicking confirm below, you are agreeing to a change in your monthly package cost as detailed above.
+                    Your new package will be available immediately, and your new cost will be applicable only from your next
+                    due billing date denoted above.
+                </p>
+
+                <br />
+                <button class="btn btn-danger community-button w-auto" data-dismiss="modal">Cancel</button>
+                <button onclick="updateDomainPlanLevel(@newDomainPlanLevel.Id)" class="community-button w-auto btn btn-success">Confirm</button>
+            </div>
+
+
+        </div>
+    </div><!-- /.modal-content -->
+</div><!-- /.modal-dialog -->
+
+
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/administration.admin.app.js"></script>
+
+    }
+    else
+    {
+        <script src="~/Scripts/dev/administration.admin.app.js"></script>
+    }
+}

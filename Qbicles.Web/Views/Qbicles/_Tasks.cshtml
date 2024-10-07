@@ -1,0 +1,91 @@
+﻿@using Qbicles.BusinessRules;
+@using Qbicles.Models;
+@model IEnumerable<DateTime>
+@{
+        <!--Acivities data-->
+    var activitiesDateCount = (int)ViewBag.AcivitiesDateCount;
+    var activitiesTask = (List<QbicleTask>)ViewBag.activitiesTask;
+    var myPinned = (List<QbicleActivity>)ViewBag.myPinneds;
+    string dateStr = "";
+    string dateStart = "";
+    var completedBy = "";
+    var currentUserId = (string)ViewBag.CurrentUserId;
+    string classMyPostOrReply = "";
+    var today = (DateTime)ViewBag.Today;
+}
+@foreach (var dates in Model.OrderBy(d => d.Date).Batch(HelperClass.qbiclePageSize))
+{
+    foreach (var item in dates)
+    {
+        dateStart = @HelperClass.DatetimeToOrdinal(item);
+        if (item.Date == today.Date)
+            dateStr = "Today";
+        else
+            dateStr = dateStart;
+        <div class="day-block" id=@(dateStr == "Today"?"activity-date-today":dateStr) style="margin-bottom: 0;">
+            <div class="day-date">
+                <span class="date">@dateStr</span>
+            </div>
+            @if (activitiesTask.Where(d => d.TimeLineDate.Date == item).ToList().Count > 0)
+            {
+                foreach (var tk in activitiesTask.Where(d => d.TimeLineDate.Date == item).OrderBy(d => d.TimeLineDate))
+                {
+                    classMyPostOrReply = tk.StartedBy.Id == currentUserId ? "mypost" : "reply";
+                    <div class="@classMyPostOrReply is_task" onclick="ShowTaskPage('@tk.Key', false);">
+                        <div class="poster">
+                            <img src="~/Content/DesignStyle/img/icon_tasks_lg.png">
+                        </div>
+                        <div class="content task">
+                            @if (tk.Topic != null)
+                            {
+                                <span class="topic">
+                                    Topic: <a href="javascript:void(0);" onclick="ShowTopic(event,'@tk.Topic.Id');">@tk.Topic.Name</a>
+                                </span>
+                            }
+
+                            <a href="javascript:void(0);" onclick="PinnedActivity('@tk.Id',false,event)" class="pin">
+                                @if (myPinned != null && myPinned.Any(e => e.Id == tk.Id))
+                                {
+                                    <i id="pinIcon-@tk.Id" class="fa fa-check green"></i>
+                                }
+                                else
+                                {
+                                    <i id="pinIcon-@tk.Id" class="fa fa-thumb-tack"></i>
+                                }
+                            </a>
+
+                            <div class="bubble-marker"></div>
+                            @if (tk.ClosedBy != null)
+                            {
+                                var closeDate = (DateTime)tk.ClosedDate;
+                                completedBy = string.Format("(Mark as Completed by {0} {1} @ {2} on {3})",
+                                    tk.ClosedBy.Forename, tk.ClosedBy.Surname, closeDate.ToString("hh:mmtt"), @HelperClass.DatetimeToOrdinal((DateTime)tk.ClosedDate));
+                            }
+                            <p class="name">@tk.Name @completedBy</p>
+                            <small>@tk.StartedBy.Forename @tk.StartedBy.Surname &nbsp; | &nbsp;@tk.TimeLineDate.ToString("hh:mmtt")</small>
+                            <p><a href="javascript:void(0);">@tk.Description</a> was added as a task</p>
+
+                            <div class="info_labels">
+                                <span class="label label-primary">@tk.Priority</span>
+                                @{
+                                    if (tk.Repeat != QbicleTask.TaskRepeatEnum.No)
+                                    {
+                                        <span class="due label label-warning">@tk.Repeat</span>
+                                    }
+                                    var assignMe = tk.ActivityMembers.Any(u => u.Id == currentUserId);
+                                    if (assignMe)
+                                    {
+                                        <span class="label label-danger">My Task</span>
+                                    }
+                                }
+                            </div>
+
+                        </div>
+                        <div class="clearfix"></div>
+                    </div>
+                    <div class="clearfix"></div>
+                                        }
+                                    }
+        </div>
+                                        }
+                                    }

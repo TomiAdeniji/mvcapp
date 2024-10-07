@@ -1,0 +1,65 @@
+﻿@using Qbicles.BusinessRules;
+@using Qbicles.Models.SalesMkt;
+@model Pipeline
+@{
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+}
+@foreach (var step in Model.Steps)
+{
+    <div class="pipeline-block">
+
+        <div class="topic-detail">@step.Name &nbsp; <span class="pull-right" style="color: rgba(255, 255, 255, 0.6);">@step.Contacts.Sum(c => c.PotentialValue).ToCurrencySymbol(currencySettings)</span></div>
+
+        <div class="horizontal-portlets">
+
+            <div class="column ui-sortable" data-id="@step.Id">
+                @foreach (var pipeContact in step.Contacts)
+                {
+                    <div class="portlet rework" data-id="@pipeContact.Id">
+                        <div class="portlet-side">
+                            <input type="checkbox" value="@pipeContact.Id">
+                        </div>
+                        <div class="portlet-content">
+                            <div class="row">
+                                <div class="col-xs-9">
+                                    <div class="dropdown">
+                                        <a href="#app-marketing-pipeline-contact-manage" data-toggle="modal" onclick="LoadModalPipelineContactDetail(@pipeContact.Id, @pipeContact.Contact.Id)">
+                                            <p>@pipeContact.Contact.Name &nbsp; <span class="value">(@pipeContact.PotentialValue.ToCurrencySymbol(currencySettings))</span></p>
+                                        </a>
+                                    </div>
+                                    <a href="#">
+                                        @{
+                                            var num = 0;
+                                            switch (pipeContact.Rating)
+                                            {
+                                                case ProspectRating.Star_1: num = 1; break;
+                                                case ProspectRating.Star_2: num = 2; break;
+                                                case ProspectRating.Star_3: num = 3; break;
+                                                case ProspectRating.Star_4: num = 4; break;
+                                                case ProspectRating.Star_5: num = 5; break;
+                                            }
+                                        }
+                                        @for (var i = 1; i <= num; i++)
+                                        {
+                                            <i class="fa fa-star"></i>
+                                        }
+                                    </a>
+                                </div>
+                                <div class="col-xs-3 text-right">
+                                    <button data-toggle="modal" data-target="#app-marketing-pipeline-move" onclick="moveOnePipelineContact(@pipeContact.Id)" class="btn btn-info"><i class="fa fa-exchange"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                }
+
+            </div> <!-- ./column -->
+
+        </div> <!-- ./horizontal-portlets -->
+
+    </div> <!-- ./pipeline-block -->
+
+}

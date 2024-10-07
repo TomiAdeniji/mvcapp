@@ -1,0 +1,222 @@
+﻿@using Qbicles.BusinessRules;
+@using Qbicles.Models;
+@using Qbicles.BusinessRules.Model
+@model QbicleDiscussion
+@{
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var CurrentQbicle = (Qbicle)ViewBag.CurrentQbicle;
+    var QbicleTopics = (List<Topic>)ViewBag.QbicleTopics;
+    var CurrentTimeZone = (string)ViewBag.CurrentTimeZone;
+    var lstDefaultImg = (List<DefaultMedia>)ViewBag.DefaultMedia;
+    var idMediaImage = (string)ViewBag.FeaturedImageId;
+    var isSelectFromDefault = Model != null && lstDefaultImg.Any(i => idMediaImage.Equals(i.Id));
+    var datetimeFormat = (string)ViewBag.CurrentDateTimeFormat;
+}
+<div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <h5 class="modal-title">Add a discussion</h5>
+        </div>
+        <div class="modal-body">
+
+            <div class="well custom">
+                <form id="frm-discussion-qb">
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group">
+                                <label for="Title">Discussion title <span class="red">*</span></label>
+                                <input type="text" id="discussion-title" name="Title" required class="form-control">
+                                <input id="discussion-key" type="hidden" name="Key" />
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group">
+                                <label for="Topic">Choose a Topic <span class="red">*</span></label>
+                                <select id="discussion-topic" name="Topic" required class="form-control select2" style="width: 100%;">
+                                    @foreach (var item in QbicleTopics)
+                                    {
+                                        <option value="@item.Id">@item.Name</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-xs-12">
+                            <div class="form-group">
+                                <label for="media">Featured image</label>
+                                <select id="discussion-featured-option" name="FeaturedOption" class="form-control select2" style="width: 100%;" onchange="changeFeatureImage()" tabindex="-1" aria-hidden="true">
+                                    <option value="1" @(isSelectFromDefault ? "selected" : "")>Select from a list of defaults</option>
+                                    <option value="2" @(isSelectFromDefault ? "" : "selected")>Upload my own image</option>
+                                </select>
+                            </div>
+                            <div class="discussionuploadnew" style="display: @(!isSelectFromDefault? "block" : "none"); margin-top: 15px;">
+
+                                <div class="form-group">
+                                    <label for="featuredimg">Choose an image to upload</label>
+                                    <input type="file" id="discussion-image-upload" class="form-control preview-discussion-img" name="FeaturedImage" accept=".jpg,.jpeg,.png,.webp" data-target="preview-discussion">
+                                    <input type="hidden" id="mediaDiscussionUse" value="@idMediaImage" />
+                                </div>
+
+                                <img id="preview-discussion" src="@(!string.IsNullOrEmpty(Model.FeaturedImageUri)? api + Model.FeaturedImageUri : "")" class="preview-discussion" style="width: 100%; height: auto;@(!string.IsNullOrEmpty(Model.FeaturedImageUri)?"display:block;":"display:none;")">
+                            </div>
+                            <div class="discussion-resource-picker" style="display: @(isSelectFromDefault? "block" : "none"); padding: 15px 0 0 0;">
+                                <div class="flex-grid-half-lg from-community c1" style="width: 100%;">
+                                    @foreach (var item in lstDefaultImg)
+                                    {
+                                        <div id="other_@item.Id" class="col ds_other" style="display: @((Model==null || idMediaImage == "" || item.Id == idMediaImage) ? "block" : "none")">
+                                            <a href="#" class="article-feature">
+                                                <div class="article-feature-img" style="background: url('@item.FileUrl');">
+                                                </div>
+                                                <div class="info" style="padding: 15px 0;">
+                                                    <div style="padding: 0 20px;">
+                                                        <button id="btnuse_@item.Id" type="button" class="btn btn-info community-button usetheme"
+                                                                onclick="$(this).hide(); $('#btnchange_@item.Id').show(); $('.ds_other').hide(); $('#mediaDiscussionUse').val('@item.Id');$('#other_@item.Id').show();">
+                                                            <i class="fa fa-check"></i> &nbsp; Use this
+                                                        </button>
+
+                                                        <button id="btnchange_@item.Id" type="button" class="btn btn-warning community-button change"
+                                                                style="display:none" onclick="$(this).hide(); $('#btnuse_@item.Id').show(); $('#mediaDiscussionUse').val('0'); $('.ds_other').show();">
+                                                            <i class="fa fa-pencil"></i> &nbsp; Change
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </a>
+                                        </div>
+                                    }
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-xs-12">
+                            <div class="form-group">
+                                <label>Add an opening comment (also used as its description)</label>
+                                <textarea id="discussion-summary" class="form-control" style="min-height: 80px;"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-xs-12">
+                            <div class="avatarpickermulti">
+                                <div class="form-group">
+                                    <label for="assignee">Add Contacts to your discussion</label>
+                                    <select id="discussion-assignee" name="Assignee" class="form-control select2avatar-discussion" data-placeholder="Click to add" multiple style="width: 100%;">
+                                        <option value=""></option>
+                                        @if (CurrentQbicle != null)
+                                        {
+                                            foreach (var item in CurrentQbicle?.Members)
+                                            {
+                                                <option avatarUrl="@(api+item.ProfilePic)&size=T" value="@item.Id">@HelperClass.GetFullNameOfUser(item)</option>
+                                            }
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-6">
+                            <label>Set an expiry date (optional)</label><br />
+                            <div class="checkbox toggle" onclick="$('.setexpiry').toggle();" style="float:left">
+                                <label>
+                                    <input data-toggle="toggle" name="IsExpiry" id="discussion-is-expiry" value="true" data-onstyle="success" type="checkbox">
+                                </label>
+                            </div>
+
+                            <div class="setexpiry" style="display: none;">
+                                <div class="form-group">
+                                    <label>Choose when this discussion should expire</label>
+                                    <input type="text" name="ExpiryDate" id="discussion-expiryDate" class="form-control singledateandtime-dis">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-sm-6">
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <button type="button" form="frm-discussion-qb" class="btn btn-danger" data-dismiss="modal">Cancel</button>
+            <button type="button" onclick="CreateOrderPrintCheckDiscussion()" form="frm-discussion-qb" class="btn btn-success">Confirm</button>
+
+
+        </div>
+    </div><!-- /.modal-content -->
+</div>
+
+<script>
+    $(document).ready(function () {
+        $('#frm-discussion-qb').validate({
+            rules: {
+                Title: {
+                    required: true,
+                    maxlength: 150
+                },
+                FeaturedImage: {
+                    filesize: true
+                },
+                Summary: {
+                    maxlength: 500
+                }
+            }
+        });
+
+        $('.preview-discussion-img').change(function () {
+            var target = $(this).data('target');
+            readURLImage(this, target);
+            $(target).fadeIn();
+        });
+        function S_Assigee_Options(state) {
+            if (!state.id) { return state.text; }
+            var urlAvatar = state.element.attributes["avatarUrl"].value;
+            var $state = $(
+                '<div class="select2imgwrap"><div class="select2img" style="background-image: url(\'' + urlAvatar.toLowerCase() + '\');"></div> <span class="select2text">' + state.text + '</span></div>'
+            );
+            return $state;
+        }
+        function S_Assigee_Selected(state) {
+            if (!state.id) { return state.text; }
+            var urlAvatar = state.element.attributes["avatarUrl"].value;
+            var $state = $(
+                '<div class="select2imgwrap"><div class="select2img mini" style="background-image: url(\'' + urlAvatar.toLowerCase() + '\');"></div> <span class="select2text">' + state.text + '</span></div>'
+            );
+            return $state;
+        }
+        $('.select2avatar-discussion').select2({
+            placeholder: 'Please select',
+            templateResult: S_Assigee_Options,
+            templateSelection: S_Assigee_Selected
+        });
+        $('.singledateandtime-dis').daterangepicker({
+            singleDatePicker: true,
+            timePicker: true,
+            autoApply: true,
+            showDropdowns: true,
+            autoUpdateInput: true,
+            cancelClass: "btn-danger",
+            opens: "left",
+            drops: "up",
+            locale: {
+                cancelLabel: 'Clear',
+                format: $dateTimeFormatByUser
+            }
+        });
+
+        $("#discussion-featured-option, #discussion-topic").select2();
+        $('#frm-discussion-qb input[name=IsExpiry]').bootstrapToggle('off');
+    });
+
+    function changeFeatureImage() {
+        if ($("#discussion-featured-option").val() == '1') {
+            $('.discussion-resource-picker').show();
+            $('.discussionuploadnew').hide();
+            $('.ds_other').show();
+        } else {
+            $('.discussion-resource-picker').hide();
+            $('.discussionuploadnew').show();
+        }
+    }
+</script>

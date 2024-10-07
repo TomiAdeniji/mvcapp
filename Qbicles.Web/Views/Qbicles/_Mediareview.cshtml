@@ -1,0 +1,80 @@
+﻿@using Qbicles.Models;
+@{
+    var versionFile = (VersionedFile)ViewBag.VersionFile;
+    var listFileType = (List<string>)ViewBag.listFileType;
+    string fileAccept = listFileType.Any() ? ("." + string.Join(",.", listFileType)) : "";
+
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var videoApi = ViewBag.VideoRetrievalUrl;
+    var viewerUrl = (string)ViewBag.ViewerUrl;
+
+    var filePath = versionFile.Uri;
+    var fileType = versionFile.FileType?.Type ?? "";
+}
+
+@if (versionFile.FileType.Type.Equals("Image File", StringComparison.OrdinalIgnoreCase))
+{
+    <img id="media-uri" class="img-responsive feat" src='@api@versionFile.Uri' />
+
+}
+
+else if (versionFile.FileType.Type.Equals("Compressed File", StringComparison.OrdinalIgnoreCase))
+{
+    <img id="media-uri" class="img-responsive feat" src="@versionFile.FileType.IconPath" />
+}
+else if (versionFile.FileType.Type.Equals("Video File", StringComparison.OrdinalIgnoreCase))
+{
+    <video width="640" height="320" controls="" id="embed" style="display: inline-block;" class="fancybox-video">
+        <source src="@string.Format(videoApi,versionFile.Uri,"mp4")" type="video/mp4">
+        <source src="@string.Format(videoApi,versionFile.Uri,"webm")" type="video/webm">
+        <source src="@string.Format(videoApi,versionFile.Uri,"ogv")" type="video/ogv">
+    </video>
+}
+else
+{
+
+    var urlEmbed = viewerUrl;// + "&embedded=true";
+    <iframe id="iframe-google-viewer" src='@urlEmbed' width='100%' height='900px' frameborder='0' marginwidth="0"
+            marginheight="0"></iframe>
+}
+
+
+<script>
+
+    $(document).ready(function () {
+        $('#fileZise').text('@versionFile.FileSize');
+        $('#file-type').text("@fileType");
+    });
+
+    function DownloadVersion() {
+        var url = "";
+        var $downloadUri='@versionFile.Uri';
+        var name = $downloadUri.substring($downloadUri.lastIndexOf('/')).replace("/", "").toLowerCase();
+        var fileName = name +'.' + '@(versionFile.FileType!=null?versionFile.FileType.Extension:null)';
+        url = '/Medias/DownloadFile';
+
+        var fileModel = {
+            Uri : '@filePath',
+            Name : fileName
+        };
+
+         $.ajax({
+             type: 'post',
+             url: url,
+             datatype: 'json',
+             data: fileModel,
+             success: function (refModel) {
+                 var link = document.createElement("a");
+                 link.download = fileName;
+                 link.target = '_blank';
+                 link.href = refModel;
+                 document.body.appendChild(link);
+                 link.click();
+                 document.body.removeChild(link);
+                 delete link;
+             }, error: function (err) {
+                 cleanBookNotification.error(err.responseText, "Qbicles");
+             }
+         });
+    }
+</script>

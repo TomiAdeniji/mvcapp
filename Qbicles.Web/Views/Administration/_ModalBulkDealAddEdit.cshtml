@@ -1,0 +1,340 @@
+﻿@using Qbicles.Models.Loyalty
+@using Qbicles.BusinessRules
+@using Qbicles.Models
+@model Qbicles.BusinessRules.Model.LoyaltyBulkDealPromotionAndTypeModel
+@{
+    var currencySettings = (CurrencySetting)ViewBag.CurrencySetting;
+    var datetimeFormat = (string)ViewBag.CurrentDateTimeFormat;
+    var timezone = (string)ViewBag.CurrentTimeZone;
+    <style>
+        .deal-title {
+            text-align: center
+        }
+    </style>
+}
+<div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <h5 class="modal-title deal-title">@(Model.LoyaltyBulkDealPromotion.Id > 0 ? "Edit Bulk Deal" : "Add Bulk Deal")</h5>
+        </div>
+        <div class="modal-body">
+            <form id="frmAddEditDeal">
+                <div class="row">
+                    <div class="col-xs-12">
+                        <ul class="app_subnav admintabs" style="padding-top: 0;">
+                            @*<li class="active"><a href="#promo0" data-toggle="tab">Priority</a></li>*@
+                            <li class="active"><a href="#promo1" data-toggle="tab">Overview</a></li>
+                            <li><a href="#promo2" data-toggle="tab">Reward</a></li>
+                            <li><a href="#promov" data-toggle="tab">Voucher</a></li>
+                        </ul>
+                    </div>
+                </div>
+                <br />
+                <div class="tab-content">
+           
+                    <!-- Overview -->
+                    <div class="tab-pane fade in active" id="promo1">
+
+                        <div class="well custom" style="padding-bottom: 5px;">
+
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label for="Type">Promotion type <span class="red">*</span></label>
+                                        <select disabled name="Type" id="voucherType" required class="form-control select2" style="width: 100%;" >
+                                          @*  <option value="">Please select</option>*@
+                                            <option  selected value="1" @(Model.LoyaltyBulkDealPromotion.BulkDealVoucherInfo != null && Model.LoyaltyBulkDealPromotion.BulkDealVoucherInfo.Type == VoucherType.ItemDiscount ? "selected" : "")>Item discount</option>
+                                         @*   <option value="2" @(Model.LoyaltyBulkDealPromotion.BulkDealVoucherInfo != null && Model.LoyaltyBulkDealPromotion.BulkDealVoucherInfo.Type == VoucherType.OrderDiscount ? "selected" : "")>Order discount</option>*@
+                                        </select>
+                                        <label id="Type-error" class="error" for="Type" style="display:none">This field is required.</label>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label for="name">Promotion name <span class="red">*</span></label>
+                                        <input type="text" required name="Name" class="form-control" value="@Model.LoyaltyBulkDealPromotion.Name">
+                                        <input type="hidden" name="PromotionKey" value="@Model.LoyaltyBulkDealPromotion.Key" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Select -->
+                            @*<div class="row">
+                    <div class="col-xs-12 col-sm-12">
+                        <div class="form-group">
+                            <label for="Plan">Promotion plan <span class="red">*</span></label>
+                            <select name="Plan" required class="form-control select2" style="width: 100%;" disabled>
+                                <option value="" selected hidden>Please select plan</option>
+                                @foreach (var item in Model.LoyaltyBulkDealPromotionTypes)
+                                {
+                                    <option value="@item.Id" @((item.Id > 0 && item.Id == item.Id) ? "selected" : "")>@item.Name (@item.Price)</option>
+                                }
+                            </select>
+                            <label id="Type-error" class="error" for="Type" style="display:none">This field is required.</label>
+                        </div>
+                    </div>
+                </div>*@
+
+                            <div class="row">
+                                <div class="col-xs-12">
+                                    <div class="form-group">
+                                        <label for="Description">Description <span class="red">*</span></label>
+                                        <textarea name="Description" required class="form-control" style="height: 80px; max-width: 100%;">@Model.LoyaltyBulkDealPromotion.Description</textarea>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label for="account_number">Featured image <span class="red">*</span></label>
+                                        <input type="hidden" id="hdffeaturedimguri" value="@Model.LoyaltyBulkDealPromotion.FeaturedImageUri" />
+                                        <input type="file" @(Model.LoyaltyBulkDealPromotion.Id > 0 ? "" : "required") id="filefeaturedimg" class="form-control" name="featuredimg">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-6">
+                                    <label for="StartDate">Starts <span class="red">*</span></label>
+                                    <div class="input-group" style="margin-bottom: 15px;">
+                                        <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                                        @{
+                                            var startDate = Model.LoyaltyBulkDealPromotion.StartDate.ConvertTimeFromUtc(timezone).ToString(datetimeFormat);
+                                            if (Model.LoyaltyBulkDealPromotion.Id == 0)
+                                            {
+                                                startDate = DateTime.Now.Date.ToString(datetimeFormat);
+                                            }
+                                        }
+                                        <input type="text" required name="StartDate" value="@startDate" class="form-control singledateandtime-reinit">
+                                    </div>
+                                    <label id="StartDate-error" class="error" for="StartDate" style="display:none">This field is required.</label>
+                                </div>
+                                <div class="col-xs-12 col-sm-6">
+                                    <label for="EndDate">Ends <span class="red">*</span></label>
+                                    @{
+                                        var endDate = Model.LoyaltyBulkDealPromotion.EndDate.ConvertTimeFromUtc(timezone).ToString(datetimeFormat);
+                                        if (Model.LoyaltyBulkDealPromotion.Id == 0)
+                                        {
+                                            endDate = DateTime.Now.Date.AddDays(1).AddSeconds(-1).ToString(datetimeFormat);
+                                        }
+                                    }
+                                    <div class="input-group" style="margin-bottom: 15px;">
+                                        <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                                        <input type="text" required name="EndDate" value="@endDate" class="form-control singledateandtime-reinit">
+                                    </div>
+                                    <label id="EndDate-error" class="error" for="EndDate" style="display:none">This field is required.</label>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-6">
+                                    @{
+                                        var displayDate = Model.LoyaltyBulkDealPromotion.DisplayDate.ConvertTimeFromUtc(timezone).ToString(datetimeFormat);
+                                        if (Model.LoyaltyBulkDealPromotion.Id == 0)
+                                        {
+                                            displayDate = DateTime.Now.Date.ToString(datetimeFormat);
+                                        }
+                                    }
+                                    <label>Advertise from a specific date &amp; time</label>
+                                    <div class="checkbox toggle">
+                                        <label>
+                                            <input id="chkAdvertiseCustome" @(Model.LoyaltyBulkDealPromotion.DisplayDate != Model.LoyaltyBulkDealPromotion.StartDate ? "checked" : "") class="chktoggle" data-toggle="toggle" data-onstyle="success" type="checkbox" onchange="if ($(this).prop('checked') ? $('input[name=DisplayDate]').attr('required', true) : $('input[name=DisplayDate]').removeAttr('required')); $('.showfrom').fadeToggle();">
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="showfrom" style="@(Model.LoyaltyBulkDealPromotion.DisplayDate!=Model.LoyaltyBulkDealPromotion.StartDate?"":"display: none;")">
+                                        <div class="form-group">
+                                            <label for="name">Advertise from <span class="red">*</span></label>
+                                            <div class="input-group">
+                                                <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                                                <input type="text" name="DisplayDate" value="@displayDate" class="form-control singledateandtime-displaydate">
+                                            </div>
+                                            <label id="DisplayDate-error" class="error" for="DisplayDate" style="display:none">This field is required.</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <br />
+                        <button type="button" onclick="$('a[href=#promo2]').click()" id="stp1" class="btn btn-success btnNext">Next &nbsp; <i class="fa fa-angle-right"></i></button>
+                    </div>
+                    <!-- END Overview -->
+                    <!-- Criteria -->
+                    <div class="tab-pane fade" id="promo2">
+                        @{
+                            var itemdiscount = Model.LoyaltyBulkDealPromotion.BulkDealVoucherInfo != null && Model.LoyaltyBulkDealPromotion.BulkDealVoucherInfo.Type == VoucherType.ItemDiscount ? (ItemDiscountBulkDealVoucherInfo)Model.LoyaltyBulkDealPromotion.BulkDealVoucherInfo : null;
+                        }
+                        <!-- Item -->
+                        <div class="well custom promotype" style="padding-bottom: 5px; @(itemdiscount!=null?"":"display: none;")" id="itemdiscount">
+
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-4">
+                                    <label for="amount">Discount by <span class="red">*</span></label><br />
+                                    <div class="input-group">
+                                        <input type="number" name="ItemDiscount" value="@(itemdiscount?.ItemDiscount??1)" class="form-control" min="1" max="100">
+                                        <span class="input-group-addon">%</span>
+                                    </div>
+                                    <label id="ItemDiscount-error" class="error" for="ItemDiscount" style="display:none;margin-right: 34px;">Please enter a value greater than or equal to 1.</label>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- END Item -->
+                        @{
+                            var orderdiscount = Model.LoyaltyBulkDealPromotion.BulkDealVoucherInfo != null && Model.LoyaltyBulkDealPromotion.BulkDealVoucherInfo.Type == VoucherType.OrderDiscount ? (OrderDiscountBulkDealVoucherInfo)Model.LoyaltyBulkDealPromotion.BulkDealVoucherInfo : null;
+                        }
+                        <!-- Order -->
+                        <!--<div class="well custom promotype" style="@(orderdiscount!=null?"":"display: none;")" id="orderdiscount">
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-6">
+                                    <label for="amount">Discount order total by <span class="red">*</span></label><br />
+                                    <div class="input-group">
+                                        <input type="number" name="OrderDiscount" value="@(orderdiscount?.OrderDiscount??1)" class="form-control" min="1" max="100">
+                                        <span class="input-group-addon">%</span>
+                                    </div>
+                                    <label id="OrderDiscount-error" class="error" for="OrderDiscount" style="display:none;margin-right: 34px;"></label>
+                                </div>
+                                <div class="col-xs-12 col-sm-6">
+                                    <label for="items">Max discount value</label>
+                                    <div class="input-group">
+                                        <input type="number" name="MaxDiscountValue" value="@((orderdiscount?.MaxDiscountValue.ToDecimalPlace(currencySettings)??"").Replace("-1",""))" class="form-control" min="1" max="99999999.99" maxlength="11">
+                                        <span class="input-group-addon">@(currencySettings.CurrencySymbol)</span>
+                                    </div>
+                                    <label id="MaxDiscountValue-error" class="error" for="MaxDiscountValue" style="display:none;margin-right: 34px;"></label>
+                                </div>
+                            </div>
+                        </div>-->
+                        <!-- END Order -->
+
+                        <br />
+                        <button type="button" onclick="$('a[href=#promo1]').click()" data-toggle="tab" class="btn btn-warning btnPrevious"><i class="fa fa-angle-left"></i> &nbsp; Previous</button>
+                        <button type="button" onclick="$('a[href=#promov]').click()" class="btn btn-success btnNext">Next &nbsp; <i class="fa fa-angle-right"></i></button>
+                    </div>
+                    <!-- END Criteria -->
+                    <!-- Voucher -->
+                    <div class="tab-pane fade" id="promov">
+
+                        <div class="well custom" style="padding-bottom: 5px;">
+
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label for="name">Maximum voucher count</label>
+                                        <input type="number" name="MaxVoucherCount" step="1" min="1" value="@(Model.LoyaltyBulkDealPromotion.BulkDealVoucherInfo?.MaxVoucherCount.ToString().Replace("-1","")??"")" class="form-control">
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label for="name">Per customer <span class="red">*</span></label>
+                                        <input type="number" name="MaxVoucherCountPerCustomer" step="1" value="@(Model.LoyaltyBulkDealPromotion.BulkDealVoucherInfo?.MaxVoucherCountPerCustomer??1)" class="form-control" min="1">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="terms">Terms &amp; conditions to show customers <span class="red">*</span></label>
+                                <textarea name="TermsAndConditions" required class="form-control" style="max-width: 100%; height: 80px;">@(Model.LoyaltyBulkDealPromotion.BulkDealVoucherInfo?.TermsAndConditions??"")</textarea>
+                            </div>
+                              <div class="form-group">
+                                <label for="terms">Terms &amp; conditions to show businesses <span class="red">*</span></label>
+                                <textarea name="BusinessesTermsAndConditions" required class="form-control" style="max-width: 100%; height: 80px;">@(Model.LoyaltyBulkDealPromotion.BulkDealVoucherInfo?.BusinessesTermsAndConditions ?? "")</textarea>
+                            </div>
+
+                            <div class="row">
+                                @{
+                                    var displayExpiryDate = Model.LoyaltyBulkDealPromotion.BulkDealVoucherInfo?.VoucherExpiryDate?.ConvertTimeFromUtc(timezone).ToString(datetimeFormat);
+                                    if (Model.LoyaltyBulkDealPromotion.Id == 0)
+                                    {
+                                        displayExpiryDate = DateTime.Now.Date.ToString(datetimeFormat);
+                                    }
+                                }
+                                <div class="col-xs-12 col-sm-6">
+
+                                    <div class="form-group">
+                                        <label>Voucher expires after the promotion has ended</label><br />
+                                        <div class="checkbox toggle">
+                                            <label>
+                                                <input id="chkExpiryDate" @(Model.LoyaltyBulkDealPromotion.BulkDealVoucherInfo?.VoucherExpiryDate != null ? "checked" : "") class="chktoggle" data-toggle="toggle" data-onstyle="success"
+                                                       type="checkbox" onchange="if ($(this).prop('checked') ? $('input[name=ExpiryDate]').attr('required', true) : $('input[name=ExpiryDate]').removeAttr('required')); $('#vtimes').fadeToggle();">
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-6">
+                                    <div id="vtimes" style="@(Model.LoyaltyBulkDealPromotion.BulkDealVoucherInfo?.VoucherExpiryDate != null?"":"display: none;")">
+                                        <label>Voucher expiry date <span class="red">*</span></label><br />
+                                        <div class="input-group">
+                                            <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                                            <input type="text" name="ExpiryDate" id="expiry-date" value="@displayExpiryDate" class="form-control singledateandtime">
+                                        </div>
+                                        <label id="ExpiryDate-error" class="error" for="ExpiryDate" style="display:none">This field is required.</label>
+                                    </div>
+                                </div>
+                            </div>
+                            @{
+                                var days = Model.LoyaltyBulkDealPromotion.BulkDealVoucherInfo?.DaysAllowed ?? new List<LoyaltyBulkDealWeekDay>();
+                            }
+                            <div class="row">
+
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label>Voucher can only be redeemed at specific times</label><br />
+                                        <div class="checkbox toggle">
+                                            <label>
+                                                <input id="chkSpecificTime" @(days.Any() ? "checked" : "") class="chktoggle" data-toggle="toggle" data-onstyle="success" type="checkbox" onchange="$('#times').toggle();">
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-6">
+
+                                    <div id="times" style="@(days.Any()?"":"display: none;")">
+                                        <div class="form-group">
+                                            <label>Days this voucher can be used</label>
+                                            <select name="Days" class="form-control checkmulti" multiple style="width: 100%;">
+                                                <option value="Monday" @(days.Any(s => s.Day == "Monday") ? "selected" : "")>Monday</option>
+                                                <option value="Tuesday" @(days.Any(s => s.Day == "Tuesday") ? "selected" : "")>Tuesday</option>
+                                                <option value="Wednesday" @(days.Any(s => s.Day == "Wednesday") ? "selected" : "")>Wednesday</option>
+                                                <option value="Thursday" @(days.Any(s => s.Day == "Thursday") ? "selected" : "")>Thursday</option>
+                                                <option value="Friday" @(days.Any(s => s.Day == "Friday") ? "selected" : "")>Friday</option>
+                                                <option value="Saturday" @(days.Any(s => s.Day == "Saturday") ? "selected" : "")>Saturday</option>
+                                                <option value="Sunday" @(days.Any(s => s.Day == "Sunday") ? "selected" : "")>Sunday</option>
+                                            </select>
+                                        </div>
+
+                                        <label for="times">Between the following hours</label>
+                                        <div class="input-group" style="margin-bottom: 15px;">
+                                            <input type="time" name="FromTime" onchange="setMinTimeFromToTimeBulkDealPromotion()" class="form-control" style="width: 110px;" value="@(Model.LoyaltyBulkDealPromotion.BulkDealVoucherInfo?.StartTime.ToString(@"hh\:mm")??"")">
+                                            <span class="input-group-btn" style="float: left;margin-left:5px;margin-bottom:2px">
+                                                <input type="time" name="ToTime" class="form-control" style="width: 110px;" value="@(Model.LoyaltyBulkDealPromotion.BulkDealVoucherInfo?.EndTime.ToString(@"hh\:mm")??"")">
+                                            </span>
+                                            <br />
+                                            <label id="FromTime-error" class="error" style="display:none" for="FromTime"></label>
+                                            <label id="ToTime-error" class="error" style="display:none" for="ToTime"></label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <br />
+                        <button type="button" onclick="$('a[href=#promo2]').click()" class="btn btn-warning btnPrevious"><i class="fa fa-angle-left"></i> &nbsp; Previous</button>
+                        @*<button type="submit" class="btn btn-success">Confirm</button>*@
+                        <button type="submit" class="btn btn-success">Create Bulk Deal</button>
+                    </div>
+                    <!-- END Voucher -->
+                </div>
+            </form>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+<script>
+    //init datetime
+    initDateTimeCustomize();
+</script>
+
+<style>
+    #filefeaturedimg-error {
+        float: left;
+    }
+</style>

@@ -1,0 +1,252 @@
+﻿@using Qbicles.BusinessRules;
+@using Qbicles.Models;
+@using Qbicles.Models.Operator;
+@model OperatorWorkGroup
+@{
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var setting = (OperatorSetting)ViewBag.setting;
+    var locations = (List<OperatorLocation>)ViewBag.locations;
+    if(Model!=null && !locations.Any(l => l.Id == Model.Location.Id))
+    {
+        locations.Add(Model.Location);
+        locations = locations.OrderBy(l => l.Name).ToList();
+    }
+    var defaultTopics = (List<ItemTopic>)ViewBag.topics;
+    var members = (List<ApplicationUser>)ViewBag.members;
+    var qbicles = (List<Qbicle>)ViewBag.qbicles;
+    var wgTaskMembers = Model != null && Model.TaskMembers != null ? Model.TaskMembers : new List<WorkGroupTaskMember>();
+    var wgTeamMembers = Model != null && Model.TeamMembers != null ? Model.TeamMembers : new List<WorkGroupTeamMember>();
+    var currentUserId = (string)ViewBag.CurrentUserId;
+}
+<div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <h5 class="modal-title">@(Model != null && Model.Id > 0 ? "Edit Operator Workgroup" : "Add an Operator Workgroup")</h5>
+        </div>
+        <div class="modal-body">
+
+            <div class="row">
+                <div class="col-xs-12">
+                    <ul id="tabNavWorkgroup" class="app_subnav" style="list-style-type: none;">
+                        <li class="active"><a href="#add-specifics" data-toggle="tab">Specifics</a></li>
+                        <li><a href="#add-members" data-toggle="tab">Members &amp; roles</a></li>
+                    </ul>
+                </div>
+            </div>
+            <br />
+            <div class="tab-content">
+
+                <!-- Specifics -->
+                <div class="tab-pane fade in active" id="add-specifics">
+                    <form id="frmOperatorWorkgroup" action="/Operator/SaveWorkgroup" method="post">
+                        <div class="well custom" style="padding-bottom: 5px;">
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label for="name">Workgroup name</label>
+                                        <input type="hidden" name="Id" value="@(Model?.Id??0)" />
+                                        <input type="text" name="Name" value="@(Model?.Name??"")" class="form-control">
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label for="location">Location</label>
+                                        <select name="LocationId" class="form-control select2" style="width: 100%;">
+                                            <option value=""></option>
+                                            @foreach (var item in locations)
+                                            {
+                                                <option value="@item.Id" @(Model != null && Model.Location != null && Model.Location.Id == item.Id ? "selected" : "")>@item.Name</option>
+                                            }
+                                        </select>
+                                        <label id="LocationId-error" class="error" for="LocationId" style="display: none;"></label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label for="qbicle">Qbicle</label>
+                                        <select name="QbicleId" id="wg-qbicle" onchange="$('#wg-topic').empty(); reloadDefaultTopic(@(Model!=null&&Model.DefaultTopic!=null?Model.DefaultTopic.Id:0));" class="form-control select2" style="width: 100%;">
+                                            @foreach (var item in qbicles)
+                                            {
+                                                <option value="@item.Id" @((setting != null && setting?.SourceQbicle?.Id == item.Id) ? "selected" : ((Model != null && Model.SourceQbicle != null && item.Id == Model.SourceQbicle.Id) ? "selected" : ""))>@item.Name</option>
+                                            }
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label for="topicId">Default topic</label>
+                                        <select name="TopicId" id="wg-topic" class="form-control select2" style="width: 100%;">
+                                            @foreach (var item in defaultTopics)
+                                            {
+                                                <option value="@item.Id" @(Model != null && Model.DefaultTopic != null && item.Id == Model.DefaultTopic.Id ? "selected" : "")>@item.Name</option>
+                                            }
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label for="type">Type</label>
+                                        <select name="Type" id="workgroupType" class="form-control select2" style="width: 100%;" onchange="changeWorkgroupType()">
+                                            <option value=""></option>
+                                            <option value="0" @(Model != null && Model.Type == WorkGroupTypeEnum.Tasks ? "selected" : "")>Tasks</option>
+                                            <option value="1" @(Model != null && Model.Type == WorkGroupTypeEnum.Team ? "selected" : "")>Team</option>
+                                        </select>
+                                        <label id="workgroupType-error" class="error" for="workgroupType" style="display: none;"></label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                    <br />
+                    <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                    <a href="#add-members" data-toggle="tab" class="btn btn-success btnNext">Next &nbsp; <i class="fa fa-angle-right"></i></a>
+                </div>
+                <!-- END Specifics -->
+                <!-- Members -->
+                <div class="tab-pane fade" id="add-members">
+
+
+                    <div class="wg-team-setup members" style="@(Model != null && Model.Type == WorkGroupTypeEnum.Team ? "" : "display: none")">
+
+                        <div class="well custom" style="padding-bottom: 5px;">
+
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-5">
+                                    <div class="form-group">
+                                        <label for="search_dt">Search workgroup</label>
+                                        <input type="text" id="teamKeyword" onkeyup="searchTeamMembers()" class="form-control">
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-4">
+                                    <div class="form-group">
+                                        <label for="search_dt">Filter by role</label>
+                                        <select name="role" id="teamRole" onchange="searchTeamMembers()" class="form-control select2" style="width: 100%;">
+                                            <option value="-1" selected>All members</option>
+                                            <option value="0">Managers</option>
+                                            <option value="1">Supervisors</option>
+                                            <option value="2">Team members</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-3">
+                                    <label>Options</label><br />
+                                    <button class="btn btn-success" data-toggle="modal" data-target="#app-operator-people-select" onclick="LoadModalPeople(@(Model!=null?@Model.Id:0))"><i class="fa fa-user-plus"></i> &nbsp; Add people</button>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <br />
+                        <table class="datatable our-people table-hover table-striped" id="tblTeamMembers" style="width: 100%;" data-order='[[ 1, "asc" ]]'>
+                            <thead>
+                                <tr>
+                                    <th data-priority="3" data-orderable="false" style="width: 60px;"></th>
+                                    <th data-priority="1">Name</th>
+                                    <th data-priority="1">Role</th>
+                                    <th data-priority="1" data-orderable="false" style="width: 60px;">Options</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var teamMember in wgTeamMembers)
+                                {
+                                    <tr id="team-member-id-@teamMember.Member.Id">
+                                        <td><div class="table-avatar mini" style="background-image: url('@api@teamMember.Member.ProfilePic&size=T');">&nbsp;</div></td>
+                                        <td><a href="/Community/UserProfilePage?uId=@teamMember.Member.Id">@HelperClass.GetFullNameOfUser(teamMember.Member, currentUserId)</a></td>
+                                        <td>
+                                            <select name="role" class="form-control select2" style="width: 100%;">
+                                                <option value=""></option>
+                                                <option value="0" @(teamMember.TeamPermission == TeamPermissionTypeEnum.Manager ? "selected" : "")>Manager</option>
+                                                <option value="1" @(teamMember.TeamPermission == TeamPermissionTypeEnum.Supervisor ? "selected" : "")>Supervisor</option>
+                                                <option value="2" @(teamMember.TeamPermission == TeamPermissionTypeEnum.Member ? "selected" : "")>Team member</option>
+                                            </select>
+                                        </td>
+                                        <td>
+                                            <button class="btn btn-danger" data-id="@teamMember.Member.Id" onclick="removeTeamMember(this)"><i class="fa fa-trash"></i></button>
+                                        </td>
+                                    </tr>
+                                }
+
+                            </tbody>
+                        </table>
+
+                    </div>
+
+
+                    <div class="wg-task-setup members" style="@(Model != null && Model.Type == WorkGroupTypeEnum.Tasks ?  "": "display: none")">
+
+                        <div class="well custom" style="padding-bottom: 5px;">
+
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-5">
+                                    <div class="form-group">
+                                        <label for="search_dt">Search workgroup</label>
+                                        <input type="text" id="taskKeyword" onkeyup="searchTaskMembers()" class="form-control">
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-4">
+                                    <div class="form-group">
+                                        <label for="search_dt">Filter by permission</label>
+                                        <select name="role" id="permissionTask" onchange="searchTaskMembers()" class="form-control select2" style="width: 100%;">
+                                            <option value="0" selected>All members</option>
+                                            <option value="1">Task creator</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-3">
+                                    <label>Options</label><br />
+                                    <button class="btn btn-success" data-toggle="modal" data-target="#app-operator-people-select" onclick="LoadModalPeople(@(Model!=null?@Model.Id:0))"><i class="fa fa-user-plus"></i> &nbsp; Add people</button>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <br />
+                        <table class="datatable our-people table-hover table-striped" id="tblTaskMembers" style="width: 100%;" data-order='[[ 1, "asc" ]]'>
+                            <thead>
+                                <tr>
+                                    <th data-priority="3" data-orderable="false" style="width: 60px;"></th>
+                                    <th data-priority="1">Name</th>
+                                    <th data-priority="1">Task creator</th>
+                                    <th data-priority="1" data-orderable="false" style="width: 60px;">Options</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var taskMember in wgTaskMembers)
+                                {
+                                    <tr id="task-member-id-@taskMember.Member.Id">
+                                        <td><div class="table-avatar mini" style="background-image: url('@api@taskMember.Member.ProfilePic&size=T');">&nbsp;</div></td>
+                                        <td><a href="/Community/UserProfilePage?uId=@taskMember.Member.Id">@HelperClass.GetFullNameOfUser(taskMember.Member, currentUserId)</a></td>
+                                        <td>
+                                            <input data-toggle="toggle" @(taskMember.IsTaskCreator ? "checked" : "") data-onstyle="success" data-on="<i class='fa fa-check'></i>" data-off=" " type="checkbox">
+                                        </td>
+                                        <td>
+                                            <button class="btn btn-danger" data-id="@taskMember.Member.Id" onclick="removeTaskMember(this)"><i class="fa fa-trash"></i></button>
+                                        </td>
+                                    </tr>
+                                }
+
+                            </tbody>
+                        </table>
+
+                    </div>
+
+
+                    <br />
+                    <a href="#add-specifics" data-toggle="tab" class="btn btn-warning btnPrevious"><i class="fa fa-angle-left"></i> &nbsp; Previous</a>
+                    <button class="btn btn-success trigger-setup" data-form=".workgroup-data" onclick="saveWorkgroup()">Confirm</button>
+
+                </div>
+                <!-- END Members -->
+
+            </div>
+
+
+
+        </div>
+    </div><!-- /.modal-content -->
+</div><!-- /.modal-dialog -->

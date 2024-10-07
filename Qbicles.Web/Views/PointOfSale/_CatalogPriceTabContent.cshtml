@@ -1,0 +1,240 @@
+﻿@using Qbicles.Models.Bookkeeping;
+@using Qbicles.BusinessRules.Helper;
+@using Qbicles.Models.Trader.SalesChannel;
+@using Qbicles.Models.Catalogs;
+@model Catalog
+@{
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+}
+
+<div class="alert_matches projects">
+    <p><span class="itemcount">0</span> items selected</p>
+    <div class="btn-group options">
+        <button type="button" class="btn btn-info dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style="margin-bottom: 0;">
+            <i class="fa fa-cog"></i> &nbsp; With selected... &nbsp; <i class="fa fa-angle-down"></i>
+        </button>
+        <ul class="dropdown-menu info">
+            <li>
+                <a href="#pricing-margin-discount" data-toggle="modal" onclick="$('#check').trigger('click');">Set margin/discount</a>
+            </li>
+            <li>
+                <a href="#" onclick="deselectAllPriceCheckBox()">Clear selections</a>
+            </li>
+        </ul>
+    </div>
+</div>
+
+
+<div class="activity-overview plain nopad">
+    <div class="block-header">
+        <h4>Prices</h4>
+    </div>
+    <div style="padding: 15px; width: calc(100% - 1px);">
+
+        <div class="well custom" style="padding-bottom: 5px;">
+            <div class="row">
+                <div class="col-xs-12 col-sm-6 col-lg-3">
+                    <div class="form-group">
+                        <label for="search">Search by SKU</label>
+                        <input type="text" class="form-control" id="sku-search-price">
+                    </div>
+                </div>
+                <div class="col-xs-12 col-sm-6 col-lg-3">
+                    <div class="form-group">
+                        <label for="search">Category</label>
+                        <select name="type" class="form-control checkmulti" id="list-category-search-price" multiple>
+                            @foreach (var categoryItem in Model.Categories)
+                            {
+                                <option value="@categoryItem.Id" selected>@categoryItem.Name</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+                <div class="col-xs-12 col-sm-6 col-lg-3">
+                    <div class="form-group">
+                        <label for="search">Search by category item</label>
+                        <input type="text" class="form-control" id="category-item-search-price">
+                    </div>
+                </div>
+
+                <div class="col-xs-12 col-sm-6 col-lg-3">
+                    <div class="form-group">
+                        <label for="opts">Search by variant/extra</label>
+                        <input type="text" class="form-control" placeholder="e.g. Blue" id="variant-extra-name-search-price">
+                    </div>
+                </div>
+                <div class="col-xs-12 col-sm-6 col-lg-3">
+                    <div class="form-group">
+                        <label for="status">Taxes updated</label>
+                        <select id="tax-update-select" class="form-control select2" style="width: 100%;">
+                            <option value="0">Show all</option>
+                            <option value="1">Yes</option>
+                            <option value="2">No</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-xs-12 col-sm-6 col-lg-3">
+                    <div class="form-group">
+                        <label for="status">Latest cost updated</label>
+                        <select id="last-cost-update-select" class="form-control select2" style="width: 100%;">
+                            <option value="0">Show all</option>
+                            <option value="1">Yes</option>
+                            <option value="2">No</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="col-xs-12 col-sm-6 col-lg-3">
+                    <div class="form-group">
+                        <label for="search">Options</label><br />
+                        <button class="btn btn-primary" id="check-all-btn" onclick="ToggleCheckAllPriceButton()">Check all</button>
+                        <div class="btn-group options">
+                            <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                <i class="fa fa-sliders"></i> &nbsp; Manage display
+                            </button>
+                            <ul id="filterColumn" class="dropdown-menu primary manage-columns" style="min-width: 200px;">                                
+                                <li><label><input type="checkbox" data-column="2" checked=""> Category</label></li>
+                                <li><label><input type="checkbox" data-column="3" checked=""> Category item</label></li>
+                                <li><label><input type="checkbox" data-column="4" checked=""> Variants / extras</label></li>
+                                <li><label><input type="checkbox" data-column="5" checked=""> Average / latest cost</label></li>
+                                <li><label><input type="checkbox" data-column="6" checked=""> Margin (latest cost)</label></li>
+                                <li><label><input type="checkbox" data-column="7" checked=""> Margin (average cost)</label></li>
+                                <li><label><input type="checkbox" data-column="8" checked=""> Net price</label></li>
+                                <li><label><input type="checkbox" data-column="9" checked=""> Tax</label></li>
+                                <li><label><input type="checkbox" data-column="10" checked=""> Price inc. tax</label></li>
+                                <li><label><input type="checkbox" data-column="11" checked=""> Tax changes</label></li>
+                                <li><label><input type="checkbox" data-column="12" checked=""> Latest cost changes</label></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <div class="activity-overview plain" style="padding: 20px 0 10px 0;">
+            <div class="row">
+                <div class="col-xs-12">
+                    <ul class="legend">
+                        <li class="reset" style="display: none">
+                            <button class="btn btn-danger" style="position: relative; top: -6px; margin-right: 10px;"
+                                    onclick="$('.jeans').show(); $('.tees').show(); $('.reset').hide();">
+                                <i class="fa fa-remove"></i> &nbsp; Reset filters
+                            </button>
+                        </li>
+                        <li>
+                            <span class="legend-sq blue"></span>
+                            <p>Variant</p>
+                        </li>
+                        <li>
+                            <span class="legend-sq aqua"></span>
+                            <p>Extra</p>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+
+
+
+        <table class="datatable table-striped table-hover" id="catalog-price-table" style="width: 100%; margin-left: -2px;">
+            <thead>
+                <tr>
+                    <th data-priority="1" data-orderable="false" class="total-checkbox-wrapper"></th>
+                    <th data-priority="1">SKU</th>
+                    <th data-priority="1">Category</th>
+                    <th data-priority="1">Category item</th>
+                    <th data-priority="2">Variants / extras</th>
+                    <th data-priority="3" data-orderable="false">Average / Latest cost (@currencySettings.CurrencySymbol)</th>
+                    <th data-priority="3" data-orderable="false">Margin (latest cost)</th>
+                    <th data-priority="3" data-orderable="false">Margin (average cost)</th>
+                    <th data-priority="3" data-orderable="false" style="width: 50px;">Net price (@currencySettings.CurrencySymbol)</th>
+                    <th data-priority="2" data-orderable="false">Taxes</th>
+                    <th data-priority="1" data-orderable="false" style="width: 80px;">Price inc. tax (@currencySettings.CurrencySymbol)</th>
+                    <th data-priority="1" data-orderable="false" style="width: 80px;">Tax changes</th>
+                    <th data-priority="1" data-orderable="false" style="width: 80px;">Latest cost changes</th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+
+    </div>
+</div>
+
+<script>
+    $(document).ready(function (e) {
+        // Init Price Tab actions
+        $('#filterColumn input[type="checkbox"]').on('change', function (e) {
+            var col = $('#catalog-price-table').DataTable().column($(this).data('column'));
+            col.visible(!col.visible());
+        });
+
+        $('#sku-search-price').keyup(delay(function () {
+            if (is_all_price_selected) {
+                ToggleCheckAllPriceButton();
+            }
+            $('#catalog-price-table').DataTable().ajax.reload();
+        }, 500));
+        $("#list-category-search-price").change(delay(function () {
+            if (is_all_price_selected) {
+                ToggleCheckAllPriceButton();
+            }
+            $('#catalog-price-table').DataTable().ajax.reload();
+        }, 500));
+        $('#category-item-search-price').keyup(delay(function () {
+            if (is_all_price_selected) {
+                ToggleCheckAllPriceButton();
+            }
+            $('#catalog-price-table').DataTable().ajax.reload();
+        }, 500));
+        $('#variant-extra-name-search-price').keyup(delay(function () {
+            if (is_all_price_selected) {
+                ToggleCheckAllPriceButton();
+            }
+            $('#catalog-price-table').DataTable().ajax.reload();
+        }, 500));
+        $('#affected-price-keysearch').keyup(delay(function () {
+            $('#catalog-price-affected-table').DataTable().ajax.reload();
+        }, 500));
+        $("#tax-update-select").change(delay(function () {
+            if (is_all_price_selected) {
+                ToggleCheckAllPriceButton();
+            }
+            $('#catalog-price-table').DataTable().ajax.reload();
+        }, 500));
+        $("#last-cost-update-select").change(delay(function () {
+            if (is_all_price_selected) {
+                ToggleCheckAllPriceButton();
+            }
+            $('#catalog-price-table').DataTable().ajax.reload();
+        }, 500));
+
+        $(".checkmulti").multiselect({
+            includeSelectAllOption: true,
+            selectAllJustVisible: true,
+            includeResetOption: false,
+            enableFiltering: false,
+            buttonWidth: '100%',
+            maxHeight: 400,
+            enableClickableOptGroups: true,
+            enableFiltering: true,
+            enableCaseInsensitiveFiltering: true
+        })
+    
+    $("#catalog-price-table").DataTable().on('responsive-resize', function ( e, datatable, columns ) {
+        $("#catalog-price-table").DataTable().columns.adjust();
+        });
+    })
+</script>
+ 
+ <style>
+    @* fix broken layout Datatable by CSS*@
+  @* .total-checkbox-wrapper input[type="checkbox"] {
+    position: absolute !important; 
+    top: 50% !important;
+    margin: 0 !important;
+  } *@
+</style>

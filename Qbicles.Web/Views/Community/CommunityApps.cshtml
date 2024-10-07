@@ -1,0 +1,329 @@
+﻿@using Qbicles.BusinessRules;
+@using Qbicles.Models.Community;
+@model List<CommunityPage>
+@{
+    ViewBag.Title = "Qbicles Community";
+    var pages = (List<ModelPage>)ViewBag.Pages;
+    var CountPage = (int)(ViewBag.CountPage ?? 0);
+    var imageStr = "";
+    var link = "javascript:void(0);";
+    var pageTitle = "";
+    var strapLine = "";
+    // set default
+    var pageType = pages[0].PageType;
+
+    if (pageType == CommunityPageTypeEnum.CommunityPage)
+    {
+        imageStr = pages[0].FeaturedImage;
+        if (pages[0].Id > 0)
+        { link = "/Community/CommunityPage?id=" + pages[0].Id; }
+        pageTitle = pages[0].Title;
+        strapLine = pages[0].BodyText;
+    }
+    else if (pageType == CommunityPageTypeEnum.DomainProfile)
+    {
+        imageStr = pages[0].StoredFeaturedImageName;
+        if (pages[0].Id > 0)
+        {
+            link = "/Community/DomainProfile?domainid=" + pages[0].Domain.Id;
+        }
+        pageTitle = pages[0].Domain.Name;
+        strapLine = pages[0].StrapLine;
+    }
+    else if (pageType == CommunityPageTypeEnum.UserProfile)
+    {
+        imageStr = pages[0].StoredLogoName;
+        if (pages[0].Id > 0)
+        {
+            link = "/Community/UserProfilePage";
+        }
+        pageTitle = pages[0].AssociatedUser.Forename + " " + pages[0].AssociatedUser.Surname;
+        strapLine = pages[0].StrapLine;
+    }
+    pageTitle = pageTitle ?? "";
+    strapLine = strapLine ?? "";
+    List<char> charr = new List<char>() { 'µ', '~', '`', '@', '#', '$', '%', '^', '*', '(', ')', '-', '_', '+', '=', '\\', '|', '{', '}', '[', ']', '¶', 'å' };
+    int totalRun = 0;
+    int index = 0;
+    Random ran = new Random();
+    while (strapLine.IndexOf(charr[index]) > 0 || totalRun > 100)
+    {
+        totalRun++;
+        index = ran.Next(charr.Count - 1);
+    }
+    if (totalRun > 100) { index = 0; }
+    string temStrapLine = "";
+    var arrStrapLine = strapLine.Replace(Environment.NewLine, charr[index].ToString()).Replace("\n", charr[index].ToString()).Split(charr[index]);
+    for (int i = 0; i < arrStrapLine.Length; i++)
+    {
+        if (i <= 3 && temStrapLine.Length < 350)
+        {
+            if (temStrapLine.Length == 0)
+            {
+                temStrapLine = arrStrapLine[i];
+            }
+            else { temStrapLine += "<br/>" + arrStrapLine[i]; }
+        }
+    }
+    if (arrStrapLine.Length >= 4 || strapLine.Length > 350)
+    {
+        temStrapLine += "...";
+        strapLine = temStrapLine;
+    }
+
+    var domainProfile = (DomainProfile)ViewBag.DomainProfile;
+    var UserRoleRights = (List<string>)ViewBag.UserRoleRights;
+    var rightAddEditCommunityPage = UserRoleRights.Any(r => r == RightPermissions.CMAddEditCommunityPage) == true ? "" : "a-btn-disabled";
+    var rightDeleteCommunityPage = UserRoleRights.Any(r => r == RightPermissions.CMDeleteCommunityPage) == true ? "" : "a-btn-disabled";
+    var rightAddEditDomainProfile = UserRoleRights.Any(r => r == RightPermissions.CMAddEditDomainProfile) == true ? "" : "a-btn-disabled";
+    var rightDeleteDomainProfile = UserRoleRights.Any(r => r == RightPermissions.CMDeleteDomainProfile) == true ? "" : "a-btn-disabled";
+    var rightAddEditUserProfilePage = UserRoleRights.Any(r => r == RightPermissions.CMAddEditUserProfilePage) == true ? "" : "a-btn-disabled";
+    var api = (string)ViewBag.DocRetrievalUrl;
+
+}
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail community-top">
+    <!-- Main content -->
+    <section class="content">
+
+        <div class="community-top-main">
+            <h1>Qbicles Community</h1>
+            <p>Get help, forge trading partnerships, apply for jobs and more with our comprehensive Qbicles Community component.</p>
+
+            <div style="margin-left: 15px;">
+                <form name="community-search" id="community-search">
+                    <div class="input-group">
+                        <input type="text" id="com_search" class="form-control" placeholder="Search for keywords">
+                        <span class="input-group-btn">
+                            <button class="btn btn-info" onclick="search()" type="button"><i class="fa fa-search"></i></button>
+                        </span>
+                    </div><!-- /input-group -->
+                </form>
+            </div>
+
+        </div>
+
+    </section>
+    <!-- ./content -->
+
+</div>
+<!-- /.content-wrapper -->
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail">
+
+    <!-- Main content -->
+    <section class="content community-dash-main">
+
+        <div class="categories">
+            @Html.Partial("_NavigationCommunityPartial");
+        </div>
+
+
+        <div class="row" style="margin-top: 30px;">
+            <div class="col-xs-12">
+                <div class="app_filter">
+                    <div class="row">
+                        <div class="col-xs-12">
+                            <a href="/Community/DomainProfile" class="btn btn-info @rightAddEditDomainProfile"><i class="fa fa-address-card"></i> &nbsp; Domain profile</a>
+                            <a href="/Community/UserProfilePage" class="btn btn-info @rightAddEditUserProfilePage"><i class="fa fa-user"></i> &nbsp; My profile</a>
+                            <a href="/Community/CreatePage" class="btn btn-success @rightAddEditCommunityPage"><i class="fa fa-plus"></i> &nbsp; Add a page</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <div class="community-dash-body">
+            <div class="row">
+                <div class="col-xs-12 col-lg-6">
+
+                    <h1>Recent <strong>pages</strong></h1>
+                    <a href="@link" class="featured" style="background-image: url('@api@imageStr');">
+                        <div class="info">
+                            <h1>@pageTitle</h1>
+                            <p>
+                                @Html.Raw(strapLine)
+                            </p>
+
+                            <br />
+                            @if (pages[0] != null && pages[0].Tags.Count > 0)
+                            {
+                                foreach (var tag in pages[0].Tags)
+                                {
+                                    <span class="label label-primary">@tag.Name</span>
+                                }
+                            }
+
+                        </div>
+                    </a>
+
+                    <div class="community-carousel owl-theme">
+                        @for (int i = 1; i < pages.Take(4).ToList().Count; i++)
+                        {
+                            var item = pages[i];
+                            if (@item.PageType == CommunityPageTypeEnum.CommunityPage)
+                            {
+                                <div class="item">
+                                    <div class="community-card">
+                                        <a href="/Community/CommunityPage?id=@item.Id">
+                                            <div class="upper" style="position: relative; background-image: url('@api@item.FeaturedImage');">
+                                                @*<a class="btn btn-info" style="position: absolute"><i class="fa fa-copy"></i> &nbsp; @CountPage pages</a>*@
+                                            </div>
+                                        </a>
+                                        <section class="info">
+                                            <a href="/Community/CommunityPage?id=@item.Id">
+                                                <h2>@item.Title</h2>
+                                            </a>
+                                        </section>
+                                        <section class="meta">
+                                            <h5>Tags</h5>
+                                            @foreach (var tag in item.Tags)
+                                            {
+                                                <a class="topic-label">
+                                                    <span class="label label-info" style="margin-right: 3px; margin-bottom: 3px;">@tag.Name</span>
+                                                </a>
+                                            }
+
+                                        </section>
+                                    </div>
+                                </div>
+                            }
+                            else if (item.PageType == CommunityPageTypeEnum.DomainProfile)
+                            {
+                                <div class="item">
+                                    <div class="community-card">
+                                        <a href="/Community/DomainProfile?domainid=@item.Domain.Id">
+                                            <div class="upper" style="position: relative; background-image: url('@api@item.StoredFeaturedImageName');">
+                                            </div>
+                                        </a>
+                                        <section class="info">
+                                            <a href="/Community/DomainProfile?domainid=@item.Domain.Id">
+                                                <h2>@item.Domain.Name</h2>
+                                            </a>
+                                        </section>
+                                        <section class="meta">
+                                            <h5>Tags</h5>
+                                            @foreach (var tag in item.Tags)
+                                            {
+                                                <a class="topic-label">
+                                                    <span class="label label-info" style="margin-right: 3px; margin-bottom: 3px;">@tag.Name</span>
+                                                </a>
+                                            }
+
+                                        </section>
+                                    </div>
+                                </div>
+                            }
+                            else if (item.PageType == CommunityPageTypeEnum.UserProfile)
+                            {
+                                <div class="item">
+                                    <div class="community-card">
+                                        <a href="/Community/UserProfilePage">
+                                            <div class="upper" style="position: relative; background-image: url('@api@item.StoredLogoName');">
+
+                                                @*<a class="btn btn-info" style="position: absolute"><i class="fa fa-copy"></i> &nbsp; @CountPage pages</a>*@
+                                            </div>
+                                        </a>
+                                        <section class="info">
+                                            <a href="/Community/UserProfilePage">
+                                                @if (string.IsNullOrEmpty(item.AssociatedUser.Forename) && string.IsNullOrEmpty(item.AssociatedUser.Surname))
+                                                {
+                                                    <h2>@item.AssociatedUser.UserName</h2>
+                                                }
+                                                else
+                                                {
+                                                    <h2>@item.AssociatedUser.Forename @item.AssociatedUser.Surname</h2>
+                                                }
+
+                                            </a>
+                                        </section>
+                                        <section class="meta">
+                                            <h5>Tags</h5>
+                                            @foreach (var tag in item.Tags)
+                                            {
+                                                <a class="topic-label">
+                                                    <span class="label label-info" style="margin-right: 3px; margin-bottom: 3px;">@tag.Name</span>
+                                                </a>
+                                            }
+
+                                        </section>
+                                    </div>
+                                </div>
+                            }
+
+                        }
+                    </div>
+
+                </div>
+                <div class="col-xs-12 col-lg-6">
+
+                    <h1>
+                        <strong>@domainProfile.Domain.Name</strong> pages
+                    </h1>
+                    <div id="com_table">
+                        @{Html.RenderAction("CommunityPageTable", "Community");}
+                    </div>
+                    <br />
+
+
+                    <h1>Pages I'm <strong>following</strong></h1>
+
+                    <div id="com_follower_table" class="activity-overview generic" style="padding-top: 30px;">
+
+                        @{Html.RenderAction("CommunityFollowerTable", "Community");}
+
+                    </div>
+
+
+                </div>
+            </div>
+        </div>
+    </section>
+    <!-- ./content -->
+
+</div>
+<!-- /.content-wrapper -->
+<!-- ./wrapper -->
+<div class="modal fade" id="confirm-delete" role="dialog" aria-labelledby="confirm-delete">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title title_articles">Delete an page</h5>
+            </div>
+            <div class="modal-body">
+                <div class="well">
+
+                    Do you want delete <span id="delete_name"></span> ?
+
+                </div>
+
+
+                <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                <button class="btn btn-success" onclick="deletePage()" type="button">Ok</button>
+            </div>
+        </div> <!-- /.modal-content -->
+    </div> <!-- /.modal confirm delete -dialog -->
+</div>
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/community.apps.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/community.apps.min.js"></script>
+
+    }
+}
+<script>
+    $('select').not('.multi-select').select2();
+    function sync(items) {
+        var value = items.reduce(function (s, item) {
+            return s + ' ' + item.name;
+        }, '');
+
+        $('#n2').val(value.slice(1));
+    }
+</script>

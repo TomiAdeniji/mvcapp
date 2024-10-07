@@ -1,0 +1,99 @@
+﻿@using Qbicles.Models.Trader.Resources;
+@using Qbicles.BusinessRules.Helper;
+
+@model AdditionalInfo
+@{
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var title = "Brand";
+    var lable = "Brand name";
+    if (Model.Type == AdditionalInfoType.Need)
+    {
+        title = "Need";
+        lable = "Need";
+    }
+    else if (Model.Type == AdditionalInfoType.QualityRating)
+    {
+        title = "Quality Indicator";
+        lable = "Quality Indicator label";
+    }
+    else if (Model.Type == AdditionalInfoType.ProductTag)
+    {
+        title = "Product Tag";
+        lable = "Tag name";
+    }
+    var lstSuggestedBrands = (List<AdditionalInfo>)ViewBag.ListSuggestedBrands ?? new List<AdditionalInfo>();
+    var maxTagItems = lstSuggestedBrands.Count;
+    var lstSuggestedBrandNames = Html.Raw(lstSuggestedBrands.Select(x => x.Name).ToJson());
+}
+
+<div class="modal-dialog" role="document">
+    <div class="modal-content">
+        <div class="modal-header">
+            <input id="brand_id" value="@Model.Id" type="hidden" />
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            @if (Model.Id > 0)
+            {
+                <h5 class="modal-title">Edit a @title</h5>
+            }
+            else
+            {
+                <h5 class="modal-title">Add a @title</h5>
+            }
+        </div>
+        <div class="modal-body" id="brand_form_div">
+
+            <div class="well custom">
+                <form name="media-overview" id="brand_form">
+                    <div class="row">
+                        <div class="col-xs-12">
+                            <div class="form-group" style="margin: 0;">
+                                <label for="brand-title">@lable</label>
+                                <input type="text" name="brand_title" id="brand_name" value="@Model.Name" class="form-control">
+                                <input type="hidden" id="brand_name_hidden" value="@Model.Name" class="form-control">
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <a href="#" class="btn btn-danger" data-dismiss="modal">Cancel</a>
+            <a href="#" class="btn btn-success" onclick="saveBrand('@Model.Type.ToString()')">Confirm</a>
+
+
+        </div>
+    </div><!-- /.modal-content -->
+</div><!-- /.modal-dialog -->
+<link href="~/Content/DesignStyle/css/tagify-yaireo.css" rel="stylesheet" />
+<script src="~/Content/DesignStyle/js/tagify.polyfills.min.js"></script>
+<script src="~/Content/DesignStyle/js/tagify.js"></script>
+<script>
+
+    $(document).ready(function () {
+
+        var input = document.querySelector('input[name="brand_title"]'),
+        // init Tagify script on the above inputs
+        tagify = new Tagify(input, {
+            //whitelist: ["Adidas", "Amazon", "Apple", "Google", "Lego Group", "Microsoft", "Instagram", "TikTok", "Playstation", "Tesla", "Starbucks", "Costa", "Audi", "Red Bull", "Citroen", "Ford"],
+            whitelist: @(lstSuggestedBrandNames),
+            maxTags: 1,
+            dropdown: {
+                maxItems: 10,// @maxTagItems, // <- mixumum allowed rendered suggestions
+                classname: "tags-look", // <- custom classname for this dropdown, so it could be targeted
+                enabled: 0, // <- show suggestions on focus
+                closeOnSelect: false // <- do not hide the suggestions dropdown once an item has been selected
+            },
+            callbacks: {
+                "change": (e) => {
+                    $("#brand_name_hidden").val(e.detail.value);
+                    if (e.detail.value != "")
+                        $("#brand_name-error").remove();
+                    else
+                        $("#brand_form").validate().showErrors({ brand_title: "This field is required." });
+
+
+                }//,
+                //"dropdown:show": (e) => console.log(e.detail)
+            }
+        });
+    })
+</script>

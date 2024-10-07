@@ -1,0 +1,155 @@
+﻿@using Qbicles.Models.SalesMkt;
+@using Qbicles.BusinessRules;
+@model PipelineContact
+@{
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+}
+<div class="modal-dialog modal-xl" role="document">
+    <div class="modal-content">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close" onclick="location.reload();"><span aria-hidden="true">&times;</span></button>
+            <h5 class="modal-title">Options for @Model.Contact.Name</h5>
+        </div>
+        <div class="modal-body">
+
+
+            <div class="contact-view">
+
+                <div class="row">
+
+                    <div class="col-xs-12 col-sm-4 col-lg-3">
+
+                        <div class="contact" style="">
+
+                            <div class="flex-grid-fluid-lg from-community c1" style="width: 100%;">
+
+                                <div class="col" style="width: 100%; max-width: 500px; flex: 0; margin: 0 auto;">
+                                    <a href="#" class="article-feature">
+                                        <div class="article-feature-img" style="background: url('@(api + Model.Contact.AvatarUri + "&size=M")');">
+                                        </div>
+                                        <div class="info">
+                                            <smaller>Source: @Model.Contact.SourceDescription</smaller>
+                                            <h1>@Model.Contact.Name</h1>
+                                            <p>@Model.Contact.Email</p>
+
+                                            <div class="well custom">
+                                                <form id="frm-pipelinecontact-add" method="post" action="/SalesMarketing/SavePipelineContact" enctype="multipart/form-data">
+                                                    <input type="hidden" id="pipelineContactId" value="@Model.Id">
+                                                    <div class="form-group">
+                                                        <label for="rating" style="color: #333;">Prospect rating</label>
+                                                        <select id="rating" name="rating" class="form-control select2" style="width: 100%;" onchange="$('#contact-2').html(''); savePipelineContact(@Model.Id)">
+                                                            <option value="1" @(Model.Rating == ProspectRating.Star_1 ? "selected" : "")>1 star (low quality)</option>
+                                                            <option value="2" @(Model.Rating == ProspectRating.Star_2 ? "selected" : "")>2 stars</option>
+                                                            <option value="3" @(Model.Rating == ProspectRating.Star_3 ? "selected" : "")>3 stars</option>
+                                                            <option value="4" @(Model.Rating == ProspectRating.Star_4 ? "selected" : "")>4 stars</option>
+                                                            <option value="5" @(Model.Rating == ProspectRating.Star_5 ? "selected" : "")>5 stars (high quality)</option>
+                                                        </select>
+                                                    </div>
+
+                                                    <label for="potentialValue" style="color: #333;">Potential value</label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-addon">@currencySettings.CurrencySymbol</span>
+                                                        <input type="number" id="potentialValue" name="potentialValue" value="@Model.PotentialValue" class="form-control" onkeyup="$('#contact-2').html(''); savePipelineContact(@Model.Id)">
+                                                    </div>
+                                                    <button type="submit" id="updatePipelineContact" style="display: none"></button>
+                                                </form>
+                                            </div>
+
+                                            <div style="padding: 0 20px;">
+                                                <button class="btn btn-danger remove-user community-button" onclick="removePipelineContact(@Model.Id)"><i class="fa fa-trash"></i> &nbsp; Remove from pipeline</button>
+                                            </div>
+                                        </div>
+                                    </a>
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+                    <div class="col-xs-12 col-sm-8 col-lg-9">
+
+                        <div class="row" style="margin-top: -20px;">
+                            <div class="col-xs-12">
+                                <ul class="app_subnav admintabs" style="padding-top: 0;">
+                                    <li class="active"><a href="#contact-tasks" data-toggle="tab" onclick="$('#tblPipelineTasks').DataTable().ajax.reload()">Associated Tasks</a></li>
+                                    <li><a href="#contact-events" data-toggle="tab" onclick="$('#tblPipelineEvents').DataTable().ajax.reload()">Associated Events</a></li>
+                                    <li><a href="#contact-campaigns" data-toggle="tab" onclick="$('#campaignPipeline').DataTable().ajax.reload()">Targeted Campaigns</a></li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <br />
+
+
+                        <div class="tab-content">
+
+                            <!-- Tasks -->
+                            <div class="tab-pane fade in active" id="contact-tasks">
+
+                                <table id="tblPipelineTasks" class="datatable table-striped table-hover" style="width: 100%;">
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Title</th>
+                                            <th>Summary</th>
+                                            <th>Deadline</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+
+                                <button class="btn btn-success community-button" style="max-width: 180px;" data-toggle="modal" data-target="#create-task"><i class="fa fa-plus"></i> &nbsp; Add a Task</button>
+                            </div>
+                            <!-- END Tasks -->
+                            <!-- Events -->
+                            <div class="tab-pane fade" id="contact-events">
+
+                                <table id="tblPipelineEvents" class="datatable table-striped table-hover" style="width: 100%;">
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Title</th>
+                                            <th>Date/time</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+
+                                <button class="btn btn-success community-button" style="max-width: 180px;" data-toggle="modal" data-target="#create-event"><i class="fa fa-calendar-plus"></i> &nbsp; Add an Event</button>
+                            </div>
+                            <!-- END Events -->
+                            <!-- Campaigns -->
+                            <div class="tab-pane fade" id="contact-campaigns">
+
+                                <table id="campaignPipeline" class="datatable table-striped table-hover" style="width: 100%;">
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Name</th>
+                                            <th>Type</th>
+                                            <th>Options</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+
+                            </div>
+                            <!-- END Campaigns -->
+
+                        </div>
+
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+        </div>
+    </div><!-- /.modal-content -->
+</div><!-- /.modal-dialog -->

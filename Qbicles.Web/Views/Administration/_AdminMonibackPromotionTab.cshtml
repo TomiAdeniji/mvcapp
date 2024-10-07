@@ -1,0 +1,119 @@
+﻿@using Qbicles.Models;
+<div class="row">
+    <div class="col-xs-12">
+
+        <div class="well custom" style="padding-bottom: 5px;">
+            <div class="row">
+                <div class="col-xs-12 col-sm-3">
+                    <div class="form-group">
+                        <label for="search">Search</label>
+                        <input type="text" name="search" id="request-search" class="form-control">
+                    </div>
+                </div>
+                <div class="col-xs-12 col-sm-2">
+                    <div class="form-group" style="margin: 0;">
+                        <label for="type">Filter by status</label>
+                        <select name="type" id="request-type" class="form-control select2" style="width: 100%;">
+                            <option value="0" selected>Show all</option>
+                            <option value="1">Active</option>
+                            <option value="2">Deactivated</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-xs-12 col-sm-3">
+                    <label for="date">Filter by creation date</label>
+                    <div class="input-group" style="margin-bottom: 15px;">
+                        <input type="text" name="scheduleddate" id="request-daterange" class="form-control daterange">
+                        <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                    </div>
+                </div>
+                <div class="col-xs-12 col-sm-4">
+                    <label>Options</label><br />
+                    <button class="btn btn-success" onclick="loadModalPromotionAddEdit('', '')"><i class="fa fa-plus"></i> &nbsp; Add Type</button>
+                    <button class="btn btn-success" onclick="loadModalRankPromotion()"> &nbsp; Rank Promotion</button>
+                </div>
+            </div>
+
+        </div>
+        <br />
+
+        <table class="datatable table table-hover table-striped" id="tblMonibackPromotions" style="width: 100%">
+            <thead>
+                <tr>
+                    <th data-priority="1" data-orderable="false" style="text-align: center;"></th>
+                    <th data-priority="1">Name</th>
+                    <th data-priority="2">Created</th>
+                    <th data-priority="1">Status</th>
+                    <th data-priority="1" data-orderable="false">Options</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+
+    </div>
+</div>
+
+<div class="modal fade left" id="moniback-promo-view" role="dialog" aria-labelledby="moniback-promo-view"></div>
+<div class="modal fade left" id="moniback-promo-add" role="dialog" aria-labelledby="moniback-promo-add"></div>
+<div class="modal fade" id="moniback-promo-rank" role="dialog" aria-labelledby="moniback-promo-rank"></div>
+<div class="modal fade" id="moniback-promo-usedby" role="dialog" aria-labelledby="moniback-promo-usedby"></div>
+
+
+
+<script>
+    var apiDocRetrievalUrl = '@((string)ViewBag.DocRetrievalUrl)';
+    var domainStatusClose = @((int)QbicleDomain.DomainStatusEnum.Closed);
+    var domainStatusOpened = @((int)QbicleDomain.DomainStatusEnum.Open);
+</script>
+
+@{
+    <link href="~/Content/DesignStyle/css/bootstrap-multiselect.css" rel="stylesheet" />
+    <script src="~/Content/DesignStyle/js/html5tooltips.js"></script>
+    <script src="~/Content/DesignStyle/js/bootstrap-multiselect.min.js"></script>
+
+    <script>
+        $("#request-type").select2();
+
+        $('#request-daterange').daterangepicker({
+            autoUpdateInput: false,
+            singleDatePicker: false,
+            timePicker: false,
+            showDropdowns: true,
+            cancelClass: "btn-danger",
+            opens: "left",
+            startDate: moment().startOf('day').format($dateFormatByUser),
+            endDate: moment().endOf('day').format($dateFormatByUser),
+            locale: {
+                cancelLabel: 'Clear',
+                dateFormat: $dateFormatByUser
+            }
+        });
+
+        $('#request-daterange').on('apply.daterangepicker', function (ev, picker) {
+            //alert($dateFormatByUser);
+            $(this).val(picker.startDate.format($dateFormatByUser.toUpperCase()) + ' - ' + picker.endDate.format($dateFormatByUser.toUpperCase()));
+            $("#tblMonibackPromotions").DataTable().ajax.reload();
+        });
+        $('#request-daterange').on('cancel.daterangepicker', function (ev, picker) {
+            $(this).val('');
+            $("#tblMonibackPromotions").DataTable().ajax.reload();
+        });
+
+        $("#request-search").keyup(delay(function () {
+            $("#tblMonibackPromotions").DataTable().ajax.reload();
+        }, 1000));
+
+        //initPendingDomainRequestTable();
+        //initHistoryDomainRequestTable();
+    </script>
+
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/monibackpromo.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/monibackpromo.js"></script>
+    }
+}
+

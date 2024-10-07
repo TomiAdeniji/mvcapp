@@ -1,0 +1,254 @@
+﻿@using Qbicles.BusinessRules;
+@using Qbicles.Models.B2B
+@using Qbicles.Models.SystemDomain
+@model B2BCatalogDiscussion
+@{
+    var pageSize = HelperClass.activitiesPageSize;
+    var comments = Model != null ? Model.Posts.OrderByDescending(x => x.StartedDate).Take(pageSize) : null;
+    var allowCommentAndUpload = (Model != null && Model.ExpiryDate == null) || (Model.ExpiryDate.HasValue && Model.ExpiryDate.Value > DateTime.UtcNow);
+    var count_Comments = Model != null ? Model.Posts.Count() : 0;
+    var api = (string)ViewBag.DocRetrievalUrl;
+    string currentTimeZone = ViewBag.currentTimeZone;
+    var currentUserId = (string)ViewBag.CurrentUserId;
+    var dateFormat = (string)ViewBag.CurrentDateFormat;
+    var b2bqbicle = Model.Qbicle as B2BQbicle;
+    var providerpartnershipkey = (Partnership)ViewBag.ProviderPartnershipKey ?? null;
+    var consumerpartnershipkey = (Partnership)ViewBag.ConsumerPartnershipKey ?? null;
+}
+
+<input type="hidden" value="@(providerpartnershipkey == null
+        ? (consumerpartnershipkey?.Key ?? "") : (providerpartnershipkey?.Key ?? ""))" id="partnershipkey" />
+<input type="hidden" value="@Model.SharedByDomain.Id" id="selling-domain-id" />
+<input type="hidden" value="@Model.AssociatedCatalog.Id" id="catalog-id" />
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail mdv2-wrapper" style="position: relative;">
+    <!-- Main content -->
+    <section class="mdv2 dash" data-tooltip-color="teal" data-tooltip-delay="300" data-tooltip-animate-function="spin" style="border-top: 1px solid #f1f1f1;">
+        <!-- App bar -->
+        <div class="mdv2-col-app" style="margin-bottom: 0;">
+            <div data-spy="affix" class="contained-sidebar">
+                <div class="activity-overview plain company-overview welcome-info" style="text-align: left !important; flex: none; margin: 0 0 30px 0; padding-top: 30px; padding-bottom: 0;">
+                    <div class="pull-left" style="margin-bottom: 15px;">
+                        <a href="javascript:void(0)" onclick="QbicleSelected('@Model.Qbicle.Key','Dashboard')" class="btn btn-primary"><i class="fa fa-angle-left"></i> &nbsp; Back</a>
+                    </div>
+                    <div class="clearfix"></div>
+                    <br /><br />
+                    <h1 style="line-height: 1.2; margin-bottom: 8px;">@Model.Name</h1>
+                    <h4>@Model.AssociatedCatalog.Location.Name</h4>
+                    <div class="clearfix"></div>
+                    <br /><br />
+                    <p style="color: rgba(0, 0, 0, 0.5);">
+                        @Model.Summary
+                    </p>
+                    <br /><br />
+
+                    @if (providerpartnershipkey != null || consumerpartnershipkey != null)
+                    {
+                        <a href="#" onclick="initDataB2bForCreateOrder('@Model.SharedWithDomain.Key')" class="btn btn-success community-button"><i class="fa fa-shopping-cart"></i> &nbsp; Place an order</a>
+                    }
+                </div>
+            </div>
+        </div>
+        <!-- END App bar -->
+        <!-- Main area -->
+        <div class="mdv2-col-dash">
+            <div class="spacing" style="padding-top: 20px;">
+                <div class="app_topnav entity_adds" style="background: #fff; padding: 0; margin-top: 0;">
+                    <ul class="nav nav-pills app_main_nav">
+                        <li role="presentation" class="active">
+                            <a href="#tab0" data-toggle="tab">
+                                <i class="fa fa-file-text"></i>
+                                Menu
+                            </a>
+                        </li>
+                        <li role="presentation">
+                            <a href="#tab1" data-toggle="tab">
+                                <i class="fa fa-comments"></i>
+                                Discuss
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+                <br /><br />
+                <div class="row">
+                    <div class="col-xs-12">
+
+                        <div class="tab-content">
+
+                            <!-- Menu -->
+                            <div class="tab-pane fade in active" id="tab0">
+
+                                <div class="well custom" style="padding-bottom: 5px;">
+                                    <div class="row">
+                                        <div class="col-xs-12 col-sm-6">
+                                            <div class="form-group">
+                                                <label for="search">Search</label>
+                                                <input type="text" class="form-control" name="search">
+                                            </div>
+                                        </div>
+                                        <div class="col-xs-12 col-sm-6">
+                                            <div class="form-group">
+                                                <label for="search">Categories</label>
+                                                <select name="groups" class="form-control checkmulti" multiple>
+                                                    @foreach (var category in Model.AssociatedCatalog.Categories.Where(e => e.IsVisible == true))
+                                                    {
+                                                        <option value="@category.Id" selected>@category.Name</option>
+                                                    }
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <br />
+
+                                <div id="data-container-items" class="flex-grid-quarters-lg gridfix mydeskmarket mdogrid mydeskmarketitems" style="width: 100%; padding: 0;">
+                                </div>
+                                <div id="pagiation-items" style="float: right;"></div>
+                            </div>
+                            <!-- END Menu -->
+                            <!-- Discuss -->
+                            <div class="tab-pane fade" id="tab1">
+                                <div class="tab-pane fade in active" id="tab1">
+                                    @if (allowCommentAndUpload)
+                                    {
+                                        <div class="row">
+                                            <div class="col-xs-12">
+                                                <div class="well" style="max-width: 800px;">
+                                                    <div class="form-group">
+                                                        <label for="add-comment">Add a comment</label>
+                                                        <textarea id="txt-comment-link" name="addcomment" onkeyup="validateAddComment();" class="form-control"></textarea>
+                                                        <label id="addcomment-error" class="error" for="addcomment" style="display: none;">Your post is longer than the 1,500 character limit. Please reduce the length, or split it across multiple posts</label>
+                                                    </div>
+
+                                                    <button class="btn btn-success" onclick="AddCommentToDiscussion('@Model.Key')">Submit</button>
+                                                </div>
+
+                                                <br>
+                                            </div>
+                                        </div>
+                                    }
+                                    <div id="list-comments-discussion">
+                                        @if (comments != null && count_Comments > 0)
+                                        {
+                                            foreach (var item in comments)
+                                            {
+                                                <!-- General post -->
+                                                <article id="post-@item.Id" class="activity post">
+                                                    <div class="activity-avatar" style="background-image: url('@(api+item.CreatedBy.ProfilePic)&size=T');"></div>
+                                                    <div class="activity-detail">
+                                                        <div class="activity-meta">
+                                                            <h4>@HelperClass.GetFullNameOfUser(item.CreatedBy, currentUserId)</h4>
+                                                            <small>@item.StartedDate.ConvertTimeFromUtc(currentTimeZone).ToString(dateFormat + ", hh:mmtt")</small>
+                                                        </div>
+
+                                                        <div class="activity-overview media-comment">
+                                                            <p>@Html.Raw(item.Message.Replace(Environment.NewLine, "<br/>"))</p>
+                                                        </div>
+                                                    </div>
+                                                    <div class="clearfix"></div>
+                                                </article>
+                                                <!-- END General post -->
+                                            }
+                                        }
+                                    </div>
+                                    @if (count_Comments > pageSize)
+                                    {
+                                        <button id="btnLoadPosts" onclick="LoadMorePostsDiscussion('@Model.Key', @pageSize, 'list-comments-discussion')" class="btn btn-info">Load older posts</button>
+                                    }
+                                </div>
+                            </div>
+                            <!-- END Discuss -->
+
+                        </div>
+
+                        <br /><br /><br />
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <!-- ./content -->
+</div>
+<!-- /.content-wrapper -->
+<div class="modal fade left" id="product-more-menu" role="dialog" aria-labelledby="product-more-menu" style="display: none; padding-right: 17px;">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-body" style="padding: 0;">
+
+
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+<div class="modal fade left" id="b2b-order-add" role="dialog" aria-labelledby="b2b-order-add">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Add a B2B order</h5>
+            </div>
+            <div class="modal-body">
+
+                <div class="well custom" style="padding-bottom: 5px;">
+                    <form id="frmb2bordercreation" name="qbicle-dis-creation" method="post" action="~/Commerce/SaveDiscussionForOrderCreation">
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label for="ref">Order reference</label>
+                                    <input type="text" required name="OrderFullRef" class="form-control" disabled value="">
+                                    <input type="hidden" name="OrderReferenceId" value="" />
+                                    <input type="hidden" name="Partnershipkey" value="" />
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label for="OrderNote">Add a covering note</label>
+                                    <textarea required name="OrderNote" class="form-control" style="height: 80px; max-width: 100%;"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
+                <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                <button class="btn btn-success" form="frmb2bordercreation" type="submit">Confirm</button>
+
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+@{
+    <link href="~/Content/DesignStyle/css/bootstrap-multiselect.css" rel="stylesheet" />
+    <script src="~/Content/DesignStyle/js/bootstrap-multiselect.min.js"></script>
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/commerce.catalogdiscussion.min.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/commerce.catalogdiscussion.js"></script>
+    }
+}
+
+<script>
+    $(document).ready(function () {
+        $(".checkmulti").multiselect({
+            includeSelectAllOption: true,
+            enableFiltering: true,
+            buttonWidth: '100%',
+            maxHeight: 400,
+            enableClickableOptGroups: true
+        });
+        $('input[name=search]').keyup(delay(function () {
+            InitB2BCatalogDiscussionPage();
+        }, 500));
+        $('select[name=groups]').change(function () {
+            InitB2BCatalogDiscussionPage();
+        });
+        InitB2BCatalogDiscussionPage();
+    })
+</script>

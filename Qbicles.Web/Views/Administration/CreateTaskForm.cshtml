@@ -1,0 +1,220 @@
+﻿
+@using Qbicles.Models;
+@using Qbicles.BusinessRules;
+@{
+    var currentTaskForm = HelperClass.CurrentTaskForm;
+    var CurrentDomain = ViewBag.CurrentDomain;
+    var api = (string)ViewBag.DocRetrievalUrl;
+}
+<div class="content-wrapper qbicle-detail cleanbooks" style="min-height: 235px;">
+    <div class="tabnav-spacer">&nbsp;</div>
+    <!-- Main content -->
+    <section class="content" data-tooltip-animate-function="fadein" data-tooltip-delay="300" data-tooltip-stickto="top" data-tooltip-stickdistance="30">
+        <br /><br />
+        <div class="mod_title">
+            <h5>Task Forms</h5>
+            <h4>@(currentTaskForm == 0 ? "Create a form" : "Edit a form" )</h4>
+        </div>
+        <div class="app_topnav restyle">
+            <ul class="nav nav-pills app_main_nav hidden-xs hidden-sm">
+                <li role="presentation">
+                    <a href="/Administration/ManageTaskForms">
+                        <i class="fa fa-file-code-o"></i>
+                        Manage Forms
+                    </a>
+                </li>
+                <li role="presentation">
+                    <a href="/Administration/QueryTasksForm">
+                        <i class="fa fa-question"></i>
+                        Queries/Reports
+                    </a>
+                </li>
+                <li role="presentation">
+                    <a href="/Administration/ManageFormEditors">
+                        <i class="fa fa-lock"></i>
+                        Permissions
+                    </a>
+                </li>
+            </ul>
+            <select name="app_tab" class="form-control visible-xs visible-sm">
+                <option value="/Administration/ManageTaskForms" selected="">Manage Forms</option>
+                <option value="/Administration/QueryTasksForm">Queries/Reports</option>
+                <option value="/Administration/ManageFormEditors">Permissions</option>
+            </select>
+        </div>
+        <div class="row">
+            <div class="col-xs-12">
+                <div class="app_filter">
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-4 col-lg-4 button_options" style="padding-bottom: 0;">
+                            <a href="/Apps/AppManagement" class="btn btn-info"><i class="fa fa-th"></i> &nbsp; All apps</a>
+                            <a href="/Administration/ManageTaskForms" class="btn btn-info"><i class="fa fa-angle-up"></i> &nbsp; All forms</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <br /><br />
+
+        <div class="domain_flash">
+            @if (CurrentDomain != null)
+            {
+                var currentDomain = (QbicleDomain)CurrentDomain;
+                <img id="media-@currentDomain.Id" src='@api@currentDomain.LogoUri' class="img-circle icon"/>
+
+                <h5>@currentDomain.Name</h5>
+                <input type="hidden" id="current-domain-taskform" name="id_domain" value="@currentDomain.Id">
+            }
+        </div>
+        <div class="soft_tan" style="margin-bottom: 0;">
+            <form id="create-task-form">
+                <div class="row">
+                    <div class="col-xs-12 col-sm-12 col-md-6 col-lg-6">
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label for="form_name">Form name</label>
+                            <input id="formName" type="text" name="name" class="form-control">
+                        </div>
+                    </div>
+                    <div class="col-xs-12 col-sm-12 col-md-6 col-lg-6">
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label for="form_description">Form description</label>
+                            <input id="description" type="text" name="description" class="form-control">
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <div class="form-builder">
+
+            <div id="form">
+
+                <br /><br /><br />
+                <section id="main_content" class="inner">
+                    <div class="build-wrap" id="build-wrap"></div>
+                    <div id="edit-wrap" class="edit-wrap hidden"></div>
+                </section>
+                <br />
+                <div class="text-left">
+                    <button id="btnpreview" class="btn btn-warning">Preview</button>
+                    <button id="reloadBtn" class="btn btn-danger">Reset</button>
+                    <button id="saveForm" class="btn btn-success save-form">Save Form</button>
+                </div>
+            </div>
+        </div>
+
+    </section>
+</div>
+
+
+<script src="~/Content/DesignStyle/js/form-builder.min.js"></script>
+<script src="~/Content/DesignStyle/js/form-render.min.js"></script>
+<script>
+
+    var $formName = $('#formName'),
+        $formDesc = $('#description'),
+        $formId = 0;
+
+    jQuery(function ($) {
+        var fbOptions = {
+            showActionButtons: false ,
+            disabledActionButtons: ['data'],
+            disableFields: ['autocomplete', 'file', 'paragraph', 'button', 'hidden'],
+        };
+        if (@currentTaskForm > 0) {
+            var formDefi =  getFormDataByFormDefinitionId(@currentTaskForm);
+            $formName.val(formDefi.Name);
+            $formDesc.val(formDefi.Description);
+            $formId = formDefi.Id;
+            fbOptions.formData = formDefi.Definition;
+        }
+        var editing = true;
+        function toggleEdit() {
+            document.body.classList.toggle('form-rendered', editing);
+            return editing = !editing;
+        }
+
+
+        function getFormDataByFormDefinitionId(id){
+            var formDefinition = {};
+            $.ajax({
+                type: 'GET',
+                url: '/FormDefinition/GetFormDefinitionById',
+                datatype: 'json',
+                data: {id: id},
+                async: false,
+                success: function (form) {
+                    formDefinition  = form;
+                },
+                error: function(err){
+                }
+            });
+            return formDefinition ;
+        }
+
+
+
+        function saveFormDefinition(formName, formDesc, formData){
+            var form = {Id : $formId, Name: formName, Description: formDesc, Definition : formData}
+            var rs = 0;
+            $.ajax({
+                type: 'POST',
+                url: '/FormDefinition/SaveFormDefinition',
+                datatype: 'json',
+                data: {form: form},
+                async: false,
+                success: function (result) {
+                    rs = result;
+                },
+                error: function(err){
+                }
+            });
+
+            return rs;
+        }
+        var formBuilder = $('#build-wrap').formBuilder(fbOptions);
+
+        $('#btnpreview').click(function(){
+            var formData = formBuilder.formData;
+            var formEdit =  $('#edit-wrap');
+            var formBuid = $('#build-wrap');
+
+            formEdit.toggleClass('hidden');
+            formBuid.toggleClass('hidden');
+
+            $('#btnpreview').text(function(i, text){
+                return text === "Preview" ? "Back Form" : "Preview";
+            });
+            if(formBuid.hasClass('hidden')){
+                $(formEdit).formRender({formData});
+            }
+        });
+
+        $('#reloadBtn').click(function(){
+            formBuilder.actions.clearFields();
+        });
+
+        $('#saveForm').click(function(){
+            if($('#create-task-form').valid()){
+                var formData = formBuilder.formData;
+                if(JSON.parse( formData).length > 0){
+                    var formId = saveFormDefinition($formName.val(), $formDesc.val(), JSON.stringify(JSON.parse( formData)));
+                    if(formId > 0){
+                        var success = SetFormDefinitionSelected(0);
+                        if(success){
+                            window.location.href = "/Administration/ManageTaskForms";
+                        }
+                    }else{
+                    }
+                }else{
+                    cleanBookNotification.error(_L("ERROR_MSG_666"), "Qbicles");
+                }
+            }
+        });
+
+    });
+
+
+</script>

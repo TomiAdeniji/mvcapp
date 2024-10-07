@@ -1,0 +1,96 @@
+﻿@using Qbicles.BusinessRules
+@model Qbicles.Models.Trader.ODS.QueueOrder
+@{
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+    var isPreparedShown = ViewBag.IsPrepared == null ? true : (bool)ViewBag.IsPrepared;
+    var isNotForPrepShown = ViewBag.ShowIsNotForPrep == null ? false : (bool)ViewBag.ShowIsNotForPrep;
+    var orderItems = Model.OrderItems.Where(p => p.IsInPrep == isPreparedShown && p.IsNotForPrep == isNotForPrepShown).ToList();
+    var items = (List<Qbicles.Models.TraderApi.Item>)ViewBag.Items;
+}
+<div class="modal-lg modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <h5 class="modal-title">@Model.OrderRef - Order Summary</h5>
+        </div>
+        <div class="modal-body">
+
+            <table id="pds-order-summary-table" class="datatable table-hover table-striped" data-order='[[ 1, "asc" ]]' style="width: 100%;">
+                <thead>
+                    <tr>
+                        <th style="width: 40px;" data-orderable="false"></th>
+                        <th data-orderable="false">Item</th>
+                        <th data-orderable="false">Extras</th>
+                        <th data-orderable="false">Total <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var modelOrderItem in orderItems)
+                    {
+                        decimal total = 0;
+                        //items are same Variant but different discount, extra pos, quantity.
+                        //if item2.Tolist() > 1. That mean items are same variant, discount, extra pos, quantity
+                        var item2 = items.Where(e =>
+                        e.Variant.TraderId == modelOrderItem.Variant.Id
+                        && e.Quantity == modelOrderItem.Quantity
+                        && e.Variant.Discount == modelOrderItem.Discount
+                        && modelOrderItem.Extras.All(f => e.Extras.Select(t => t.TraderId).Contains(f.Extra.Id)) 
+                        ).ToList();
+                        var item = item2.FirstOrDefault();
+                        if (item == null)
+                        {
+                            total = modelOrderItem.GrossPrice;
+                        }
+                        else
+                        {
+                            total = item.Variant.TotalAmount + item.Extras.Sum(e => e.TotalAmount);
+                        }
+
+                        //decimal total = modelOrderItem.GrossPrice + modelOrderItem.Extras.Sum(e => e.GrossPrice);
+                        
+                        <tr>
+                            <td>
+                                @if (modelOrderItem.Variant.CategoryItem != null)
+                                {
+                                    <div class="table-avatar mini" style="background-image: url('@api@modelOrderItem.Variant.CategoryItem.ImageUri');">&nbsp;</div>
+                                }
+                                else
+                                {
+                                    <div class="table-avatar mini" style="background-image: url('@api@modelOrderItem.Variant.ImageUri');">&nbsp;</div>
+                                }
+
+                            </td>
+                            <td>
+                                @if (modelOrderItem.Variant.CategoryItem != null)
+                                {
+                                    <span>@modelOrderItem.Variant.CategoryItem.Name x @modelOrderItem.Quantity</span>
+                                }
+                            </td>
+                            <td>
+                                <ul>
+                                    @if (modelOrderItem.Extras.Any())
+                                    {
+                                        foreach (var queueExtra in modelOrderItem.Extras)
+                                        {
+                                            <li>@queueExtra.Extra.Name</li>
+                                        }
+
+                                    }
+                                </ul>
+                            </td>
+                            <td>@total.ToDecimalPlace(currencySettings)</td>
+                        </tr>
+
+                    }
+
+                </tbody>
+            </table>
+
+        </div>
+    </div><!-- /.modal-content -->
+</div><!-- /.modal-dialog -->
+<script>
+    $('#pds-order-summary-table').DataTable().search("", true, false, true).draw();
+</script>

@@ -1,0 +1,255 @@
+﻿@using Qbicles.Models.Trader;
+@model TraderItem
+@{
+    var PurchaseTaxRates=(List<TaxRate>) ViewBag.PurchaseTaxRates;
+    var SaleTaxRates = (List<TaxRate>)ViewBag.SaleTaxRates;
+    #region Type
+    string type = "";
+    if (Model.IsBought && !Model.IsSold)//Item I buy
+    {
+        type = "Ibuy";
+    }
+    else if (Model.IsBought && Model.IsSold)//Item I buy & sell
+    {
+        type = "Ibuysell";
+    }
+    else if (!Model.IsBought && Model.IsSold && Model.IsCompoundProduct)//Item I sell (compound)
+    {
+        type = "Isellcompound";
+    }
+    else if (!Model.IsBought && Model.IsSold && !Model.IsCompoundProduct)//Item I sell (service)
+    {
+        type = "Isellservice";
+    }
+    #endregion
+}
+@if (type == "Ibuy")
+{
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+                <h5 class="modal-title">Edit item</h5>
+            </div>
+            <div class="modal-body">
+
+                <div class="well custom">
+                    <div class="row">
+                        <div class="col-xs-12">
+                            <div class="form-group">
+                                <label for="ibuy_purchaseTaxRate">Purchase tax rate(s)</label>
+                                <select id="ibuy_purchaseTaxRate" name="ibuy_purchaseTaxRate" class="form-control checkmulti" multiple>
+                                    @foreach (var item in PurchaseTaxRates)
+                                    {
+                                        <option value="@item.Id" @(Model.TaxRates.Any(s=>s.Id==item.Id)?"selected":"")>@item.Name</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-xs-12">
+                            <div class="form-group">
+                                <label for="customer-account">Purchase account</label><br>
+                                <button id="btn_ibuy_addpurchase_account" class="btn btn-info @(Model.PurchaseAccount!=null?"hidden":"")" onclick="LoadAccountsTree(); idAccount = 'purchase';typeGroup='ibuy' ;idGroup =0;" data-toggle="modal" data-target="#app-bookkeeping-treeview">Choose account</button>
+                                <button id="btn_ibuy_editpurchase_account" class="btn btn-small btn-warning btn-edit @(Model.PurchaseAccount!=null?"":"hidden")" onclick="LoadAccountsTree(); idAccount = 'purchase';typeGroup='ibuy' ;idGroup =0;" data-toggle="modal" data-target="#app-bookkeeping-treeview"><i class="fa fa-pencil"></i></button>
+                                <input type="hidden" id="ibuy_purchase_account" value="@(Model.PurchaseAccount!=null?Model.PurchaseAccount.Id:0)">
+                                <p id="ibuy_purchase_accounttext" style="display: inline; padding-left: 5px; font-size: 12px;">@(Model.PurchaseAccount != null ? Model.PurchaseAccount.Name : "No account selected")</p>
+                            </div>
+                        </div>
+                        <div class="col-xs-12">
+                            <div class="form-group">
+                                <label for="customer-account">Inventory account</label><br>
+                                <button id="btn_ibuy_addinventory_account" class="btn btn-info @(Model.InventoryAccount!=null?"hidden":"")" onclick="LoadAccountsTree(); idAccount = 'inventory';typeGroup='ibuy' ;idGroup =0;" data-toggle="modal" data-target="#app-bookkeeping-treeview">Choose account</button>
+                                <button id="btn_ibuy_editinventory_account" class="btn btn-small btn-warning btn-edit @(Model.InventoryAccount!=null?"":"hidden")" onclick="LoadAccountsTree(); idAccount = 'inventory';typeGroup='ibuy' ;idGroup =0;" data-toggle="modal" data-target="#app-bookkeeping-treeview"><i class="fa fa-pencil"></i></button>
+                                <input type="hidden" id="ibuy_inventory_account" value="@(Model.InventoryAccount!=null?Model.InventoryAccount.Id:0)">
+                                <p id="ibuy_inventory_accounttext" style="display: inline; padding-left: 5px; font-size: 12px;">@(Model.InventoryAccount != null ? Model.InventoryAccount.Name : "No account selected")</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <br>
+                <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                <button class="btn btn-primary" type="button" onclick="UpdateAccountingItemSetting(@Model.Id)">Apply</button>
+                <input id="hdfGroupId" value="0" type="hidden" />
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+}
+else if (type == "Ibuysell")
+{
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+                <h5 class="modal-title">Edit item</h5>
+            </div>
+            <div class="modal-body">
+
+                <div class="well custom">
+                    <div class="row">
+                        <div class="col-xs-12">
+                            <div class="form-group">
+                                <label for="ibuysell_purchaseTaxRate">Purchase tax rate(s)</label>
+                                <select id="ibuysell_purchaseTaxRate" name="ibuysell_purchaseTaxRate" class="form-control checkmulti" multiple>
+                                    @foreach (var item in PurchaseTaxRates)
+                                    {
+                                        <option value="@item.Id" @(Model.TaxRates.Any(s => s.Id == item.Id) ? "selected" : "")>@item.Name</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-xs-12">
+                            <div class="form-group">
+                                <label for="customer-account">Purchase account</label><br>
+                                <button id="btn_ibuysell_addpurchase_account" class="btn btn-info @(Model.PurchaseAccount!=null?"hidden":"")" onclick="LoadAccountsTree(); idAccount = 'purchase';typeGroup='ibuysell' ;idGroup =0;" data-toggle="modal" data-target="#app-bookkeeping-treeview">Choose account</button>
+                                <button id="btn_ibuysell_editpurchase_account" class="btn btn-small btn-warning btn-edit @(Model.PurchaseAccount!=null?"":"hidden")" onclick="LoadAccountsTree(); idAccount = 'purchase';typeGroup='ibuysell' ;idGroup =0;" data-toggle="modal" data-target="#app-bookkeeping-treeview"><i class="fa fa-pencil"></i></button>
+                                <input type="hidden" id="ibuysell_purchase_account" value="@(Model.PurchaseAccount!=null?Model.PurchaseAccount.Id:0)">
+                                <p id="ibuysell_purchase_accounttext" style="display: inline; padding-left: 5px; font-size: 12px;">@(Model.PurchaseAccount != null ? Model.PurchaseAccount.Name : "No account selected")</p>
+                            </div>
+                        </div>
+                        <div class="col-xs-12">
+                            <div class="form-group">
+                                <label for="str">Sales tax rate(s)</label>
+                                <select id="ibuysell_salesTaxRate" name="ibuysell_salesTaxRate" class="form-control checkmulti" multiple>
+                                    @foreach (var item in SaleTaxRates)
+                                    {
+                                        <option value="@item.Id" @(Model.TaxRates.Any(s => s.Id == item.Id) ? "selected" : "")>@item.Name</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-xs-12">
+                            <div class="form-group">
+                                <label for="customer-account">Sales account</label><br>
+                                <button id="btn_ibuysell_addsale_account" class="btn btn-info @(Model.SalesAccount!=null?"hidden":"")" onclick="LoadAccountsTree(); idAccount = 'sale';typeGroup='ibuysell' ;idGroup=0;" data-toggle="modal" data-target="#app-bookkeeping-treeview">Choose account</button>
+                                <button id="btn_ibuysell_editsale_account" class="btn btn-small btn-warning btn-edit @(Model.SalesAccount!=null?"":"hidden")" onclick="LoadAccountsTree(); idAccount = 'sale';typeGroup='ibuysell' ;idGroup=0;" data-toggle="modal" data-target="#app-bookkeeping-treeview"><i class="fa fa-pencil"></i></button>
+                                <input type="hidden" id="ibuysell_sale_account" value="@(Model.SalesAccount!=null?Model.SalesAccount.Id:0)">
+                                <p id="ibuysell_sale_accounttext" style="display: inline; padding-left: 5px; font-size: 12px;">@(Model.SalesAccount != null ? Model.SalesAccount.Name : "No account selected")</p>
+                            </div>
+                        </div>
+                        <div class="col-xs-12">
+                            <div class="form-group">
+                                <label for="customer-account">Inventory account</label><br>
+                                <button id="btn_ibuysell_addinventory_account" class="btn btn-info @(Model.InventoryAccount!=null?"hidden":"")" onclick="LoadAccountsTree(); idAccount = 'inventory';typeGroup='ibuysell' ;idGroup =0;" data-toggle="modal" data-target="#app-bookkeeping-treeview">Choose account</button>
+                                <button id="btn_ibuysell_editinventory_account" class="btn btn-small btn-warning btn-edit @(Model.InventoryAccount!=null?"":"hidden")" onclick="LoadAccountsTree(); idAccount = 'inventory';typeGroup='ibuysell' ;idGroup =0;" data-toggle="modal" data-target="#app-bookkeeping-treeview"><i class="fa fa-pencil"></i></button>
+                                <input type="hidden" id="ibuysell_inventory_account" value="@(Model.InventoryAccount!=null?Model.InventoryAccount.Id:0)">
+                                <p id="ibuysell_inventory_accounttext" style="display: inline; padding-left: 5px; font-size: 12px;">@(Model.InventoryAccount != null ? Model.InventoryAccount.Name : "No account selected")</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <br>
+                <button class="btn btn-danger" type="button" data-dismiss="modal">Cancel</button>
+                <button class="btn btn-primary" type="button" onclick="UpdateAccountingItemSetting(@Model.Id)">Apply</button>
+                <input id="hdfGroupId" value="0" type="hidden" />
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+}
+else if (type == "Isellcompound")
+{
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+                <h5 class="modal-title">Edit item</h5>
+            </div>
+            <div class="modal-body">
+
+                <div class="well custom">
+                    <div class="row">
+                        <div class="col-xs-12">
+                            <div class="form-group">
+                                <label for="isellcompound_salesTaxRate">Sales tax rate(s)</label>
+                                <select id="isellcompound_salesTaxRate" name="isellcompound_salesTaxRate" class="form-control checkmulti" multiple>
+                                    @foreach (var item in SaleTaxRates)
+                                    {
+                                        <option value="@item.Id" @(Model.TaxRates.Any(s => s.Id == item.Id) ? "selected" : "")>@item.Name</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-xs-12">
+                            <div class="form-group">
+                                <label for="customer-account">Sales account</label><br>
+                                <button id="btn_isellcompound_addsale_account" class="btn btn-info @(Model.SalesAccount!=null?"hidden":"")" onclick="LoadAccountsTree(); idAccount = 'sale';typeGroup='isellcompound' ;idGroup =0;" data-toggle="modal" data-target="#app-bookkeeping-treeview">Choose account</button>
+                                <button id="btn_isellcompound_editsale_account" class="btn btn-small btn-warning btn-edit @(Model.SalesAccount!=null?"":"hidden")" onclick="LoadAccountsTree(); idAccount = 'sale';typeGroup='isellcompound' ;idGroup =0;" data-toggle="modal" data-target="#app-bookkeeping-treeview"><i class="fa fa-pencil"></i></button>
+                                <input type="hidden" id="isellcompound_sale_account" value="@(Model.SalesAccount!=null?Model.SalesAccount.Id:0)">
+                                <p id="isellcompound_sale_accounttext" style="display: inline; padding-left: 5px; font-size: 12px;">@(Model.SalesAccount != null ? Model.SalesAccount.Name : "No account selected")</p>
+                            </div>
+                        </div>
+                        <div class="col-xs-12">
+                            <div class="form-group">
+                                <label for="customer-account">Inventory account</label><br>
+                                <button id="btn_isellcompound_addinventory_account" class="btn btn-info @(Model.InventoryAccount!=null?"hidden":"")" onclick="LoadAccountsTree(); idAccount = 'inventory';typeGroup='isellcompound' ;idGroup =0;" data-toggle="modal" data-target="#app-bookkeeping-treeview">Choose account</button>
+                                <button id="btn_isellcompound_editinventory_account" class="btn btn-small btn-warning btn-edit @(Model.InventoryAccount!=null?"":"hidden")" onclick="LoadAccountsTree(); idAccount = 'inventory';typeGroup='isellcompound' ;idGroup =0;" data-toggle="modal" data-target="#app-bookkeeping-treeview"><i class="fa fa-pencil"></i></button>
+                                <input type="hidden" id="isellcompound_inventory_account" value="@(Model.InventoryAccount!=null?Model.InventoryAccount.Id:0)">
+                                <p id="isellcompound_inventory_accounttext" style="display: inline; padding-left: 5px; font-size: 12px;">@(Model.InventoryAccount != null ? Model.InventoryAccount.Name : "No account selected")</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <br>
+                <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                <button class="btn btn-primary" type="button" onclick="UpdateAccountingItemSetting(@Model.Id)">Apply</button>
+                <input id="hdfGroupId" value="0" type="hidden" />
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+}
+else if (type == "Isellservice")
+{
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+                <h5 class="modal-title">Edit item</h5>
+            </div>
+            <div class="modal-body">
+
+                <div class="well custom">
+                    <div class="row">
+                        <div class="col-xs-12">
+                            <div class="form-group">
+                                <label for="isellservices_salesTaxRate">Sales tax rate(s)</label>
+                                <select id="isellservices_salesTaxRate" name="isellservices_salesTaxRate" class="form-control checkmulti" multiple>
+                                    @foreach (var item in SaleTaxRates)
+                                    {
+                                        <option value="@item.Id" @(Model.TaxRates.Any(s => s.Id == item.Id) ? "selected" : "")>@item.Name</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-xs-12">
+                            <div class="form-group">
+                                <label for="customer-account">Sales account</label><br>
+                                <button id="btn_isellservices_addsale_account" class="btn btn-info @(Model.SalesAccount!=null?"hidden":"")" onclick="LoadAccountsTree(); idAccount = 'sale';typeGroup='isellservices' ;idGroup=0;" data-toggle="modal" data-target="#app-bookkeeping-treeview">Choose account</button>
+                                <button id="btn_isellservices_editsale_account" class="btn btn-small btn-warning btn-edit @(Model.SalesAccount!=null?"":"hidden")" onclick="LoadAccountsTree(); idAccount = 'sale';typeGroup='isellservices' ;idGroup=0;" data-toggle="modal" data-target="#app-bookkeeping-treeview"><i class="fa fa-pencil"></i></button>
+                                <input type="hidden" id="isellservices_sale_account" value="@(Model.SalesAccount!=null?Model.SalesAccount.Id:0)">
+                                <p id="isellservices_sale_accounttext" style="display: inline; padding-left: 5px; font-size: 12px;">@(Model.SalesAccount != null ? Model.SalesAccount.Name : "No account selected")</p>
+                            </div>
+                        </div>
+                        <div class="col-xs-12">
+                            <div class="form-group">
+                                <label for="customer-account">Inventory account</label><br>
+                                <button id="btn_isellservices_addinventory_account" class="btn btn-info @(Model.InventoryAccount!=null?"hidden":"")" onclick="LoadAccountsTree(); idAccount = 'inventory';typeGroup='isellservices' ;idGroup =0;" data-toggle="modal" data-target="#app-bookkeeping-treeview">Choose account</button>
+                                <button id="btn_isellservices_editinventory_account" class="btn btn-small btn-warning btn-edit @(Model.InventoryAccount!=null?"":"hidden")" onclick="LoadAccountsTree(); idAccount = 'inventory';typeGroup='isellservices' ;idGroup =0;" data-toggle="modal" data-target="#app-bookkeeping-treeview"><i class="fa fa-pencil"></i></button>
+                                <input type="hidden" id="isellservices_inventory_account" value="@(Model.InventoryAccount!=null?Model.InventoryAccount.Id:0)">
+                                <p id="isellservices_inventory_accounttext" style="display: inline; padding-left: 5px; font-size: 12px;">@(Model.InventoryAccount != null ? Model.InventoryAccount.Name : "No account selected")</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <br>
+                <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                <button class="btn btn-primary" type="button" onclick="UpdateAccountingItemSetting(@Model.Id)">Apply</button>
+                <input id="hdfGroupId" value="0" type="hidden" />
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+}
+
+

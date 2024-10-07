@@ -1,0 +1,356 @@
+﻿@using Qbicles.BusinessRules
+@using Qbicles.Models.Bookkeeping
+@model Qbicles.Models.Bookkeeping.JournalEntry
+@{
+    var journalTemplates = (List<JournalEntryTemplate>)ViewBag.JournalTemplates;
+    var journalGroups = (List<JournalGroup>)ViewBag.JournalGroups;
+    var dimensions = (List<TransactionDimension>)ViewBag.Dimensions;
+    var bkWorkGroups = (List<BKWorkGroup>)ViewBag.BkWorkGroups;
+    var decimalSymbol = Convert.ToChar(System.Threading.Thread.CurrentThread.CurrentCulture.NumberFormat.NumberDecimalSeparator);
+    var dateTimeFormat = (string)ViewBag.CurrentDateTimeFormat;
+    var timeZone = (string)ViewBag.CurrentTimeZone;
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+    ViewBag.Title = "Create JournalEntry";
+}
+
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail">
+
+
+    <!-- Main content -->
+    <section class="content">
+        <input hidden="" id="closed-book-date" value="@ViewBag.CloseBookDate" />
+        <input hidden="" id="journal-posted-date-select" value="@Model.PostedDate.ConvertTimeFromUtc(timeZone).ToString(dateTimeFormat)" />
+        <br /><br />
+
+        <div class="mod_title">
+            <h5>Bookkeeping</h5>
+            <h4>Create a Journal Entry</h4>
+        </div>
+
+
+        <div class="row">
+            <div class="col-xs-12">
+                <div class="app_filter">
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-6 col-lg-9">
+                            <a href="/Bookkeeping/BKApps" class="btn btn-info"><i class="fa fa-home"></i> &nbsp; App home</a>
+                            <a href="javascript:history.go(-1);" class="btn btn-info"><i class="fa fa-angle-left"></i> &nbsp; Previous</a>
+                            <div class="btn-group options">
+                                <button type="button" class="btn btn-success dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
+                                    Templates &nbsp; <i class="fa fa-angle-down"></i>
+                                </button>
+                                <ul id="journal-templates" class="dropdown-menu">
+                                    <li>
+                                        <a href="javascript:void(0)" onclick="UsejournalTemplate(0)" selected>None</a>
+                                    </li>
+                                    @foreach (var item in journalTemplates)
+                                    {
+                                        <li><a href="javascript:void(0)" onclick="UsejournalTemplate(@item.Id)">@item.Name</a></li>
+                                    }
+                                </ul>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <br />
+
+        <div class="activity-overview alert-detail" style="display: inline-block;">
+            <p style="margin: 0; padding: 0;">
+                <strong>NOTE:</strong> Journal entries require review and approval by administrators before they are added to the Chart of Accounts.
+                You will be notified when your submission is complete.
+            </p>
+        </div>
+
+        <br /><br /><br />
+
+
+        <form name="new-journal-entry" id="new-journal-entry">
+            <div class="row">
+                <input type="hidden" id="journalEntryId" value="0" />
+                <div class="col-xs-12 col-sm-4">
+                    <div class="activity-overview generic" style="padding: 20px;">
+                        <div class="form-group" style="margin: 0;">
+                            <label for="workgroup">Assign a Workgroup to this Journal Entry</label>
+                            <select required="" id="bk-worgroup-select" class="form-control select2" style="width: 100%;" onchange="ChangeBKWorkgroup()">
+                                @foreach (var wg in bkWorkGroups)
+                                {
+                                    <option value="@wg.Id">@wg.Name</option>
+                                }
+                            </select>
+                        </div>
+
+                    </div>
+
+                    <div class="preview-workgroup" style="display: none;">
+                        <br />
+                        <table class="table app_specific" style="margin: 0;">
+                            <tr>
+                                <td><h5>Process</h5></td>
+                                <td class="workgroup_process">Transfers</td>
+                            </tr>
+                            <tr>
+                                <td><h5>Qbicle</h5></td>
+                                <td class="workgroup_qbicle">Qblicle Name</td>
+                            </tr>
+                            <tr>
+                                <td><h5>Members</h5></td>
+                                <td class="workgroup_member"></td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="col-xs-12 col-sm-8">
+                    <div class="activity-overview task" style="padding-top: 30px; margin-bottom: 40px;">
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="date">Journal date <span class="required">*</span></label>
+                                    <input style="background-color:#ffffff !important" required="" type="text" name="date" value="@Model.PostedDate.ConvertTimeFromUtc(timeZone).FormatDateTimeByUser(dateTimeFormat)" id="journalEntry_PostedDate" class="form-control">
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="journal_group">Journal Group <span class="required">*</span></label>
+                                    <select name="journal_group" id="journalEntry_Group" class="form-control chosen-select" style="width: 100%">
+                                        @foreach (var item in journalGroups)
+                                        {
+                                            if (Model.Group != null && item.Id == Model.Group.Id)
+                                            {
+                                                <option selected value="@item.Id">@item.Name</option>
+                                            }
+                                            else
+                                            {
+                                                <option value="@item.Id">@item.Name</option>
+                                            }
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label for="number">Journal description <span class="required">*</span></label>
+                                    <textarea name="description" required id="journalEntry_desciption" class="form-control">@Model.Description</textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+
+            </div>
+
+
+            <div id="table-journal-entry">
+                <h5>Transactions</h5>
+                <table id="transaction_table" class="datatable table app_specific journal-transactions" style="width: 100%;" data-paging="false" data-info="false" data-searching="false" data-ordering="false">
+                    <thead>
+                        <tr>
+                            <th data-priority="1" style="width: 50px;">#</th>
+                            <th data-priority="1">Account</th>
+                            <th data-priority="1" style="width: 150px;">Date</th>
+                            <th data-priority="1" style="width: 150px;">Reference</th>
+                            <th data-priority="2" style="width: 90px;">Debit <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                            <th data-priority="2" style="width: 90px;">Credit <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                            <th data-priority="4">Memo</th>
+                            <th data-priority="3" style="width: 250px;">Reporting Filter</th>
+                            <th data-priority="1" style="width: 85px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model.BKTransactions != null && Model.BKTransactions.Count > 0)
+                        {
+                            for (int i = 0; i < Model.BKTransactions.Count; i++)
+                            {
+                                @Html.Partial("_TransactionRowPartial", Model.BKTransactions[i], new ViewDataDictionary { { "dimensions", dimensions }, { "CurrentDateTimeFormat", dateTimeFormat }, { "CurrentTimeZone", timeZone }, { "index", (i + 1) } });
+                            }
+                        }
+                    </tbody>
+                    <tfoot class="hidden-xs">
+                        <tr>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th class="text-right">Total:</th>
+                            <th class="text-right"><span class="sumDedit">0</span></th>
+                            <th class="text-right"><span class="sumCredit">0</span></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                        </tr>
+                    </tfoot>
+                </table>
+
+
+                @if (Model.BKTransactions != null && Model.BKTransactions.Count > 0)
+                {
+                    for (int i = 0; i < Model.BKTransactions.Count; i++)
+                    {
+                        @Html.Partial("_AttachmentViewPartial", Model.BKTransactions[i], new ViewDataDictionary { { "index", (i + 1) } });
+                    }
+                }
+            </div>
+        </form>
+
+
+
+        <div class="well visible-xs">
+            <div class="row">
+                <div class="col-xs-6">
+                    <p><strong>Total debits</strong></p>
+                    <span class="sumDedit">0</span>
+                </div>
+                <div class="col-xs-6">
+                    <p><strong>Total credits</strong></p>
+                    <span class="sumCredit">0</span>
+                </div>
+            </div>
+        </div>
+
+        <br />
+
+        <div class="row">
+            <div class="col-xs-6">
+                <button class="btn btn-info" onclick="AddNewBkTransactionRow()"><i class="fa fa-plus"></i> &nbsp; Add row</button>
+                <button class="btn btn-danger" id="clearAll" disabled onclick="DeleteAllBkTransactionRows()"><i class="fa fa-trash"></i> &nbsp; Clear all</button>
+            </div>
+            <div class="col-xs-6 text-right">
+                <button class="btn btn-warning savetemplate" data-toggle="modal" onclick="SaveJournalEntryTemplate()"><i class="fa fa-save"></i> &nbsp; Save template</button>
+                <button class="btn btn-success submitforreview" data-toggle="modal" onclick="SubmitJournalEntryToReview()"><i class="fa fa-lock"></i> &nbsp; Submit for review</button>
+            </div>
+        </div>
+    </section>
+    <!-- ./content -->
+</div>
+<!-- /.content-wrapper -->
+<div class="modal fade left" id="app-bookkeeping-treeview" role="dialog" aria-labelledby="app-bookkeeping-treeview">
+    @{ Html.RenderAction("TreeViewAccountPartial", "Bookkeeping");}
+</div>
+<div class="modal fade" id="submit-for-review" role="dialog" aria-labelledby="submit-for-review">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Send to Review</h5>
+            </div>
+            <div class="modal-body submit-for-review">
+
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+<!-- Submit for review /.modal -->
+
+
+<div class="modal fade" id="journal-template-modal" role="dialog" aria-labelledby="journal-template-modal">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Add new Journal Entry Template</h5>
+            </div>
+            <div class="modal-body">
+
+                <div class="well">
+                    <form class="form-group" id="journal-template-base">
+                        <input class="hidden" id="template-id" />
+                        <div class="col-xs-12 col-sm-12">
+                            <div class="form-group">
+                                <label for="date">Name <span class="required">*</span></label>
+                                <input type="text" name="Name" maxlength="150" required id="template-name" class="form-control" value="">
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-sm-12">
+                            <div class="form-group">
+                                <label for="date">Description</label>
+                                <textarea rows="3" name="Description" maxlength="250" id="template-description" class="form-control" value=""></textarea>
+
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
+                <button type="submit" class="btn btn-success" onclick="SaveJournalTemplate()"><i class="fa fa-check"></i> &nbsp; Save</button>
+                <button class="btn btn-danger modal-group-edit-cancel" data-dismiss="modal"><i class="fa fa-remove"></i> &nbsp; Cancel</button>
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+@{
+
+    <script src="~/Scripts/dev/bookkeeping-journalentry.js"></script>
+    <script src="~/Scripts/dev/bookkeeping-journaltemplate.js"></script>
+    <script src="~/Scripts/dev/trader.domain.js"></script>
+
+    @*if (System.Diagnostics.Debugger.IsAttached)
+        {
+            <script src="~/Scripts/dev/bookkeeping-journalentry.js"></script>
+            <script src="~/Scripts/dev/bookkeeping-journaltemplate.js"></script>
+            <script src="~/Scripts/dev/trader.domain.js"></script>
+        }
+        else
+        {
+            <script src="~/Scripts/dev/bookkeeping-journalentry.min.js"></script>
+            <script src="~/Scripts/dev/bookkeeping-journaltemplate.min.js"></script>
+            <script src="~/Scripts/dev/trader.domain.min.js">
+            </script>
+        }*@
+}
+@if (Model.Id == 0)
+{
+    <script>
+        var minDate = new Date(Date.parse($("#closed-book-date").val()));
+        minDate.setDate(minDate.getDate() + 1);
+        $('#journalEntry_PostedDate').daterangepicker({
+            singleDatePicker: true,
+            minDate: new Date(Date.parse(minDate)),
+            timePicker: true,
+            //autoApply: true,
+            showDropdowns: true,
+            autoUpdateInput: true,
+            cancelClass: "btn-danger",
+            opens: "left",
+            locale: {
+                cancelLabel: 'Clear',
+                format: $dateFormatByUser.toUpperCase() + ' HH:mm'
+            }
+        }).on('apply.daterangepicker',
+            function (e, picker) {
+                var postedDate = picker.startDate.format($dateFormatByUser.toUpperCase() + ' HH:mm');
+                $("#journal-posted-date-select").val(postedDate);
+                VerifyJournalPostedDate(postedDate, 1);
+            }).on('cancel.daterangepicker', function (ev, picker) {
+                //$(this).val(new Date());
+            });
+        $(document).ready(function () {
+            ChangeBKWorkgroup();
+            AddNewBkTransactionRow(true);
+        });
+
+    </script>
+}
+@if (decimalSymbol.ToString() == ",")
+{
+    <script>
+        charDot = ",";
+        // set multi for table
+        $('tr select').not('.multi-select').select2();
+    </script>
+}
+else if (decimalSymbol.ToString() == ".")
+{
+    <script>
+        charDot = ".";
+        // set multi for table
+        $('tr select').not('.multi-select').select2();
+    </script>
+}

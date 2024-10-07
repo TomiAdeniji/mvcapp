@@ -1,0 +1,393 @@
+﻿@using Qbicles.Models.Trader
+@using Qbicles.Models.Trader.Movement
+@using Qbicles.BusinessRules
+@model TraderTransfer
+@{
+    var workGroups = (List<WorkGroup>)ViewBag.WorkgroupTransfer;
+    var locationManage = (TraderLocation)ViewBag.Location;
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+}
+@{
+    <style>
+        .transfer .content-block-upper p {
+            text-align: left !important;
+        }
+    </style>
+}
+<div style="display: none">
+    <div id="location-manage-confirm" class="content-block transfer">
+        <div class="content-block-upper">
+            <smaller id="source-destination-manage"></smaller>
+            <h2>@locationManage.Name</h2>
+            <p>
+                @Html.Raw(locationManage.Address?.ToAddress().Replace(",", "<br />"))
+            </p>
+        </div>
+    </div>
+</div>
+
+<div class="modal-dialog modal-xl left" role="document">
+    <div class="modal-content">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <h5 class="modal-title">Add a Transfer</h5>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" value="@Model.Id" id="tranfer_form_id" />
+
+            <div class="row">
+                <div class="col-xs-12">
+
+                    <div class="row">
+                        <div class="col-xs-12">
+                            <ul class="app_subnav admintabs" style="padding-top: 0; position: relative; top: -20px;">
+                                <li class="active disabled"><a href="#transfer-specifics" data-toggle="tab">Specifics</a></li>
+                                <li class="disabled"><a href="#transfer-item-tab" data-toggle="tab">Items</a></li>
+                                <li class="disabled"><a href="#transfer-confirm-tab" data-toggle="tab">Confirm</a></li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <br />
+
+
+                    <div class="tab-content">
+
+
+                        <!-- Specifics -->
+                        <div class="tab-pane fade in active" id="transfer-specifics">
+
+
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-4">
+                                    <form id="form_transferadd">
+                                        <div class="activity-overview generic" style="padding: 20px; margin-bottom: 30px;">
+                                            <div class="form-group validate-control" style="margin: 0;">
+                                                <label for="workgroup">Assign a Workgroup to this Transfer <span>*</span></label>
+                                                <select name="workgourptransfer" id="transfer-workgroup-select" class="form-control select-modal" style="width: 100%;" onchange="WorkGroupSelectedChange()">
+                                                    <option value="" selected></option>
+                                                    @foreach (var wg in workGroups)
+                                                    {
+                                                        <option value="@wg.Id">@wg.Name</option>
+                                                    }
+                                                </select>
+                                            </div>
+
+                                            <div class="preview-workgroup" style="display: none;">
+                                                <br />
+                                                <table class="table app_specific" style="margin: 0;">
+                                                    <tr>
+                                                        <td><h5>Location</h5></td>
+                                                        <td class="location_name">Location name</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td><h5>Process</h5></td>
+                                                        <td class="workgroup_process">Transfers</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td><h5>Qbicle</h5></td>
+                                                        <td class="workgroup_qbicle">Qblicle Name</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td><h5>Members</h5></td>
+                                                        <td class="workgroup_member"><button class="btn btn-info" onclick="ShowGroupMember()" data-toggle="modal" data-target="#app-trader-workgroup-preview"><i class="fa fa-user"></i> &nbsp; <span></span></button></td>
+                                                    </tr>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </form>
+                                </div>
+                                <div class="col-xs-12 col-sm-8">
+
+                                    <div class="activity-overview task" style="padding: 20px 20px 5px 20px;">
+                                        <div class="row">
+                                            <div class="col-xs-12">
+
+                                                <div class="form-group">
+                                                    <label for="reference">Reference</label>
+                                                    <input type="hidden" value="@Model.Reference.Id" id="reference_id" />
+                                                    <input type="hidden" value="@Model.Reference.Type.ToString()" id="reference_type" />
+                                                    <input type="hidden" value="@Model.Reference.Prefix" id="reference_prefix" />
+                                                    <input type="hidden" value="@Model.Reference.Suffix" id="reference_suffix" />
+                                                    <input type="hidden" value="@Model.Reference.Delimeter" id="reference_delimeter" />
+                                                    <input type="hidden" value="@Model.Reference.FullRef" id="reference_fullref" />
+                                                    <div class="show-ref">
+                                                        <p>
+                                                            @Model.Reference.Prefix@Model.Reference.Delimeter<span id="refedit">@Model.Reference.NumericPart</span>@Model.Reference.Delimeter@Model.Reference.Suffix &nbsp; &nbsp;
+                                                        </p>
+                                                    </div>
+                                                </div>
+
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-xs-12 col-sm-6">
+                                                <div class="form-group" style="margin: 0;">
+                                                    <label for="type">Transfer requirement <span>*</span></label>
+                                                    <select onchange="ChangeTransferRequest()" name="type" id="transfer_request" class="form-control select-modal" style="width: 100%;">
+                                                        <option value=""></option>
+                                                        <option value="p2p">Point to point</option>
+                                                        <option value="goods_in">Purchase transfer</option>
+                                                        <option value="goods_out">Sale transfer</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="col-xs-12 col-sm-6" id="point-to-point-type" hidden="">
+                                                <div class="form-group" style="margin: 0;">
+                                                    <label for="type">Transfer type</label>
+                                                    <select name="type" id="transfer_type_add" onchange="TransferTypeChange()" class="form-control select-modal" style="width: 100%;">
+                                                        <option value="#inbound">Inbound</option>
+                                                        <option value="#outbound">Outbound</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <br>
+                                        <div class="row" id="point-to-point">
+
+                                        </div>
+
+                                    </div>
+                                    <br />
+                                    <div id="purchase-transfer" style="display: none;">
+                                        <div class="activity-overview generic" style="padding: 20px;">
+                                            <input hidden="" id="purchase_model_id" />
+                                            <div class="row">
+                                                <div class="col-xs-12 col-sm-6">
+                                                    <div class="form-group">
+                                                        <label for="search_dt">Search for a purchase</label>
+                                                        <input type="text" class="form-control search_transfer-purchase" placeholder="Enter a purchase ref, invoice # or contact">
+                                                    </div>
+                                                </div>
+                                                <div class="col-xs-12 col-sm-6">
+                                                    <div class="form-group">
+                                                        <label for="daterange">Date range</label>
+                                                        <input type="text" id="search_purchase_date_range" class="form-control daterange" value="" placeholder="Limit to a date range">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <br />
+                                            <div class="purchase-select no-search">
+                                                <table class="datatable table-hover sale-purchase-list-table" style="width: 100%; background: #fff;" id="purchase-list-table">
+                                                    <thead>
+                                                        <tr>
+                                                            <th data-priority="1">#</th>
+                                                            <th data-priority="2">Workgroup</th>
+                                                            <th data-priority="2">Created date</th>
+                                                            <th data-priority="1">Contact</th>
+                                                            <th data-priority="3">Reporting Filters</th>
+                                                            <th data-priority="2">Total <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                                            <th data-priority="2">Active transfers</th>
+                                                            <th data-priority="1" data-orderable="false">Use</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody></tbody>
+                                                </table>
+                                            </div>
+                                            <div class="selected-purchase" style="display: none;">
+                                                <table class="datatable table-hover" style="width: 100%; background: #fff;">
+                                                    <thead>
+                                                        <tr>
+                                                            <th data-priority="1">#</th>
+                                                            <th data-priority="2">Workgroup</th>
+                                                            <th data-priority="2">Created date</th>
+                                                            <th data-priority="1">Contact</th>
+                                                            <th data-priority="3">Reporting Filters</th>
+                                                            <th data-priority="2">Total <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                                            <th data-priority="2">Active transfers</th>
+                                                            <th data-priority="1" data-orderable="false">Options</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <tr>
+                                                            <td>#<span id="p_transfer_id">0</span></td>
+                                                            <td class="p_workgroup"></td>
+                                                            <td class="p_createdDate"></td>
+                                                            <td class="p_contact"></td>
+                                                            <td class="p_dimension" td>
+                                                            <td class="p_total"></td>
+                                                            <td class="p_tranfer"></td>
+                                                            <td><button class="btn btn-warning" onclick="UnSelectPurchase();"><i class="fa fa-pencil"></i> &nbsp; Change purchase</button></td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+
+                                        </div>
+                                        <br />
+                                    </div>
+                                    <div id="sale-transfer" style="display: none;">
+                                        <div class="activity-overview generic" style="padding: 20px;">
+                                            @*<input hidden="" id="sale_model_id" />*@
+                                            <input hidden id="sale_model_key" />
+                                            <div class="row">
+                                                <div class="col-xs-12 col-sm-6">
+                                                    <div class="form-group">
+                                                        <label for="search_dt">Search for a sale</label>
+                                                        <input type="text" class="form-control search_transfer-sale" placeholder="Enter a sales ref, invoice # or contact">
+                                                    </div>
+                                                </div>
+                                                <div class="col-xs-12 col-sm-6">
+                                                    <div class="form-group">
+                                                        <label for="daterange">Date range</label>
+                                                        <input id="search_date_range" type="text" class="form-control daterange" value="" placeholder="Limit to a date range">
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <br />
+                                            <div class="sale-select no-search">
+
+                                                <table class="datatable table-hover sale-purchase-list-table" style="width: 100%; background: #fff;" id="sale-list-table">
+                                                    <thead>
+                                                        <tr>
+                                                            <th data-priority="1">#</th>
+                                                            <th data-priority="2">Workgroup</th>
+                                                            <th data-priority="2">Created date</th>
+                                                            <th data-priority="1">Contact</th>
+                                                            <th data-priority="3">Reporting Filters</th>
+                                                            <th data-priority="2">Total <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                                            <th data-priority="2">Active transfers</th>
+                                                            <th data-priority="1" data-orderable="false">Use</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody></tbody>
+                                                </table>
+                                            </div>
+                                            <div class="selected-sale" style="display: none;">
+                                                <table class="datatable table-hover" style="width: 100%; background: #fff;">
+                                                    <thead>
+                                                        <tr>
+                                                            <th data-priority="1">#</th>
+                                                            <th data-priority="2">Workgroup</th>
+                                                            <th data-priority="2">Created date</th>
+                                                            <th data-priority="1">Contact</th>
+                                                            <th data-priority="3">Reporting Filters</th>
+                                                            <th data-priority="2">Total <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                                            <th data-priority="2">Active transfers</th>
+                                                            <th data-priority="1" data-orderable="false">Options</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <tr>
+                                                            <td>#<span id="s_sale_id">0</span></td>
+                                                            <td class="s_workgroup"></td>
+                                                            <td class="s_createdDate"></td>
+                                                            <td class="s_contact"></td>
+                                                            <td class="s_dimension" td>
+                                                            <td class="s_total"></td>
+                                                            <td class="s_tranfer"></td>
+                                                            <td><button class="btn btn-warning" onclick="UnSelectSale()"><i class="fa fa-pencil"></i> &nbsp; Change sale</button></td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+
+                                        </div>
+                                        <br />
+                                    </div>
+
+                                </div>
+                            </div>
+
+                            <button disabled="" onclick="NextToItemsTab()" href="#transfer-item-tab" data-toggle="tab" class="btn btn-success btnNext">Next &nbsp; <i class="fa fa-angle-right"></i></button>
+                        </div>
+                        <!-- END Specifics -->
+                        <!-- Items -->
+                        <div class="tab-pane fade" id="transfer-item-tab">
+
+
+                            <!-- P2P/Sale/purchase Transfer -->
+                            <div id="route_items">
+
+
+
+                            </div>
+                            <br />
+                            <a href="#transfer-specifics" data-toggle="tab" class="btn btn-warning btnPrevious"><i class="fa fa-angle-left"></i> &nbsp; Previous</a>
+                            <a onclick="nextToConfirm()" href="#transfer-confirm-tab" data-toggle="tab" class="btn btn-success btnNext btnNextConfirm">Next &nbsp; <i class="fa fa-angle-right"></i></a>
+                        </div>
+                        <!-- END Items -->
+                        <!-- Confirm -->
+                        <div class="tab-pane fade" id="transfer-confirm-tab">
+
+                            <div class="app_upper_dash text-center">
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-6 col-lg-4">
+                                        <div class="stat_label">
+                                            <span>Transfer type</span>
+                                            <h3 id="confirm-tranfer-type">Outbound</h3>
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-6 col-lg-4">
+                                        <div class="stat_label">
+                                            <span>Requirement</span>
+                                            <h3 id="confirm-tranfer-requirement">Sale Transfer</h3>
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-6 col-lg-4">
+                                        <div class="stat_label" style="padding-bottom: 10px;">
+                                            <span>For</span>
+                                            <h3 id="confirm-for">Sale #123</h3>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <br />
+
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-4">
+
+                                    <article id="contact-source" class="community-feature"></article>
+
+                                    <article id="contact-destination" class="community-feature"></article>
+
+                                </div>
+                                <div class="col-xs-12 col-sm-8">
+
+                                    <div id="div-confirm" class="activity-overview task" style="padding: 20px;">
+
+                                    </div>
+                                </div>
+                            </div>
+
+                            <a href="#transfer-item-tab" data-toggle="tab" class="btn btn-warning btnPrevious"><i class="fa fa-angle-left"></i> &nbsp; Previous</a>
+                            <a href="javascript:void(0)" onclick="SaveTransfer('Draft')" class="btn btn-primary"><i class="fa fa-save"></i> &nbsp; Save draft</a>
+                            <a href="javascript:void(0)" onclick="SaveTransfer('PendingPickup')" class="btn btn-success"><i class="fa fa-thumbs-up"></i> &nbsp; Send to pickup</a>
+                        </div>
+
+
+                    </div> <!-- ./tab-content -->
+
+                </div>
+            </div>
+
+
+
+        </div>
+    </div><!-- /.modal-content -->
+</div><!-- /.modal-dialog -->
+
+
+<script>
+    $('.btnNext').click(function () {
+        $('.modal .app_subnav > .active').next('li').find('a').trigger('click');
+    });
+    $('.btnPrevious').click(function () {
+        $('.modal .app_subnav > .active').prev('li').find('a').trigger('click');
+    });
+    $('.select-modal').not('.multi-select').select2();
+    $(".btnNextConfirm").attr("Disabled", "Disabled");
+    $('#transfer-workgroup-select').not('.multi-select').select2({ placeholder: "Please select" });
+    jQuery(document).ready(function () {
+        $('.validate-control select').on('change', function (e) {
+            if ($(this).val() && $(this).next()[0].localName === 'label' && $($(this).next()).hasClass("error")) {
+                $(this).next().remove();
+            } else if ($(this).val() && $(this).next()[0].localName === 'span') {
+                $(this).next().next().remove();
+            }
+        });
+    });
+</script>

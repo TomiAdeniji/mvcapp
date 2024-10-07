@@ -1,0 +1,48 @@
+﻿@using Qbicles.BusinessRules;
+@using Qbicles.Models.Trader;
+@using Qbicles.Models;
+@{
+
+    var lstTraderGroupItems = (List<TraderGroup>)ViewBag.LstGroupItems ?? (new List<TraderGroup>());
+    var dateFormat = (string)ViewBag.CurrentDateFormat;
+    var currentDomainPlan = (DomainPlan)ViewBag.CurrentDomainPlan ?? null;
+    var currentDomainPlanLevel = currentDomainPlan?.Level?.Level ?? BusinessDomainLevelEnum.Starter;
+}
+<table class="table-hover datatable" data-order='[[ 1, "desc" ]]' style="width: 100%; background: #fff;">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Created</th>
+            <th>Creator</th>
+            <th data-orderable="false">Options</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in lstTraderGroupItems)
+        {
+            var canDelGroupItem = "";
+            if (item.Items.Any() || (item.PriceDefaults != null && item.PriceDefaults.Any()) || item.WorkGroupCategories.Any())
+            {
+                canDelGroupItem = "disabled";
+            }
+            <tr>
+                <td>@item.Name</td>
+                <td data-sort="@item.CreatedDate.ToString("yyyy-MM-dd hh:mm")">@item.CreatedDate.ToString(dateFormat)</td>
+                <td>@HelperClass.GetFullNameOfUser(item.CreatedBy)</td>
+                <td>
+                    <button class="btn btn-warning" onclick="Editgroup(@item.Id)" data-toggle="modal" data-target="#app-group-edit"><i class="fa fa-pencil"></i></button>
+                    <button @canDelGroupItem class="btn btn-danger" data-toggle="modal" data-target="#app-group-confirm" onclick="ConfirmDeletegroup(@item.Id, '@item.Name')"><i class="fa fa-trash"></i></button>
+                </td>
+            </tr>
+        }
+
+    </tbody>
+</table>
+<script>
+    $('.groups-items-dynamiccontent .datatable').DataTable({
+        responsive: true,
+        "lengthChange": true,
+        "pageLength": 10,
+        "order": []
+    });
+</script>

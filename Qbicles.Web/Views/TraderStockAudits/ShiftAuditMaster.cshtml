@@ -1,0 +1,245 @@
+﻿@using Qbicles.BusinessRules
+@model StockAuditModel
+@{
+    ViewBag.Title = "Shift Audit Manager";
+    var today = (DateTime)ViewBag.Today;
+    var timeZone = (string)ViewBag.CurrentTimeZone ?? "";
+    var timeline = (List<ApprovalStatusTimeline>)ViewBag.Timeline;
+    var timelineDate = (List<DateTime>)ViewBag.TimelineDate;
+    var dateFormat = (string)ViewBag.CurrentDateFormat;
+
+    //Export
+    var createdDate = DateTime.Now;
+    var user = (Qbicles.Models.ApplicationUser)ViewBag.CurrentUser;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+    var defaultLocation = (Qbicles.Models.Trader.TraderLocation)ViewBag.DefaultLocation;
+    var logoBase64 = (string)ViewBag.DomainLogoBase64;
+}
+
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail" id="discussion-thread">
+
+    <!-- Main content -->
+    <section class="content">
+
+        <div class="row">
+            <div class="col-xs-12 item_detail" style="padding-left: 15px;">
+
+                <div class="item_titling">
+                    <span class="item_type">Trader - Shift Audit</span>
+                    <h3>#@Model.Name</h3>
+                </div>
+                <div class="app_filter">
+                    <div class="row">
+                        <div class="col-xs-12">
+                            <a href="/Trader/AppTrader" onclick="setTabTrader('itemsproducts', 'inventoryaudit-tab')" class="btn btn-primary"><i class="fa fa-angle-left"></i> &nbsp; Shift Audits</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="clearfix"></div>
+
+                <br />
+            </div>
+            <div class="col-xs-12">
+
+                <br /><br />
+
+                <div class="row">
+                    <div class="col-xs-12 col-md-8">
+
+                        <div class="app_upper_dash text-center">
+                            <div class="row">
+                                <div class="col-xs-12 col-md-6 col-lg-4">
+                                    <div class="stat_label">
+                                        <span>STARTED</span>
+                                        <h3>@Model.StartedDate</h3>
+                                    </div>
+                                </div>
+                                @if (Model.IsFinished)
+                                {
+                                    <div class="col-xs-12 col-md-6 col-lg-4">
+                                        <div class="stat_label">
+                                            <span>FINISHED</span>
+                                            <h3>@Model.FinishedDate</h3>
+                                        </div>
+                                    </div>
+                                }
+
+                                <div class="col-xs-12 col-md-6 col-lg-4">
+                                    <div class="stat_label">
+                                        <span>Workgroup</span>
+                                        @if (Model.WorkGroup != null)
+                                        {
+                                            <p><button class="btn btn-info" onclick="ShowGroupMember(@Model.WorkGroup.Id, 'Shift Audit')" data-target="#app-trader-workgroup-preview"><i class="fa fa-eye"></i> &nbsp; @Model.WorkGroup.Name</button></p>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!--begin::Hide default export buttons-->
+                        <div id="kt_datatable_example_buttons" style="display: none;"></div>
+                        <!--end::Hide default export buttons-->
+                        <!-- Export -->
+                        <div class="btn-group options" style="float: right;">
+                            <button type="button" class="btn btn-warning dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                <i class="fa fa-download"></i> &nbsp; Export
+                            </button>
+                            <div class="dropdown-menu" id="kt_datatable_example_export_menu" aria-labelledby="dropdownMenuButton" style="background-color: #a37a41;">
+                                <li>
+                                    <a class="dropdown-item data-qb-excel" href="javascript:void(0)" onclick="GetDataTableContentExport()">Excel</a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item data-qb-csv" href="javascript:void(0)" onclick="GetDataTableContentExport(2)">CSV</a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item data-qb-pdf" href="javascript:void(0)" onclick="GetDataTableContentExport(3)">PDF</a>
+                                </li>
+                            </div>
+                        </div>
+
+                        <table id="tb_product" class="datatable table-striped table-hover" style="width: 100%;">
+                            <thead>
+                                <tr>
+                                    <th rowspan="2">Name</th>
+                                    <th rowspan="2">SKU</th>
+                                    <th rowspan="2">Unit</th>
+                                    <th rowspan="2">Observed opening</th>
+                                    <th colspan="2" style="text-align: center; padding-left: 0;">Movement in period</th>
+                                    <th rowspan="2">Expected closing</th>
+                                    <th rowspan="2">Observed closing</th>
+                                    <th rowspan="2">Variance</th>
+                                </tr>
+                                <tr>
+                                    <th style="text-align: center;">In</th>
+                                    <th style="text-align: center;">Out</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (Model.ProductList != null && Model.ProductList.Count > 0)
+                                {
+                                    foreach (var item in Model.ProductList)
+                                    {
+                                        <tr class="tr_@item.ProductId">
+                                            <td class="td_name">
+                                                <input type="hidden" value="@item.Id" />
+                                                @item.Name
+                                            </td>
+                                            <td class="td_sku">@item.SKU</td>
+                                            <td class="td_unit">
+                                                <input type="hidden" value="@item.Unit.Id" />
+                                                <span>@item.Unit.Name</span>
+                                            </td>
+                                            <td class="td_open_count">@item.OpeningCount</td>
+                                            <td class="td_billmovement" style="text-align: center;">@item.PeriodIn</td>
+                                            <td style="text-align: center;">@item.PeriodOut</td>
+                                            <td class="td_expected">@item.ExpectedClosing</td>
+                                            <td class="td_closing_count">
+                                                <span>@item.ClosingCount</span>
+                                            </td>
+
+                                            <td class="td_variance">
+                                                @if (Model.IsFinished)
+                                                {
+                                                    <span class="label label-lg label-danger variance-1">@item.Variance</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="label label-lg label-danger variance-1">@item.Variance</span>
+                                                }
+                                            </td>
+                                        </tr>
+
+                                    }
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="col-xs-12 col-md-4">
+
+                        <br class="visible-xs">
+                        <br class="visible-xs">
+
+                        <ul class="timeline">
+                            @if (timelineDate != null)
+                            {
+                                foreach (var date in timelineDate)
+                                {
+                                    var dateStart = @HelperClass.DatetimeToOrdinal(date.ConvertTimeFromUtc(timeZone));
+                                    var dateStr = date.Date == today.Date ? "Today" : dateStart;
+
+                                    <li class="time-label">
+                                        <span class="label label-lg label-primary">
+                                            @dateStr
+                                        </span>
+                                    </li>
+                                    foreach (var tl in timeline.Where(d => d.LogDate.Date == date.Date))
+                                    {
+                                        <li>
+                                            <i class="@tl.Icon"></i>
+                                            <div class="timeline-item">
+                                                <span class="time"><i class="fa fa-clock-o"></i> @tl.Time</span>
+                                                <h4 class="timeline-header">@tl.Status</h4>
+                                            </div>
+                                        </li>
+                                    }
+                                    <br />
+                                }
+                            }
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <!-- ./content -->
+</div>
+<!-- /.content-wrapper -->
+<div class="modal fade" id="app-trader-workgroup-preview" role="dialog" aria-labelledby="app-trader-workgroup-preview">
+</div><!-- /.modal -->
+
+<script>
+    function ShowGroupMember(wgId, title) {
+        $('#app-trader-workgroup-preview').empty();
+        $('#app-trader-workgroup-preview').load("/Trader/ShowListMemberForWorkGroup?wgId=" + wgId + "&title=" + title.replace(/\s/g, "%20"));
+        $('#app-trader-workgroup-preview').modal('toggle');
+    };
+
+    // ----------------------------------------
+    //         EXPORT FUNCTIONALITY
+    // ----------------------------------------
+    function GetDataTableContentExport(exportType = 1) {
+        $.LoadingOverlay("show");
+
+        //Get table params
+        var params = $('#tb_product').DataTable().ajax.params();
+        console.log(params, "params");
+
+        //init params
+        var _parameter = {
+            ...params,
+            "id": @Model.Id,
+            "export": exportType
+        };
+
+        $.ajax({
+            type: 'POST',
+            url: '/Report/GetShiftAuditTableContentExport',
+            dataType: 'json',
+            data: _parameter,
+            success: function (response) {
+                if (response.result == true) {
+                    console.log(response, 'response');
+                    window.location.href = response.Object;
+                    cleanBookNotification.success("Export downloaded successfully!", "Qbicles");
+                }
+                $.LoadingOverlay("hide");
+            },
+            error: function (err) {
+                console.log(err, 'error');
+                $.LoadingOverlay("hide");
+            }
+        });
+    }
+
+</script>

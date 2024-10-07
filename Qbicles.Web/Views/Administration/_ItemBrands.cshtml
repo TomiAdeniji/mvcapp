@@ -1,0 +1,188 @@
+﻿@using Qbicles.Models;
+@using Qbicles.BusinessRules;
+@using Qbicles.Models.Trader;
+@using Qbicles.Models.Trader.Product;
+@using Qbicles.BusinessRules.Helper;
+@using Qbicles.Models.Trader.Resources;
+@{
+    var lstDomains = (List<QbicleDomain>)ViewBag.ListDomains ?? new List<QbicleDomain>();
+    var lstBrands = (List<AdditionalInfo>)ViewBag.ListBrands ?? new List<AdditionalInfo>();
+    var lstBrandsNames = Html.Raw(lstBrands.Select(p => new
+    {
+        id = p.Id,
+        value = p.Name
+    }).ToList().ToJson());
+    var maxTagItems = lstBrands.Count;
+}
+
+<div class="well custom" style="padding-bottom: 5px;">
+    <div class="row">
+        <div class="col-xs-12 col-sm-6 col-lg-3">
+            <div class="form-group">
+                <label for="search">Search</label>
+                <input type="text" id="brand-text-search" name="bSearch" class="form-control">
+            </div>
+        </div>
+        <div class="col-xs-12 col-sm-6 col-lg-3">
+            <div class="form-group">
+                <label for="creator">Domain</label>
+                <select name="creator" id="brand-domain-dropdown" class="form-control select2" style="width: 100%;">
+                    <option value="0" selected>Show all</option>
+                    @foreach (var domainItem in lstDomains)
+                    {
+                        <option value="@domainItem.Key">@domainItem.Name</option>
+                    }
+                </select>
+            </div>
+        </div>
+        <div class="col-xs-12 col-sm-6 col-lg-3">
+            <label>Options</label>
+            <br>
+            <div class="form-group">
+
+                <div class="btn-group options">
+                    <button class="btn btn-success" onclick="openAddEditBrandModal(0, '',0)"><i class="fa fa-plus"></i> &nbsp; Add new</button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+<br />
+
+<table class="datatable table-hover table-striped" id="item-brand-table" style="width: 100%;">
+    <thead>
+        <tr>
+            <th data-priority="1">Brand name</th>
+            <th data-priority="2">Creator Domain</th>
+            <th data-priority="2">Created</th>
+            <th data-priority="2">Associated items</th>
+            <th data-priority="1" data-orderable="false">Options</th>
+        </tr>
+    </thead>
+    <tbody>
+    </tbody>
+</table>
+
+<div class="modal fade left" id="app-trader-resources-brand-add" role="dialog" aria-labelledby="app-trader-resources-brand-add">
+    <input type="hidden" id="editting-brand-id" value="0" />
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 id="brand-modal-title" class="modal-title">Add a Brand</h5>
+            </div>
+            <div class="modal-body">
+
+                <div class="well custom">
+                    <form id="add-edit-brand">
+                        <div class="row" style="display:none;">
+                            <div class="col-xs-12">
+                                <div class="form-group" style="margin: 0;">
+                                    <label for="domain-selector">Domain</label>
+                                    <select name="domain-selector" id="save-brand-modal-domain-selector" class="form-control select2" style="width: 100%;">
+                                        <option selected value="0"> </option>
+                                        @foreach (var domainItem in lstDomains)
+                                        {
+                                            <option value="@domainItem.Id">@domainItem.Name</option>
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <br>
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <div class="form-group" style="margin: 0;">
+                                    <label for="brand-title">Brand name <span style="color:red">*</span></label>
+                                    <input type="hidden" id="editting-brand-name-hiden" class="form-control input-lg">
+                                    <input name="brandselect" id="editting-brand-name" class="form-control input-lg">
+                                </div>
+                            </div>
+                        </div>
+                        <br />
+                        <div class="row">
+                            <button type="button" class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                            <button type="button" onclick="SaveItemBrand()" class="btn btn-success">Confirm</button>
+                        </div>
+                    </form>
+                </div>
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+
+<link href="~/Content/DesignStyle/css/tagify-yaireo.css" rel="stylesheet" />
+<script src="~/Content/DesignStyle/js/tagify.polyfills.min.js"></script>
+<script src="~/Content/DesignStyle/js/tagify.js"></script>
+<script>
+
+    var input = document.querySelector('input[name="brandselect"]'),
+        // init Tagify script on the above inputs
+        tagify = new Tagify(input, {
+            //whitelist: ["Adidas", "Amazon", "Apple", "Google", "Lego Group", "Microsoft", "Instagram", "TikTok", "Playstation", "Tesla", "Starbucks", "Costa", "Audi", "Red Bull", "Citroen", "Ford"],
+            whitelist: @(lstBrandsNames),
+            maxTags: 1,
+            dropdown: {
+                maxItems: 10,// @maxTagItems, // <- mixumum allowed rendered suggestions
+                classname: "tags-look", // <- custom classname for this dropdown, so it could be targeted
+                enabled: 0, // <- show suggestions on focus
+                closeOnSelect: false // <- do not hide the suggestions dropdown once an item has been selected
+            },
+            callbacks: {
+                "change": (e) => {
+                    $("#editting-brand-name-hiden").val(e.detail.value);                    
+                    if (e.detail.value != "")
+                        $("#editting-brand-name-error").remove();
+                    else 
+                        $("#add-edit-brand").validate().showErrors({ brandselect: "This field is required." });
+                       
+                        
+                }//,
+                //"dropdown:show": (e) => console.log(e.detail)
+            }
+        });
+
+    function SaveItemBrand() {
+        $('#add-edit-brand').LoadingOverlay("show");
+        setTimeout(function () {
+            if ($('#editting-brand-name-hiden').val() == '') {
+                $("#add-edit-brand").validate().showErrors({ brandselect: "This field is required." });
+                $('#add-edit-brand').LoadingOverlay("hide", true);
+                return;
+            }
+
+            var _url = '/Administration/AdminAddItemBrand';
+            var $name = JSON.parse($("#editting-brand-name").val())[0].value;
+            $.ajax({
+                'method': 'POST',
+                'dataType': 'JSON',
+                'url': _url,
+                'data': {
+                    'brandId': $("#editting-brand-id").val(),
+                    'name': $name,
+                    'domainId': $("#save-brand-modal-domain-selector").val(),
+                    'type': 1
+                },
+                success: function (response) {
+                    if (response.result) {
+                        cleanBookNotification.success('Save item brand information successfully!', 'Qbicles');
+                        $("#item-brand-table").DataTable().ajax.reload();
+                        $("#app-trader-resources-brand-add").modal('hide');
+                    } else {
+                        $("#add-edit-brand").validate().showErrors({ brandselect: response.msg });
+                        //cleanBookNotification.error(response.msg, 'Qbicles')
+                    }
+                },
+                error: function (err) {
+                    cleanBookNotification.error(err.msg, 'Qbicles')
+                }
+            }).always(function () {
+                $('#add-edit-brand').LoadingOverlay("hide", true);
+            });
+        }, 1000);
+        
+    }
+
+</script>

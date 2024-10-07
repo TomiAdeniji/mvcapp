@@ -1,0 +1,719 @@
+﻿@using Qbicles.BusinessRules;
+@using Qbicles.Models;
+@{
+    ViewBag.Title = ViewBag.PageTitle;
+    var currentDomain = (QbicleDomain)ViewBag.CurrentDomain;
+    var currentQbicle = (Qbicle)ViewBag.currentQbicle;
+    var currentUserId = (string)ViewBag.CurrentUserId;
+    var logoUri = (string)ViewBag.LogoUri;
+    var qbicleTopics = (List<Topic>)ViewBag.qbicleTopics;
+    var dateFormat = (string)ViewBag.CurrentDateFormat;
+    var activityFilter = (string)ViewBag.ActivityType;
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var desQbile = currentQbicle.Description;
+    if (desQbile != null && desQbile.Length > 119)
+    {
+        desQbile = desQbile.Substring(0, 116) + "...";
+    }
+    var accessed = currentDomain.Administrators.Any(s => s.Id == currentUserId) || currentQbicle.Manager.Id == currentUserId;
+    var isMemberQbicles = currentQbicle.Members.Any(u => u.Id == currentUserId);
+    var lsUser = ((List<UserCustom>)ViewBag.lstUser) ?? new List<UserCustom>();
+    var folders = ViewBag.mediaFolders as List<MediaFolder>;
+    var today = (DateTime)ViewBag.Today;
+
+    var firstFolderId = folders[0].Id;
+
+    var fileTypes = (List<QbicleFileType>)ViewBag.FileTypes;
+}
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail mdv2-wrapper" style="position: relative; top: -1px; min-height: 606px;">
+    <section class="mdv2 dash" data-tooltip-color="teal" data-tooltip-delay="300" data-tooltip-animate-function="spin">
+        <input hidden id="dashboard-media-page" value="" />
+        <!-- App bar -->
+        <div class="mdv2-col-app" style="margin-bottom: 0;">
+            <div data-spy="affix" class="contained-sidebar affix">
+
+                <div class="qbicle-overview">
+                    <input type="hidden" value="@currentQbicle.Key" id="hdfCurrentQbicleId" />
+                    <div class="spacing-new alldomains" style="padding: 20px 15px 0 15px;">
+                        <a href="/Qbicles" class="btn btn-primary"><i class="fa fa-angle-left"></i> &nbsp; @currentDomain.Name</a>
+                    </div>
+                    <div class="activity-overview plain company-overview welcome-info" style="flex: none; margin: 0; padding: 0 30px 20px 30px;">
+                        <div style="width: 90px; height: 90px; background-image: url('@logoUri&size=T'); background-size: cover; background-position: center center; margin: 0 auto; border-radius: 50%;"></div>
+                        <br>
+                        <h2 style="font-weight: 500;">@currentQbicle.Name</h2>
+                        <p style="color: rgba(0, 0, 0, 0.5);">@desQbile</p>
+                    </div>
+                    <ul class="qbicle-users" style="padding: 0 0 50px 0;">
+                        @foreach (var item in lsUser.Take(4))
+                        {
+                            var fullname = item.Id == currentUserId ? "Me" : ((string.IsNullOrEmpty(item.Forename) || string.IsNullOrEmpty(item.Surname)) ? item.UserName : item.Forename + " " + item.Surname);
+                            <li>
+                                <a href="#" onclick="UserDetail('@item.Id','@fullname')" data-toggle="modal" data-target="#qbicle-members" data-tooltip="@fullname" data-tooltip-color="slate">
+                                    <div class="user" style="background-image: url('@(api + item.ProfilePic)&size=T');">&nbsp;</div>
+                                </a>
+                            </li>
+                        }
+                        <li>
+                            <a href="#" id="lbtViewMoreMember" data-toggle="modal" data-target="#qbicle-members" onclick="CallPopUpQbicMember();$('#contact-list-back').click();" aria-haspopup="true" aria-expanded="true">
+                                <div class="user" style="background-image: url('/Content/DesignStyle/img/people-more.png');">&nbsp;</div>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+
+
+                <div class="qbicle-snippet" style="display: none;">
+
+                    <div class="spacing-new alldomains" style="padding: 20px 15px 0 15px;">
+                        <a href="/Qbicles" class="btn btn-primary"><i class="fa fa-angle-left"></i> &nbsp; @currentDomain.Name</a>
+                    </div>
+
+                    <div class="activity-overview plain company-overview welcome-info" style="flex: none; margin: 0; padding: 0 30px 20px 30px;">
+
+                        <div style="width: 60px; height: 60px; background-image: url('@logoUri&size=T'); background-size: cover; background-position: center center; margin: 0 auto; border-radius: 50%;"></div>
+                        <br>
+
+                        <h2 style="font-size: 15px; font-weight: 500;">@currentQbicle.Name</h2>
+                    </div>
+                </div>
+
+
+
+
+                <ul class="community-v2-nav mydesk-alt" style="padding-left: 15px; padding-right: 15px;" data-step="3" data-intro="Navigate to subsections using these tabs." data-position='right'>
+                    <li class="active qbicle-home">
+                        <a href="#home" data-toggle="tab" onclick="Timeline(); manage_options('#options-dash'); $('.qbicle-snippet').hide(); $('.qbicle-overview').fadeIn();">
+                            Dashboard
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#calendar" data-toggle="tab" onclick="totop();manage_options('#options-calendar'); $('.qbicle-overview').hide(); $('.qbicle-snippet').fadeIn();CalTabActive(_calYear, _calMonth);">
+                            Calendar
+                        </a>
+                    </li>
+                    <li>
+                        @*<a href="#media" data-toggle="tab" onclick="totop(); manage_options('#options-media'); $('.qbicle-overview').hide(); $('.qbicle-snippet').fadeIn(); QbicleLoadMediasByFolder(@firstFolderId);">*@
+                        <a href="#media" data-toggle="tab" onclick="ShowMediaFolders('#options-media',@firstFolderId);">
+                            Media
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#topics" data-toggle="tab" onclick="manage_options('#options-topics'); $('.qbicle-overview').hide(); $('.qbicle-snippet').fadeIn();viewFunc.loadTopicManager('list');">
+                            Topics
+                        </a>
+                    </li>
+                    <li></li>
+                </ul>
+
+                <div style="padding: 0 20px 20px 20px;">
+                    <!-- Dashboard options -->
+                    <!-- END Dashboard options -->
+                    <!-- Calendar options -->
+                    <div id="options-calendar" class="sidebar-options" style="display: none;">
+                        <div class="calendar-view-dashboard" data-language="en"></div>
+                    </div>
+                    <!-- END Calendar options -->
+                    <!-- Media options -->
+                    <div id="options-media" class="sidebar-options" style="display: none;">
+                        <h5>Folders</h5>
+
+                        <div class="row">
+                            <div id="media-folder-div" class="col-xs-12">
+                                
+                            </div>
+                        </div>
+
+                    </div>
+                    <!-- END Media options -->
+                    <!-- Topic options -->
+                    <div id="options-topics" class="sidebar-options" style="display: none;">
+                        <h5>Views</h5>
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <ul class="nav nav-pills folders varx" style="padding-top: 0;">
+                                    <li class="active">
+                                        <a href="#" onclick="$('#topic-list').toggle(); $('#topic-pipeline').toggle(); $('.list-opts').toggle(); $('.pipe-opts').toggle();viewFunc.loadTopicManager('list');" data-toggle="tab">
+                                            <i class="fa fa-list"></i> &nbsp; List view
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a href="#" onclick="$('#topic-list').toggle(); $('#topic-pipeline').toggle(); $('.list-opts').toggle(); $('.pipe-opts').toggle();viewFunc.loadTopicManager('pipeline');" data-toggle="tab">
+                                            <i class="fa fa-th"></i> &nbsp; Pipeline view
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+
+                    </div>
+                    <!-- END Topic options -->
+                </div>
+
+            </div>
+        </div>
+        <!-- END App bar -->
+        <!-- Main area -->
+        <div class="mdv2-col-dash" style="min-width: 0;overflow:hidden;">
+            <div class="tab-content">
+                <!-- Timeline view -->
+                <div class="tab-pane fade in active" id="home">
+                    @if (isMemberQbicles)
+                    {
+                        <div class="mobile-space">
+                            <div class="interact activity-overview generic comment-post" id="latch" style="padding: 20px !important;">
+                                <div class="input-group my-group">
+                                    @Html.Partial("_ChatPartial", new ViewDataDictionary { { "qbicleTopics", qbicleTopics }, { "chatType", ChatType.Qbicle }, { "OrderCreation", null }, { "OrderChatTo", OrderChatTo.None } })
+                                </div>
+                            </div>
+                        </div>
+                        <div id="dashboard-page-display" class="block-container" style="display:none">
+                            <div id="previous"></div>
+                        </div> <!-- ./block-container -->
+                    }
+                    else
+                    {
+                        <div id="dashboard-page-display" class="block-container-out" style="display:none">
+                            <div id="previous"></div>
+                        </div> <!-- ./block-container -->
+                    }
+
+                    @if (isMemberQbicles)
+                    {
+                        <div class="btn-group dropup options" style="position: fixed; bottom: 175px; right: 20px; z-index: 2000;"
+                             data-step="3" data-intro="Add activities like discussions, events and tasks here." data-position='right'>
+                            <button class="btn btn-success fab dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                <i class="fa fa-plus"></i>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-right options" style="min-width: 150px;">
+                                <li><a href="#" data-toggle="modal" data-target="#create-discussion-qb">Discussion</a></li>
+                                <li><a href="#" data-toggle="modal" data-target="#create-event">Event</a></li>
+                                <li><a href="#" data-toggle="modal" data-target="#create-link">Link</a></li>
+                                <li><a onclick="AddMediaOnTab(0)" href="#" data-toggle="modal" data-target="#create-media">Media</a></li>
+                                <li><a href="#" data-toggle="modal" data-target="#create-task">Task</a></li>
+                            </ul>
+                        </div>
+                    }
+
+
+                    <div class="btn-group dropup info" style="position: fixed; bottom: 100px; right: 20px; z-index: 2000;"
+                         data-step="4" data-intro="Filter your timeline using the options here." data-position='right'>
+                        <button class="btn btn-info fab" data-toggle="modal" data-target="#filter-qbicle">
+                            <i class="fa fa-filter"></i>
+                        </button>
+                    </div>
+
+                    <div class="btn-group dropup primary" style="position: fixed; bottom: 25px; right: 20px; z-index: 2000;"
+                         data-step="5" data-intro="Manage your Qbicle's members and general settings here." data-position='right'>
+                        <button class="btn btn-primary fab dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            <i class="fa fa-cog"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-right primary" style="min-width: 150px;">
+                            <li><a href="#qbicle-members" data-toggle="modal">Members</a></li>
+                            @if (accessed)
+                            {
+                                <li><a href="#edit-qbicle" data-toggle="modal">Qbicle settings</a></li>
+                            }
+                        </ul>
+                    </div>
+
+
+                    <div id="first-load-icon" class="vertical-center">
+                        <div class="text-center" style=""><img src="/Content/DesignStyle/img/loading-new.gif" style="width: 180px; height: auto;"></div><br />
+                    </div>
+                </div>
+                <!-- END Timeline -->
+                <!-- Calendar -->
+                <div class="tab-pane fade" id="calendar">
+                    <div class="spacing">
+
+                        <ul class="activity-tabs" role="navigation" style="margin-bottom: 15px; max-width: 600px;">
+                            <li class="active"><a href="#" data-toggle="tab" data-target="#activity-today" crd="@DateTime.UtcNow.FormatDateTimeByUser(dateFormat)">Today</a></li>
+                            <li><a href="#" data-toggle="tab" data-target="#activity-week">This Week</a></li>
+                            <li><a href="#" data-toggle="tab" data-target="#activity-month">This Month</a></li>
+                            <li></li>
+                        </ul>
+
+                        <div class="well custom" style="padding: 20px 20px 5px 20px; margin-bottom: 30px;">
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label for="types">Search for something</label>
+                                        <input type="text" name="search" class="form-control" placeholder="Search for..." value="">
+                                        <input type="hidden" name="day" value="" />
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-6">
+                                    <label style="display: block;" class="hidden-xs">&nbsp;</label>
+                                    <button class="btn btn-info" data-toggle="modal" data-target="#dashboard-calendar-filters"><i class="fa fa-filter"></i> &nbsp; Filter results</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="tab-content">
+                            <div class="tab-pane fade in active" id="activity-today" style="min-height:150px">
+                                <div class="scroller-activities">
+                                    <div class="records-h">
+
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- END Today -->
+                            <!-- This Week -->
+                            <div class="tab-pane fade" id="activity-week" style="min-height:150px">
+                                <div class="scroller-activities">
+                                    <div class="records-h">
+
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- END This Week -->
+                            <!-- This Month -->
+                            <div class="tab-pane fade" id="activity-month" style="min-height:150px">
+                                <div class="scroller-activities">
+                                    <div class="records-h">
+
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- END This Month -->
+                        </div>
+
+                    </div>
+                </div>
+                <!-- END Calendar -->
+                <!-- Media -->
+                <div class="tab-pane fade" id="media">
+                    <div class="spacing-new" style="padding: 0 30px;">
+                        <div class="well custom" style="padding-bottom: 5px;">
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-4">
+                                    <div class="form-group">
+                                        <label for="search">Search</label>
+                                        <input onchange="QbicleLoadMediasByFolder(-1);" id="qbicles-media-filter" type="text" class="form-control" placeholder="Search in folder">
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-4 col-lg-3">
+                                    <div class="form-group">
+                                        <label for="type">File type</label>
+                                        <select id="qbicles-media-file-type" onchange="QbicleLoadMediasByFolder(-1);" class="form-control select2" style="width: 100%;">
+                                            <option value="all" selected>Show all</option>
+                                            @foreach (var f in fileTypes)
+                                            {
+                                                <option value="@f.Extension">@f.Extension @f.Type</option>
+
+                                            }
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="list-medias" class="flex-grid-thirds-lg media-contents" style="margin-top: 30px;">
+                        </div>
+
+
+                        @if (isMemberQbicles)
+                        {
+                            <div class="btn-group dropup options" style="position: fixed; bottom: 25px; right: 20px; z-index: 2000;"
+                                 data-step="3" data-intro="Add a media item here" data-position='right'>
+                                <button onclick="AddMediaOnTab(1)" class="btn btn-success fab dropdown-toggle" data-toggle="modal" data-target="#create-media">
+                                    <i class="fa fa-plus"></i>
+                                </button>
+                            </div>
+                        }
+                    </div>
+                </div>
+                <!-- END Media -->
+                <!-- Topics -->
+                <div class="tab-pane fade" id="topics">
+                    <div class="spacing"></div>
+                </div>
+                <!-- END Topics -->
+            </div> <!-- ./tab-content -->
+        </div>
+
+    </section>
+</div>
+@*delete topic*@
+<div class="modal fade left" id="delete-topic" role="dialog" aria-labelledby="delete-topic">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Delete this topic</h5>
+            </div>
+            <div class="modal-body">
+                <form id="frm_topic_delete" action="/Topics/DeleteTopic" method="post">
+                    <div class="activity-overview generic help-text animated bounce" style="margin-bottom: 15px;">
+                        <i class="fa fa-info-circle"></i>
+                        <p></p>
+                    </div>
+                    <div class="well custom move-container" style="display:none">
+                        <div class="form-group" style="margin: 0;">
+                            <input type="hidden" id="topicDeleteId" name="topicCurrentId" value="0" />
+                            <input type="hidden" id="tp_QbicleId" name="key" value="@currentQbicle.Key" />
+                            <label for="folder">Move my orphaned activities to</label>
+                            <select id="lst_topic_delete" name="topicMoveId" class="form-control select2" style="width: 100%;">
+                                @foreach (var item in qbicleTopics)
+                                {
+                                    <option value="@item.Id">@item.Name</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">Confirm &amp; delete</button>
+                </form>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+@*move to group*@
+<div class="modal fade left in" id="move-to-group" role="dialog" aria-labelledby="move-to-group" style="display: none; padding-right: 17px;">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+                <h5 class="modal-title">Move to another topic</h5>
+            </div>
+            <div class="modal-body">
+                <form id="frm_move_topic" action="/Topics/MoveAtivityTopic">
+                    <div class="well custom">
+                        <div class="form-group" style="margin: 0;">
+                            <label for="folder">Choose a topic to move to</label>
+                            <input type="hidden" id="move_cr_topicId" value="0" />
+                            <input type="hidden" id="move_cr_AvId" value="0" />
+                            <input type="hidden" id="move_tp_QbicleId" name="qbicleId" value="@currentQbicle.Key" />
+                            <select id="lst_move_topic" name="topicMoveId" class="form-control select2 select2-hidden-accessible" style="width: 100%;" tabindex="-1" aria-hidden="true">
+                                @foreach (var item in qbicleTopics)
+                                {
+                                    <option value="@item.Id">@item.Name</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-success">Confirm</button>
+                    <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                </form>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+@*calendar filter*@
+<div class="modal left fade" id="dashboard-calendar-filters" role="dialog" aria-labelledby="dashboard-calendar-filters">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Filter activities</h5>
+            </div>
+            <div class="modal-body">
+                <form id="frm-calendar-filters">
+                    <div class="row">
+                        <div class="col-xs-12">
+
+                            <div class="activity-overview task" style="padding: 20px 20px 10px 20px;">
+                                <div class="row">
+                                    <div class="col-xs-12">
+                                        <div class="form-group">
+                                            <label for="order">Order by</label>
+                                            <select id="cal-filter-orderby" name="orderby" class="form-control select2" style="width: 100%;">
+                                                <option value="TimelineDate desc">Last updated (newest first)</option>
+                                                <option value="TimelineDate asc">Last updated (oldest first)</option>
+                                                <option value="isComplete asc">Status</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-xs-12">
+                                        <div class="form-group">
+                                            <label for="types">Limit by activity type</label>
+                                            <select id="cal-filter-activitytype" name="types" class="form-control select2" style="width: 100%;" multiple>
+                                                <option value="4">Event</option>
+                                                <option value="5">Media</option>
+                                                <option value="2">Task</option>
+                                                <option value="3">Alert</option>
+                                                <option value="8">Approval</option>
+                                                <option value="11">Approval App</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-xs-12">
+                                        <div class="form-group">
+                                            <label for="types">Limit by topic(s)</label>
+                                            <select id="cal-filter-topic" name="topics" class="form-control select2" style="width: 100%;" multiple>
+                                                @foreach (var item in qbicleTopics)
+                                                {
+                                                    <option value="@item.Id">@item.Name</option>
+                                                }
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="avatarpickermulti">
+                                    <div class="form-group">
+                                        <label for="assignee">Limit by people</label>
+                                        <select id="cal-filter-people" name="peoples" class="form-control select2avatartask" multiple style="width: 100%;">
+                                            @foreach (var item in currentQbicle.Members)
+                                            {
+                                                <option avatarUrl="@(api + item.ProfilePic)" value="@item.Id">@HelperClass.GetFullNameOfUser(item)</option>
+                                            }
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-xs-12">
+                                        <div class="form-group">
+                                            <label for="types">Limit displayed app(s)</label>
+                                            <select id="cal-filter-apps" name="apps" class="form-control select2" style="width: 100%;" multiple>
+                                                <option value="Bookkeeping">Bookkeeping</option>
+                                                <option value="CleanBooks">Cleanbooks</option>
+                                                <option value="Operator">Operator</option>
+                                                <option value="Trader">Trader</option>
+                                                <option value="SalesAndMarketing">Sales&Marketing</option>
+                                                <option value="Spannered">Spannered</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <br /><br />
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-6">
+                                    <button class="btn community-button btn-success" type="button" onclick="CalApplyFilter()" data-dismiss="modal">Apply filters</button>
+                                </div>
+                                <div class="col-xs-12 col-sm-6">
+                                    <button class="btn community-button btn-danger" type="button" onclick="CalFilterReset()">Reset</button>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+@*create folder*@
+<div class="modal fade left" id="create-folder" role="dialog" aria-labelledby="create-folder" style="display: none;">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+                <h5 class="modal-title">Create a Folder</h5>
+            </div>
+            <div class="modal-body">
+                <form id="frm-folder-qbicle">
+                    <div class="well custom">
+                        <div class="form-group" style="margin: 0;">
+                            <label for="title">Title</label>
+                            <input type="text" required class="form-control" name="title">
+                        </div>
+                    </div>
+
+                    <button type="button" onclick="QbicleAddMediaFolder()" class="btn btn-success">Confirm</button>
+                    <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                </form>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+@*manage folder*@
+<div class="modal fade left" id="manage-folder" role="dialog" aria-labelledby="manage-folder" style="display: none;">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+                <h5 class="modal-title">Manage Folder</h5>
+            </div>
+            <div class="modal-body">
+                <form id="frm-manager-folder-qbicle">
+                    <div class="well custom">
+                        <div class="form-group" style="margin: 0;">
+                            <label for="title">Title</label>
+                            <input type="text" class="form-control" name="title" value="">
+                            <input type="hidden" class="form-control" name="folderId" value="0">
+                        </div>
+                    </div>
+
+                    <button class="btn btn-danger" type="button" data-dismiss="modal">Cancel</button>
+                    <button id="media-btn-del-folder" type="button" class="btn btn-warning" onclick="QbicleDeleteMediaFolder();"><i class="fa fa-remove"></i> &nbsp; Delete folder</button>
+                    <button id="media-btn-del-confirm" type="button" onclick="QbicleManagerMediaFolder();" class="btn btn-success">Confirm</button>
+                </form>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+@*move media*@
+<div class="modal fade left" id="move-media" role="dialog" aria-labelledby="move-media" style="display: none;">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+                <h5 class="modal-title">Move file to another folder</h5>
+            </div>
+            <div class="modal-body">
+
+                <div class="well custom">
+                    <div class="form-group" style="margin: 0;">
+                        <label for="folder">Folder</label>
+                        <select id="media-move-folders-qbicle" name="folder" class="form-control select2 select2-hidden-accessible" style="width: 100%;" tabindex="-1" aria-hidden="true"></select>
+                        <input id="media-move-currentKey-qbicle" type="hidden" value="" />
+                    </div>
+                </div>
+
+                <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                <button class="btn btn-success" onclick="QbicleSaveMoveMediaFolder()">Confirm</button>
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+@*filter-qbicle*@
+<div class="modal fade right" id="filter-qbicle" role="dialog" aria-labelledby="filter-qbicle">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Filters</h5>
+            </div>
+            <div class="modal-body">
+
+                <div class="well custom" style="padding: 20px 20px 5px 20px;">
+                    <div class="form-group">
+                        <label for="types">Activity types</label>
+                        <select name="types" id="select-activity" class="form-control select2" style="width: 100%" multiple>
+                            <option value="@Enums.QbicleModule.Discussions" @(activityFilter == "Discussions" ? "selected" : "")>Discussions</option>
+                            <option value="@Enums.QbicleModule.Approvals" @(activityFilter == "Approvals" ? "selected" : "")>Approvals</option>
+                            <option value="@Enums.QbicleModule.Events" @(activityFilter == "Events" ? "selected" : "")>Events</option>
+                            <option value="@Enums.QbicleModule.Media" @(activityFilter == "Media" ? "selected" : "")>Media</option>
+                            <option value="@Enums.QbicleModule.Tasks" @(activityFilter == "Tasks" ? "selected" : "")>Tasks</option>
+                            <option value="@Enums.QbicleModule.Post" @(activityFilter == "Post" ? "selected" : "")>Posts</option>
+                            <option value="@Enums.QbicleModule.Links" @(activityFilter == "Link" ? "selected" : "")>Links</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="types">Topic(s)</label>
+                        <select name="TopicTypes" class="form-control select2" id="select-topic" style="width: 100%;" multiple>
+                            @foreach (var item in qbicleTopics)
+                            {
+                                <option value="@item.Id">@item.Name</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="types">Content from bolt-ons</label>
+                        <select id="AppTypes" name="AppTypes" class="form-control select2" style="width: 100%;" multiple>
+                            <option value="Bookkeeping">Bookkeeping</option>
+                            <option value="CleanBooks">Cleanbooks</option>
+                            <option value="Operator">Operator</option>
+                            <option value="Trader">Trader</option>
+                            <option value="SalesAndMarketing">Sales&Marketing</option>
+                            <option value="Spannered">Spannered</option>
+                        </select>
+                    </div>
+                </div>
+
+
+
+                <button class="btn btn-info" data-dismiss="modal" onclick="LoadDataDashboard(true);$('.removefilters').fadeIn();">Apply</button>
+                <button class="btn btn-danger" data-dismiss="modal" onclick="$('.removefilters').hide(); ClearFilter();">Reset</button>
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+
+@Html.Partial("_ModalLink", null)
+<!-- /.content-wrapper -->
+@if (accessed)
+{
+    Html.RenderPartial("_QbicleSettings");
+}
+
+@{
+    Html.RenderAction("GenerateModalEvent", "Qbicles", new { eventId = 0 });
+    Html.RenderAction("GenerateModalTask", "Qbicles", new { taskKey = "" });
+    Html.RenderAction("GenerateModalAlert", "Qbicles");
+    Html.RenderAction("GenerateModalMedia", "Qbicles");
+    Html.RenderAction("GenerateModalTopic", "Qbicles", new { topicId = 0 });
+    Html.RenderAction("GenerateModalDiscussion", "Qbicles", new { disId = 0 });
+    Html.RenderAction("GenerateForwardPostModal", "Qbicles");
+}
+
+@Html.Partial("_QbicleMember", lsUser)
+
+<div class="modal fade left" id="task-more" role="dialog" aria-labelledby="task-more"></div>
+<div class="modal fade left" id="event-more" role="dialog" aria-labelledby="event-more"></div>
+<div class="modal fade left" id="link-more" role="dialog" aria-labelledby="link-more"></div>
+<div class="modal fade left" id="media-more" role="dialog" aria-labelledby="media-more"></div>
+<div class="modal fade left" id="discussion-more" role="dialog" aria-labelledby="discussion-more"></div>
+<div class="modal fade left" id="process-more" role="dialog" aria-labelledby="process-more"></div>
+<div class="modal fade in" id="edit-post" role="dialog" aria-labelledby="edit-post"></div>
+@{
+
+    <link href="~/Content/DesignStyle/css/emojionearea.min.css" rel="stylesheet" />
+    <script src="~/Content/DesignStyle/js/emojione.min.js"></script>
+    <script src="~/Content/DesignStyle/js/emojionearea.min.js"></script>
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <link href="~/Content/DesignStyle/css/datepicker.css" rel="stylesheet" />
+        <script src="~/Content/DesignStyle/js/datepicker.min.js"></script>
+        <script src="~/Content/DesignStyle/js/datepicker-en.js"></script>
+        <script src="~/Scripts/dev/qbicle.dashboard.js"></script>
+        @*<script src="~/Content/DesignStyle/js/pagination.js"></script>
+            <link href="/Content/DesignStyle/css/pagination.css" rel="stylesheet">*@
+    }
+    else
+    {
+        <link href="~/Content/DesignStyle/css/datepicker.min.css" rel="stylesheet" />
+        <script src="~/Content/DesignStyle/js/datepicker.min.js"></script>
+        <script src="~/Content/DesignStyle/js/datepicker-en.js"></script>
+        <script src="~/Scripts/dev/qbicle.dashboard.js"></script>
+        @*<script src="~/Content/DesignStyle/js/pagination.min.js"></script>
+            <link href="/Content/DesignStyle/css/pagination.min.css" rel="stylesheet">*@
+    }
+}
+<script>
+    var api = '@api'
+    var calPageSize =@HelperClass.myDeskPageSize;
+    var activityFilter='@activityFilter';
+    var qbiclePageSize =@HelperClass.qbiclePageSize;
+    $(document).ready(function () {
+        var topicId = getCookie("Qbicle-topic");
+        if (topicId != null) {
+            $("#select-topic").val(topicId).trigger('change');
+            removeCookie("Qbicle-topic");
+        }
+        var type = activityFilter;
+        if (type) {
+            ApplyFilter();
+        }
+        else {
+            LoadMoreActivities();
+        }
+    });
+
+    function ChangeIconFolder(e) {
+        $('.folders li a i.folder').removeClass('fa-folder-open').addClass('fa-folder');
+        $('i.folder', e).removeClass('fa-folder').addClass('fa-folder-open');
+    }
+
+    //$('.folders li a').bind('click', function () {
+    //    $('.folders li a i.folder').removeClass('fa-folder-open').addClass('fa-folder');
+    //    $('i.folder', this).removeClass('fa-folder').addClass('fa-folder-open');
+    //});
+
+    /**
+     * param isTab        = 0 - add from Dashboard, 1 - add from MediaTab
+     */
+    function AddMediaOnTab(isTab) {
+        $("#add-media-on-tab").val(isTab);
+        GetListTopic();
+    }
+</script>

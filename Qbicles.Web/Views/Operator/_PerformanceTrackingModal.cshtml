@@ -1,0 +1,200 @@
+﻿@using Qbicles.Models.Operator;
+@using Qbicles.Models.Operator.Team;
+@using Qbicles.Models.Operator.Goals;
+@using Qbicles.BusinessRules.Model
+@model PerformanceTracking
+@{
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var workgroups = (List<OperatorWorkGroup>)ViewBag.Workgroups;
+    var measures = (List<Measure>)ViewBag.Measures;
+    var teamPersons = (List<PersonModal>)ViewBag.TeamPersons;
+}
+
+<div class="modal-dialog modal-xl" role="document">
+    <div class="modal-content">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <h5 class="modal-title">@(Model == null ? "Add a Performance Management tracking" : "Edit Performance Management tracking")</h5>
+        </div>
+        <div class="modal-body">
+
+
+            <div class="row">
+                <div class="col-xs-12">
+                    <ul class="app_subnav admintabs" style="padding-top: 0;">
+                        <li class="active"><a href="#perf-1" data-toggle="tab">Specifics</a></li>
+                        <li><a href="#perf-2" data-toggle="tab">Measures</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <br />
+
+
+            <div class="tab-content">
+
+                <!-- Specifics -->
+                <div class="tab-pane fade in active" id="perf-1">
+
+                    <div class="row">
+                        <form id="frmOperatorPerformance" action="/Operator/SavePerformanceTracking" method="post">
+                            <div class="col-xs-12 col-sm-4 col-lg-3">
+                                <input type="hidden" value="@(Model?.Id??0)" name="Id" id="performanceId">
+                                <div class="activity-overview generic" style="padding: 20px; margin-bottom: 30px;">
+                                    <div class="form-group" style="margin: 0;">
+                                        <label for="workgroup">Assign a Workgroup</label>
+                                        <select name="WorkgroupId" class="form-control select2" style="width: 100%;" id="performanceWorkgroup" onchange="ChangeWorkgroup(this)">
+                                            <option value=""></option>
+                                            @if (workgroups != null)
+                                            {
+                                                foreach (var item in workgroups)
+                                                {
+                                                    <option value="@item.Id" @((Model != null && Model.WorkGroup.Id == item.Id) ? "selected" : "")>@item.Name</option>
+                                                }
+                                            }
+                                        </select>
+                                    </div>
+                                    <label id="performanceWorkgroup-error" class="error" for="performanceWorkgroup" style="display: none"></label>
+                                    <div class="preview-workgroup" style="@(Model == null? "display: none;" : "")">
+                                        <br />
+                                        <table class="table app_specific" style="margin: 0;">
+                                            <tr>
+                                                <td><h5>Location</h5></td>
+                                                <td id="WGLocation">@(Model != null ? Model.WorkGroup.Location.Name : "")</td>
+                                            </tr>
+                                            <tr>
+                                                <td><h5>Process</h5></td>
+                                                <td id="WGProcess">Performance Management</td>
+                                            </tr>
+                                            <tr>
+                                                <td><h5>Qbicle</h5></td>
+                                                <td id="WGQbicle">@(Model != null ? Model.WorkGroup.SourceQbicle.Name : "")</td>
+                                            </tr>
+                                            <tr>
+                                                <td><h5>Members</h5></td>
+                                                <td><button class="btn btn-info" data-toggle="modal" data-target="#team-person-preview" onclick="ShowGroupMember()"><i class="fa fa-user"></i> &nbsp; <span id="WGMember">@(teamPersons?.Count()??0)</span></button></td>
+                                            </tr>
+                                        </table>
+                                    </div>
+                                </div>
+
+                            </div>
+                            <div class="col-xs-12 col-sm-8 col-lg-9">
+
+                                <div class="well custom" style="padding-bottom: 5px;">
+                                    <div class="row">
+                                        <div class="col-xs-12 col-sm-6">
+                                            <div class="form-group avatarpickermini">
+                                                <label for="assignee">Choose the person you want to track</label>
+                                                <select name="TeamPersonId" id="trackingPersons" class="form-control select2avatar" style="width: 100%;">
+                                                    <option value=""></option>
+                                                    @if (Model != null)
+                                                    {
+                                                        if (teamPersons != null)
+                                                        {
+                                                            foreach (var item in teamPersons)
+                                                            {
+                                                                <option value="@item.Id" avataruri="@item.ProfilePic&size=T" api="@api" @(Model.Team.Id == item.Id ? "selected" : "")>@item.Name</option>
+                                                            }
+                                                        }
+                                                    }
+                                                </select>
+                                            </div>
+                                            <label id="trackingPersons-error" class="error" for="trackingPersons" style="display: none; margin-top: -15px;">This field is required.</label>
+                                        </div>
+                                        <div class="col-xs-12 col-sm-6">
+                                            <div class="form-group">
+                                                <label for="desc">Description</label>
+                                                <input type="text" name="Description" value="@(Model != null ? Model.Description : "")" class="form-control">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </form>
+                    </div>
+
+
+
+                    <br />
+                    <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                    <a href="#perf-2" data-toggle="tab" class="btn btn-success btnNext">Next &nbsp; <i class="fa fa-angle-right"></i></a>
+
+                </div>
+                <!-- END Specifics -->
+                <!-- Measures -->
+                <div class="tab-pane fade" id="perf-2">
+
+                    <div class="well custom" style="padding-bottom: 5px;">
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-4">
+                                <div class="form-group">
+                                    <label for="forms">Add a Measure</label>
+                                    <select name="forms" id="slMeasureToAdd" class="form-control select2" style="width: 100%;" data-placeholder="Choose a measure">
+                                        <option value=""></option>
+                                        @foreach (var item in measures)
+                                        {
+                                            <option value="@item.Id" data-description="@item.Summary">@item.Name</option>
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-2">
+                                <label for="score">
+                                    Weight &nbsp;
+                                    <i class="fa fa-info-circle blue" data-tooltip="The combined weight of all of your measures should total 100%. The higher this measure's percentage, the higher its potential performance gains."></i>
+                                </label>
+                                <div class="input-group" style="margin-bottom: 15px;">
+                                    <input type="number" class="form-control" name="score" id="txtWeightPercent" value="0">
+                                    <span class="input-group-addon">%</span>
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-6">
+                                <div class="form-group">
+                                    <label for="forms">&nbsp;</label><br />
+                                    <button class="btn btn-success" onclick="AddMeasure()"><i class="fa fa-plus"></i> &nbsp; Add to list</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <br />
+
+                    <table class="datatable table-striped table-hover" id="tblTrackingMeasures" style="width: 100%;">
+                        <thead>
+                            <tr>
+                                <th>Measure</th>
+                                <th>Description</th>
+                                <th>Weight</th>
+                                <th>Options</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (Model != null)
+                            {
+                                foreach (var item in Model.TrackingMeasures)
+                                {
+                                    <tr data-weight="@item.Weight" data-id="@item.Measure.Id">
+                                        <td>@item.Measure.Name</td>
+                                        <td>@item.Measure.Summary </td>
+                                        <td>@item.Weight%</td>
+                                        <td><button class="btn btn-danger" onclick="RemoveMeasure(this)"><i class="fa fa-trash"></i></button></td>
+                                    </tr>
+                                }
+                            }
+
+                        </tbody>
+                    </table>
+                    <br />
+                    <a href="#perf-1" data-toggle="tab" class="btn btn-warning btnPrevious"><i class="fa fa-angle-left"></i> &nbsp; Previous</a>
+                    <a href="#" class="btn btn-success" onclick="$('#frmOperatorPerformance').trigger('submit');">Confirm</a>
+
+                </div>
+                <!-- END Measures -->
+
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->

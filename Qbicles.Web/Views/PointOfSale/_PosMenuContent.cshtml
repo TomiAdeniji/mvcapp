@@ -1,0 +1,269 @@
+﻿@using Qbicles.BusinessRules
+@using Qbicles.Models.Trader.PoS
+@using Qbicles.Models.Trader.SalesChannel;
+@using Qbicles.Models.Catalogs;
+@{
+    var posMenu = (List<Catalog>)ViewBag.Menu;
+    var timeZone = (string)ViewBag.CurrentTimeZone;
+    var dateTimeFormat = (string)ViewBag.CurrentDateTimeFormat;
+    var dateFormat = (string)ViewBag.CurrentDateFormat;
+
+    var isDisplayLocation = (bool)ViewBag.isDisplayLocation;
+    var catalogsProcessing = posMenu.Where(e => e.IsBeingQuickModeProcessed).ToList();
+    var catalogs = posMenu.Where(e => !e.IsBeingQuickModeProcessed).ToList();
+    var listB2BPartnership = (List<listB2BPartnershipInCatalog>)ViewBag.listB2BPartnerships;
+    var numberB2b = 0;
+}
+
+
+@foreach (var menu in catalogsProcessing)
+{
+    <article class='col' id='preparing-menu-@menu.Id'>
+        <span class="last-updated">Added @menu.CreatedDate.ConvertTimeFromUtc(timeZone).ToString(dateFormat + " hh:mmtt").ToLower()</span>
+        <div>
+            <img style='width:200px;height:auto;' src='~/Content/DesignStyle/img/loading-new.gif'>
+            <p>Preparing <b>@menu.Name</b> catalog</p>
+        </div>
+    </article>
+}
+<div id="new-menu-div" style="display:none;"></div>
+@foreach (var menu in catalogs)
+{
+    var menuStatus = (menu.Devices.Any(e => !e.Archived));
+
+    <article id="pos-menu-@menu.Id" class="col">
+        <input id="input_@menu.Id" value="@menu.Name" type="hidden" />
+        <div class="cat-alerts animated bounceIn" style="top:8px;">
+            @if (menu.FlaggedForTaxUpdate)
+            {
+                <span class="alert-tax" data-tooltip="Tax changes have affected prices in this catalogue"
+                      data-tooltip-stickto="right" data-tooltip-color="teal"><i class="fa fa-briefcase"></i></span>
+            }
+            @if (menu.FlaggedForLatestCostUpdate)
+            {
+                <span class="alert-tax" data-tooltip="Latest cost changes have affected prices in this catalogue"
+                      data-tooltip-stickto="right" data-tooltip-color="teal"><i class="fa fa-dollar"></i></span>
+            }
+        </div>
+
+        <div class="qbicle-opts dropdown">
+            <a href="javascript:" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                <i class="fa fa-cog"></i>
+            </a>
+            <ul class="dropdown-menu primary dropdown-menu-right" style="right: 0;">
+                @if (listB2BPartnership.Any(e => e.id == menu.Id))
+                {
+                    <li>
+                        <a href="#" onclick="ShowBusinesses(@menu.Id)" data-toggle="modal" data-target="#consumer-businesses">Show consumer businesses</a>
+                    </li>
+                }
+
+                <li>
+                    <a href="javascript:" onclick="UpdateMenu(@menu.Id)">Edit</a>
+                </li>
+                @if (!menuStatus)
+                {
+                    <li>
+                        <a href="javascript:" onclick="ConfirmDeleteMenu(@menu.Id)" data-toggle="modal" data-target="#confirm-delete">Delete</a>
+                    </li>
+
+                }
+                <li>
+                    <a href="javascript:" onclick="CloneMenu(@menu.Id)">Clone</a>
+                </li>
+
+                @if (!menu.IsPOSSqliteDbBeingProcessed && menu.SalesChannel == SalesChannelEnum.POS)
+                {
+                    <li>
+                        <a href="javascript:" onclick="SetMenuId(@menu.Id)" data-toggle="modal" data-target="#pos-menu-updadte-pos-menu-modal">Update POS Menu</a>
+                    </li>
+                }
+                else if (menu.IsPOSSqliteDbBeingProcessed && menu.SalesChannel == SalesChannelEnum.POS)
+                {
+                    <li>
+                        <a class="disabled" href="javascript:">Update POS Menu processing</a>
+                    </li>
+                }
+                @if (menu.SalesChannel == SalesChannelEnum.POS)
+                {
+                    <li>
+                        @if (menu.Devices.Count() <= 0)
+                        {
+                            <a href="javascript:">Devices using this (0)</a>
+                        }
+                        else
+                        {
+                            <a href="javascript:" onclick="ViewMenuDevices(@menu.Id)">Devices using this (@menu.Devices.Count())</a>
+                        }
+
+                    </li>
+                }
+
+            </ul>
+        </div>
+
+        <a href="/PointOfSale/PoSMenu?id=@menu.Id">
+            <div class="avatar" style="background-image: url('@(menu.Image)&size=S');">&nbsp;</div>
+            <h1 style="color: #333;" class="txt-menuname@(menu.Id)">@menu.Name</h1>
+            @if (isDisplayLocation)
+            {
+                <span class="label label-lg label-soft">@(menu.Location?.Name)</span>
+            }
+            @if (listB2BPartnership.Any(e => e.id == menu.Id))
+            {
+                numberB2b = listB2BPartnership.Where(e => e.id == menu.Id).SelectMany(t => t.consumerDomain).Count();
+                if (numberB2b > 1)
+                {
+                    <span class="label label-lg label-soft">@numberB2b businesses </span>
+                }
+                else
+                {
+                    <span class="label label-lg label-soft">@numberB2b business </span>
+                }
+            }
+
+            <br /> <br />
+        </a>
+
+        <p class="qbicle-detail txt-menudesc@(menu.Id)" style="white-space: pre-wrap !important;">@Html.Raw(menu.Description)</p>
+        <br />
+
+
+        <table class="table table-condensed table-striped table-borderless tidytable">
+            <tr>
+                <td>Menu type</td>
+                <td>@menu.SalesChannel.GetDescription()</td>
+            </tr>
+            <tr>
+                <td>Added</td>
+                <td>@menu.CreatedDate.ConvertTimeFromUtc(timeZone).ToString(dateFormat + " hh:mmtt").ToLower()</td>
+            </tr>
+            <tr>
+                @if (menu.SalesChannel == SalesChannelEnum.POS)
+                {
+                    <td>Linked devices</td>
+                    <td>
+                        @menu.Devices.Count() &nbsp;@if (menu.Devices.Count() > 0)
+                        {<a href="javascript:" onclick="ViewMenuDevices(@menu.Id)">View list</a>}
+
+
+                    </td>
+                }
+
+            </tr>
+        </table>
+
+
+        <a href="/PointOfSale/PoSMenu?id=@menu.Id" class="btn btn-primary community-button">Manage</a>
+
+    </article>
+
+
+}
+
+<script src="~/Content/DesignStyle/js/html5tooltips.js"></script>
+<script>
+
+    var $catalogs = @Html.Raw(Json.Encode(catalogsProcessing.Select(x => new {Id = x.Id})));
+
+    $(document).ready(function (e) {
+        var currentLocationId = $("#select2-local-manage-select-container").val();
+        _.forEach($catalogs, function (catalog) {
+            var $interval = setInterval(() => {
+
+                $.get("/PointOfSaleMenu/VerifyCatalogStatus?catalogId=" + catalog.Id +"&locationId="+currentLocationId, function (rs) {
+
+                    if (rs.result == false) {
+                        StopInterval($interval);
+                        $("#preparing-menu-" + catalog.Id).remove();
+                        $('#new-menu-div').after(rs.msg);
+                    }
+                });
+            }, 10000);
+        });
+    });
+    StopInterval = function (intervalId) {
+        clearInterval(intervalId);
+    }
+
+    function ViewMenuDevices(menuId) {
+        var ajaxUri = '/PointOfSaleMenu/ViewMenuDevices?menuId=' + menuId;
+        AjaxElementShowModal(ajaxUri, 'app-trader-pos-menu-devices');
+
+        //$.LoadingOverlay("show");
+        //$('#app-trader-pos-menu-devices').empty();
+        //$('#app-trader-pos-menu-devices').load(ajaxUri, function () {
+        //    $("#table-menu-devices-modal").DataTable({
+        //        responsive: false,
+        //        searching: true,
+        //        paging: true,
+        //        scrollX: false,
+        //        scrollY: false,
+        //        info: true,
+        //        initComplete: function (settings, json) {
+        //            $('.dataTables_scrollBody thead tr').css({ visibility: 'collapse' });
+        //        },
+        //        columnDefs: [
+        //            { width: 300, targets: 0 }
+        //        ],
+        //        fixedColumns: false,
+        //        scrollCollapse: false,
+        //        ordering: true,
+        //        "language": {
+        //            "lengthMenu": "_MENU_ &nbsp; per page"
+        //        }
+        //    });
+        //    LoadingOverlayEnd();
+        //    $("#app-trader-pos-menu-devices").modal('show');
+        //});
+
+
+    }
+
+    function ShowBusinesses(domainId) {
+        $("#consumer-businesses").LoadingOverlay("show");
+        var url = '/PointOfSaleMenu/GetListPartnershipInCatalog'
+        $("#consumer-businesses").html("");
+            $.ajax({
+                type: "POST",
+                url: url,
+                data: {catalogId : domainId},
+                success: function(data) {
+                    $("#consumer-businesses").append(data);
+                },
+                complete: function(){
+                    $("#consumer-businesses").LoadingOverlay("hide");
+                }
+            });
+    }
+
+</script>
+
+<style>
+
+    .cat-alerts {
+        position: absolute;
+        top: 39px;
+        left: 10px;
+    }
+
+        .cat-alerts span {
+            width: 35px;
+            display: inline-block;
+            margin-right: 2px;
+            background: #edda7d;
+            padding: 5px 11px;
+            border-radius: 5px;
+            color: #665b3d;
+            -webkit-transition: all 0.3s ease;
+            -moz-transition: all 0.3s ease;
+            -ms-transition: all 0.3s ease;
+            -o-transition: all 0.3s ease;
+            transition: all 0.3s ease;
+        }
+
+            .cat-alerts span:hover {
+                background: #fff;
+                color: #18b5b3;
+            }
+</style>

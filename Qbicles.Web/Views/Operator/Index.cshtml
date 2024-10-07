@@ -1,0 +1,1165 @@
+﻿@using Qbicles.Models;
+@using Qbicles.Models.Operator;
+@using Qbicles.BusinessRules;
+@{
+    var lstLocations = (List<OperatorLocation>)ViewBag.Locations;
+    var lstRoles = (List<OperatorRole>)ViewBag.Roles;
+    var setting = (OperatorSetting)ViewBag.Setting;
+    var folder = (MediaFolder)ViewBag.Folder;
+    var workgroups = (List<OperatorWorkGroup>)ViewBag.Workgroups;
+    ViewBag.Title = "Operator";
+    var tabActive = "people-people";
+    if (Request.QueryString["tab"] != null)
+    {
+        tabActive = Request.QueryString["tab"].ToString();
+    }
+    if (setting == null)
+    {
+        tabActive = "app-config";
+    }
+}
+
+<input type="hidden" id="mediaFolderId" value="@(folder?.Id??0)">
+<input type="hidden" id="operatorQbicleId" value="@(setting!=null&&setting.SourceQbicle!=null?setting.SourceQbicle.Id:0)">
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail mdv2-wrapper" style="position: relative;">
+
+
+    <!-- Main content -->
+    <section class="mdv2 dash" data-tooltip-color="teal" data-tooltip-delay="300" data-tooltip-animate-function="spin" style="border-top: 1px solid #f1f1f1;">
+        <!-- App bar -->
+        <div class="mdv2-col-app" style="margin-bottom: 0;">
+
+            <div data-spy="affix" class="contained-sidebar">
+
+                <ul id="tabApp" class="subapps-nav" role="navigation" data-tooltip-stickto="bottom" style="margin-bottom: 30px;">
+                    <li class="@(tabActive=="people-people"?"active":"")">
+                        <a href="#people-people" data-tooltip="Team" data-toggle="tab" onclick="LoadTeam()">
+                            <i class="fas fa-users"></i>
+                        </a>
+                    </li>
+                    <li class="@(tabActive=="time-attendance"?"active":"")">
+                        <a href="#time-attendance" data-tooltip="Time &amp; Attendance" data-toggle="tab" onclick="getTeamMembers();checkTeamPermission();$('#tab-subnav-attendance a[href=#time-attendance]').trigger('click'); manage_options('#options-attendance'); $('.section-detail').hide(); $('.intro-attendance').show(); $('.appnav').hide(); $('.nav-attendance').show();">
+                            <i class="far fa-clock"></i>
+                        </a>
+                    </li>
+                    <li class="@(tabActive=="goals-goals"?"active":"")">
+                        <a href="#goals-goals" data-tooltip="Goals" data-toggle="tab" onclick="$('#tab-subnav-goals a[href=#goals-goals]').trigger('click'); LoadOperatorTags(); manage_options('#options-goals'); $('.section-detail').hide(); $('.intro-goals').show(); $('.appnav').hide(); $('.nav-goals').show();">
+                            <i class="fas fa-bullseye"></i>
+                        </a>
+                    </li>
+                    <li class="@(tabActive=="tasks-tasks"?"active":"")">
+                        <a href="#tasks-tasks" data-tooltip="Tasks &amp; Forms" data-toggle="tab" onclick="$('#tab-taskandforms a[href=#tasks-tasks]').trigger('click');manage_options('#options-tasks'); $('.section-detail').hide(); $('.intro-tasks').show(); $('.appnav').hide(); $('.nav-tasks').show();">
+                            <i class="fas fa-check-square"></i>
+                        </a>
+                    </li>
+                    <li class="@(tabActive=="app-config"?"active":"")">
+                        <a href="#app-config" data-tooltip="App Config" data-toggle="tab" onclick="manage_options('#options-config'); $('.section-detail').hide(); $('.intro-config').show(); $('.appnav').hide(); LoadOperatorConfigs()">
+                            <i class="fas fa-cog"></i>
+                        </a>
+                    </li>
+                </ul>
+
+
+                <div class="qbicle-overview">
+
+                    <div class="activity-overview plain company-overview welcome-info" style="flex: none; margin: 0; padding: 20px 20px 15px 20px; text-align: left;">
+
+                        <div class="section-detail intro-people">
+                            <h2 style="font-weight: 500;">Team</h2>
+                            <p style="color: rgba(0, 0, 0, 0.5);">Your team, their performance and any associated documentation.</p>
+                        </div>
+
+                        <div class="section-detail intro-attendance" style="display: none;">
+                            <h2 style="font-weight: 500;">Time &amp; Attendance</h2>
+                            <p style="color: rgba(0, 0, 0, 0.5);">Manage your team's attendance, timekeeping and rotas.</p>
+                        </div>
+
+                        <div class="section-detail intro-goals" style="display: none;">
+                            <h2 style="font-weight: 500;">Goals</h2>
+                            <p style="color: rgba(0, 0, 0, 0.5);">Set objectives to ensure your strategies are actioned.</p>
+                        </div>
+
+                        <div class="section-detail intro-tasks" style="display: none;">
+                            <h2 style="font-weight: 500;">Tasks &amp; Forms</h2>
+                            <p style="color: rgba(0, 0, 0, 0.5);">Create Forms and associate them with Compliance Tasks.</p>
+                        </div>
+
+                        <div class="section-detail intro-config" style="display: none;">
+                            <h2 style="font-weight: 500;">App Config</h2>
+                            <p style="color: rgba(0, 0, 0, 0.5);">Configure your Operator experience.</p>
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+
+
+                <div class="appnav nav-people">
+                    <ul class="subapps-nav" role="navigation" data-tooltip-stickto="bottom">
+                        <li class="active">
+                            <a href="#people-people" data-toggle="tab" onclick="$('.options-people-sub').hide(); $('.options-people-1').show();" data-tooltip="Team">
+                                <i class="fa fa-users"></i>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#people-performance" data-toggle="tab" onclick="$('.options-people-sub').hide(); $('.options-people-2').show(); LoadPerformanceTrackings(0, true)" data-tooltip="Performance Management">
+                                <i class="fa fa-line-chart"></i>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#asset-resources" data-toggle="tab" onclick="$('.options-people-sub').hide(); $('.options-people-3').show();LoadMedias()" data-tooltip="Resources">
+                                <i class="fa fa-folder"></i>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+
+
+
+                <!-- People options -->
+                <div id="options-people" class="sidebar-options" style="padding: 0 20px 20px 20px;">
+
+
+                    <!-- Team -->
+                    <div class="options-people-sub options-people-1">
+
+                        <button class="btn btn-success community-button" data-toggle="modal" data-target="#app-operator-person-addedit" onclick="loadTeamPersonModal(0)" style="margin-top: 15px; margin-bottom: 30px;">
+                            <i class="fa fa-plus"></i>
+                            &nbsp; Add a Person
+                        </button>
+
+                        <div class="well custom">
+                            <div class="form-group">
+                                <label for="search">Search</label>
+                                <input type="text" name="search" id="teamPersonSearch" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label for="type">Filter by location</label>
+                                <select name="type" id="teamPersonLocationSearch" class="form-control select2" style="width: 100%;">
+                                    <option value="0">Show all</option>
+                                    @foreach (var location in lstLocations)
+                                    {
+                                        <option value="@location.Id">@location.Name</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="form-group" style="margin: 0;">
+                                <label for="type">Filter by role</label>
+                                <select name="type" id="teamPersonRoleSearch" class="form-control select2" style="width: 100%;">
+                                    <option value="0">Show all</option>
+                                    @foreach (var role in lstRoles)
+                                    {
+                                        <option value="@role.Id">@role.Name</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- END Team -->
+                    <!-- Performance Management -->
+                    <div class="options-people-sub options-people-2" style="display: none;">
+                        @if (workgroups == null || workgroups.Count() == 0)
+                        {
+                            <div class="activity-overview generic help-text animated bounce" style="margin-bottom: 15px;">
+                                <i class="fa fa-info-circle"></i>
+                                <p><strong>Don't forget to add Team members</strong></p>
+                                <p>You need at least one Team member to begin tracking performance.</p>
+                            </div>
+                        }
+
+                        <button class="btn btn-success community-button" data-toggle="modal" data-target="#app-operator-performance-addedit" onclick="LoadPerformanceTrackingModal(0)" style="margin-top: 15px; margin-bottom: 30px;">
+                            <i class="fa fa-plus"></i>
+                            &nbsp; Add Performance Tracking
+                        </button>
+
+                        <div class="well custom" style="padding-bottom: 5px;">
+                            <div class="form-group">
+                                <label for="search">Search</label>
+                                <input type="text" name="search" id="txtPerfomanceSearch" onkeyup="LoadPerformanceTrackings(0, true)" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label for="type">Filter by Location</label>
+                                <select name="type" class="form-control select2" id="slLocation" onchange="LoadPerformanceTrackings(0, true)" style="width: 100%;">
+                                    <option value="0" selected>Show all</option>
+                                    @foreach (var item in lstLocations)
+                                    {
+                                        <option value="@item.Id">@item.Name</option>
+                                    }
+                                </select>
+                            </div>
+                            <br />
+                            <div class="form-group" style="margin: 0;">
+                                <div class="checkbox toggle">
+                                    <label>
+                                        <input data-toggle="toggle" data-onstyle="success" type="checkbox" id="chkPerformanceIsHidden" onchange="LoadPerformanceTrackings(0, true)">
+                                        Include hidden records
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- END Performance Management -->
+                    <!-- Resources options -->
+                    <div class="options-people-sub options-people-3" style="display: none;">
+
+                        <button class="btn btn-success community-button" data-toggle="modal" data-target="#create-resource" onclick="LoadResourceModal(@(folder?.Id??0))" style="margin: 15px 0 30px 0;">
+                            <i class="fa fa-upload"></i>
+                            &nbsp; Upload a file
+                        </button>
+
+                        <div class="well custom">
+                            <div class="row">
+                                <div class="col-xs-12">
+                                    <div class="form-group">
+                                        <label for="folder">Filter by type</label>
+                                        <select name="folder" id="sl-media-type" class="form-control select2" style="width: 100%;">
+                                            <option></option>
+                                            <option value="All">Show all</option>
+                                            <option value="Documents">Documents</option>
+                                            <option value="Image File">Photos</option>
+                                            <option value="Video File">Videos</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+
+
+                    </div>
+                    <!-- END Resources options -->
+
+                </div>
+                <!-- END People options -->
+
+
+
+
+                <div id="tab-subnav-goals" class="appnav nav-goals" style="display: none;">
+                    <ul class="subapps-nav" role="navigation" data-tooltip-stickto="bottom">
+                        <li class="active">
+                            <a href="#goals-goals" data-toggle="tab" onclick="$('.options-goals-sub').hide(); $('.options-goals-1').show(); LoadOperatorGoals(0,true); checkMeasuresExist();" data-tooltip="Goals">
+                                <i class="fa fa-trophy"></i>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#goals-measures" data-toggle="tab" onclick="$('.options-goals-sub').hide(); $('.options-goals-3').show(); LoadOperatorMeasures();" data-tooltip="Measures">
+                                <i class="fa fa-ruler"></i>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+
+
+
+
+                <div class="appnav nav-attendance" style="display: none;">
+                    <ul id="tab-subnav-attendance" class="subapps-nav" role="navigation" data-tooltip-stickto="bottom">
+                        <li class="active">
+                            <a href="#time-attendance" data-toggle="tab" onclick="initAttendancesTable();$('.options-attendance-sub').hide(); $('.options-attendance-1').show();" data-tooltip="Attendance">
+                                <i class="fa fa-user-clock"></i>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#time-timesheets" data-toggle="tab" onclick="$('.options-attendance-sub').hide(); $('.options-attendance-2').show(); $('#tabviewtimesheets a[href=#view-day]').trigger('click');" data-tooltip="Timesheets">
+                                <i class="fa fa-business-time"></i>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#time-schedules" data-toggle="tab" onclick="$('.options-attendance-sub').hide(); $('.options-attendance-3').show(); $('#tabviewschedule a[href=#sched-view-day]').trigger('click');" data-tooltip="Schedules">
+                                <i class="fa fa-calendar-alt"></i>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+
+
+
+                <!-- Time options -->
+                <div id="options-attendance" class="sidebar-options" style="padding: 0 20px 20px 20px; display: none;">
+
+                    <!-- Attendance -->
+                    <div class="options-attendance-sub options-attendance-1">
+
+                        <button class="btn btn-success community-button team-permission" onclick="getWorkgroupsTypeMember('#frmClock');" data-toggle="modal" data-target="#app-operator-clockin" style="margin-top: 15px; margin-bottom: 30px;">
+                            <i class="fa fa-clock-o"></i>
+                            &nbsp; Clock in
+                        </button>
+
+                        <div class="well custom">
+                            <div class="form-group">
+                                <label for="search">Search</label>
+                                <input id="txtSearchClock" type="text" name="search" class="form-control">
+                            </div>
+                            <label>Filter by date range</label>
+                            <div class="input-group" style="margin-bottom: 15px;">
+                                <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                                <input id="txtFilterDateClock" type="text" name="filterdate" class="form-control daterange">
+                            </div>
+                            <div class="form-group" style="margin: 0;">
+                                <label for="type">Filter by people</label>
+                                <select id="slFilterPeople" name="peoples" class="form-control checkmulti teammembers" multiple></select>
+                            </div>
+                        </div>
+
+                    </div>
+                    <!-- END Attendance -->
+                    <!-- Timesheets -->
+                    <div class="options-attendance-sub options-attendance-2" style="display: none;">
+
+                        <ul id="tabviewtimesheets" class="nav nav-pills nav-justified traderv2">
+                            <li class="active"><a href="#view-day" data-toggle="tab" onclick="$('.view-options').hide(); $('#day').show(); initTablesDailyWeeklyMonthlyOfTimeSheets('#view-day');">Daily</a></li>
+                            <li><a id="toggle-week" href="#view-week" data-toggle="tab" onclick="$('.view-options').hide(); $('#week').show(); initTablesDailyWeeklyMonthlyOfTimeSheets('#view-week');">Weekly</a></li>
+                            <li><a href="#view-month" data-toggle="tab" onclick="$('.view-options').hide(); $('#month').show(); initTablesDailyWeeklyMonthlyOfTimeSheets('#view-month');">Monthly</a></li>
+                        </ul>
+                        <br />
+
+
+                        <div class="well custom" style="padding-bottom: 5px;">
+
+                            <div class="view-options" id="day">
+                                <div class="form-group">
+                                    <label for="week">Day</label>
+                                    <input type="text" name="Day" class="form-control singledate">
+                                </div>
+                            </div>
+                            <div class="view-options" id="week" style="display: none;">
+                                <div class="form-group">
+                                    <label for="Week">Week</label>
+                                    <select name="Week" class="form-control select2" style="width: 100%;"></select>
+                                </div>
+                            </div>
+                            <div class="view-options" id="month" style="display: none;">
+                                <div class="form-group">
+                                    <label for="Month">Month</label>
+                                    <select name="Month" class="form-control select2" style="width: 100%;"></select>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="Peoples">Filter by people</label>
+                                <select id="slTimeshPeoples" name="Peoples" class="form-control checkmulti teammembers" multiple></select>
+                            </div>
+                            <div class="form-group">
+                                <label for="Roles">Filter by role(s)</label>
+                                <select id="slTimeshRoles" name="Roles" class="form-control checkmulti" multiple>
+                                    @foreach (var item in lstRoles)
+                                    {
+                                        <option value="@item.Id">@item.Name</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="Locations">Filter by location(s)</label>
+                                <select id="slTimeshLocations" name="Locations" class="form-control select2" multiple style="width: 100%;">
+                                    @foreach (var item in lstLocations)
+                                    {
+                                        <option value="@item.Id">@item.Name</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+
+                    </div>
+                    <!-- END Timesheets -->
+                    <!-- Schedules -->
+                    <div class="options-attendance-sub options-attendance-3" style="display: none;">
+
+                        <button class="btn btn-success community-button team-permission" onclick="getWorkgroupsTypeMember('#frmSchedule')" data-toggle="modal" data-target="#app-operator-schedule-add" style="margin-top: 15px; margin-bottom: 30px;">
+                            <i class="fa fa-plus"></i>
+                            &nbsp; Add a Schedule
+                        </button>
+
+
+                        <ul id="tabviewschedule" class="nav nav-pills nav-justified traderv2">
+                            <li class="active"><a href="#sched-view-day" data-toggle="tab" onclick="$('.view-options').hide(); $('#sched-day').show(); initTablesDailyWeeklyMonthlyOfSched('#sched-view-day');">Daily</a></li>
+                            <li><a id="toggle-week" href="#sched-view-week" data-toggle="tab" onclick="$('.view-options').hide(); $('#sched-week').show(); initTablesDailyWeeklyMonthlyOfSched('#sched-view-week');">Weekly</a></li>
+                            <li><a href="#sched-view-month" data-toggle="tab" onclick="$('.view-options').hide(); $('#sched-month').show(); initTablesDailyWeeklyMonthlyOfSched('#sched-view-month');">Monthly</a></li>
+                        </ul>
+                        <br />
+
+                        <div class="well custom" style="padding-bottom: 5px;">
+
+                            <div class="view-options" id="sched-day">
+                                <div class="form-group">
+                                    <label for="week">Day</label>
+                                    <input type="text" name="Day" class="form-control singledate">
+                                </div>
+                            </div>
+                            <div class="view-options" id="sched-week" style="display: none;">
+                                <div class="form-group">
+                                    <label for="Week">Week</label>
+                                    <select name="Week" class="form-control select2" style="width: 100%;"></select>
+                                </div>
+                            </div>
+                            <div class="view-options" id="sched-month" style="display: none;">
+                                <div class="form-group">
+                                    <label for="Month">Month</label>
+                                    <select name="Month" class="form-control select2" style="width: 100%;"></select>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="Peoples">Filter by people</label>
+                                <select id="slSchedPeoples" name="Peoples" class="form-control checkmulti teammembers" multiple></select>
+                            </div>
+                            <div class="form-group">
+                                <label for="Roles">Filter by role(s)</label>
+                                <select id="slSchedRoles" name="Roles" class="form-control checkmulti" multiple>
+                                    @foreach (var item in lstRoles)
+                                    {
+                                        <option value="@item.Id">@item.Name</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="Locations">Filter by location(s)</label>
+                                <select id="slSchedLocations" name="Locations" class="form-control select2" multiple style="width: 100%;">
+                                    @foreach (var item in lstLocations)
+                                    {
+                                        <option value="@item.Id">@item.Name</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+
+                    </div>
+                    <!-- END Schedules -->
+
+                </div>
+                <!-- END Time options -->
+                <!-- Goals options -->
+                <div id="options-goals" class="sidebar-options" style="padding: 0 20px 20px 20px; display: none;">
+
+                    <!-- Goals -->
+                    <div class="options-goals-sub options-goals-1">
+
+                        <div id="goal-help-text" class="activity-overview generic help-text animated bounce" style="display:none">
+                            <i class="fa fa-info-circle"></i>
+                            <p><strong>Don't forget to add Measures</strong></p>
+                            <p>You haven't added any Measures yet. You'll need at least one before you can full create your new Goal</p>
+                        </div>
+
+                        <button class="btn btn-success community-button" onclick="loadModalGoal(0)" style="margin-top: 15px; margin-bottom: 30px;">
+                            <i class="fa fa-plus"></i>
+                            &nbsp; Add a Goal
+                        </button>
+
+                        <div class="well custom" style="padding-bottom: 5px;">
+                            <div class="form-group">
+                                <label for="search">Search</label>
+                                <input type="text" id="txtGoalSearch" name="search" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label for="type">Filter by tag</label>
+                                <select id="slGoalTags" name="tag" class="form-control select2" style="width: 100%;"></select>
+                            </div>
+                            <br />
+                            <div class="form-group" style="margin: 0;">
+                                <div class="checkbox toggle">
+                                    <label>
+                                        <input id="chkGoalIsHidden" data-toggle="toggle" data-onstyle="success" type="checkbox" onchange="$('.goal-hidden').toggle();">
+                                        Include hidden records
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- END Goals -->
+                    <!-- Measures -->
+                    <div class="options-goals-sub options-goals-3" style="display: none;">
+                        <button class="btn btn-success community-button" type="button" onclick="loadModalMeasure(0);" style="margin-top: 15px; margin-bottom: 30px;">
+                            <i class="fa fa-plus"></i>
+                            &nbsp; Add a Measure
+                        </button>
+                        <div class="well custom">
+                            <div class="form-group" style="margin: 0;">
+                                <label for="search">Search</label>
+                                <input type="text" id="txtMeasureSearch" name="search" class="form-control">
+                            </div>
+                        </div>
+                    </div>
+                    <!-- END Measures -->
+
+
+                </div>
+                <!-- END Goals options -->
+                <!-- Tasks & Forms nav -->
+                <div class="appnav nav-tasks" style="display: none;">
+                    <ul id="tab-taskandforms" class="subapps-nav" role="navigation" data-tooltip-stickto="bottom">
+                        <li class="active">
+                            <a href="#tasks-tasks" data-toggle="tab" onclick="$('.options-tasks-sub').hide(); $('.options-tasks-1').show(); loadOperatorForms(); initComplianceTasksTable();" data-tooltip="Tasks">
+                                <i class="fa fa-tasks"></i>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#tasks-forms" data-toggle="tab" onclick="loadOperatorFormTags();$('.options-tasks-sub').hide(); $('.options-tasks-2').show();initFormsTable();" data-tooltip="Forms">
+                                <i class="fa fa-wpforms"></i>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+
+
+
+                <!-- Tasks & Forms options -->
+                <div id="options-tasks" class="sidebar-options" style="padding: 0 20px 20px 20px; display: none;">
+
+                    <!-- Tasks -->
+                    <div class="options-tasks-sub options-tasks-1">
+
+                        <div id="task-help-text" class="activity-overview generic help-text animated bounce" style="display:none">
+                            <i class="fa fa-info-circle"></i>
+                            <p><strong>Don't forget to add Forms</strong></p>
+                            <p>You haven't added any Forms yet. Adding Forms will let you associate them with your new Task.</p>
+                        </div>
+
+                        <button class="btn btn-success community-button" onclick="loadModalTask(0)" style="margin-top: 15px; margin-bottom: 30px;">
+                            <i class="fa fa-plus"></i>
+                            &nbsp; Add a Task
+                        </button>
+
+                        <div class="well custom">
+                            <div class="form-group">
+                                <label for="search">Search</label>
+                                <input id="txtTaskKeyword" type="text" name="search" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label for="type">Filter by assignee</label>
+                                <select id="slTaskAssignee" name="Assignee" class="form-control select2" style="width: 100%;">
+                                    <option value="0" selected>Show all</option>
+                                    @if (setting != null && setting.SourceQbicle != null)
+                                    {
+                                        foreach (var item in setting.SourceQbicle.Members)
+                                        {
+                                            <option value="@item.Id">@HelperClass.GetFullNameOfUser(item)</option>
+                                        }
+                                    }
+                                </select>
+                            </div>
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label for="type">Filter by Forms included</label>
+                                <select id="slTaskForms" name="type" class="form-control select2" style="width: 100%;"></select>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- END Tasks -->
+                    <!-- Forms -->
+                    <div class="options-tasks-sub options-tasks-2" style="display: none;">
+
+                        <button class="btn btn-success community-button" onclick="loadModalForm(0)" style="margin-top: 15px; margin-bottom: 30px;">
+                            <i class="fa fa-plus"></i>
+                            &nbsp; Add a Form
+                        </button>
+
+                        <div class="well custom">
+                            <div class="form-group">
+                                <label for="search">Search</label>
+                                <input id="txtFormsSearch" type="text" name="search" class="form-control">
+                            </div>
+                            <div class="form-group" style="margin: 0;">
+                                <label for="type">Filter by tag</label>
+                                <select id="slFormsTags" name="type" class="form-control select2" style="width: 100%;"></select>
+                            </div>
+                        </div>
+
+                    </div>
+                    <!-- END Forms -->
+
+                </div>
+                <!-- END Tasks & Forms options -->
+
+            </div>
+        </div>
+        <!-- END App bar -->
+        <!-- Main area -->
+        <div class="mdv2-col-dash" style="min-width: 0;">
+            <div class="spacing">
+
+
+
+                <div class="tab-content" style="padding-bottom: 30px;">
+
+
+                    <!-- People > People -->
+                    <div class="tab-pane fade @(tabActive=="people-people"?"in active":"")" id="people-people">
+
+                        <table id="tblTeamPersons" class="datatable table-hover table-striped" style="width: 100%;">
+                            <thead>
+                                <tr>
+                                    <th data-priority="1">Person</th>
+                                    <th data-priority="1">Location(s)</th>
+                                    <th data-priority="2">Role(s)</th>
+                                    <th data-priority="2">Workgroup(s)</th>
+                                    <th data-priority="1" data-orderable="false">Options</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+
+                    </div>
+                    <!-- END People > People -->
+                    <!-- People > Resources -->
+                    <div class="tab-pane fade" id="asset-resources">
+
+                        <div class="flex-grid-thirds-lg">
+
+                        </div>
+
+                    </div>
+                    <!-- END People > Resources -->
+                    <!-- People > Performance Management -->
+                    <div class="tab-pane fade" id="people-performance">
+
+                        <div class="flex-grid-quarters-lg from-community c1" style="width: 100%;">
+
+                        </div>
+                        <br />
+                        <div id="PerformancePaginateTemplate" style="float: left; display: block;"></div>
+                    </div>
+                    <!-- END People > Performance Management -->
+                    <!-- Recruitment > Tasks -->
+                    <div class="tab-pane fade" id="recruitment-tasks">
+
+                        <table class="datatable table-hover table-striped" id="community-list" style="width:100%;">
+                            <thead>
+                                <tr>
+                                    <th data-priority="1">Role</th>
+                                    <th data-priority="2">Quantity required</th>
+                                    <th data-priority="2">Pipeline</th>
+                                    <th data-priority="1">Status</th>
+                                    <th data-priority="1" data-orderable="false">Options</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Team Member</td>
+                                    <td>10</td>
+                                    <td>Team Member Onboarding</td>
+                                    <td><span class="label label-lg label-success">Active</span></td>
+                                    <td><button class="btn btn-primary" onclick="window.location.href='app_operator_recruitment_process.php';"><i class="fa fa-eye"></i> &nbsp; Manage</button></td>
+                                </tr>
+                                <tr>
+                                    <td>Supervisor</td>
+                                    <td>3</td>
+                                    <td>Supervisor Onboarding</td>
+                                    <td><span class="label label-lg label-primary">Draft</span></td>
+                                    <td>
+                                        <button class="btn btn-info" data-toggle="modal" data-target="#app-trader-sale-add"><i class="fa fa-pencil"></i> &nbsp; Continue</button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                    </div>
+                    <!-- END Recruitment > Tasks -->
+                    <!-- Attendance > Attendance -->
+                    <div class="tab-pane fade @(tabActive=="time-attendance"?"in active":"")" id="time-attendance">
+
+                        <table class="datatable table-striped table-hover" id="tblAttendances" data-order='[[1, "desc"]]' style="width: 100%;">
+                            <thead>
+                                <tr>
+                                    <th style="max-width:310px;">Person</th>
+                                    <th>Date</th>
+                                    <th>Location</th>
+                                    <th>Time in</th>
+                                    <th>Time out</th>
+                                    <th data-orderable="false">Options</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+
+                    </div>
+                    <!-- END Attendance > Attendance -->
+                    <!-- Attendance > Timesheets -->
+                    <div class="tab-pane fade" id="time-timesheets">
+
+                        <div class="tab-content">
+
+                            <!-- Day -->
+                            <div class="tab-pane fade in active" id="view-day">
+
+                                <h5 class="timesh-title-day"></h5>
+                                <br />
+
+                                <table class="datatable table-striped table-hover" id="tbltimesh-view-day" style="width: 100%;">
+                                    <thead>
+                                        <tr>
+                                            <th>Person</th>
+                                            <th>Time</th>
+                                            <th>Location</th>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+
+                            </div>
+                            <!-- END Day -->
+                            <!-- Week -->
+                            <div class="tab-pane fade" id="view-week">
+
+                                <h5 class="timesh-title-week"></h5>
+                                <br />
+                                <div id="timesh-content-week"></div>
+
+                            </div>
+                            <!-- END Week -->
+                            <!-- Month -->
+                            <div class="tab-pane fade" id="view-month">
+
+                                <h5 class="timesh-title-month"></h5>
+                                <br />
+                                <div id="timesh-content-month"></div>
+                            </div>
+                            <!-- END Month -->
+
+                        </div>
+
+                    </div>
+                    <!-- END Attendance > Timesheets -->
+                    <!-- Attendance > Schedules -->
+                    <div class="tab-pane fade" id="time-schedules">
+
+                        <div class="tab-content">
+
+                            <!-- Day -->
+                            <div class="tab-pane fade in active" id="sched-view-day">
+
+                                <h5 class="sched-title-day"></h5>
+                                <br />
+
+                                <table class="datatable table-striped table-hover" id="tblsched-view-day" style="width: 100%;">
+                                    <thead>
+                                        <tr>
+                                            <th>Person</th>
+                                            <th>Shift</th>
+                                            <th>Location</th>
+                                            <th data-orderable="false">Manage</th>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+
+                            </div>
+                            <!-- END Day -->
+                            <!-- Week -->
+                            <div class="tab-pane fade" id="sched-view-week" style="min-height:400px">
+
+                                <h5 class="sched-title-week"></h5>
+                                <br />
+                                <div id="sched-content-week"></div>
+                            </div>
+                            <!-- END Week -->
+                            <!-- Month -->
+                            <div class="tab-pane fade" id="sched-view-month">
+
+                                <h5 class="sched-title-month"></h5>
+                                <br />
+                                <div id="sched-content-month"></div>
+
+
+                            </div>
+                            <!-- END Month -->
+
+                        </div>
+
+                    </div>
+                    <!-- END Attendance > Schedules -->
+                    <!-- Goals > Goals -->
+                    <div class="tab-pane fade @(tabActive=="goals-goals"?"in active":"")" id="goals-goals">
+                        <div class="flex-grid-quarters-lg from-community c1" style="width: 100%;min-height:390px">
+                        </div>
+                        <br />
+                        <div id="GoalPaginateTemplate" style="float: left; display: block;"></div>
+                    </div>
+                    <!-- END Goals > Goals -->
+                    <!-- Goals > Measures -->
+                    <div class="tab-pane fade" id="goals-measures">
+                        <table class="datatable table-hover table-striped" id="tblMeasures" style="width: 100%;">
+                            <thead>
+                                <tr>
+                                    <th data-priority="1">Measure</th>
+                                    <th data-priority="1" style="min-width:70%">Summary</th>
+                                    <th data-priority="1" data-orderable="false">Options</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                    <!-- END Goals > Measures -->
+                    <!-- Tasks -->
+                    <div class="tab-pane fade @(tabActive=="tasks-tasks"?"in active":"")" id="tasks-tasks">
+
+                        <table id="tblComplianceTasks" class="datatable table-striped table-hover" style="width: 100%;">
+                            <thead>
+                                <tr>
+                                    <th data-priority="1">Name</th>
+                                    <th data-priority="2">Assignee</th>
+                                    <th data-priority="3">Forms</th>
+                                    <th data-priority="3">Type</th>
+                                    <th data-priority="3">Due</th>
+                                    <th data-priority="1" data-orderable="false">Options</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+
+                    </div>
+                    <!-- END Tasks -->
+                    <!-- Tasks > Forms -->
+                    <div class="tab-pane fade" id="tasks-forms">
+
+                        <table class="datatable table-striped table-hover" style="width: 100%;" id="tblForms">
+                            <thead>
+                                <tr>
+                                    <th data-priority="1">Name</th>
+                                    <th data-priority="3" style="max-width:400px">Description</th>
+                                    <th data-priority="3">Estimated time</th>
+                                    <th data-priority="1">Status</th>
+                                    <th data-priority="1">Tags</th>
+                                    <th data-priority="1" data-orderable="false">Options</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+
+                    </div>
+                    <!-- END Tasks > Forms -->
+                    <!-- App Config -->
+                    <div class="tab-pane fade @(tabActive=="app-config"?"in active":"")" id="app-config">
+
+                    </div>
+                    <!-- END Team -->
+
+
+                </div>
+
+
+            </div>
+        </div>
+    </section>
+    <!-- ./content -->
+
+</div>
+<!-- /.content-wrapper -->
+
+<div class="modal fade left" id="app-operator-performance-addedit" role="dialog" aria-labelledby="app-operator-performance-addedit"></div>
+<div class="modal fade left" id="app-operator-measure-addedit" role="dialog" aria-labelledby="app-operator-measure-addedit" style="padding-right: 17px;">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+                <h5 class="modal-title">Add a Measure</h5>
+            </div>
+            <div class="modal-body">
+                <form id="frmMeasure" method="post" action="/Operator/SaveMeasure" novalidate>
+                    <div class="row">
+                        <div class="col-xs-12">
+
+                            <div class="activity-overview generic help-text animated bounce">
+                                <i class="fa fa-info-circle"></i>
+                                <p>Measures are output insights, providing retrospective analysis of outcomes towards your Goal. They are often referred to as lagging indicators, pairing with leading indicators to provide control and analysis from concept through achievement of your Goal.</p>
+                            </div>
+
+
+                            <div class="well custom" style="padding-bottom: 5px;">
+
+                                <div class="row">
+                                    <div class="col-xs-12">
+                                        <div class="form-group">
+                                            <label for="goal_name">Name <span class="red">*</span></label>
+                                            <input type="hidden" name="Id" value="0" />
+                                            <input type="text" class="form-control" name="Name">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-xs-12">
+                                        <div class="form-group">
+                                            <label for="Summary">Summary <span class="red">*</span></label>
+                                            <textarea name="Summary" class="form-control" style="max-width: 100%; height: 80px;"></textarea>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <button class="btn btn-danger" type="button" data-dismiss="modal">Cancel</button>
+                    <button class="btn btn-success" type="submit">Confirm</button>
+                </form>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+<div class="modal fade left" id="app-operator-goal-addedit" role="dialog" aria-labelledby="app-operator-goal-addedit" style="padding-right: 17px;"></div>
+@Html.Partial("_TagModal")
+@Html.Partial("_RoleModal")
+@Html.Partial("_LocationModal")
+
+<div class="modal fade left" id="app-operator-workgroup-addedit" role="dialog" aria-labelledby="app-operator-workgroup-addedit"></div>
+<div class="modal fade left" id="app-operator-people-select" role="dialog" aria-labelledby="app-operator-people-select"></div>
+<div class="modal fade left" id="app-operator-person-addedit" role="dialog" aria-labelledby="app-operator-person-addedit"></div>
+<div class="modal fade left" id="create-resource" role="dialog" aria-labelledby="create-resource"></div>
+<div class="modal fade left" id="app-operator-members" role="dialog" aria-labelledby="app-operator-members" style="z-index:99999"></div>
+<div class="modal fade left" id="app-operator-clockin" role="dialog" aria-labelledby="app-operator-clockin" style="padding-right: 17px;">
+    <div class="modal-dialog modal-xl" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+                <h5 class="modal-title">Clock in</h5>
+            </div>
+            <div class="modal-body">
+                <form id="frmClock" method="post" action="/Operator/SaveClock">
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-4 col-lg-3">
+
+                            <div class="activity-overview generic" style="padding: 20px; margin-bottom: 30px;">
+                                <div class="form-group" style="margin: 0;">
+                                    <label for="Workgroup">Assign to a Workgroup</label>
+                                    <select name="Workgroup" class="form-control select2 select2-hidden-accessible" style="width: 100%;" onchange="loadWorkgroupPreview($(this).val(),'#frmClock'); $('.preview-workgroup').show(); $('#frmClock select[name=Workgroup]').valid();" tabindex="-1" aria-hidden="true"></select>
+                                    <label id="Workgroup-error" class="error" for="Workgroup" style="display:none">This field is required.</label>
+                                </div>
+
+                                <div class="preview-workgroup" style="display: none;">
+                                    <br>
+                                    <table class="table app_specific" style="margin: 0;">
+                                        <tbody>
+                                            <tr>
+                                                <td><h5>Location</h5></td>
+                                                <td class="preview-localtion"></td>
+                                            </tr>
+                                            <tr>
+                                                <td><h5>Qbicle</h5></td>
+                                                <td class="preview-qbicle"></td>
+                                            </tr>
+                                            <tr>
+                                                <td><h5>Members</h5></td>
+                                                <td><button type="button" class="btn btn-info"><i class="fa fa-user"></i> &nbsp; <span class="preview-members"></span> </button></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                        </div>
+                        <div class="col-xs-12 col-sm-8 col-lg-9">
+
+                            <div class="well custom" style="padding-bottom: 5px;">
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="Date">Date</label>
+                                            <input type="text" name="Date" class="form-control singledate">
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="Time">Time</label>
+                                            <input type="time" name="Time" class="form-control">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="Peoples">People</label>
+                                            <select name="Peoples" class="form-control checkmulti" multiple="" onchange="$('#frmClock select[name=Peoples]').valid();"></select>
+                                            <label id="Peoples-error" class="error" for="Peoples" style="display:none">This field is required.</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="notes">Notes</label>
+                                            <input type="text" name="Notes" class="form-control">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <br>
+                            <button type="button" class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-success">Clock in now</button>
+
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div> <!-- /.modal-content -->
+    </div> <!-- /.modal-dialog -->
+</div>
+<div class="modal fade left" id="app-operator-schedule-add" role="dialog" aria-labelledby="app-operator-schedule-add" style="padding-right: 17px;">
+    <div class="modal-dialog modal-xl" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+                <h5 class="modal-title">Add a Time Schedule</h5>
+            </div>
+            <div class="modal-body">
+                <form id="frmSchedule" method="post" action="/Operator/SaveSchedule">
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-4 col-lg-3">
+
+                            <div class="activity-overview generic" style="padding: 20px; margin-bottom: 30px;">
+                                <div class="form-group" style="margin: 0;">
+                                    <label for="Workgroup">Assign to a Workgroup</label>
+                                    <select name="Workgroup" class="form-control select2 select2-hidden-accessible" style="width: 100%;" onchange="loadWorkgroupPreview($(this).val(),'#frmSchedule'); $('.preview-workgroup').show(); $(this).valid();" tabindex="-1" aria-hidden="true"></select>
+                                    <label id="Workgroup-error" class="error" for="Workgroup" style="display:none">This field is required.</label>
+                                </div>
+
+                                <div class="preview-workgroup" style="display: none;">
+                                    <br>
+                                    <table class="table app_specific" style="margin: 0;">
+                                        <tbody>
+                                            <tr>
+                                                <td><h5>Location</h5></td>
+                                                <td class="preview-localtion"></td>
+                                            </tr>
+                                            <tr>
+                                                <td><h5>Qbicle</h5></td>
+                                                <td class="preview-qbicle"></td>
+                                            </tr>
+                                            <tr>
+                                                <td><h5>Members</h5></td>
+                                                <td><button type="button" class="btn btn-info"><i class="fa fa-user"></i> &nbsp; <span class="preview-members"></span> </button></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                        </div>
+                        <div class="col-xs-12 col-sm-8 col-lg-9">
+
+                            <div class="well custom" style="padding-bottom: 5px;">
+                                <div class="row">
+                                    <div class="col-xs-12">
+                                        <div class="form-group">
+                                            <label for="employees">Employees</label>
+                                            <select name="Employees" class="form-control checkmulti" multiple="" onchange="$('#frmSchedule select[name=Employees]').valid();"></select>
+                                            <label id="Employees-error" class="error" for="Employees" style="display:none">This field is required.</label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <label for="start">Start date</label>
+                                        <div class="input-group" style="margin-bottom: 15px;">
+                                            <input name="StartDate" type="text" class="form-control singledate" onchange="$('#included').fadeIn();">
+                                            <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-6">
+                                        <label for="start">End date</label>
+                                        <div class="input-group" style="margin-bottom: 15px;" onchange="$('#included').fadeIn();">
+                                            <input name="EndDate" type="text" class="form-control singledate" id="scheduledend">
+                                            <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-xs-12">
+                                        <div class="form-group">
+                                            <label for="days">Exclude specific days</label>
+                                            <select name="Days" class="form-control checkmulti" multiple="" onchange="$('#frmSchedule select[name=Days]').valid();"></select>
+                                            <label id="Days-error" class="error" for="Days" style="display:none">This field is required.</label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="start">Shift start</label>
+                                            <input name="ShiftStart" type="time" class="form-control">
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="start">Shift end</label>
+                                            <input name="ShiftEnd" type="time" class="form-control">
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+
+                            <br>
+                            <button type="button" class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-success">Confirm</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+<div class="modal fade left" id="app-operator-schedule-individual-edit" role="dialog" aria-labelledby="app-operator-schedule-individual-edit" style="padding-right: 17px;">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+                <h5 class="modal-title">Edit Employee Time Schedule</h5>
+            </div>
+            <div class="modal-body">
+                <form id="frmScheduleEdit" action="/Operator/UpdateSchedule" method="post">
+                    <div class="row">
+                        <div class="col-xs-12">
+
+                            <div class="well custom" style="padding-bottom: 5px;">
+
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="start">Start time</label>
+                                            <input type="hidden" name="Id" value="0" />
+                                            <input name="ShiftStart" type="time" class="form-control" value="">
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-6">
+                                        <div class="form-group">
+                                            <label for="start">End time</label>
+                                            <input name="ShiftEnd" type="time" class="form-control" value="">
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+                            <br>
+                            <button type="button" class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-success">Confirm</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+<div class="modal fade left" id="app-operator-form-add" role="dialog" aria-labelledby="app-operator-form-add"></div>
+<div class="modal fade left" id="app-operator-compliance-task-add" role="dialog" aria-labelledby="app-operator-compliance-task-add"></div>
+<div class="modal fade left" id="team-person-preview" role="dialog" aria-labelledby="team-person-preview"></div>
+@{
+    <link href="~/Content/DesignStyle/css/bootstrap-multiselect.css" rel="stylesheet" />
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Content/DesignStyle/js/bootstrap-multiselect.js"></script>
+        <script src="~/Scripts/dev/operator.js"></script>
+        @*<script src="~/Content/DesignStyle/js/pagination.js"></script>
+        <link href="/Content/DesignStyle/css/pagination.css" rel="stylesheet">*@
+    }
+    else
+    {
+        <script src="~/Content/DesignStyle/js/bootstrap-multiselect.min.js"></script>
+        <script src="~/Scripts/dev/operator.js"></script>
+        @*<script src="~/Content/DesignStyle/js/pagination.min.js"></script>
+        <link href="/Content/DesignStyle/css/pagination.min.css" rel="stylesheet">*@
+    }
+}
+
+

@@ -1,0 +1,1010 @@
+﻿@using Qbicles.Models.Trader.DDS
+@using Qbicles.BusinessRules
+@using Qbicles.BusinessRules
+@using Qbicles.Models
+@using Qbicles.BusinessRules.Helper
+@using Qbicles.Models.Trader.ODS
+@using Qbicles.Models.TraderApi
+
+@{
+    ViewBag.Title = ViewBag.TitleStr;
+    var apiKey = ConfigManager.GoogleMapApiKey;
+    var deliveryKey = ViewBag.DeliveryKey;
+
+    var canRefreshDelivery = (bool)ViewBag.CanRefreshDelivery; // not completed
+    var refreshInterval = (int)ViewBag.DeliveryDisplayRefreshInterval;
+}
+<link href="~/Content/DesignStyle/step-animations/step-animations.css" rel="stylesheet" />
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail mdv2-wrapper" style="position: relative;">
+    <!-- Main content -->
+    <section class="mdv2 dash" data-tooltip-color="teal" data-tooltip-delay="300" data-tooltip-animate-function="spin" style="border-top: 1px solid #f1f1f1;">
+
+        <input type="hidden" id="driver-avata" value="" />
+        <input type="hidden" id="current-delivery-key" value="@deliveryKey" />
+        <input type="hidden" id="refresh-interval" value="@refreshInterval" />
+        <input type="hidden" id="can-sortable" value="" />
+        <!-- App bar -->
+        <div id="delivery-manage-panel" class="mdv2-col-app" style="margin-bottom: 0;">
+            @{Html.RenderAction("ManagementPartial", "Delivery", new { deliveryKey = deliveryKey });}
+
+        </div>
+        <!-- END App bar -->
+        <!-- Main area -->
+        <div class="mdv2-col-dash">
+
+            <div class="mapouter">
+                <div id="qbicle-delivery"></div>
+            </div>
+
+        </div>
+
+
+    </section>
+    <!-- ./content -->
+
+</div>
+<!--</div>-->
+
+<div class="modal fade" id="confirm-remove-order" role="dialog" aria-labelledby="confirm-remove-order">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-body">
+                <div class="activity-overview generic help-text" style="margin: 0;">
+                    <i class="fa fa-info-circle"></i>
+                    <p>
+                        You are about to remove this Order <strong><span id="name-remove"></span></strong> from the delivery.
+                        If you are sure you wish to proceed, please confirm below...
+                    </p>
+                    <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                    <button class="btn btn-success" onclick="RemoveOrder()">Confirm &amp; Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<div class="modal fade" id="message-to-customer-modal" role="dialog" aria-labelledby="message-to-customer-modal">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-body">
+                <div class="activity-overview generic help-text" style="margin: 0;">
+                    <i class="fa fa-info-circle"></i>
+                    <textarea class="form-control" rows="3" id="customer-message-description" placeholder="Message to customer"></textarea>
+                    <br />
+                    <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                    <button class="btn btn-success" onclick="SendMessageToCustomer()">Send</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="~/Content/DesignStyle/js/sortable/sortable.min.js"></script>
+<script src="~/Content/DesignStyle/js/sortable/jquery-sortable.min.js"></script>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+@*<script src="https://maps.googleapis.com/maps/api/js?key=@apiKey&callback=initMap&libraries=&v=weekly" defer></script>*@
+<script src="https://maps.googleapis.com/maps/api/js?key=@apiKey&libraries=&v=weekly" defer></script>
+<script src="~/Content/DesignStyle/step-animations/step-animations.js"></script>
+
+<style>
+    .mapouter {
+        position: relative;
+        text-align: right;
+        height: calc(100% - 40px);
+        width: 100%;
+    }
+
+    .gmap_canvas {
+        overflow: hidden;
+        background: none !important;
+        height: 100%;
+        width: 100%;
+    }
+
+    #qbicle-delivery {
+        height: 100%;
+        width: 100%;
+    }
+</style>
+
+<script>
+
+
+    function makeMarker(map, position, icon, title) {
+        new google.maps.Marker({
+            position: position,
+            map: map,
+            icon: icon,
+            title: title
+        });
+    }
+
+    function makeMarkerCustom(map, position, icon, title) {
+        new google.maps.Marker({
+            position: position,
+            map: map,
+            icon: {
+                url: icon + '#custom_marker', // url + image selector for css
+                scaledSize: new google.maps.Size(32, 32), // scaled size
+                origin: new google.maps.Point(0, 0), // origin
+                anchor: new google.maps.Point(0, 0) // anchor
+            },
+            title: title,
+        });
+
+    }
+
+
+
+    var icons = {
+        depot: "/Content/DesignStyle/map-icons/depot-places.png",
+        driver: $("#driver-avata").val(),
+        //driver: "/Content/DesignStyle/map-icons/driver-places.png",
+        customer: "/Content/DesignStyle/map-icons/customer-places.png",
+        number: "/Content/DesignStyle/map-icons/numbers/number_",
+        //driverLabel: {
+        //    text: "\ue530", // codepoint from https://fonts.google.com/icons
+        //    fontFamily: "Material Icons",
+        //    color: "#ffffff",
+        //    fontSize: "18px",
+        //}
+    };
+
+
+
+    var isDataUpdating = false;
+
+
+    var $refreshIntervalId = 0;
+    function initReloadPage(refreshInterval) {
+        //if (!isDataUpdating) {
+            var timeToRefreshPage = refreshInterval * 1000;
+            $refreshIntervalId = window.setInterval(function () {
+                isDataUpdating = true;
+                var ajaxUri = "/Delivery/ManagementPartial?deliveryKey=" + '@deliveryKey';
+
+                $('#delivery-manage-panel').LoadingOverlay("show");
+                $('#delivery-manage-panel').empty();
+                $('#delivery-manage-panel').load(ajaxUri, function () {
+                    $('#deliveryinfo').scrollTop(450);
+                    $('#delivery-manage-panel').LoadingOverlay("hide", true);
+                    isDataUpdating = false;
+                });
+            }, timeToRefreshPage);
+        //}
+    }
+
+
+
+    $(document).ready(function () {
+        @*
+        if ($routes == null || $routes.route == '' || $routes.route == null)
+            initMap();
+        else {
+            drawFromRoutes();
+        }
+
+        if ('@canRefreshDelivery' == 'true')
+            initReloadPage();
+
+
+        ////sample code
+
+        //$("#delivery-status-change-batch").on('shown.bs.modal', function () {
+        //    clearInterval($refreshIntervalId);
+        //})
+
+        //$("#delivery-status-change-batch").on('hidden.bs.modal', function () {
+        //    clearInterval($refreshIntervalId);
+        //    var timeToRefreshPage = Number($("#search-refresh").val()) * 1000;
+        //    refreshIntervalId = window.setInterval(function () {
+        //        isDataUpdating = true;
+        //        $("#delivery-mngt-table").DataTable().ajax.reload();
+        //    }, timeToRefreshPage);
+        //});*@
+
+
+        //$("#refresh-interval").val('@refreshInterval');
+        if ('@canRefreshDelivery' == 'True')
+            initReloadPage(@refreshInterval);
+    });
+
+
+
+
+    function decodePolyline(encoded) {
+        // array that holds the points
+        var points = []
+        var index = 0, len = encoded.length;
+        var lat = 0, lng = 0;
+        while (index < len) {
+            var b, shift = 0, result = 0;
+            do {
+
+                b = encoded.charAt(index++).charCodeAt(0) - 63;//finds ascii                                                                                    //and substract it by 63
+                result |= (b & 0x1f) << shift;
+                shift += 5;
+            } while (b >= 0x20);
+
+
+            var dlat = ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
+            lat += dlat;
+            shift = 0;
+            result = 0;
+            do {
+                b = encoded.charAt(index++).charCodeAt(0) - 63;
+                result |= (b & 0x1f) << shift;
+                shift += 5;
+            } while (b >= 0x20);
+            var dlng = ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
+            lng += dlng;
+
+            points.push({ lat: (lat / 1E5), lng: (lng / 1E5) })
+
+        }
+        return points
+    }
+
+    function drawFromRoutes() {
+        var $map = new google.maps.Map(document.getElementById("qbicle-delivery"), {
+            //zoom: 16,
+            center: { lat: $depot.Latitude, lng: $depot.Longitude },
+        });
+
+        var flightPlanCoordinates = decodePolyline($routes.route);
+
+        const flightPath = new google.maps.Polyline({
+            path: flightPlanCoordinates,
+            geodesic: true,
+            strokeColor: "#73b9ff",
+            strokeOpacity: 1.0,
+            strokeWeight: 5,
+        });
+
+        flightPath.setMap($map);
+
+        var bounds = new google.maps.LatLngBounds();
+
+        var positionBound = new google.maps.LatLng($routes.depot.lat, $routes.depot.lng);
+
+        if ($routes.depot != null) {
+            makeMarker($map, positionBound, icons.depot, $depot.Title);
+            bounds.extend(positionBound);
+        }
+        else {
+            positionBound = new google.maps.LatLng($depot.Latitude, $depot.Longitude);
+            makeMarker($map, positionBound , icons.depot, $depot.Title);
+            bounds.extend(positionBound);
+        }
+        if ($driver.Id != 0) {
+            positionBound = new google.maps.LatLng($driver.Latitude, $driver.Longitude);
+            makeMarkerCustom($map, positionBound, icons.driver, $driver.Title);
+            bounds.extend(positionBound);
+        }
+        var number = 1;
+        if ($routes.detailed.length > 0) {
+            _.forEach($routes.detailed, o => {
+                var order = _.find($delivery.Orders, c => c.Id == o.to);
+                if (order != null && !_.isUndefined(order)) {
+                    positionBound = new google.maps.LatLng(order.Latitude, order.Longitude);
+                    makeMarker($map, positionBound, icons.number + number + '.png', order?.Title);
+                    bounds.extend(positionBound);
+                    number++;
+                }
+            });
+        } else {
+            _.forEach($delivery.Orders, o => {
+                positionBound = new google.maps.LatLng(o.Latitude, o.Longitude);
+                makeMarker($map, positionBound, icons.number + number + '.png', o.Title);
+                bounds.extend(positionBound);
+                number++;
+            });
+        }
+
+        $map.fitBounds(bounds);
+        //makeMarkerCustom($map, new google.maps.LatLng($driver.Latitude, $driver.Longitude), icons.driver, $driver.Title);
+    }
+
+
+    //update = true then update delivery
+    function initMap(update, reloadOrderList) {
+
+        if ($delivery.DeliveryStatus > 3) {
+            drawFromRoutes();
+            return;
+        }
+        //$map.zoom = 6;
+        var $directionsService = new google.maps.DirectionsService();
+        var $map = new google.maps.Map(document.getElementById("qbicle-delivery"), {
+            //zoom: 6,
+            center: { lat: $depot.Latitude, lng: $depot.Longitude },
+        });
+        var $directionsRenderer = new google.maps.DirectionsRenderer({
+            map: $map,
+            suppressMarkers: true
+        });
+
+        if ($delivery.Orders.length == 0 && !update) {
+            goToPosition($depot, icons.depot);
+            return;
+        }
+
+        var waypoints = [];
+        var number = 1;
+        var locations = [];
+
+        locations.push({ title: $depot.Title, icon: icons.depot, latitude: $depot.Latitude, longitude: $depot.Longitude });
+
+        _.forEach($delivery.Orders, o => {
+            var oLat = o.Latitude == 0 ? $depot.Latitude : o.Latitude;
+            var oLng = o.Longitude == 0 ? $depot.Longitude : o.Longitude;
+
+            locations.push({ title: o.Title, icon: icons.number + number + '.png', latitude: oLat, longitude: oLng });
+            number++;
+        });
+
+        for (var i = 1; i < locations.length - 1; i++) {
+            waypoints.push({
+                location: new google.maps.LatLng(locations[i].latitude, locations[i].longitude),
+                stopover: true
+            });
+        }
+
+        var $origin = locations[0];
+        var $destination = locations[locations.length - 1];
+
+        var bounds = new google.maps.LatLngBounds();
+
+        $directionsService
+            .route({
+                origin: new google.maps.LatLng($origin.latitude, $origin.longitude),
+                destination: new google.maps.LatLng($destination.latitude, $destination.longitude),
+                waypoints: waypoints,
+                optimizeWaypoints: false,
+                travelMode: google.maps.TravelMode.DRIVING,
+            })
+            .then((response) => {
+                if (response.status == google.maps.DirectionsStatus.OK) {
+                   
+                    if (!update)
+                        $directionsRenderer.setDirections(response);
+                    else if (update & !reloadOrderList)
+                        $directionsRenderer.setDirections(response);
+
+                    var estimateTime = 0, estimateDistance = 0;
+
+                    //var orders = response.routes[0].waypoint_order;
+                    var route = response.routes[0];
+
+                    var first = 0;
+
+
+                    var positionBound = new google.maps.LatLng($depot.Latitude, $depot.Longitude);
+
+                    //Depot
+                    makeMarker($map, positionBound , icons.depot, $depot.Title + '\n' + route.legs[first].start_address);
+                    bounds.extend(positionBound);
+
+                    estimateDistance += route.legs[first].distance.value;
+                    estimateTime += route.legs[first].duration.value;
+
+
+                    for (var i = 1; i < route.legs.length; i++) {
+                        var order = locations[i];
+                        positionBound = new google.maps.LatLng(order.latitude, order.longitude);
+
+                        makeMarker($map, positionBound , order.icon, order.title + '\n' + route.legs[i].start_address);
+                        bounds.extend(positionBound);
+
+                        estimateDistance += route.legs[i].distance.value;
+                        estimateTime += route.legs[i].duration.value;
+                    }
+
+                    var last = route.legs.length - 1;
+                    positionBound = new google.maps.LatLng($destination.latitude, $destination.longitude);
+                    makeMarker($map, positionBound, $destination.icon, $destination.title + '\n' + route.legs[last].end_address);
+                    bounds.extend(positionBound);
+
+                    //$map.fitBounds(bounds);
+
+                    estimateDistance += route.legs[last].distance.value;
+                    estimateTime += route.legs[last].duration.value;
+
+                    $('#deliveryinfo').scrollTop(450);
+
+                    if (update) {
+
+                        $delivery.EstimateDistance = estimateDistance;
+                        $delivery.EstimateTime = estimateTime;
+
+                        $routes = {
+                            route: route.overview_polyline,
+                            detailed: [],
+                            depot: {
+                                from: $depot.Id,
+                                to: $depot.Id,
+                                time: 0,
+                                distance: 0,
+                                lat: $depot.Latitude,
+                                lng: $depot.Longitude
+                            }
+                        };
+
+                        for (var i = 0; i < $delivery.Orders.length; i++) {
+
+                            $routes.detailed.push({
+                                from: i == 0 ? 0 : $delivery.Orders[i-1].Id,
+                                to: $delivery.Orders[i].Id,
+                                time: route.legs[i].duration.value,
+                                distance: route.legs[i].distance.value
+                            });
+                        }
+
+
+                        $delivery.Routes = JSON.stringify($routes);
+                        //$routes = $delivery.Routes;
+                        updateDelivery(reloadOrderList);
+
+
+                    }
+
+                } else {
+                   
+                }
+            })
+            .catch((e) => {
+                
+            });
+
+        //marker driver position
+
+        if ($driver.Latitude == 0) return;
+
+        var $directionsRendererDriver = new google.maps.DirectionsRenderer({
+            map: $map,
+            suppressMarkers: true
+        });
+        var $driverPosition = new google.maps.LatLng($driver.Latitude, $driver.Longitude);
+        $directionsService.route({
+            origin: $driverPosition,
+            destination: $driverPosition,//may point to depot or Active order flolows status
+             avoidTolls: true,
+            avoidHighways: false,
+            travelMode: google.maps.TravelMode.DRIVING
+        }, function (response, status) {
+            if (status == google.maps.DirectionsStatus.OK) {
+                //$directionsRendererDriver.setDirections(response);
+                //makeMarkerCustom($map, response.routes[0].legs[0].start_location, icons.driver, $driver.Title);
+                //new CustomMarker(response.routes[0].legs[0].start_location, $map, icons.driver);
+
+                makeMarkerCustom($map, response.routes[0].legs[0].start_location, icons.driver, $driver.Title);
+                bounds.extend(response.routes[0].legs[0].start_location);
+                
+            } else {
+                alert('Directions driver failed due to ' + status);
+            }
+        });
+
+        $map.fitBounds(bounds);
+    }
+
+    function computeDistance(latitude, longitude ) {
+        var distance = google.maps.geometry.spherical.computeDistanceBetween(new google.maps.LatLng($depot.Latitude, $depot.Longitude), new google.maps.LatLng(latitude, longitude));
+        return distance;
+    }
+
+    function getSetDistance(latitude, longitude, distanceId, durationId, data) {
+        //https://developers.google.com/maps/documentation/javascript/examples/distance-matrix
+        var distanceService = new google.maps.DistanceMatrixService();
+        distanceService.getDistanceMatrix({
+            origins: [new google.maps.LatLng($depot.Latitude, $depot.Longitude)],
+            destinations: [new google.maps.LatLng(latitude, longitude)],
+            travelMode: google.maps.TravelMode.WALKING,
+            unitSystem: google.maps.UnitSystem.METRIC,
+            durationInTraffic: true,
+            avoidHighways: false,
+            avoidTolls: false
+        },
+            function (response, status) {
+                if (status !== google.maps.DistanceMatrixStatus.OK) {
+                   
+                } else {
+                    if (response.rows[0].elements[0].status == 'OK') {
+                        $("#" + distanceId).text(response.rows[0].elements[0].distance.text + ' away').show();
+                        $("#" + durationId).text(response.rows[0].elements[0].duration.text).show();
+                    }
+                    else {
+                       
+                    }
+                }
+            });
+    }
+
+    function goToPosition(position, icon) {
+        var depot = new google.maps.LatLng(position.Latitude, position.Longitude),
+            myOptions = {
+                zoom: 15,
+                icon: icon,
+                center: depot
+            };
+        map = new google.maps.Map(document.getElementById('qbicle-delivery'), myOptions);
+        // The marker, positioned at Uluru
+        new google.maps.Marker({
+            position: depot,
+            title: position.Title,
+            icon: icon,
+            map: map,
+        });
+    }
+
+    function routeMapsFromDepot(route, icon, customIcon = false) {
+        var dfd = new $.Deferred();
+
+        if (route.Latitude == 0) {
+            goToPosition($depot, icons.depot);
+            return;
+        }
+
+        var $depotMap = new google.maps.LatLng($depot.Latitude, $depot.Longitude),
+            mapOptions = {
+                //zoom: 10,
+                center: $depotMap
+            },
+            map = new google.maps.Map(document.getElementById('qbicle-delivery'), mapOptions),
+            directionsService = new google.maps.DirectionsService,
+            $routeMap = new google.maps.LatLng(route.Latitude, route.Longitude),
+            directionsDisplay = new google.maps.DirectionsRenderer({
+                map: map,
+                suppressMarkers: true
+            });
+
+        var $markerOption = {
+            map: map,
+            origin: $depotMap,
+            originIcon: icons.depot,
+            originTitle: $depot.Title,
+            destination: $routeMap,
+            destinationIcon: icon,
+            destinationTitle: route.Title
+        };
+
+
+
+        directionsService.route({
+            origin: $markerOption.origin,
+            destination: $markerOption.destination,
+            avoidTolls: true,
+            avoidHighways: false,
+            travelMode: google.maps.TravelMode.DRIVING
+        }, function (response, status) {
+            if (status == google.maps.DirectionsStatus.OK) {
+                
+                directionsDisplay.setDirections(response);
+
+                var bounds = new google.maps.LatLngBounds();
+
+                var leg = response.routes[0].legs[0];
+                makeMarker($markerOption.map, leg.start_location, $markerOption.originIcon, $markerOption.originTitle);
+                bounds.extend(leg.start_location);
+                if (customIcon) {
+                    makeMarkerCustom($markerOption.map, leg.end_location, $markerOption.destinationIcon, $markerOption.destinationTitle);
+
+}
+                else {
+                    makeMarker($markerOption.map, leg.end_location, $markerOption.destinationIcon, $markerOption.destinationTitle);
+                }
+                bounds.extend(leg.end_location);
+
+                $markerOption.map.fitBounds(bounds);
+
+            } else {
+               
+            }
+            dfd.resolve(response);
+            return response;
+        });
+        return dfd.promise();
+    }
+
+    function time_convert(num) {
+        var hours = Math.floor(num / 60);
+        var minutes = num % 60;
+        return hours + " hour " + minutes+" minute";
+    }
+
+
+    var $orderId = 0;
+    var $orderKey = '';
+    function ConfirmRemoveOrder(id, orderKey) {
+        $orderId = id;
+        $orderKey = orderKey;
+        $("#name-remove").text($("#order-ref-" + $orderId).text());
+        $("#confirm-remove-order").modal('show');
+    }
+
+    function RemoveOrder() {
+        $("#order-id-" + $orderId).remove();
+
+        //var orders = $delivery.Orders;
+        _.remove($delivery.Orders, o => o.Id == $orderId);
+        orderChangeSequence();
+
+        $('#confirm-remove-order').modal('hide');
+        return;
+    };
+
+    if ($("#can-sortable").val() == 'True') {
+        $('.delivery-orders-list').sortable({
+            group: 'list',
+            animation: 200,
+            ghostClass: 'ghost',
+            onSort: orderChangeSequence,
+        });
+    }
+
+
+
+    function orderChangeSequence() {
+
+        var orders = _.clone($delivery.Orders);
+        $delivery.Orders = [];
+
+        // Arrays of "data-id"
+        var orderSequence = $('.delivery-orders-list').sortable('toArray');
+        var $sequence = 1;
+        _.forEach(orderSequence, id => {
+            if ($sequence == 1)
+                $('#active-' + id).text('Active');
+            else
+                $('#active-' + id).text('');
+            $('#order-sequence-' + id).text($sequence);
+            var order = _.find(orders, o => o.Id == _.toNumber(id));
+            if (order != null) {
+                //$delivery.Orders.push({ TraderId: id });
+                order.DeliverySequence = $sequence;
+                $delivery.Orders.push(order);
+                //orders.push(order);
+            }
+
+            $sequence++;
+        });
+        //$delivery.Orders = orders;
+
+        if ($delivery.DeliveryStatus == 1)//new then update delivery
+            initMap(true, false);
+        else
+            DriverUpdateStatusDelivery('order');
+    };
+
+    function ShowDeliveryDrivers() {
+        var ajaxUri = "/Delivery/OpenDriverListModal?deliveryKey=" + '@deliveryKey';
+        $('#drivers-delivery-list').empty();
+        $('#drivers-delivery-list').load(ajaxUri, function () {
+
+        });
+
+    }
+    //reload delivery order and update maps
+    function ShowDeliveryOrders(deliveryKey) {
+
+        var ajaxUri = "/Delivery/GetDeliveryOrders?deliveryKey=" + deliveryKey;
+
+        $('.delivery-orders-list').LoadingOverlay("show");
+        $('.delivery-orders-list').empty();
+        $('.delivery-orders-list').load(ajaxUri, function () {
+            $('#deliveryinfo').scrollTop(450);
+            $('.delivery-orders-list').LoadingOverlay("hide", true);
+        });
+    }
+
+    function CloseManagementInfo(reloadMap) {
+        if (reloadMap)
+            initMap(false, false);
+        $('#management-info').hide();
+        $('#deliveryinfo').show();
+
+        initReloadPage($("#refresh-interval").val());
+    }
+
+    function ShowOrderInfoRoute(title,lat, lon) {
+        var routeTo = { Title: title, Latitude: lat, Longitude: lon};
+        routeMapsFromDepot(routeTo, icons.customer);
+    }
+
+    function ShowOrderInfo(orderKey) {
+        var ajaxUri = "/Delivery/GetOrderInfo?key=" + orderKey;
+        ShowDetail(ajaxUri);
+    }
+
+    function OpenOrderListModal() {
+        clearInterval($refreshIntervalId);
+        
+        var ajaxUri = "/Delivery/OpenOrderListModal";
+        ShowDetail(ajaxUri);
+    }
+
+    function ShowDetail(ajaxUri) {
+        $('#deliveryinfo').hide();
+        $('#management-info').show();
+        $('#detail-info').LoadingOverlay("show");
+        $('#detail-info').empty();
+        $('#detail-info').load(ajaxUri, function () {
+            $('#detail-info').LoadingOverlay("hide", true);
+        });
+    }
+
+
+    function updateDelivery(reloadOrderList) {
+        $.LoadingOverlay("show");
+        var url = "/Delivery/DeliveryUpdate";
+        var deliveryParameter = _.clone($delivery);
+
+
+        //set status by delivery status
+        deliveryParameter.Status = deliveryParameter.DeliveryStatus;
+
+        $.ajax({
+            type: "POST",
+            url: url,
+            data: { delivery: deliveryParameter },
+            dataType: "json",
+            success: function (response) {
+                if (!response.result) {
+                    cleanBookNotification.error("Have an error update delivery, detail: " + response.msg, "Qbicles");
+                    return;
+                }
+                if (reloadOrderList)
+                    ShowDeliveryOrders('@deliveryKey');
+                else {
+                    updateDeliveryInfoUI(response.Object2);
+                }
+            },
+            error: function (er) {
+                cleanBookNotification.error("Have an error update delivery, detail: " + er.error, "Qbicles");
+            }
+        }).always(function () {
+            LoadingOverlayEnd();
+        });
+    }
+
+    function removeActiveClass() {
+        var elements = document.getElementsByClassName('delivery-element-active');
+        _.forEach(elements, el => el.classList.remove("delivery-element-active"));
+    }
+
+
+    function updateDeliveryInfoUI(delivery) {
+        $("#delivery-order-info").text(delivery.orderInfo);
+        $("#delivery-order-total").text(delivery.orderTotal);
+
+        $("#delivery-driver-info").text(delivery.driverInfo);
+        $("#delivery-driver-status").removeClass().addClass('label label-lg label-' + delivery.driverStatusCss);
+        $("#delivery-driver-status").text(delivery.driverStatus);
+
+
+        $("#delivery-duration").text(delivery.duration);
+        $("#delivery-distance").text(delivery.distance);
+    }
+
+
+    $('#message-to-customer-modal').on('shown.bs.modal', function () {
+        $('#customer-message-description').trigger('focus')
+        $('#customer-message-description').val('')
+    })
+
+    function ShowMessageCustomer(orderId) {
+        $orderId = orderId;
+        $("#message-to-customer-modal").modal('show');
+    }
+    function SendMessageToCustomer() {
+        $('#message-to-customer-modal').modal('hide');
+        $('.delivery-orders-list').LoadingOverlay("show");
+        var url = "/Delivery/SendMessageDriverToCustomer";
+        $.ajax({
+            type: "POST",
+            url: url,
+            data: {
+                message: {
+                    OrderId: $orderId,//queue Order id
+                    Mesaage: $("#customer-message-description").val()
+                }
+            },
+            dataType: "json",
+            success: function (response) {
+                cleanBookNotification.success("Message send completed.", "Qbicles");
+            },
+            error: function (er) {
+                cleanBookNotification.error("Have an error: " + er.error, "Qbicles");
+            }
+        }).always(function () {
+            $('.delivery-orders-list').LoadingOverlay("hide", true);
+        });
+
+    }
+
+
+    function DriverAccept() {
+        $delivery.Status = 1;//Accepted
+        DriverUpdateStatusDelivery('driver');
+    }
+
+    function DriverReject() {
+        $delivery.Status = 2;//Rejected
+        DriverUpdateStatusDelivery('driver');
+    }
+
+    function DriverHeadToDepot() {
+        $delivery.Status = 3;//HeadingToDepot
+        DriverUpdateStatusDelivery('delivery');
+    }
+
+    function DriverReadyToPickup() {
+        $delivery.Status = 4;//ReadyForPickup
+        DriverUpdateStatusDelivery('delivery');
+    }
+
+    function DriverStartDelivery() {
+        $delivery.Status = 5;//StartedDelivery
+        DriverUpdateStatusDelivery('delivery');
+    }
+
+
+    function CompleteOrder(orderId) {
+        var order = _.find($delivery.Orders, o => o.Id == orderId);
+        order.Status = 4;
+
+        $delivery.CompleteOrderId = orderId;
+        DriverUpdateStatusDelivery('order');
+    }
+
+    function DriverUpdateStatusDelivery(updateType) {
+        $('.delivery-orders-list').LoadingOverlay("show");
+        $('#delivery-driver').LoadingOverlay("show");
+        var url = "/Delivery/DriverUpdateStatusDelivery";
+        $.ajax({
+            type: "POST",
+            url: url,
+            data: {
+                info: $delivery
+            },
+            dataType: "json",
+            success: function (response) {
+
+                if (updateType == 'driver') {
+                    GetDriverDelivery();
+                    $("#driver-accept-reject-delivery").empty();
+                }
+                else if (updateType == 'order')
+                {
+                    if (response.Message != '') {
+                        var location = _.split(response.Message,'#');//.split("#");
+                        $driver.Latitude = location[0];
+                        $driver.Longitude = location[1];
+                        drawFromRoutes();
+                    }
+                    CompleteDelivery();
+                }
+                else if (updateType == 'delivery' && $delivery.Status == 5)//StartedDelivery
+                {
+                    ShowDeliveryOrders('@deliveryKey');
+                    $("#driver-update-status-delivery").empty();
+                }
+                else if (updateType == 'delivery' && $delivery.Status == 3)//HeadingToDepot
+                {
+                    if (response.Message != '') {
+                        var location = response.Message.split("#");
+                        $driver.Latitude = location[0];
+                        $driver.Longitude = location[1];
+                        drawFromRoutes();
+                    }
+                }
+                if ($delivery.Status == 1)//new
+                {
+                    //$("#headdepotLine").addClass('js-active');
+                    $("#headdepotButton").addClass('js-active');
+                    $("#driver-update-status-delivery").show();
+                }
+                cleanBookNotification.success("Update completed.", "Qbicles");
+            },
+            error: function (er) {
+                cleanBookNotification.error("Have an error: " + er.error, "Qbicles");
+            }
+        }).always(function () {
+            $delivery.CompleteOrderId = 0;
+            $('.delivery-orders-list').LoadingOverlay("hide", true);
+            $('#delivery-driver').LoadingOverlay("hide", true);
+        });
+    }
+
+    function CompleteDelivery() {
+
+        if (_.find($delivery.Orders, o => o.Status != 4 && o.Status != 5) != null) {
+            ShowDeliveryOrders('@deliveryKey');
+            return;
+        }
+
+        $delivery.Status = 6;//Completed
+        $('.delivery-orders-list').LoadingOverlay("show");
+        $('#delivery-driver').LoadingOverlay("show");
+        var url = "/Delivery/DriverUpdateStatusDelivery";
+        $.ajax({
+            type: "POST",
+            url: url,
+            data: {
+                info: $delivery
+            },
+            dataType: "json",
+            success: function (response) {
+                ShowDeliveryOrders('@deliveryKey');
+                cleanBookNotification.success("Delivery completed.", "Qbicles");
+            },
+            error: function (er) {
+                cleanBookNotification.error("Have an error: " + er.error, "Qbicles");
+            }
+        }).always(function () {
+            $('.delivery-orders-list').LoadingOverlay("hide", true);
+            $('#delivery-driver').LoadingOverlay("hide", true);
+        });
+    }
+
+    function GetDriverDelivery() {
+        var $data_container_items = $('#drivers-container');
+        var $pagination_container = $('#pagiation-drivers');
+        $pagination_container.pagination({
+            dataSource: '/Delivery/GetDriverDelivery',
+            locator: 'items',
+            totalNumberLocator: function (response) {
+                $data_container_items.LoadingOverlay('hide');
+                // you can return totalNumber by analyzing response content
+                return response.totalNumber;
+            },
+            pageSize: 5,
+            ajax: {
+                data: {
+                    keyword: $('#driver-item-search-text').val(),
+                    deliveryKey: '@deliveryKey'
+                },
+                beforeSend: function () {
+                    $data_container_items.LoadingOverlay('show');
+                }
+            },
+            callback: function (response, pagination) {
+                // template method of yourself
+                var count = response.length;
+
+                if (count == 0) {
+                    goToPosition($depot, icons.depot);
+                    return;
+                }
+
+                var extraCol = (count % 3 == 0 ? 0 : 3) - count % 3;
+
+                if (response[0] != null && response[0].DeliveryId > 0)
+                    $('.unchosen').hide();
+                else
+                    $('.unchosen').show();
+
+                var dataHtml = "<ul id='delivery-driver' class='widget-contacts commsv2 lbordered' style='margin-bottom: 30px;'>";
+                $.each(response, function (index, driver) {
+                    dataHtml += driverTemplate(driver);
+                });
+                dataHtml += '</ul>';
+
+                for (var i = 0; i < extraCol; i++) {
+                    dataHtml += '<div class="col">&nbsp;</div>';
+                }
+                $data_container_items.html(dataHtml);
+
+                $.each(response, function (index, item) {
+                    getSetDistance(item.Latitude, item.Longitude, 'driver-distance-list-' + item.Id, 'driver-duration-list-' + item.Id, item);
+                });
+
+                initMap(false, false);
+                $('#deliveryinfo').scrollTop(450);
+            }
+        })
+    }
+
+</script>

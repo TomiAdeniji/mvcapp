@@ -1,0 +1,212 @@
+﻿@using Qbicles.BusinessRules
+@using Qbicles.Models.Trader
+@{
+    var api = (string)ViewBag.DocRetrievalUrl;
+
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+    var lstPendingTransactions = (List<CashAccountTransaction>)ViewBag.ListPendingTransactions;
+    var lstFailedTransactions = (List<CashAccountTransaction>)ViewBag.ListFailedTransactions;
+    var lstApprovedTransactions = (List<IGrouping<DateTime, CashAccountTransaction>>)ViewBag.GroupedAprrovedTransactions;
+
+    //var isAllPendingTransactionShown = (bool)ViewBag.isAllPendingTransactionShown;
+    //var isAllFailedTransactionShown = (bool)ViewBag.isAllFailedTransactionShown;
+    var isAllApprovedTransactionShown = (bool)ViewBag.isAllApprovedTransactionShown;
+}
+@model TraderCashAccountCustom
+
+<button class="btn btn-primary community-button w-auto" onclick="$('.pending').slideToggle();">Pending &nbsp; &nbsp; <span class="label label-lg label-info pull-right">@(lstPendingTransactions?.Count ?? 0)</span></button>
+
+<button class="btn btn-warning community-button w-auto" onclick="$('.failed').slideToggle();">Failed &nbsp; &nbsp; <span class="label label-lg label-danger pull-right">@(lstFailedTransactions?.Count ?? 0)</span></button>
+<br />
+<br />
+<br />
+
+
+@if (lstPendingTransactions.Count > 0)
+{
+    <div class="pending" style="display: none;">
+        <div class="statement-date">
+            <h5>Pending transactions</h5>
+        </div>
+
+        <ul class="mbm-acclist statement" style="margin-bottom: 50px;">
+            @foreach (var transactionItem in lstPendingTransactions)
+            {
+                var destinationAcc = transactionItem.DestinationAccount;
+                var originatingAcc = transactionItem.OriginatingAccount;
+                var accName = destinationAcc?.Name ?? "";
+                var transactionType = "";
+                decimal transactionAmount = transactionItem.Amount;
+                var transactionAmountString = "";
+                var colourClassName = "";
+                var imageUri = "";
+                var statusType = transactionItem.Status == TraderPaymentStatusEnum.PaymentDenied ? "Denied" : "Discarded";
+                var showName = "";
+                if (destinationAcc != null && destinationAcc.Id == Model.TraderCashAccountId)
+                {
+                    transactionType = "Credit";
+                    transactionAmountString = "+" + currencySettings.CurrencySymbol + transactionAmount.ToDecimalPlace(currencySettings);
+                    colourClassName = "green";
+                    showName = originatingAcc?.Name ?? "";
+                    imageUri = originatingAcc?.ImageUri ?? "";
+                }
+                else if (originatingAcc != null && originatingAcc.Id == Model.TraderCashAccountId)
+                {
+                    transactionType = "Debit";
+                    transactionAmountString = "-" + currencySettings.CurrencySymbol + transactionAmount.ToDecimalPlace(currencySettings);
+                    colourClassName = "red";
+                    showName = destinationAcc?.Name ?? "";
+                    imageUri = destinationAcc?.ImageUri ?? "";
+                }
+
+                <li>
+                    <a href="#" onclick="transactionDetailModalShow(@transactionItem.Id, @Model.TraderCashAccountId)" data-toggle="modal">
+                        <div class="accimg" style="background-image: url('@api@imageUri');"></div>
+                        <div class="accinf">
+                            <h5>@showName</h5>
+                            <p><span class="label label-warning" style="padding: 4px 8px;">Pending</span> &nbsp; @transactionType</p>
+                        </div>
+                        <div class="accbal text-right">
+                            <h3>
+                                <span class="@colourClassName">@transactionAmountString</span>
+                            </h3>
+                        </div>
+                    </a>
+                </li>
+            }
+        </ul>
+
+        @*@if (!isAllPendingTransactionShown)
+        {
+            <button id="load-more-pending-btn" class="btn btn-info community-button" style="margin-top: 15px">Load more pending transactions</button>
+        }*@
+    </div>
+}
+
+@if (lstFailedTransactions.Count > 0)
+{
+    <div class="failed" style="display: none;">
+        <div class="statement-date">
+            <h5>Failed transactions</h5>
+        </div>
+
+        <ul class="mbm-acclist statement" style="margin-bottom: 50px;">
+            @foreach (var transactionItem in lstFailedTransactions)
+            {
+                var destinationAcc = transactionItem.DestinationAccount;
+                var originatingAcc = transactionItem.OriginatingAccount;
+                var accName = destinationAcc?.Name ?? "";
+                var transactionType = "";
+                decimal transactionAmount = transactionItem.Amount;
+                var transactionAmountString = "";
+                var colourClassName = "";
+                var imageUri = "";
+                var statusType = transactionItem.Status == TraderPaymentStatusEnum.PaymentDenied ? "Denied" : "Discarded";
+                var showName = "";
+                if (destinationAcc != null && destinationAcc.Id == Model.TraderCashAccountId)
+                {
+                    transactionType = "Credit";
+                    transactionAmountString = "+" + currencySettings.CurrencySymbol + transactionAmount.ToDecimalPlace(currencySettings);
+                    colourClassName = "green";
+                    showName = originatingAcc?.Name ?? "";
+                    imageUri = originatingAcc?.ImageUri ?? "";
+                }
+                else if (originatingAcc != null && originatingAcc.Id == Model.TraderCashAccountId)
+                {
+                    transactionType = "Debit";
+                    transactionAmountString = "-" + currencySettings.CurrencySymbol + transactionAmount.ToDecimalPlace(currencySettings);
+                    colourClassName = "red";
+                    showName = destinationAcc?.Name ?? "";
+                    imageUri = destinationAcc?.ImageUri ?? "";
+                }
+                <li>
+                    <a href="#" onclick="transactionDetailModalShow(@transactionItem.Id, @Model.TraderCashAccountId)" data-toggle="modal">
+                        <div class="accimg" style="background-image: url('@api@imageUri');"></div>
+                        <div class="accinf">
+                            <h5>@showName</h5>
+                            <p><span class="label label-danger" style="padding: 4px 8px;">@statusType</span> &nbsp; @transactionType</p>
+                        </div>
+                        <div class="accbal text-right">
+                            <h3>
+                                <span class="@colourClassName">@transactionAmountString</span>
+                            </h3>
+                        </div>
+                    </a>
+                </li>
+            }
+        </ul>
+
+        @*@if (!isAllFailedTransactionShown)
+        {
+            <button id="load-more-failed-btn" class="btn btn-info community-button" style="margin-top: 15px">Load more failed transactions</button>
+        }*@
+    </div>
+}
+
+<div id="approvedList">
+    @if (lstApprovedTransactions.Count > 0)
+    {
+        foreach (var groupTransactions in lstApprovedTransactions)
+        {
+            var groupKey = groupTransactions.Key;
+
+            <div class="statement-date">
+                @{
+                    var groupDateTime = groupTransactions.FirstOrDefault().CreatedDate;
+                    var groupDateStr = groupDateTime.ToString("MMMM") + " " + groupDateTime.Day + groupDateTime.Day.ToOrdinal() + ", " + groupDateTime.ToString("yyyy");
+                }
+                <h5>@groupDateStr</h5>
+            </div>
+
+            <ul class="mbm-acclist statement">
+                @foreach (var transactionItem in groupTransactions)
+                {
+                    var destinationAcc = transactionItem.DestinationAccount;
+                    var originatingAcc = transactionItem.OriginatingAccount;
+                    var transactionType = "";
+                    decimal transactionAmount = transactionItem.Amount;
+                    var transactionAmountString = "";
+                    var colourClassName = "";
+                    var imageUri = "";
+                    var showName = "";
+                    if (destinationAcc != null && destinationAcc.Id == Model.TraderCashAccountId)
+                    {
+                        transactionType = "Credit";
+                        transactionAmountString = "+" + currencySettings.CurrencySymbol + transactionAmount.ToDecimalPlace(currencySettings);
+                        colourClassName = "green";
+                        showName = originatingAcc?.Name ?? "";
+                        imageUri = originatingAcc?.ImageUri ?? "";
+                    }
+                    else if (originatingAcc != null && originatingAcc.Id == Model.TraderCashAccountId)
+                    {
+                        transactionType = "Debit";
+                        transactionAmountString = "-" + currencySettings.CurrencySymbol + transactionAmount.ToDecimalPlace(currencySettings);
+                        colourClassName = "red";
+                        showName = destinationAcc?.Name ?? "";
+                        imageUri = destinationAcc?.ImageUri ?? "";
+                    }
+
+                    <li>
+                        <a href="#" onclick="transactionDetailModalShow(@transactionItem.Id, @Model.TraderCashAccountId)" data-toggle="modal">
+                            <div class="accimg" style="background-image: url('@api@imageUri');"></div>
+                            <div class="accinf">
+                                <h5>@showName</h5>
+                                <p>@transactionType</p>
+                            </div>
+                            <div class="accbal text-right">
+                                <h3>
+                                    <span class="@colourClassName">@transactionAmountString</span>
+                                </h3>
+                            </div>
+                        </a>
+                    </li>
+                }
+            </ul>
+        }
+        if (!isAllApprovedTransactionShown)
+        {
+            <button id="load-more-approved-btn" takeNum="20" onclick="LoadMoreTransaction(@Model.TraderCashAccountId, this)" takeNumber class="btn btn-info community-button" style="margin-top: 15px">Load more approved transactions</button>
+        }
+    }
+</div>

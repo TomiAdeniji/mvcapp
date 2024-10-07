@@ -1,0 +1,267 @@
+﻿@using Qbicles.Models.Spannered;
+@using Qbicles.BusinessRules;
+@using Qbicles.Models.Trader;
+@using Qbicles.Models;
+@{
+    var workgroups = (List<SpanneredWorkgroupsInfo>)ViewBag.workgroups;
+    var dateFormat = (string)ViewBag.CurrentDateFormat;
+    var timeZone = (string)ViewBag.CurrentTimeZone ?? "";
+    var tasks = (List<QbicleTask>)ViewBag.Tasks;
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+    var itemId = (int)ViewBag.ItemId;
+}
+<div class="modal-dialog modal-xl" role="document">
+    <div class="modal-content">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+            <h5 class="modal-title">Consume inventory</h5>
+        </div>
+        <div class="modal-body">
+            <form id="frmConsumeinventory" method="post" action="/Spanneredfree/SaveConsumeReport">
+                <div class="row">
+                    <div class="col-xs-12">
+                        <ul id="tabConsumeInventory" class="app_subnav admintabs" style="padding-top: 0;">
+                            <li class="active"><a href="#consume-tab1" data-toggle="tab" aria-expanded="true">Specifics</a></li>
+                            @if (itemId == 0)
+                            {
+                                <li class=""><a href="#consume-tab2" data-toggle="tab" aria-expanded="false">Asset Tasks</a></li>
+                            }
+                            <li class=""><a href="#consume-tab3" data-toggle="tab" aria-expanded="false">Consumed stock</a></li>
+                        </ul>
+                    </div>
+                </div>
+                <br>
+                <div class="tab-content">
+                    <!-- Specifics -->
+                    <div class="tab-pane fade active in" id="consume-tab1">
+
+                        <div class="row">
+                            <div class="col-xs-12 col-md-4">
+
+                                <div class="activity-overview generic" style="padding: 20px; max-width: 600px;">
+                                    <div class="form-group" style="margin: 0;">
+                                        <label for="SPWorkgroupId">Assign a Workgroup <span class="red">*</span></label>
+                                        <select name="SPWorkgroupId" class="form-control select2" style="width: 100%;" onchange="consumeWorkgroupSelect(this);$('.preview-workgroup').show();" tabindex="-1" aria-hidden="true">
+                                            <option value="" selected=""></option>
+                                            <!-- detail-info=Qbicle;Members;Process -->
+                                            @foreach (var item in workgroups)
+                                            {
+                                                <option detail-info="@(item.Qbicle.FixQuoteCode() + "|" + item.Members + "|" + item.Process+"|"+item.JsonTraderGroups)" value="@item.Id">@item.Name</option>
+                                            }
+                                        </select>
+                                        <label id="SPWorkgroupId-error" class="error" for="SPWorkgroupId" style="display: none;">This field is required.</label>
+                                    </div>
+
+                                    <div class="preview-workgroup" style="display:none">
+                                        <br>
+                                        <table class="table app_specific" style="margin: 0;">
+                                            <tbody>
+                                                <tr>
+                                                    <td><h5>Location</h5></td>
+                                                    <td class="prv-Location"></td>
+                                                </tr>
+                                                <tr>
+                                                    <td><h5>Process</h5></td>
+                                                    <td class="prv-process"></td>
+                                                </tr>
+                                                <tr>
+                                                    <td><h5>Qbicle</h5></td>
+                                                    <td class="prv-qbicle"></td>
+                                                </tr>
+                                                <tr>
+                                                    <td><h5>Product Group(s)</h5></td>
+                                                    <td class="prv-groups"></td>
+                                                </tr>
+                                                <tr>
+                                                    <td><h5>Members</h5></td>
+                                                    <td><button type="button" class="btn btn-info"><i class="fa fa-user"></i> &nbsp; <span class="prv-members"></span></button></td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                            </div>
+                            <div class="col-xs-12 col-md-8">
+
+                                <div class="activity-overview task" style="padding: 20px 20px 10px 20px;">
+                                    <div class="row">
+                                        <div class="col-xs-12">
+                                            <div class="form-group">
+                                                <label for="Name">Consumption report name <span class="red">*</span></label>
+                                                <input type="text" name="Name" class="form-control">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-xs-12">
+                                            <grammarly-extension style="position: absolute; top: 0px; left: 0px; pointer-events: none;" class="_1KJtL"></grammarly-extension>
+                                            <div class="form-group">
+                                                <label for="Description">Description <span class="red">*</span></label>
+                                                <textarea name="Description" class="form-control" style="max-width: 100%; height: 80px;" spellcheck="false"></textarea>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+
+                                <br>
+                                <button type="button" class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                                <a href="#consume-tab2" data-toggle="tab" class="btn btn-success btnNext" aria-expanded="true">Next &nbsp; <i class="fa fa-angle-right"></i></a>
+
+                            </div>
+                        </div>
+
+                    </div>
+                    <!-- END Specifics -->
+                    <!-- Asset Tasks -->
+                    @if (itemId == 0)
+                    {
+                        <div class="tab-pane fade" id="consume-tab2">
+
+                            <div class="activity-overview generic help-text animated bounce">
+                                <i class="fa fa-info-circle"></i>
+                                <p>
+                                    If your Consumption Report contains items that were used as part of an Asset Task, please select the Task from the list of completed ones below to link
+                                    your Report to the Task. You can optionally skip this step.
+                                </p>
+                            </div>
+
+                            <div class="well custom" style="padding-bottom: 5px;">
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-4">
+                                        <div class="form-group">
+                                            <label for="search">Search completed Asset Tasks</label>
+                                            <input id="txtATKeyword" type="text" class="form-control" name="txtATKeyword">
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-4 col-lg-3">
+                                        <div class="form-group">
+                                            <label for="search">Filter by assignee</label>
+                                            <select id="slATGroups" name="slATGroups" class="form-control select2" style="width: 100%;">
+                                                <option value="0">Show all</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <input type="hidden" value="0" id="hdfAssocicatedLinkTaskId" />
+                            <table class="datatable table-striped table-hover" style="width: 100%;" id="tblAssetTasks">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Created</th>
+                                        <th>Assignee</th>
+                                        <th>Completed</th>
+                                        <th data-orderable="false">Consumables, Parts &amp; Services</th>
+                                        <th data-orderable="false">Link to Task</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var item in tasks)
+                                    {
+                                        <tr>
+                                            <td><a href="javascript:void(0);" onclick="ShowTaskPage('@item.Key', false);">@(item.Id.ToString("0000")) - @item.Name</a></td>
+                                            <td>@item.StartedDate.ConvertTimeFromUtc(timeZone).ToString(dateFormat + " hh:mmtt")</td>
+                                            @{
+                                                var user = item.AssociatedSet?.Peoples.FirstOrDefault(s => s.Type == QbiclePeople.PeopleTypeEnum.Assignee)?.User;
+                                            }
+                                            <td data-search="@(user?.Id)">
+                                                <a target="_blank" href="~/Community/UserProfilePage?uId=@user.Id">@HelperClass.GetFullNameOfUser(user)</a>
+                                            </td>
+                                            <td>@(item.ActualEnd.ConvertTimeFromUtc(timeZone)?.ToString(dateFormat + " hh:mmtt") ?? "")</td>
+                                            <td><button type="button" class="btn btn-info" onclick="loadConsumeItemsByTaskId(@item.Id)"><i class="fa fa-list"></i> &nbsp; View</button></td>
+                                            <td data-search="@(item.Id)">
+                                                <button type="button" class="btn btn-success" id="taskuse@(item.Id)" onclick="associcatedConsumeLinkTask(true,@(item.Id),this);"><i class="fa fa-link"></i> &nbsp; Link</button>
+                                                <button type="button" class="btn btn-danger" id="taskchange@(item.Id)" style="display: none;" onclick="associcatedConsumeLinkTask(false,@(item.Id),this);"><i class="fa fa-unlink"></i> &nbsp; Unlink</button>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                            <style>
+                                #tblAssetTasks_filter {
+                                    display: none;
+                                }
+                            </style>
+                            <br>
+                            <button type="button" class="btn btn-warning btnPrevious" aria-expanded="false"><i class="fa fa-angle-left"></i> &nbsp; Previous</button>
+                            <button type="button" disabled data-toggle="tab" class="btn btn-success btnNext" id="optnext" aria-expanded="false">Next &nbsp; <i class="fa fa-angle-right"></i></button>
+                            <button type="button" data-toggle="tab" class="btn btn-primary btnNext" id="skip" aria-expanded="false">Skip step &nbsp; <i class="fa fa-angle-right"></i></button>
+
+                        </div>
+                    }
+                    <!-- END Asset Tasks -->
+                    <!-- Items & Alterations -->
+                    <div class="tab-pane fade" id="consume-tab3">
+                        <div class="row">
+                            @if (itemId > 0)
+                            {
+                                <div class="col-xs-12 col-md-4">
+
+                                    <div class="activity-overview generic help-text animated bounce">
+                                        <i class="fa fa-info-circle"></i>
+                                        <h5 style="margin: 0 0 5px 0;">Consuming items</h5>
+                                        <p>Consumption of items can be manually recorded here and sent for approval. On approval, your inventory counts in Trader and Spannered will be adjusted accordingly.</p>
+                                    </div>
+
+                                </div>
+                            }
+                            <div class="col-xs-12 @(itemId > 0?"col-md-8":"")">
+                                @if (itemId == 0)
+                                {
+                                    <div class="well custom" style="padding-bottom: 5px;">
+                                        <div class="row">
+                                            <div class="col-xs-12 col-sm-4">
+                                                <div class="form-group">
+                                                    <label for="search">Search</label>
+                                                    <input id="txtCSKeyword" type="text" class="form-control" placeholder="Search by name, barcode or SKU">
+                                                </div>
+                                            </div>
+                                            <div class="col-xs-12 col-sm-4 col-lg-3">
+                                                <div class="form-group">
+                                                    <label for="group">Filter by group</label>
+                                                    <select id="slCSGroups" name="group" class="form-control select2" style="width: 100%;" tabindex="-1" aria-hidden="true">
+                                                        <option value="0">Show all</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <br>
+                                }
+                                <div id="lstConsumedStock">
+                                    <table class="datatable table-striped table-hover" id="tblConsumedStock" style="width: 100%;">
+                                        <thead>
+                                            <tr>
+                                                <th data-priority="1">ItemId</th>
+                                                <th data-priority="1">UnitId</th>
+                                                <th data-priority="1">Item</th>
+                                                <th data-priority="1">Unit</th>
+                                                <th data-priority="1">Barcode</th>
+                                                <th data-priority="1">SKU</th>
+                                                <th data-priority="1">Group</th>
+                                                <th data-priority="3" style="width: 90px;">In stock</th>
+                                                <th data-priority="3" style="width: 90px;">Allocated</th>
+                                                <th data-priority="1" style="width: 90px;" data-orderable="false">Used</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody></tbody>
+                                    </table>
+                                </div>
+                                <br><br>
+                                <a href="consume-tab2" data-toggle="tab" class="btn btn-warning btnPrevious" aria-expanded="false"><i class="fa fa-angle-left"></i> &nbsp; Previous</a>
+                                @*<a href="" data-dismiss="modal" class="btn btn-primary">Save draft</a>*@
+                                <button type="submit" class="btn btn-success">Send to review</button>
+
+                            </div>
+                        </div>
+                    </div>
+                    <!-- END Items & Alterations-->
+                </div>
+            </form>
+        </div>
+
+    </div><!-- /.modal-content -->
+</div>

@@ -1,0 +1,187 @@
+﻿@using Qbicles.BusinessRules;
+@using Qbicles.Models.SalesMkt;
+@model SalesMarketingWorkGroup
+@{
+    var setting = (Settings)ViewBag.Setting;
+    var process = (List<SalesMarketingProcess>)ViewBag.Process;
+    var users = setting != null ? setting.Domain.Users.OrderBy(s => s.Surname).ToList() : null;
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var process_selected = (Model != null ? Model.Processes : null);
+    var Members = (Model != null ? Model.Members : null);
+    var Approvals = (Model != null ? Model.ReviewersApprovers : null);
+}
+<div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+            <h5 class="modal-title">@(Model != null ? "Edit Workgroup" : "Add a Workgroup")</h5>
+        </div>
+        <div class="modal-body">
+            <form id="frm-workgroup-addedit" method="post" action="/SalesMarketing/SaveWorkgroup">
+                <div class="row">
+                    <div class="col-xs-12">
+                        <ul class="app_subnav" style="list-style-type: none;">
+                            <li class="active"><a href="#add-specifics" data-toggle="tab">Specifics</a></li>
+                            <li><a href="#add-members" data-toggle="tab">Members &amp; roles</a></li>
+                        </ul>
+                    </div>
+                </div>
+                <br>
+                <div class="tab-content">
+                    <!-- Specifics -->
+                    <div class="tab-pane fade in active" id="add-specifics">
+                        <div class="well custom" style="padding-bottom: 10px;">
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label for="name">Workgroup name</label>
+                                        <input type="text" name="Name" value="@(Model!=null?Model.Name:"")" class="form-control" />
+                                        <input type="hidden" id="wg-id" name="Id" value="@(Model!=null?Model.Id:0)" />
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label for="qbicle">Qbicle</label>
+                                        <select id="source-qbicle" name="QbicleId" class="form-control select2 select2-hidden-accessible" style="width: 100%;" disabled="" tabindex="-1" aria-hidden="true">
+                                            @if (setting != null)
+                                            {
+                                                var qbicle = setting != null ? setting.SourceQbicle : null;
+                                                if (qbicle != null)
+                                                {
+                                                    <option value="@qbicle.Id" selected="">@qbicle.Name</option>
+                                                }
+                                            }
+                                        </select>
+                                        <input type="hidden" name="DomainKey" id="domainId-workgroup" value="@(setting != null ? setting.Domain.Key : "")" />
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label for="qbicle">Default topic</label>
+                                        <select name="TopicId" id="default-topic" class="form-control select2 select2-hidden-accessible" style="width: 100%;" disabled="" tabindex="-1" aria-hidden="true">
+                                            @if (setting != null)
+                                            {
+                                                var topic = setting != null ? setting.DefaultTopic : null;
+                                                if (topic != null)
+                                                {
+                                                    <option value="@topic.Id" selected="">@topic.Name</option>
+                                                }
+                                            }
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-6">
+                                    <div class="form-group">
+                                        <label for="process">Associated processes (check all that apply)</label>
+                                        <span class="multiselect-native-select">
+                                            <select id="slProcess" name="Process" class="form-control checkmulti" style="width: 100%;display:none" multiple="">
+                                                @foreach (var item in process)
+                                                {
+                                                    <option value="@item.Id" @(process_selected != null && process_selected.Any(s => s.Id == item.Id) ? "selected" : "")>@item.Name</option>
+                                                }
+                                            </select>
+                                        </span>
+                                        <span>
+                                            <label id="slProcess-error" class="error" for="slProcess" style="display: none;"></label>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                        <a href="#add-members" data-toggle="tab" class="btn btn-success btnNext">Next &nbsp; <i class="fa fa-angle-right"></i></a>
+                    </div>
+                    <!-- END Specifics -->
+                    <!-- Members -->
+                    <div class="tab-pane fade" id="add-members">
+
+                        <div class="contact-list" style="margin: 0 15px;">
+
+                            <div class="well custom">
+                                <div class="row">
+                                    <div class="col-xs-12 col-sm-8">
+                                        <div class="form-group" style="margin: 0;">
+                                            <label for="search">Search Domain users</label>
+                                            <input type="text" id="smkeyword" onkeyup="FilterMembers();" name="search" class="form-control">
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-4">
+                                        <div class="form-group" style="margin: 0;">
+                                            <label for="search">Show</label>
+                                            <select id="slShow" name="show" onchange="FilterMembers();" class="form-control select2 select2-hidden-accessible" style="width: 100%;" tabindex="-1" aria-hidden="true">
+                                                <option value="0" selected="">All Domain users</option>
+                                                <option value="1">Workgroup members</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style="margin: 25px 0 60px 0;">
+
+                                <div>
+                                    <select id="slMembers" name="Members" class="form-control" style="width: 100%;display:none" multiple>
+                                        @if (users != null)
+                                        {
+                                            foreach (var item in users)
+                                            {
+                                                <option value="@item.Id" @(Members != null && Members.Any(s => s.Id == item.Id) ? "selected" : "")>@(HelperClass.GetFullNameOfUser(item))</option>
+                                            }
+                                        }
+                                    </select>
+                                    <select id="slReviewersApprovers" name="ReviewersApprovers" class="form-control" style="width: 100%;display:none" multiple>
+                                        @if (users != null)
+                                        {
+                                            foreach (var item in users)
+                                            {
+                                                <option value="@item.Id" @(Approvals != null && Approvals.Any(s => s.Id == item.Id) ? "selected" : "")>@(HelperClass.GetFullNameOfUser(item))</option>
+                                            }
+                                        }
+                                    </select>
+                                    <ul id="wgMembers" class="widget-contacts">
+                                        @if (users != null)
+                                        {
+                                            foreach (var item in users)
+                                            {
+                                                var isMember = (Members != null && Members.Any(s => s.Id == item.Id) ? true : false);
+                                                var fullname = HelperClass.GetFullNameOfUser(item);
+                                                <li fullname="@fullname" class="letters @(isMember?"ismember":"")" style="padding-top: 0;">@(item.Surname != null ? item.Surname[0].ToString().ToUpper() : fullname?.Substring(0,1))</li>
+                                                <li fullname="@fullname" class="@(isMember?"ismember":"")">
+                                                    <a href="#">
+                                                        <div class="contact-avatar">
+                                                            <div style="background-image: url('@(api+item.ProfilePic)');">&nbsp;</div>
+                                                        </div>
+                                                        <div class="contact-info">
+                                                            <h5>@(fullname)</h5>
+                                                        </div>
+
+                                                        <div class="contact-sideoptions">
+                                                            <button type="button" class="btn btn-success contact@(item.Id)-add" style="margin-top: 12px;@(isMember?"display: none;":"")" onclick="$(this).toggle(); $('.contact@(item.Id)-remove').toggle();addMembers('@item.Id');"><i class="fa fa-plus"></i> &nbsp; Add to Workgroup</button>
+                                                            <div class="contact@(item.Id)-remove" style="@(isMember?"":"display: none;");">
+                                                                <label style="color: #333; font-weight: 400;" class="pull-right"><input id="apr@(item.Id)" type="checkbox" @(Approvals != null && Approvals.Any(s => s.Id == item.Id) ? "checked" : "") onchange="isApprover('@item.Id',this);"> <i style="position: relative; top: -2px; left: 4px; font-style: normal;">Is an Approver</i></label><br>
+                                                                <button type="button" class="btn btn-danger pull-right" style="margin-top: 3px;" onclick="$('.contact@(item.Id)-remove').hide(); $('.contact@(item.Id)-add').toggle();removeMembers('@item.Id');"><i class="fa fa-trash"></i> &nbsp; Remove</button>
+                                                                <div class="clearfix"></div>
+                                                            </div>
+                                                        </div>
+                                                    </a>
+                                                </li>
+                                            }
+                                        }
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        <br>
+                        <a href="#add-specifics" data-toggle="tab" class="btn btn-warning btnPrevious"><i class="fa fa-angle-left"></i> &nbsp; Previous</a>
+                        <button type="submit" class="btn btn-success">Confirm</button>
+                    </div>
+                    <!-- END Members -->
+
+                </div>
+            </form>
+        </div>
+    </div><!-- /.modal-content -->
+</div>

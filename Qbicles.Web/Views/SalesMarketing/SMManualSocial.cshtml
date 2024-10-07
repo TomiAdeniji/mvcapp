@@ -1,0 +1,292 @@
+﻿@using Qbicles.Models.SalesMkt;
+@model SocialCampaign
+@{
+    ViewBag.Title = "Sales & Marketing > Campaigns > Social > " + Model.Name;
+    var setting = (Settings)ViewBag.Setting;
+}
+
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail mdv2-wrapper" style="position: relative;">
+
+
+    <!-- Main content -->
+    <section class="mdv2 dash" data-tooltip-color="teal" data-tooltip-delay="300" data-tooltip-animate-function="spin" style="border-top: 1px solid #f1f1f1;">
+
+
+        <!-- App bar -->
+        <div class="mdv2-col-app" style="margin-bottom: 0;">
+
+            <div data-spy="affix" class="contained-sidebar">
+
+                <div class="activity-overview plain company-overview welcome-info" style="text-align: left !important; flex: none; margin: 0; padding-top: 30px; padding-bottom: 0;">
+
+                    <div class="pull-left" style="margin-bottom: 15px;">
+                        <a href="/SalesMarketing/SMApps" class="btn btn-primary"><i class="fa fa-angle-left"></i> &nbsp; Social Campaigns</a>
+                        <a href="#app-marketing-manual-social-campaign-edit" data-toggle="modal" class="btn btn-warning"><i class="fa fa-pencil"></i> &nbsp; Edit</a>
+                    </div>
+                    <div class="clearfix"></div>
+
+                    <br />
+                    <input type="hidden" value="@Model.Id" id="hdfcampaignId" />
+                    <h1 style="line-height: 1.2;">@Model.Name</h1>
+                    @{var sTagetNetwork = ""; }
+                    @foreach (var item in Model.TargetNetworks)
+                    {
+                        sTagetNetwork += item.Name + ", ";
+                    }
+                    <br />
+                    <p style="color: rgba(0, 0, 0, 0.5);">@Model.Details</p>
+                    <br />
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-7">
+                            <label>Target networks</label><br />
+                            <p>@sTagetNetwork.Replace("FaceBook", "Facebook").Trim().Trim(',')</p>
+                        </div>
+                        @if (Model.IdeaTheme != null)
+                        {
+                            <div class="col-xs-12 col-sm-5">
+                                <label>Theme</label><br />
+                                <p>@Model.IdeaTheme.Name</p>
+                            </div>
+                        }
+                    </div>
+
+                    <br /><br />
+
+                    <ul class="subapps-nav" role="navigation" data-tooltip-stickto="bottom">
+                        <li class="active">
+                            <a href="#" data-toggle="tab" data-target="#network1-content" data-tooltip="Content"
+                               onclick="manage_options('#options-content');">
+                                <i class="fa fa-layer-group"></i>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#" data-toggle="tab" data-target="#network1-resources" data-tooltip="Resources"
+                               onclick="manage_options('#options-resources'); MedLoadMediasByFolder();">
+                                <i class="fa fa-folder"></i>
+                            </a>
+                            <input id="media-folder-qbicle" type="hidden" value="@Model.ResourceFolder.Id" />
+                            <input id="media-qbicleId" type="hidden" value="@(setting != null && setting.SourceQbicle != null ? setting.SourceQbicle.Id : 0)" />
+                            <input id="media-brand-folder" type="hidden" value="@(Model.Brand!=null&&Model.Brand.ResourceFolder!=null?Model.Brand.ResourceFolder.Id:0)" />
+                            <input id="media-idea-folder" type="hidden" value="@(Model.IdeaTheme!=null&&Model.IdeaTheme.ResourceFolder!=null?Model.IdeaTheme.ResourceFolder.Id:0)" />
+                        </li>
+                    </ul>
+
+                </div>
+
+
+                <br />
+
+
+                <!-- Content options -->
+                <div id="options-content" class="sidebar-options">
+                    <div class="spacing" style="padding-top: 0;">
+                        <button class="btn btn-success community-button" style="margin: 0;" data-toggle="modal" onclick="LoadManualPostAdd()" data-target="#app-marketing-social-post-add">
+                            <i class="fa fa-plus"></i> &nbsp; Add a Post
+                        </button>
+                    </div>
+                </div>
+                <!-- END Content options -->
+                <!-- Resources options -->
+                <div id="options-resources" class="sidebar-options" style="display: none;">
+
+                    <div class="spacing" style="padding-top: 0;">
+                        <button class="btn btn-success community-button" data-toggle="modal" data-target="#create-resource" style="margin-bottom: 5px;">
+                            <i class="fa fa-plus"></i> &nbsp; New Upload
+                        </button>
+                        <button class="btn btn-info community-button" onclick="QbicleSelected('@(setting != null && setting.SourceQbicle != null ? setting.SourceQbicle.Key : "0")', 'Dashboard','tab=media&folder=@(Model.ResourceFolder.Id)');">
+                            <i class="fa fa-folder"></i> &nbsp; Manage in Qbicle
+                        </button>
+                    </div>
+
+                </div>
+                <!-- END Resources options -->
+
+
+
+            </div>
+        </div>
+        <!-- END App bar -->
+        <!-- Main area -->
+        <div class="mdv2-col-dash">
+
+            <div class="tab-content">
+
+
+                <!-- Network 1 -->
+                <div class="tab-pane fade in active" id="network1">
+
+
+                    <div class="tab-content" style="padding-bottom: 30px;">
+
+
+                        <!-- Content -->
+                        <div class="tab-pane fade in active" id="network1-content">
+
+                            <div style="padding: 30px;">
+
+                                <ul class="nav nav-pills nav-marketing sales" style="width: 800px; max-width: 100%; margin-bottom: 60px;">
+                                    <li class="active">
+                                        <a href="#" data-toggle="tab" onclick="LoadManualPostContent('approvals')" data-target="#network1-content-approvals">
+                                            Awaiting Approval
+                                            @*<label class="label label-info animated bounce inreview count-approvals"></label>*@
+                                        </a>
+                                    </li>
+                                    <li><a href="#" onclick="LoadManualPostContent('approved')" data-toggle="tab" data-target="#network1-content-approved">Approved <label class="label label-info count-approved"></label></a></li>
+                                    <li>
+                                        <a href="#" onclick="LoadManualPostContent('queue')" data-toggle="tab" data-target="#network1-content-queue" id="queue">
+                                            Queue
+                                            <label class="label label-info count-queue"></label>
+                                        </a>
+                                    </li>
+                                    <li><a href="#" onclick="LoadManualPostContent('sent')" data-toggle="tab" data-target="#network1-content-sent">Sent <label class="label label-info count-sent"></label></a></li>
+                                </ul>
+                                <div class="tab-content">
+                                    <!-- Approvals -->
+                                    <div class="tab-pane fade in active" id="network1-content-approvals">
+                                        @{Html.RenderAction("LoadManualPostContent", "SalesMarketing", new { type = "approvals", campaignId = Model.Id });}
+                                    </div>
+                                    <!-- END Approvals -->
+                                    <!-- Approved -->
+                                    <div class="tab-pane fade" id="network1-content-approved">
+                                        @{Html.RenderAction("LoadManualPostContent", "SalesMarketing", new { type = "approved", campaignId = Model.Id });}
+                                    </div>
+                                    <!-- END Approved -->
+                                    <!-- Queue -->
+                                    <div class="tab-pane fade" id="network1-content-queue">
+                                        @{Html.RenderAction("LoadManualPostContent", "SalesMarketing", new { type = "queue", campaignId = Model.Id });}
+                                    </div>
+                                    <!-- END Queue -->
+                                    <!-- Sent -->
+                                    <div class="tab-pane fade" id="network1-content-sent">
+                                        @{Html.RenderAction("LoadManualPostContent", "SalesMarketing", new { type = "sent", campaignId = Model.Id });}
+                                    </div>
+                                    <!-- END Sent -->
+                                </div>
+
+                            </div>
+
+                        </div>
+                        <!-- END Content -->
+                        <!-- Resources -->
+                        <div class="tab-pane fade" id="network1-resources">
+                            <div class="spacing">
+                                <div class="flex-grid-thirds-lg">
+                                </div>
+                            </div>
+
+
+                            <!-- Embedded video (uploaded) -->
+                            <video width="640" height="320" controls id="embed" style="display:none;">
+                                <source src="https://www.html5rocks.com/en/tutorials/video/basics/Chrome_ImF.mp4" type="video/mp4">
+                                <source src="https://www.html5rocks.com/en/tutorials/video/basics/Chrome_ImF.webm" type="video/webm">
+                                <source src="https://www.html5rocks.com/en/tutorials/video/basics/Chrome_ImF.ogv" type="video/ogg">
+                                Your browser doesn't support HTML5 video tag.
+                            </video>
+                            <!-- END Embedded video -->
+                        </div>
+                        <!-- END Resources -->
+                    </div>
+                </div>
+                <!-- END Network 1 -->
+
+            </div>
+
+        </div>
+
+
+
+    </section>
+    <!-- ./content -->
+
+</div>
+<div class="modal fade" id="app-marketing-discard-post" role="dialog" aria-labelledby="app-marketing-discard-post" style="display: none;">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+                <h5 class="modal-title">Post management</h5>
+            </div>
+            <div class="modal-body">
+
+                <div class="activity-overview alert-detail animated bounce" style="padding: 20px;">
+                    <h5>Warning!</h5>
+                    <br>
+
+                    <p>
+                        You're about to discard this post. This action is permanent and should only be used when the post is unsuitable for use. If you're unsure you can
+                        cancel this procedure below and return later. If you do delete the post, you will be automatically redirected to the Campaign this post belongs to.
+                    </p>
+
+                    <br>
+                    <input id="discard-post-id" type="hidden" value="0" />
+                    <button class="btn btn-danger community-button" onclick="DiscardPostApproval($('#discard-post-id').val())"><i class="fa fa-trash"></i> &nbsp; Delete the post</button>
+                </div>
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+<div class="modal fade" id="app-marketing-discard-post-queue" role="dialog" aria-labelledby="app-marketing-discard-post-queue" style="display: none;">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+                <h5 class="modal-title">Post management</h5>
+            </div>
+            <div class="modal-body">
+
+                <div class="activity-overview alert-detail animated bounce" style="padding: 20px;">
+                    <h5>Warning!</h5>
+                    <br>
+
+                    <p>
+                        You're about to discard this post. This action is permanent and should only be used when the post is unsuitable for use. If you're unsure you can
+                        cancel this procedure below and return later. If you do delete the post, you will be automatically redirected to the Campaign this post belongs to.
+                    </p>
+
+                    <br>
+                    <input id="discard-post-queue-id" type="hidden" value="0" />
+                    <button class="btn btn-danger community-button" onclick="DiscardPostQueue($('#discard-post-queue-id').val());"><i class="fa fa-trash"></i> &nbsp; Delete the post</button>
+                </div>
+
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div>
+
+<div class="modal fade left" id="app-marketing-social-post-add" role="dialog" aria-labelledby="app-marketing-social-post-add">
+</div>
+<div class="modal fade" id="download-post" role="dialog" aria-labelledby="download-post">
+</div>
+<div class="modal fade left" id="app-marketing-manual-social-campaign-edit" role="dialog" aria-labelledby="app-marketing-manual-social-campaign-edit" style="display: none;">
+    @Html.Partial("_ManualSocialCampaignEdit", Model)
+</div>
+<!-- /.content-wrapper -->
+@Html.Partial("_DomainChange")
+@Html.Partial("_SearchMini")
+@Html.Partial("_NetworkConnect")
+@Html.Partial("_SocialAccounts")
+@Html.Partial("_CreateResource", Model)
+@Html.Partial("_Notifications")
+@Html.Partial("_PostSuccess")
+@Html.Partial("_ManualScheduleQueue")
+@{
+
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Content/DesignStyle/js/quill.js"></script>
+        <script src="~/Content/DesignStyle/js/bootstrap-multiselect.js"></script>
+        <script src="~/Scripts/dev/salemarketing.socialcampaign.addedit.js"></script>
+        <script src="~/Scripts/dev/salesmarketing.campaigndetail.js"></script>
+        <script src="~/Scripts/clipboard.min.js"></script>
+    }
+    else
+    {
+        <script src="~/Content/DesignStyle/js/quill.js"></script>
+        <script src="~/Content/DesignStyle/js/bootstrap-multiselect.min.js"></script>
+        <script src="~/Scripts/dev/salemarketing.socialcampaign.addedit.min.js"></script>
+        <script src="~/Scripts/dev/salesmarketing.campaigndetail.js"></script>
+        <script src="~/Scripts/clipboard.min.js"></script>
+    }
+}

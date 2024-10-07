@@ -1,0 +1,257 @@
+﻿@using Qbicles.Models.Operator.Compliance;
+@using Qbicles.BusinessRules;
+@using Qbicles.Models;
+@using Qbicles.Models.Form;
+@model ComplianceTask
+@{
+    var currentTaskInstance = (TaskInstance)ViewBag.TaskInstance;
+    var task = currentTaskInstance != null ? currentTaskInstance.AssociatedQbicleTask : null;
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var dateFormat = (string)ViewBag.CurrentDateFormat;
+    var currentTimeZone = (string)ViewBag.CurrentTimeZone;
+    ViewBag.Title = $"{Model.Domain.Name} > {Model.WorkGroup.SourceQbicle.Name} > {task.Name}";
+    var minutes = Model.OrderedForms.Sum(s => s.FormDefinition.EstimatedTime);
+    var lstFormsSubmitted = currentTaskInstance != null && currentTaskInstance.FormInstances != null ? currentTaskInstance.FormInstances : null;
+    var totalForms = Model.OrderedForms?.Count ?? 0;
+    var totalFormsSubmitted = lstFormsSubmitted != null ? lstFormsSubmitted.Where(s => s.IsSubmitted).Count() : 0;
+    var form = (FormInstance)ViewBag.Form;
+}
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail mdv2-wrapper" style="position: relative;">
+    <!-- Main content -->
+    <section class="mdv2 dash" data-tooltip-color="teal" data-tooltip-delay="300" data-tooltip-animate-function="spin" style="border-top: 1px solid #f1f1f1;">
+
+
+        <!-- App bar -->
+        <div class="mdv2-col-app" style="margin-bottom: 0;">
+
+            <div data-spy="affix" class="contained-sidebar">
+
+                <div class="activity-overview plain company-overview welcome-info" style="text-align: left !important; flex: none; margin: 0; padding-top: 30px; padding-bottom: 0;">
+
+                    <br />
+                    <h6 class="subhead">Operator &gt; Tasks &amp; Forms &gt; Compliance Task</h6>
+                    <h1 style="line-height: 1.2;">@Model.Name</h1>
+                    <br />
+
+                    <span class="label label-lg label-default">@(minutes > 60 ? $"{minutes / 60} hours" : $"{minutes} minutes")</span>
+                    <span class="label label-lg label-primary">@Model.WorkGroup.DefaultTopic.Name</span>
+                    @if (totalForms != totalFormsSubmitted)
+                    {
+                        <span class="label label-lg label-warning" id="inprogress">In progress</span>
+                    }
+                    else
+                    {
+                        <span class="label label-lg label-success" id="complete" style="display: none;">Complete</span>
+                    }
+
+                    <br /><br /><br />
+                    <p style="color: rgba(0, 0, 0, 0.5);">@Model.Description</p>
+
+                    <br /><br />
+
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group">
+                                <label>Submitted by</label><br />
+                                <a href="/Community/UserProfilePage?uId=@form.CreatedBy.Id" target="_blank">@HelperClass.GetFullNameOfUser(form.CreatedBy)</a>
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-sm-6">
+                            <div class="form-group">
+                                <label>Submission date</label><br />
+                                <p>@form.CreatedDate.ToString(dateFormat + " hh:mmtt")</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Source Task</label><br />
+                        <p><a href="\Operator\ComplianceTask?id=@Model.Id&tid=@task.Id" target="_blank">@Model.Id.ToString("0000") - @form.ParentDefinition.Title</a></p>
+                    </div>
+                    <br />
+                    @if (Model.Discussion == null)
+                    {
+                        <a href="#" data-toggle="modal" data-target="#create-discussion" class="btn btn-info community-button new-discuss"
+                           style="margin-bottom: 5px;">
+                            <i class="fa fa-comments"></i> &nbsp; Open Discussion
+                        </a>
+                    }
+                    <a id="btnJoinDiscussion" href="/Operator/DiscussionComplianceTask@(Model.Discussion != null ? "?disId=" + Model.Discussion.Id : "")" class="btn btn-primary community-button view-discuss" style="display: @(Model.Discussion != null ? "block" : "none"); margin-bottom: 5px;">
+                        <i class="fa fa-comments"></i> &nbsp; Join Discussion
+                    </a>
+                </div>
+            </div>
+        </div>
+        <!-- END App bar -->
+        <!-- Main area -->
+        <div class="mdv2-col-dash task-forms">
+            <div class="spacing">
+                <ul class="audit-steps">
+                    @if (form != null)
+                    {
+                        foreach (var eldata in form.ElementData.OrderBy(s => s.ParentElement.DisplayOrder).ToList())
+                        {
+                            <li>
+                                <p class="title">@eldata.ParentElement.Label</p>
+                                @switch (eldata.ParentElement.Type)
+                                {
+                                    case Qbicles.Models.Form.FormElementType.TrueOrFalse:
+                                        <ul class="nav nav-pills nav-justified audit-choices">
+                                            @if (eldata.Value == "Yes")
+                                            {
+                                                <li class="active"><a class="success" data-value="Yes">Yes</a></li>
+                                            }
+                                            else
+                                            {
+                                                <li class="active"><a class="danger" data-value="No">No</a></li>
+                                            }
+                                        </ul>
+                                        break;
+                                    case Qbicles.Models.Form.FormElementType.Date:
+                                        <div class="well custom" style="margin-bottom: 0;">
+                                            <div class="row">
+                                                <div class="col-xs-12 col-sm-6">
+                                                    <div class="form-group" style="margin: 0;">
+                                                        <input type="text" name="Value[]" disabled value="@eldata.Value" class="form-control">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        break;
+                                    case Qbicles.Models.Form.FormElementType.FreeText:
+                                        <div class="well custom" style="margin-bottom: 0;">
+                                            <div class="row">
+                                                <div class="col-xs-12 col-sm-6">
+                                                    <div class="form-group" style="margin: 0;">
+                                                        <input type="text" name="Value[]" disabled value="@eldata.Value" class="form-control">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        break;
+                                    default:
+                                        <div class="well custom" style="margin-bottom: 0;">
+                                            <div class="row">
+                                                <div class="col-xs-12 col-sm-6">
+                                                    <div class="form-group" style="margin: 0;">
+                                                        <input type="number" name="Value[]" disabled value="@eldata.Value" class="form-control">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        break;
+                                }
+                                <br />
+                                <div class="well custom" style="margin-bottom: 0;">
+                                    <div class="row">
+                                        @{ 
+                                            var note = (Note)eldata.Attachments.FirstOrDefault(s => s.AttachmentType == Attachment.AttachmentTypeEnum.Note);
+                                        }
+                                        @if (eldata.ParentElement.AllowNotes&& note!=null)
+                                        {
+                                            <div class="col-xs-12 col-sm-6">
+                                                <label>Notes</label>
+                                                <p>@(note?.Text)</p>
+                                            </div>
+                                        }
+                                        @{ 
+                                            var photo = (Image)eldata.Attachments.FirstOrDefault(s => s.AttachmentType == Attachment.AttachmentTypeEnum.Image);
+                                        }
+                                        @if (eldata.ParentElement.AllowPhotos&& photo!=null)
+                                        {
+                                            <div class="col-xs-12 col-sm-2">
+                                                <label>Photo</label><br />
+                                                <a href="@(api+photo?.ImageUri)" class="image-pop" rel="resources" title="This document's description content here">
+                                                    Click to view
+                                                </a>
+                                            </div>
+                                        }
+                                        @{ 
+                                            var doc = (Document)eldata.Attachments.FirstOrDefault(s => s.AttachmentType == Attachment.AttachmentTypeEnum.Doc);
+                                        }
+                                        @if (eldata.ParentElement.AllowDocs&& doc!=null)
+                                        {
+                                            <div class="col-xs-12 col-sm-2">
+                                                <label>Attached doc</label><br />
+                                                <a href="@(api+doc?.DocumentUri)">@doc.DocumentName</a>
+                                            </div>
+                                        }
+                                        @if (eldata.ParentElement.AllowScore)
+                                        {
+                                            <div class="col-xs-12 col-sm-2">
+                                                <label>Score</label><br />
+                                                @for (int i = 1; i <= eldata.Score; i++)
+                                                {
+                                                    <i class="fa fa-star yellow-text"></i>
+                                                }
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            </li>
+                        }
+                    }
+                </ul>
+            </div>
+        </div>
+    </section>
+    <!-- ./content -->
+</div>
+<!-- /.content-wrapper -->
+@if (Model.Discussion == null)
+{
+    <div class="modal fade left" id="create-discussion" role="dialog" aria-labelledby="create-discussion">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h5 class="modal-title">Start Discussing this Activity</h5>
+                </div>
+                <div class="modal-body">
+                    <form id="frm-create-discussion" method="post" action="/Discussions/SaveDiscussionForComplianceTask">
+                        <div class="well custom">
+                            <div class="row">
+                                <div class="col-xs-12">
+                                    <div class="form-group">
+                                        <label for="event-title">Opening comment</label>
+                                        <textarea id="ds_openingmessage" name="openingmessage" class="form-control"></textarea>
+                                        <input type="hidden" id="complianceTaskId" value="@Model.Id" />
+                                    </div>
+                                </div>
+                                <div class="col-xs-12">
+                                    <label>Set an expiry date</label><br />
+                                    <div class="checkbox toggle" onclick="$('.setexpiry').toggle();">
+                                        <label>
+                                            <input data-toggle="toggle" data-onstyle="success" name="isexpiry" id="ds_isexpiry" type="checkbox">
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 setexpiry" style="display: none;">
+                                    <div class="form-group" style="margin: 0;">
+                                        <label>Choose a date and time for expiration</label>
+                                        <input type="text" name="expirydate" id="ds_expirydate" class="form-control singledateandtime">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <a href="#" class="btn btn-danger" data-dismiss="modal">Cancel</a>
+                        <button type="submit" class="btn btn-success">Confirm</button>
+                    </form>
+
+                </div>
+            </div><!-- /.modal-content -->
+        </div><!-- /.modal-dialog -->
+    </div><!-- /.modal -->
+}
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/operator.compliance-tasksubmission.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/operator.compliance-tasksubmission.min.js"></script>
+    }
+}

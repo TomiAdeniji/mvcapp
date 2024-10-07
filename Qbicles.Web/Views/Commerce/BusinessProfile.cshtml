@@ -1,0 +1,640 @@
+﻿@using Qbicles.Models
+@using Qbicles.Models.B2B
+@using Qbicles.BusinessRules
+@model B2BProfile
+@{
+    ViewBag.Title = $"{Model.BusinessName} | Manage your public profile";
+    var userRoleRights = (List<string>)ViewBag.UserRoleRights;
+    var currentDomain = (QbicleDomain)ViewBag.CurrentDomain;
+    var usersOfDomain = currentDomain.Users;
+    var allowAdd = userRoleRights.Any(r => r == RightPermissions.TraderAccess || r == RightPermissions.QbiclesBusinessAccess);
+    //var apiKey = ConfigManager.GoogleMapApiKey;
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var facebookUrl = Model.SocialLinks.FirstOrDefault(s => s.Type == SocialTypeEnum.Facebook);
+    var instagramUrl = Model.SocialLinks.FirstOrDefault(s => s.Type == SocialTypeEnum.Instagram);
+    var linkedInUrl = Model.SocialLinks.FirstOrDefault(s => s.Type == SocialTypeEnum.LinkedIn);
+    var twitterUrl = Model.SocialLinks.FirstOrDefault(s => s.Type == SocialTypeEnum.Twitter);
+    var youtubeUrl = Model.SocialLinks.FirstOrDefault(s => s.Type == SocialTypeEnum.Youtube);
+    var isExistProfile = Model.Id > 0 ? true : false;
+    var businessLogo = !string.IsNullOrEmpty(Model.LogoUri) ? (api + Model.LogoUri + "&size=T") : "/Content/DesignStyle/img/d_business_avatar.png";
+    var countries = new CountriesRules().GetAllCountries();
+    var businessCategories = (List<BusinessCategory>)ViewBag.BusinessCategories;
+    var isPremiumDomain = Model.Domain != null && Model.Domain.DomainType == QbicleDomain.DomainTypeEnum.Premium;
+    var domainMemEmails = Model.Domain.Users.OrderBy(p => p.Email).Select(p => p.Email).Distinct().ToList();
+
+    var currentDomainPlan = (DomainPlan)ViewBag.CurrentDomainPlan ?? null;
+    var currentDomainPlanLevel = currentDomainPlan?.Level?.Level ?? BusinessDomainLevelEnum.Free;
+}
+<input type="hidden" id="domainType" value="@(currentDomain.DomainType)" />
+<input type="hidden" id="profile-id" value="@Model.Id" />
+<!-- Content wrapper -->
+<div class="content-wrapper qbicle-detail content-wrapper-fix-scroll" style="background: #f4f6f9; padding-top: 85px;">
+    <!-- Main content -->
+    <section class="content nopad profilev2">
+
+        <div class="container-lg">
+
+            <div class="row">
+                <div class="col-xs-12">
+
+                    <div class="activity-overview plain rounded businesscard" style="padding: 20px 30px;">
+                        <a href="#" onclick="$('#commerce-logo').trigger('click');" style="display: block; text-align: center; margin: 0 auto;">
+                            <div class="business-logo" style="position: relative; background-image: url('@businessLogo');">
+                                <div class="box-shadow-dark"><i class="fa fa-pencil"></i></div>
+                            </div>
+                        </a>
+
+
+                        <div class="business-info">
+                            <h1 id="business-name-display">@Model.BusinessName</h1>
+                            <p class="summ">Manage your public profile</p>
+
+                        </div>
+
+
+                        <div class="business-options">
+
+                            <a href="@((Model.Id == 0) ? "javascript:void(0)" : "/Commerce/BusinessProfileTrading")" @((Model.Id == 0) ? "disabled" : "") class="btn btn-primary community-button" style="margin-bottom: 3px;">Trading options</a>
+                            <a href="@(Model.Id == 0 ? "javascript:void(0)" : "/HighlightPost/BusinessHighlight")" @(Model.Id == 0 ? "disabled" : "") class="btn btn-info community-button">Network &amp; listings</a>
+
+                        </div>
+
+                    </div>
+
+                </div>
+            </div>
+
+
+
+
+
+
+            <div class="row">
+                <div class="col-xs-12">
+
+
+                    <ul class="profilenav" role="navigation" data-tooltip-stickto="bottom" data-tooltip-max-width="150" data-tooltip-color="teal" style="width: 450px; max-width: 100%;">
+                        <li class="active">
+                            <a href="#profile-info" data-toggle="tab" data-tooltip="Info">
+                                <i class="fa fa-info-circle"></i>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#profile-pages" data-toggle="tab" onclick="reloadBusinessProfilePages()" data-tooltip="Page builder">
+                                <i class="fa fa-pencil-ruler"></i>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#profile-locations" data-toggle="tab" onclick="reloadBusinessLocations()" data-tooltip="Locations">
+                                <i class="fa fa-map-marker"></i>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#profile-catalogues" data-toggle="tab" onclick="loadB2CBusinessCatalogues('@currentDomain.Key')" data-tooltip="Catalogues">
+                                <i class="fa fa-book-open"></i>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#profile-b2c" data-toggle="tab" data-tooltip="Business to Customer (B2C) settings">
+                                <i class="fa fa-store-alt"></i>
+                            </a>
+                        </li>
+                        @if (currentDomainPlanLevel >= BusinessDomainLevelEnum.Standard)
+                        {
+                            <li>
+                                <a href="#profile-b2b" data-toggle="tab" data-tooltip="Business to Business (B2B) settings">
+                                    <i class="fa fa-building"></i>
+                                </a>
+                            </li>
+                        }
+                    </ul>
+
+
+
+                    <a id="topjump"></a>
+
+
+                    <div class="tab-content">
+
+
+                        <!-- Info -->
+                        <div class="tab-pane fade in active" id="profile-info">
+
+
+                            <div class="activity-overview plain rounded" style="padding-bottom: 20px;">
+                                <form id="frmB2BProfile" method="post" enctype="multipart/form-data" novalidate>
+                                    <div class="titlezone">
+                                        <h5>Profile</h5>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-xs-12 col-sm-6">
+                                            <div class="form-group">
+                                                <label for="tel">Displayed business name</label>
+                                                <input type="hidden" id="hdfProfileId" name="Id" value="@Model.Id" />
+                                                <input id="commerce-logo" type="file" onchange="changeavatar();" name="Logo" class="hidden">
+                                                <input type="hidden" id="commerce-logo-object-key" name="LogoUri" />
+                                                <input id="business-name" onfocus="focusChange(this)" type="text" class="form-control" name="BusinessName" value="@Model.BusinessName">
+                                            </div>
+                                        </div>
+                                        <div class="col-xs-12 col-sm-6">
+                                            <div class="form-group">
+                                                <label for="email">Business email address</label>
+                                                <select name="BusinessEmail" class="form-control select2" placeholder="enquiries@roadchefdrivethru.com" required>
+                                                    @foreach (var emailItem in domainMemEmails)
+                                                    {
+                                                        <option value="@emailItem" @(Model.BusinessEmail == emailItem ? "selected" : "")>@emailItem</option>
+                                                    }
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-xs-12 col-sm-6">
+                                            <div class="form-group">
+                                                <label for="AreasOfOperation">Countries of Operation</label>
+                                                <select name="AreasOfOperation" class="form-control checkmulti" multiple>
+                                                    @foreach (var item in countries)
+                                                    {
+                                                        <option value="@item.CommonName" @(Model.AreasOperation.Any(s => s.Name == item.CommonName) ? "selected" : "")>@item.CommonName</option>
+                                                    }
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="col-xs-12 col-sm-6">
+                                            <div class="form-group">
+                                                <label>Business summary</label>
+                                                <textarea name="BusinessSummary" required class="form-control" style="max-width: 100%; height: 80px;" maxlength="500">@Model.BusinessSummary</textarea>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+
+
+
+                            <div class="activity-overview plain rounded" style="padding-bottom: 20px;">
+                                <div class="titlezone">
+                                    <h5>Categories & tags</h5>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-xs-12 col-md-6">
+                                        <div class="form-group">
+                                            <label>Choose one or more categories to help classify your business</label><br />
+                                            <select name="interests" class="form-control checkmulti" multiple>
+                                                @foreach (var category in businessCategories)
+                                                {
+                                                    <option value="@category.Id" @(Model.BusinessCategories.Any(s => s.Id == category.Id) ? "selected" : "")>@category.Name</option>
+                                                }
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 col-md-6">
+                                        <div class="form-group">
+                                            <label>Tag your business (optional, max 8 tags - type and hit enter to add new)</label><br />
+                                            <select name="tags" class="form-control select2tag select2-hidden-accessible" multiple style="width: 100%;">
+                                                @foreach (var tag in Model.Tags)
+                                                {
+                                                    <option value="@tag.TagName.FixQuoteCode()" selected>@tag.TagName</option>
+                                                }
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+
+
+
+                            <div class="activity-overview plain rounded" style="padding-bottom: 20px;">
+                                <div class="titlezone">
+                                    <h5>Optional social links</h5>
+                                </div>
+
+
+                                <div class="social-links">
+                                    <form id="frmsociallinks">
+                                        <div class="row">
+                                            <div class="col-xs-12 col-sm-4">
+                                                <div class="form-group">
+                                                    <label for="tel">Facebook</label>
+                                                    <input type="text" @(isExistProfile ? "" : "disabled") data-type="@SocialTypeEnum.Facebook" class="form-control" name="FacebookUrl" value="@(facebookUrl?.Url)">
+                                                </div>
+                                            </div>
+                                            <div class="col-xs-12 col-sm-4">
+                                                <div class="form-group">
+                                                    <label for="tel">Instagram</label>
+                                                    <input type="text" @(isExistProfile ? "" : "disabled") data-type="@SocialTypeEnum.Instagram" class="form-control" name="InstagramUrl" value="@(instagramUrl?.Url)">
+                                                </div>
+                                            </div>
+                                            <div class="col-xs-12 col-sm-4">
+                                                <div class="form-group">
+                                                    <label for="tel">LinkedIn</label>
+                                                    <input type="text" @(isExistProfile ? "" : "disabled") data-type="@SocialTypeEnum.LinkedIn" class="form-control" name="LinkedInUrl" value="@(linkedInUrl?.Url)">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-xs-12 col-sm-4">
+                                                <div class="form-group">
+                                                    <label for="tel">Twitter</label>
+                                                    <input type="text" @(isExistProfile ? "" : "disabled") data-type="@SocialTypeEnum.Twitter" class="form-control" name="TwitterUrl" value="@(twitterUrl?.Url)">
+                                                </div>
+                                            </div>
+                                            <div class="col-xs-12 col-sm-4">
+                                                <div class="form-group">
+                                                    <label for="tel">Youtube</label>
+                                                    <input type="text" @(isExistProfile ? "" : "disabled") data-type="@SocialTypeEnum.Youtube" class="form-control" name="YoutubeUrl" value="@(youtubeUrl?.Url)">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </form>
+                                </div>
+
+                            </div>
+
+
+
+
+                            <div class="activity-overview plain rounded">
+                                <div class="titlezone">
+                                    <h5>Featured posts</h5>
+                                </div>
+
+                                <div class="well custom" style="padding-bottom: 5px;">
+                                    <div class="row">
+                                        <div class="col-xs-12 col-sm-4 col-lg-3">
+                                            <div class="form-group">
+                                                <label for="search">Search</label>
+                                                <input id="txtFilterFeaturedSearch" type="text" class="form-control" name="search">
+                                            </div>
+                                        </div>
+                                        <div class="col-xs-12 col-sm-4 col-lg-3">
+                                            <div class="form-group">
+                                                <label for="search">Options</label><br />
+                                                <button id="btnAddFeauturedPost" class="btn btn-success" type="button" @(Model.Id == 0 ? "disabled" : "") onclick="initModalPost(0, true);"><i class="fa fa-plus"></i> &nbsp; Add new</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <br />
+                                <div id="content-featured-posts" class="flex-grid-thirds-lg from-community c1 featured-posts" style="width: 100%;"></div>
+                            </div>
+
+
+
+                        </div>
+                        <!-- END Info -->
+                        <!-- Page builder -->
+                        <div class="tab-pane fade" id="profile-pages">
+                            <div class="activity-overview plain rounded" style="padding-bottom: 20px;">
+                                <div class="titlezone">
+                                    <h5>Custom pages</h5>
+                                </div>
+                                <div class="well custom" style="padding-bottom: 5px;">
+                                    <div class="row">
+                                        <div class="col-xs-12 col-sm-4 col-md-3">
+                                            <div class="form-group">
+                                                <label for="search">Search</label>
+                                                <input type="text" name="keyword" class="form-control">
+                                            </div>
+                                        </div>
+                                        <div class="col-xs-12 col-sm-3">
+                                            <div class="form-group">
+                                                <label for="search">Status</label>
+                                                <select name="status" class="form-control select2" style="width: 100%;">
+                                                    <option value="-1" selected>Show all</option>
+                                                    <option value="0">Draft</option>
+                                                    <option value="1">Active</option>
+                                                    <option value="2">Inactive</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="col-xs-12 col-sm-5 col-md-6">
+                                            <div class="form-group">
+                                                <label>Options</label><br />
+                                                <a href="~/ProfilePage/BusinessPageBuilder" class="btn btn-success"><i class="fa fa-plus"></i> &nbsp; Add a page</a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <table class="datatable table-striped table-hover" id="tblBusinessProfilePages" data-order='[["2","asc"]]' style="width: 100%;">
+                                    <thead>
+                                        <tr>
+                                            <th data-orderable="false">Page title</th>
+                                            <th data-orderable="false">Created</th>
+                                            <th>Position in nav</th>
+                                            <th data-orderable="false">Status</th>
+                                            <th data-orderable="false">Options</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                    </tbody>
+                                </table>
+
+                            </div>
+
+                        </div>
+                        <!-- END Page builder -->
+                        <!-- Locations -->
+                        <div class="tab-pane fade" id="profile-locations">
+
+                            <div class="activity-overview plain rounded profile-media">
+
+                                <div class="titlezone" style="margin-bottom: 15px;">
+                                    <h5>Business locations</h5>
+                                </div>
+                                <div class="locations-highlighted-text">
+                                    <br />
+
+                                    <p>
+                                        It looks like you haven't added any of your business locations yet. These are managed in your Trade settings, which you can find the link
+                                        for below. Once you've added one or more locations, you'll be able to decide which ones you'd like to appear on your profile for others to see.
+                                    </p>
+                                </div>
+                                <br />
+                                <a href="@((!isPremiumDomain) ? "javascript:void(0)" : "/Commerce/BusinessProfileTrading")" @(isPremiumDomain ? "" : "disabled") class="btn btn-primary community-button sm w-auto">
+                                    <i class="fa fa-map-marker"></i> &nbsp; Trading locations
+                                </a>
+                                <br /><br /><br />
+
+                                <table class="table-hover table-striped datatable" id="tblBusinessLocations" style="width: 100%;">
+                                    <thead>
+                                        <tr>
+                                            <th>Location</th>
+                                            <th>Address</th>
+                                            <th>Geolocated</th>
+                                            <th>Include in profile</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                    </tbody>
+                                </table>
+
+                            </div>
+
+                        </div>
+                        <!-- END Addresses -->
+                        <!-- Catalogues -->
+                        <div class="tab-pane fade" id="profile-catalogues">
+
+                            <div class="activity-overview plain rounded profile-media">
+
+                                <div class="titlezone" style="margin-bottom: 15px;">
+                                    <h5>Catalogues available to the public</h5>
+                                </div>
+                                <div class="catalogues-highlighted-text">
+                                    <br />
+
+                                    <p>
+                                        It looks like you haven't added any B2C Sales Catalogues yet. These are managed in your Trade settings, which you can find the link
+                                        for below. Once you've added one or more Catalogues, you'll be able to decide which ones you'd like to allow customers to see and make purchases from.
+                                    </p>
+                                </div>
+                                <br />
+                                <a href="@(isPremiumDomain ? "/Commerce/BusinessProfileTrading?tab=items-catalogues" : "javascript:void(0)")" @(isPremiumDomain ? "" : "disabled") class="btn btn-primary community-button sm w-auto"><i class="fa fa-map-marker"></i> &nbsp; Manage catalogues</a>
+                                <br /><br /><br />
+                                <div id="business-catalogues" style="min-height:100px">
+                                </div>
+
+                            </div>
+
+                        </div>
+                        <!-- END Catalogues -->
+                        <!-- B2C -->
+                        <div class="tab-pane fade" id="profile-b2c">
+
+                            <div class="activity-overview plain rounded" style="padding-bottom: 20px;">
+                                <div class="titlezone">
+                                    <h5>Business to Customer</h5>
+                                </div>
+
+
+                                <div class="well custom rounded" style="width: auto; display: inline-block; padding: 30px 30px 20px 30px;">
+                                    <label>Do you provide B2C services?</label>
+                                    <br />
+                                    <p style="margin-bottom: 20px;">If you provide B2C services we can add your business to the provider list in the Community Business Directory.</p>
+                                    <div class="checkbox toggle">
+                                        <label>
+                                            <input name="IsDisplayedInB2CListings" @(Model.IsDisplayedInB2CListings || Model.Id == 0 ? "checked" : "") data-toggle="toggle" data-onstyle="success" data-on="Yes" data-off="No" type="checkbox" onchange="$('#useb2c').toggle();">
+                                        </label>
+                                    </div>
+                                </div>
+
+
+                                <div id="useb2c" class="animated fadeIn" style="@(Model.IsDisplayedInB2CListings || Model.Id == 0 ? "" : "display: none;")">
+                                    <br />
+                                    <h5>Choose relationship managers for dealing with customers</h5>
+                                    <p style="margin-bottom: 20px;">
+                                        These people will be the only ones who are able to communicate and interact with customers in your B2C environment.
+                                        At least one must be selected before you can continue.
+                                    </p>
+                                    <div style="width: 500px; margin-bottom: 15px; max-width: 100%;">
+                                        <select name="UserIdB2CRelationshipManagers" class="form-control checkmulti" multiple>
+                                            @foreach (var user in usersOfDomain)
+                                            {
+                                                <option value="@user.Id" @(Model.DefaultB2CRelationshipManagers.Any(s => s.Id == user.Id) ? "selected" : "")>@HelperClass.GetFullNameOfUser(user)</option>
+                                            }
+                                        </select>
+                                    </div>
+
+                                </div>
+
+
+
+                            </div>
+
+                        </div>
+                        <!-- END B2C -->
+                        <!-- B2B -->
+                        <div class="tab-pane fade" id="profile-b2b">
+
+                            <div class="activity-overview plain rounded" style="padding-bottom: 20px;">
+                                <div class="titlezone">
+                                    <h5>Business to Business</h5>
+                                </div>
+
+
+                                <div class="well custom rounded" style="width: auto; max-width: 600px; display: inline-block; padding: 30px 30px 20px 30px;">
+                                    <label>
+                                        Appear in B2B Connect and accept B2B connections
+                                    </label>
+                                    <br />
+                                    <p style="margin-bottom: 20px;">If enabled, your business profile will be visible to other businesses in Qbicles B2B Connect. A new B2B section will be available to you where you can form relationships with other businesses, and communicate in a secure environment.</p>
+                                    <div class="checkbox toggle">
+                                        <label>
+                                            <input name="IsDisplayedInB2BListings" @(Model.IsDisplayedInB2BListings || Model.Id == 0 ? "checked" : "") data-toggle="toggle" data-onstyle="success" data-on="Yes" data-off="No" type="checkbox" onchange="$('#useb2b').toggle();">
+                                        </label>
+                                    </div>
+                                </div>
+
+
+
+
+                                <div id="useb2b" class="animated fadeIn" style="margin-top: 30px; @(Model.IsDisplayedInB2BListings || Model.Id == 0 ? "" : "display: none;")">
+                                    <div class="tab-content">
+                                        <!-- Managers -->
+                                        <div class="tab-pane fade in active" id="b2b-managers">
+
+                                            <h5>Choose relationship managers for dealing with businesses</h5>
+                                            <p style="margin-bottom: 20px;">These people will be the only ones who are able to communicate and interact with other businesses in your B2B environment. At least one must be selected before you can continue.</p>
+                                            <div style="width: 500px; margin-bottom: 15px; max-width: 100%;">
+                                                <select name="UserIdB2BRelationshipManagers" class="form-control checkmulti" multiple>
+                                                    @foreach (var user in usersOfDomain)
+                                                    {
+                                                        <option value="@user.Id" @(Model.DefaultB2BRelationshipManagers.Any(s => s.Id == user.Id) ? "selected" : "")>@HelperClass.GetFullNameOfUser(user)</option>
+                                                    }
+                                                </select>
+                                            </div>
+
+                                        </div>
+                                        <!-- END Managers -->
+
+
+                                    </div>
+
+
+                                </div>
+                            </div>
+
+                        </div>
+                        <!-- END B2B -->
+
+                    </div>
+
+                </div>
+
+
+
+
+            </div>
+
+            <br /><br />
+
+        </div>
+
+    </section>
+    <!-- ./content -->
+
+</div>
+<!-- /.content-wrapper -->
+<div class="modal fade left in" id="app-commerce-post-add" role="dialog" aria-labelledby="app-commerce-post-add">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+                <h5 class="modal-title">Add a Featured Post</h5>
+            </div>
+            <div class="modal-body">
+                <form id="frmCommerePost" method="post" action="~/Commerce/SavePostB2B">
+                    <div class="well custom">
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label for="name">Title <span class="red">*</span></label>
+                                    <input type="text" name="Title" class="form-control">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label for="featured">Featured image</label>
+                                    <input id="commerce-post-feature" type="file" name="FeaturedImage" class="form-control">
+                                    <input type="hidden" id="commerce-post-feature-object-key" name="FeaturedImageUri" />
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <div class="form-group" style="margin: 0;">
+                                    <label for="name">Content <span class="red">*</span></label>
+                                    <textarea name="Content" class="form-control" style="max-width: 100%; height: 80px;"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <input type="hidden" id="hdfPostId" name="Id" />
+                    <input type="hidden" id="hdfIsFeatured" name="IsFeatured" value="true" />
+                    <button type="button" class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">Confirm</button>
+                </form>
+            </div>
+        </div> <!-- /.modal-content -->
+    </div> <!-- /.modal-dialog -->
+</div>
+<div class="modal fade left" id="app-bookkeeping-treeview" role="dialog" aria-labelledby="app-bookkeeping-treeview"></div>
+@{
+    <link href="~/Content/DesignStyle/css/bootstrap-multiselect.css" rel="stylesheet" />
+    <script src="~/Content/DesignStyle/js/html5tooltips.js"></script>
+    <script src="~/Content/DesignStyle/js/bootstrap-multiselect.min.js"></script>
+    @*<link rel="stylesheet" href="~/Content/DesignStyle/css/tagify.css">*@
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/businessprofile.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/businessprofile.min.js"></script>
+    }
+    <script>
+        $(".checkmulti").multiselect({
+            includeSelectAllOption: true,
+            enableFiltering: true,
+            buttonWidth: '100%',
+            maxHeight: 200,
+            enableClickableOptGroups: true,
+            enableCaseInsensitiveFiltering: true
+        });
+        $(document).ready(function () {
+            $('.content-wrapper').css('min-height', '140vh !important');
+        });
+
+        var $businessNameInput = $("#business-name");
+        var $businessNameValid = true;
+
+        var $oldName = "";
+        function focusChange(ev) {
+            $oldName = $(ev).val();
+        }
+
+        $businessNameInput.blur(function () {
+            if ($businessNameInput.val() == "") {
+                $businessNameValid = false;
+                $('#frmB2BProfile').validate().showErrors({
+                    BusinessName: 'This field is required.'
+                });
+                return;
+            }
+
+            $.ajax({
+                url: "/DomainProfile/ValidationBusinessName/",
+                data: { name: $businessNameInput.val(), id: $("#profile-id").val() },
+                cache: false,
+                type: "POST",
+                async: false,
+                success: function (refModel) {
+                    if (refModel.result) {
+                        if ($oldName != $businessNameInput.val())
+                            saveProfileB2B();
+                    }
+                    else {
+                        $businessNameValid = false;
+                        $('#frmB2BProfile').validate().showErrors({
+                            BusinessName: 'That business name is already in use.'
+                        });
+                    }
+
+                },
+                error: function (xhr, status, error) {
+                }
+            }).always(function () {
+
+            });
+        });
+    </script>
+}

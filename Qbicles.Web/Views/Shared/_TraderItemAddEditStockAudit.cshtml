@@ -1,0 +1,285 @@
+﻿
+@using Qbicles.Models.Trader;
+@using Qbicles.Models.Trader.Inventory;
+
+@model StockAudit
+@{
+    var viewAudit = ViewBag.ViewAudit == "" || ViewBag.ViewAudit == null ? false : true;
+    var noneEditable = viewAudit ? "disabled" : "";
+    var workGroups = (List<WorkGroup>)ViewBag.WorkgroupStockAudit;
+    var lstTraderItems = new List<TraderItem>();
+    if (Model.ProductList == null)
+    {
+        Model.ProductList = new List<StockAuditItem>();
+    }
+
+    var api = (string)ViewBag.DocRetrievalUrl;
+}
+
+<div class="modal-dialog modal-xl" role="document">
+    <div class="modal-content">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <h5 class="modal-title">Shift Audit</h5>
+            <input type="hidden" id="stockaudit_isstart" value="@Model.IsStarted.ToString().ToLower()" />
+            <input type="hidden" id="stockaudit_isfinish" value="@Model.IsFinished.ToString().ToLower()" />
+            <input type="hidden" id="stockaudit_id" value="@Model.Id" />
+        </div>
+        <div class="modal-body">
+
+
+            <div class="row">
+                <div class="col-xs-12">
+                    <ul class="app_subnav admintabs" style="padding-top: 0;">
+                        <li class="active"><a href="#audit-1" data-toggle="tab">Overview</a></li>
+                        <li><a href="#audit-2" data-toggle="tab">Audit</a></li>
+                        @*@if (Model.IsStarted)
+                            {
+                                <li><a href="#audit-2" data-toggle="tab">Closing</a></li>
+                            }*@
+                    </ul>
+                </div>
+            </div>
+
+            <br />
+
+            <form id="form_audit">
+                <div class="tab-content">
+
+                    <!-- Opening -->
+                    <div class="tab-pane fade in active" id="audit-1">
+
+                        <div class="row">
+                            <div class="col-xs-12 col-md-4">
+                                <div class="activity-overview generic" style="padding: 20px; max-width: 600px;">
+
+                                    <div class="form-group" style="margin: 0;">
+                                        <label for="workgroup">Assign a Workgroup to this Audit</label>
+                                        @{
+                                            var disabled = "";
+                                            if (Model.Id > 0)
+                                            {
+                                                disabled = "disabled";
+                                            }
+                                            <select @disabled id="workgroup-select" name="workgroup" class="form-control select-modal" style="width: 100%;" onchange="WorkGroupSelectedChange()">
+                                                <option value=""></option>
+                                                @foreach (var wg in workGroups)
+                                                {
+                                                    if (Model.WorkGroup != null && Model.WorkGroup.Id == wg.Id)
+                                                    {
+                                                        <option value="@wg.Id" selected>@wg.Name</option>
+                                                    }
+                                                    else
+                                                    {
+                                                        <option value="@wg.Id">@wg.Name</option>
+                                                    }
+                                                }
+                                            </select>
+                                        }
+
+
+                                    </div>
+                                    <div class="preview-workgroup" style="display: none;">
+                                        <br>
+                                        <table class="table app_specific" style="margin: 0;">
+                                            <tbody>
+                                                <tr>
+                                                    <td><h5>Location</h5></td>
+                                                    <td class="location_name">Location name</td>
+                                                </tr>
+                                                <tr>
+                                                    <td><h5>Process</h5></td>
+                                                    <td class="workgroup_process">Transfers</td>
+                                                </tr>
+                                                <tr>
+                                                    <td><h5>Qbicle</h5></td>
+                                                    <td class="workgroup_qbicle">Qblicle Name</td>
+                                                </tr>
+                                                <tr>
+                                                    <td><h5>Members</h5></td>
+                                                    <td class="workgroup_member"><button class="btn btn-info" onclick="ShowGroupMember()" data-toggle="modal" data-target="#app-trader-workgroup-preview"><i class="fa fa-user"></i> &nbsp; <span></span></button></td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-md-8">
+                                <div class="well custom" style="padding-bottom: 5px;">
+                                    <div class="row">
+                                        <div class="col-xs-12 col-sm-6">
+                                            <div class="form-group">
+                                                <label for="name">Audit name</label>
+                                                @if (Model.IsStarted)
+                                                {
+                                                    <input disabled type="text" id="auditName" name="auditname" value="@Model.Name" class="form-control" />
+                                                }
+                                                else
+                                                {
+                                                    <input type="text" id="auditName" name="auditname" value="@Model.Name" class="form-control" />
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <br />
+                                <button class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                                <a href="#audit-2" data-toggle="tab" onclick="$('a[href=#audit-2]').tab('show');" class="btn btnNext btn-success">Proceed &nbsp; <i class="fa fa-angle-right"></i></a>
+
+                            </div>
+
+                        </div>
+
+
+                    </div>
+                    <!-- END Opening -->
+                    <!-- Closing -->
+                    <div class="tab-pane fade" id="audit-2">
+
+                        <div class="well custom" style="padding-bottom: 5px;">
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-5 col-lg-4">
+                                    <div class="form-group">
+                                        <label for="items">Add items to analyse</label>
+                                        @if (Model.IsStarted)
+                                        {
+                                            <select disabled name="item" class="form-control select2" style="width: 100%;" id="item">
+                                                <option value=""></option>
+                                            </select>
+                                        }
+                                        else
+                                        {
+                                            <select name="item" class="form-control select2" style="width: 100%;" id="item">
+                                                <option value=""></option>
+                                            </select>
+                                        }
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-7 col-lg-8">
+                                    <div class="form-group">
+                                        <label>&nbsp;</label><br />
+                                        <button class="btn btn-success" type="button" @(Model.IsStarted ? "hidden" : "") onclick="addRowItem()"><i class="fa fa-plus"></i> &nbsp; Add to list</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+
+                        <br />
+                        <table class="datatable table-striped table-hover" style="width: 100%;" id="tb_form_item" data-order='[[1, "asc"]]'>
+                            <thead>
+                                <tr>
+                                    <th data-priority="1">Item</th>
+                                    <th data-priority="2">SKU</th>
+                                    <th data-priority="1">Audit unit</th>
+                                    <th data-priority="2">Observed count</th>
+                                    <th data-priority="3" data-orderable="false" @(Model.IsStarted ? "hidden" : "")></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in Model.ProductList)
+                                {
+                                    <tr class="tr_@item.Product.Id">
+                                        <td class="td_name">
+                                            <input type="hidden" value="@item.Product.Id" />
+                                            <span>@item.Product.Name</span>
+                                        </td>
+                                        <td class="td_sku">
+                                            <input type="hidden" value="@item.Id" />
+                                            <span>@item.Product.SKU</span>
+                                        </td>
+                                        <td class="td_unit">
+                                            @if (Model.IsStarted == false)
+                                            {
+                                                <select class="form-control select-modal">
+                                                    @foreach (var unit in item.Product.Units)
+                                                    {
+                                                        if (unit.Id == item.AuditUnit.Id)
+                                                        {
+                                                            <option selected value="@unit.Id">@unit.Name</option>
+                                                        }
+                                                        else
+                                                        {
+                                                            <option value="@unit.Id">@unit.Name</option>
+                                                        }
+                                                    }
+                                                </select>
+                                            }
+                                            else
+                                            {
+                                                <select disabled class="form-control select-modal">
+                                                    @foreach (var unit in item.Product.Units)
+                                                    {
+                                                        if (unit.Id == item.AuditUnit.Id)
+                                                        {
+                                                            <option selected value="@unit.Id">@unit.Name</option>
+                                                        }
+                                                        else
+                                                        {
+                                                            <option value="@unit.Id">@unit.Name</option>
+                                                        }
+                                                    }
+                                                </select>
+                                            }
+                                        </td>
+                                        <td class="td_open_count">
+                                            @if (Model.IsStarted == true)
+                                            {
+                                                <input type="number" name="opening-1" class="form-control" disabled value="@item.OpeningCount">
+                                            }
+                                            else
+                                            {
+                                                <input type="number" name="opening-1" class="form-control" value="@item.OpeningCount">
+                                            }
+                                        </td>
+                                        <td class="td_button" @(Model.IsStarted ? "hidden" : "")>
+                                            <button type="button" onclick="removeRowItem('@item.Product.Id')" class="btn btn-danger"><i class="fa fa-trash"></i></button>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                        <br />
+                        <br />
+
+                        <a href="#audit-1" data-toggle="tab" onclick="$('a[href=#audit-1]').tab('show');" class="btn btn-warning btnPrevious"><i class="fa fa-angle-left"></i> &nbsp; Previous</a>
+                        @if (!Model.IsStarted)
+                        {
+                            <button id="start-audit-button" disabled type="button" class="btn btn-success" onclick="startAudit()">Start Audit</button>
+                        }
+
+                    </div>
+                    <!-- END Closing -->
+
+                </div>
+            </form>
+        </div>
+    </div><!-- /.modal-content -->
+</div><!-- /.modal-dialog -->
+
+<div class="modal fade" id="app-trader-workgroup-preview" role="dialog" aria-labelledby="app-trader-workgroup-preview">
+
+</div><!-- /.modal -->
+<script>
+
+    $('.btnNext').click(function () {
+        $('.modal .app_subnav > .active').next('li').find('a').trigger('click');
+    });
+
+    $('.btnPrevious').click(function () {
+        $('.modal .app_subnav > .active').prev('li').find('a').trigger('click');
+    });
+    $('#workgroup-select').select2({
+        placeholder: 'Please select'
+    });
+    //$('#item').select2({
+    //    placeholder: 'Please select'
+    //});
+    $('#tb_form_item tbody tr select').select2();
+    $('#tb_form_item').DataTable().draw();
+    WorkGroupSelectedChange();
+</script>
+
+
+

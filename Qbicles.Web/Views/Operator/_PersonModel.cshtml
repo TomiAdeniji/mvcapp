@@ -1,0 +1,151 @@
+﻿@using Qbicles.Models;
+@using Qbicles.BusinessRules
+@using System.Linq;
+@using Qbicles.Models.Operator;
+@using Qbicles.Models.Operator.Team
+@model TeamPerson
+@{
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var lstMembers = (List<ApplicationUser>)ViewBag.Members;
+    var lstLocations = (List<OperatorLocation>)ViewBag.Locations;
+    var lstRoles = (List<OperatorRole>)ViewBag.Roles;
+    if (Model != null)
+    {
+        var locationItems = Model.Locations.Where(l => !lstLocations.Any(s => s.Id == l.Id)).ToList();
+        if(locationItems != null && locationItems.Count() != 0)
+        {
+            lstLocations.AddRange(locationItems);
+            lstLocations = lstLocations.OrderBy(l => l.Name).ToList();
+        }
+
+        var roleItems = Model.Roles.Where(l => !lstRoles.Any(s => s.Id == l.Id)).ToList();
+        if (roleItems != null && roleItems.Count() != 0)
+        {
+            lstRoles.AddRange(roleItems);
+            lstRoles = lstRoles.OrderBy(l => l.Name).ToList();
+        }
+    }
+
+}
+<div class="modal-dialog" role="document">
+    <div class="modal-content">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <h5 class="modal-title">@(Model == null ? "Add a Person" : "Edit Person")</h5>
+        </div>
+        <div class="modal-body">
+
+            <div class="activity-overview generic help-text animated bounce" style="margin-bottom: 0;">
+                <i class="fa fa-info-circle"></i>
+                <p>
+                    Your staff must be existing Domain users in order to be added to Operator. Please ensure any people you wish to add are already
+                    present in your Domain.
+                </p>
+            </div>
+
+            <br />
+            <div class="well custom search_user">
+                <div class="form-group" style="margin: 0;">
+                    <label for="existing">Search Domain users</label>
+                    <input type="text" class="form-control"  placeholder="Search by name..." onkeyup="searchDomainUsers(this);">
+                </div>
+            </div>
+
+            <div class="existing-member" style="margin-top: 15px 0;">
+
+                <div class="contact-list-found" style="margin-bottom: 30px;">
+
+                    <ul class="widget-contacts">
+                        @{
+                            var i = 0;
+                            foreach (var item in lstMembers)
+                            {
+                                var fullname = HelperClass.GetFullNameOfUser(item);
+
+                                <li class="letters">@(item.Surname != null ? item.Surname[0].ToString().ToUpper() : "")</li>
+
+                                <li>
+                                    <a href="#" data-id="@item.Id" data-convertedid="@item.Id.Replace("-","")" data-avatar="@(api+item.ProfilePic + "&size=T")" data-fullname="@fullname" data-summary="@item.Profile"
+                                       data-email="@item.Email" data-tel="@item.Tell" onclick="detailPerson(this)">
+                                        <div class="contact-avatar">
+                                            <div style="background-image: url('@(api+item.ProfilePic + "&size=T")');">&nbsp;</div>
+                                        </div>
+                                        <div class="contact-info">
+                                            <h5>@(fullname)</h5>
+                                        </div>
+                                    </a>
+                                </li>
+                                i++;
+                            }
+                        }
+                    </ul>
+
+                </div>
+
+                <div class="contact-add" style="display: none;">
+                    <form id="frmOperatorTeamPerson" action="/Operator/SaveTeamPerson" method="post">
+                        <a href="#" class="btn btn-info" onclick="backToSearch()"><i class="fa fa-angle-left"></i> &nbsp; Back to search</a>
+
+                        <div class="activity-overview plain company-overview welcome-info" style="flex: none; margin: 0; padding-top: 15px;">
+                            <a href="app_community_vendor_profile.php">
+                                <div class="contact-avatar-profile">&nbsp;</div>
+                                <input type="hidden" name="memberId" value="0">
+                                <input type="hidden" name="id" value="@(Model != null? Model.Id: 0)">
+                                <h2></h2>
+                                <p></p>
+                            </a>
+
+                            <br />
+                            <div class="well custom text-left" style="padding-bottom: 5px;">
+                                <div class="row">
+                                    <div class="col-xs-12">
+                                        <div class="form-group">
+                                            <label for="Email">Email address</label>
+                                            <input type="email" name="email" class="form-control" value="" disabled>
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12">
+                                        <div class="form-group">
+                                            <label for="Tel">Tel</label>
+                                            <input type="text" name="tel" class="form-control" value="" disabled>
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12">
+                                        <div class="form-group">
+                                            <label for="role">Role(s)</label>
+                                            <select name="lstRoleIds" class="form-control checkmulti" multiple>
+                                                @foreach (var role in lstRoles)
+                                                {
+                                                    <option value="@role.Id" @(Model != null && Model.Roles.Any(r => r.Id == role.Id) ? "selected" : "")>@role.Name</option>
+                                                }
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12">
+                                        <div class="form-group">
+                                            <label for="role">Location(s)</label>
+                                            <select name="lstLocationIds" class="form-control checkmulti" multiple>
+                                                @foreach (var location in lstLocations)
+                                                {
+                                                    <option value="@location.Id" @(Model != null && Model.Locations.Any(r => r.Id == location.Id) ? "selected" : "")>@location.Name</option>
+                                                }
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <br />
+                            <button class="btn btn-success community-button"><i class="fa fa-check"></i> &nbsp; Add to Operator</button>
+
+                        </div>
+
+                    </form>
+
+                </div>
+
+            </div>
+
+        </div>
+    </div><!-- /.modal-content -->
+</div><!-- /.modal-dialog -->

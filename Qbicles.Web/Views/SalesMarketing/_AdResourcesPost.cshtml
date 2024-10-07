@@ -1,0 +1,118 @@
+﻿@using Qbicles.Models;
+@using Qbicles.BusinessRules;
+@model List<QbicleMedia>
+@{
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var videoApi = ViewBag.VideoRetrievalUrl;
+    var videoScreenshotApi = ViewBag.VideoRetrievalScreenshotUrl;
+    var advimage = ViewBag.advimage;
+    var mediaIdInit = "";
+}
+@foreach (var media in Model)
+{
+    var mediaLastUpdate = media.VersionedFiles.Where(e => !e.IsDeleted).OrderByDescending(x => x.UploadedDate).FirstOrDefault();
+    var isVideo = mediaLastUpdate != null && mediaLastUpdate.FileType.Type == "Video File";
+    if (mediaLastUpdate == null) { continue; }
+    if (mediaLastUpdate.Uri == advimage)
+    {
+        mediaIdInit = media.Id.ToString();
+    }
+
+    <div id="rs-ad-@media.Id" class="col other-ad">
+
+        <a href="javascript:void(0);" class="article-feature">
+            @{
+                if (media.FileType.Type.Equals("Video File", StringComparison.OrdinalIgnoreCase))
+                {
+                    var mediaUri = string.Format(videoApi, mediaLastUpdate.Uri, "mediaVideo");
+                    var thumb = @videoScreenshotApi + @mediaLastUpdate.Uri;
+                    <div href="#embed-@media.Id" data-fancybox class="article-feature-img image-pop" style="background: url('@videoScreenshotApi@mediaLastUpdate.Uri');"></div>
+
+                    <div class="info" style="padding: 30px 0 15px 0;">
+                        <h1 style="margin: 0; padding: 0 20px 5px 20px;">@media.Name</h1>
+                        <p>@Utility.GetFileTypeDescription(media.FileType.Extension)</p>
+
+                        <div style="padding: 0 20px;">
+                            <button type="button" class="btn btn-info community-button usetheme-ad@(media.Id)"
+                                    onclick="chooseAdMediaAdd(this, @(media.Id), '@mediaUri', true, true,'@thumb')">
+                                <i class="fa fa-check"></i> &nbsp; Use this
+                            </button>
+
+                            <button type="button" class="btn btn-warning community-button change-ad@(media.Id)" style="display: none;"
+                                    onclick="chooseAdMediaAdd(this, @(media.Id), '#', false, true,'@thumb')">
+                                <i class="fa fa-pencil"></i> &nbsp; Change
+                            </button>
+                        </div>
+                    </div>
+
+
+                    <video width="640" height="320" controls="" id="embed-@media.Id" style="display: none;" class="fancybox-video">
+                        <source src="@string.Format(videoApi, mediaLastUpdate.Uri, "mp4")" type="video/mp4">
+                        <source src="@string.Format(videoApi, mediaLastUpdate.Uri, "webm")" type="video/webm">
+                        <source src="@string.Format(videoApi, mediaLastUpdate.Uri, "ogv")" type="video/ogv">
+                    </video>
+                }
+                else
+                {
+                    string src;
+                    if (media.FileType.Type.Equals("Image File", StringComparison.OrdinalIgnoreCase))
+                    {
+                        src = mediaLastUpdate.Uri;
+                    }
+                    else
+                    {
+                        src = media.FileType.IconPath;
+                    }
+                    <div class="article-feature-img" style="background: url('@api@src&size=S');"></div>
+                    <div class="info" style="padding: 30px 0 15px 0;">
+                        <h1 style="margin: 0; padding: 0 20px 5px 20px;">@media.Name</h1>
+                        <p>@Utility.GetFileTypeDescription(media.FileType.Extension)</p>
+
+                        <div style="padding: 0 20px;">
+                            <button type="button" class="btn btn-info community-button usetheme-ad@(media.Id)"
+                                    onclick="chooseAdMediaAdd(this, @(media.Id), '@api@src', true, false)">
+                                <i class="fa fa-check"></i> &nbsp; Use this
+                            </button>
+
+                            <button type="button" class="btn btn-warning community-button change-ad@(media.Id)" style="display: none;"
+                                    onclick="chooseAdMediaAdd(this, @(media.Id), '#', false, false)">
+                                <i class="fa fa-pencil"></i> &nbsp; Change
+                            </button>
+                        </div>
+                    </div>
+                }
+            }
+        </a>
+
+
+
+
+
+    </div>
+}
+
+<script>
+    $(document).ready(function () {
+        if (jQuery().fancybox) {
+            $(".image-pop").fancybox({
+                beforeLoad: function () {
+                    var el, id = $(this.element).data('title-id');
+
+                    if (id) {
+                        el = $('#' + id);
+
+                        if (el.length) {
+                            this.title = el.html();
+                        }
+                    }
+                },
+                padding: 0
+            });
+        }
+        @if (!string.IsNullOrEmpty(mediaIdInit))
+        {
+            @Html.Raw("$('#Choose-campaign-resource-ad .usetheme-ad" + mediaIdInit + "').click();\n");
+        }
+    });
+
+</script>

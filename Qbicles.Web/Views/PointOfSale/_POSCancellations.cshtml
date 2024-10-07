@@ -1,0 +1,170 @@
+﻿@using Qbicles.Models
+@using Qbicles.BusinessRules
+@using Qbicles.Models.Trader;
+@using Qbicles.Models.Trader.SalesChannel;
+@using Qbicles.Models.Trader.ODS;
+@using System.Diagnostics
+@{
+    var fromDateTime = ViewBag.FromDatetime;
+    var toDateTime = ViewBag.ToDateTime;
+    var users = (List<UserModel>)ViewBag.Users;
+
+    //Export
+    var createdDate = DateTime.Now;
+    var timeZone = (string)ViewBag.CurrentTimeZone ?? "";
+    var user = (Qbicles.Models.ApplicationUser)ViewBag.CurrentUser;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+    var defaultLocation = (Qbicles.Models.Trader.TraderLocation)ViewBag.DefaultLocation;
+    var logoBase64 = (string)ViewBag.DomainLogoBase64;
+}
+<div>
+    <input type="hidden" id="fromDateTime" value="@fromDateTime">
+    <input type="hidden" id="toDateTime" value="@toDateTime">
+
+    <div class="well custom" style="padding-bottom: 5px;">
+        <div class="row">
+            <div class="col-xs-12 col-sm-3">
+                <div class="form-group">
+                    <label for="search">Search</label>
+                    <input id="order-cancel-search-text" type="text" class="form-control">
+                </div>
+            </div>
+            <div class="col-xs-12 col-sm-3">
+                <label for="dr">Date range</label>
+                <div class="input-group">
+                    <input value="" type="text" name="datefilter" id="order-cancel-datetimerange" class="form-control" placeholder="Choose a range">
+                    <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                </div>
+            </div>
+            <div class="col-xs-12 col-sm-3">
+                <div class="form-group">
+                    <label for="search">Cashier</label>
+                    <select id="order-cancel-cashier" name="cashier" class="form-control checkmulti" multiple style="width: 100%; display:none;">
+                        @foreach (var u in users)
+                        {
+                            <option value="@u.Id" selected>@u.UserName</option>
+                        }
+                    </select>
+                </div>
+            </div>
+            <div class="col-xs-12 col-sm-3">
+                <div class="form-group">
+                    <label for="search">Manager</label>
+                    <select id="order-cancel-manager" name="manager" class="form-control checkmulti" multiple style="width: 100%; display: none; ">
+                        @foreach (var u in users)
+                        {
+                            <option value="@u.Id" selected>@u.UserName</option>
+                        }
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!--begin::Hide default export buttons-->
+    <div id="kt_datatable_example_buttons" style="display: none;"></div>
+    <!--end::Hide default export buttons-->
+    <br />
+
+    <!-- Options -->
+    <div class="col-lg-12" style="padding: 0 30px 0;">
+        <div class="form-group" style="margin-bottom: -25px;
+                                     position: relative;
+                                     width: 100%;
+                                     float: right;">
+            <!-- Export -->
+            <div class="btn-group options" style="float: right;">
+                <button type="button" class="btn btn-warning dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    <i class="fa fa-download"></i> &nbsp; Export
+                </button>
+                <div class="dropdown-menu dropdown-menu-right" id="kt_datatable_example_export_menu" aria-labelledby="dropdownMenuButton" style="background-color: #a37a41;">
+                    <li>
+                        <a class="dropdown-item data-qb-excel" href="javascript:void(0)" onclick="GetDataTableContentExport()">Excel</a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item data-qb-csv" href="javascript:void(0)" onclick="GetDataTableContentExport(2)">CSV</a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item data-qb-pdf" href="javascript:void(0)" onclick="GetDataTableContentExport(3)">PDF</a>
+                    </li>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Table -->
+    <table class="datatable table-striped table-hover" id="order-cancel-table" style="width: 100%;">
+        <thead>
+            <tr>
+                <th>Order ref</th>
+                <th>Date</th>
+                <th>Sales channel</th>
+                <th data-orderable="false">Reason</th>
+                <th>Cancelled by</th>
+                <th>Cashier</th>
+                <th>Customer</th>
+                <th data-orderable="false">Items</th>
+                <th data-orderable="false">PDS orders</th>
+                <th data-orderable="false">Options</th>
+            </tr>
+        </thead>
+        <tbody>
+        </tbody>
+    </table>
+
+    <div class="modal fade left" id="cancel-order-item" role="dialog" aria-labelledby="cancel-order-item"></div>
+    <div class="modal fade left" id="create-cancellation-discussion-pos" role="dialog" aria-labelledby="create-cancellation-discussion-pos"></div>
+</div>
+
+@{
+
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/pos.cancellations.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/pos.cancellations.js"></script>
+    }
+}
+
+<script>
+    LoadDataOrderCancellationServerSide();
+
+    // ----------------------------------------
+    //         EXPORT FUNCTIONALITY
+    // ----------------------------------------
+    function GetDataTableContentExport(exportType = 1) {
+        $.LoadingOverlay("show");
+
+        //Get table params
+        var params = $('#order-cancel-table').DataTable().ajax.params();
+        console.log(params, "params");
+
+        //init params
+        var _parameter = {
+            ...params,
+            "export": exportType
+        };
+
+        $.ajax({
+            type: 'POST',
+            url: '/Report/GetPosCancellationTableContentExport',
+            dataType: 'json',
+            data: _parameter,
+            success: function (response) {
+                if (response.result == true) {
+                    console.log(response, 'response');
+                    window.location.href = response.Object;
+                    cleanBookNotification.success("Export downloaded successfully!", "Qbicles");
+                }
+                $.LoadingOverlay("hide");
+            },
+            error: function (err) {
+                console.log(err, 'error');
+                $.LoadingOverlay("hide");
+            }
+        });
+    }
+
+</script>

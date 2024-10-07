@@ -1,0 +1,704 @@
+﻿@using Qbicles.BusinessRules
+@using Qbicles.Models
+@using Qbicles.Models.Trader
+@model Invoice
+@{
+    ViewBag.Title = "Invoice #" + Model.Reference?.FullRef ?? Model.Id.ToString();
+
+    var timeZone = (string)ViewBag.CurrentTimeZone ?? "";
+
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var imgTop = (string)ViewBag.imgTop;
+    var imgBottom = (string)ViewBag.imgBottom;
+
+    var pageSize = HelperClass.activitiesPageSize;
+
+    var userId = ViewBag.CurrentUserId;
+
+    var userRight = "";
+
+    var type = CashAccountTransactionTypeEnum.Transfer;
+    if (Model.Sale != null)
+    {
+        type = CashAccountTransactionTypeEnum.PaymentIn;
+    }
+    else if (Model.Purchase != null)
+    {
+        type = CashAccountTransactionTypeEnum.PaymentIn;
+    }
+
+
+    var cursorChange = "default";
+    var isChange = "";
+    var isDisplayPayment = "hidden";
+    if (userRight == "initiator" || userRight == "none")
+    {
+        cursorChange = "not-allowed";
+        isChange = "disabled";
+    }
+    if (Model.Status != TraderInvoiceStatusEnum.InvoiceApproved && Model.Status != TraderInvoiceStatusEnum.InvoiceIssued)
+    {
+        cursorChange = "not-allowed";
+        isChange = "disabled";
+    }
+    if (Model.Status == TraderInvoiceStatusEnum.InvoiceApproved || Model.Status == TraderInvoiceStatusEnum.InvoiceIssued)
+    {
+        isDisplayPayment = "";
+    }
+
+    var invoiceTotal = (decimal)ViewBag.InvoiceTotal;
+    var invoiceSaleTax = (decimal)ViewBag.InvoiceSaleTax;
+    var subtotal = (decimal)ViewBag.SubTotal;
+
+
+    //permission
+    var invoiceIssued = "Yes";
+    var invoiceFor = "";
+    if (string.IsNullOrEmpty(Model.InvoicePDF))
+    {
+        invoiceIssued = "No";
+    }
+
+
+    var today = (DateTime)ViewBag.Today;
+    var timeline = (List<ApprovalStatusTimeline>)ViewBag.Timeline;
+    var timelineDate = (List<DateTime>)ViewBag.TimelineDate;
+    var dateFormat = (string)ViewBag.CurrentDateFormat;
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+}
+<style>
+    .dataTables_filter {
+        display: none;
+    }
+
+    .invoice_list {
+        width: 100% !important;
+    }
+</style>
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail" id="discussion-thread">
+
+    <input hidden="" id="invoice-id" value="@Model.Id" />
+    <input hidden="" id="invoice-key" value="@Model.Key" />
+    <!-- Main content -->
+    <section class="content">
+
+        <div class="row">
+            <div class="col-xs-12 item_detail" style="padding-left: 15px;">
+
+                <br /><br />
+
+                <div class="mod_title">
+                    @if (Model.Sale != null)
+                    {
+                        <h5>Trader Sale #@Model.Sale.Id</h5>
+                        if (Model.Reference != null)
+                        {
+                            <h4>@Model.Reference.FullRef</h4>
+                        }
+
+                    }
+                    else
+                    {
+                        <h5>Trader Purchase #@Model.Purchase.Id</h5>
+                        if (Model.Reference != null)
+                        {
+                            <h4>@Model.Reference.FullRef</h4>
+                        }
+                    }
+                    @{
+                        var cssTrader = "";
+                        switch (Model.Status)
+                        {
+                            case TraderInvoiceStatusEnum.Draft:
+                                break;
+                            case TraderInvoiceStatusEnum.PendingReview:
+                                cssTrader = StatusLabelStyle.Pending;
+                                break;
+                            case TraderInvoiceStatusEnum.PendingApproval:
+                                cssTrader = StatusLabelStyle.Reviewed;
+                                break;
+                            case TraderInvoiceStatusEnum.InvoiceDenied:
+                                cssTrader = StatusLabelStyle.Denied;
+                                break;
+                            case TraderInvoiceStatusEnum.InvoiceApproved:
+                                cssTrader = StatusLabelStyle.Approved;
+                                break;
+                            case TraderInvoiceStatusEnum.InvoiceDiscarded:
+                                cssTrader = StatusLabelStyle.Discarded;
+                                break;
+                        }
+                    }
+                    <span class="label label-lg @cssTrader">@Model.Status.GetDescription()</span>
+                </div>
+                <br />
+
+                <div class="row">
+                    <div class="col-xs-12">
+                        <div class="app_filter">
+                            <div class="row">
+                                <div class="col-xs-12">
+
+                                    <div class="form-group" style="margin: 0;">
+                                        @{
+                                            if (Model.Sale != null)
+                                            {
+                                                <a href="/TraderSales/SaleMaster?key=@Model.Sale.Key" class="btn btn-info"><i class="fa fa-dollar"></i> &nbsp; View Sale</a>
+                                            }
+                                            else if (Model.Purchase != null)
+                                            {
+                                                <a href="/TraderPurchases/PurchaseMaster?id=@Model.Purchase.Id" class="btn btn-info"><i class="fa fa-shopping-cart"></i> &nbsp; View Purchase</a>
+                                            }
+                                        }
+                                        @{
+                                            if (Model.Status == TraderInvoiceStatusEnum.InvoiceApproved || Model.Status == TraderInvoiceStatusEnum.InvoiceIssued)
+                                            {
+                                                <div class="btn-group options">
+                                                    <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                                        Options &nbsp; <i class="fa fa-angle-down"></i>
+                                                    </button>
+                                                    <ul class="dropdown-menu primary">
+                                                        <li style="cursor: @cursorChange"><a class="@isChange" href="javascript:void(IssueInvoice(@Model.Id))">Issue Invoice</a></li>
+                                                        <li id="download-1"><a id="download-3" href="javascript:void(DownloadInvoice(@Model.Id))">Download</a></li>
+                                                    </ul>
+                                                </div>
+                                            }
+                                        }
+
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+            <div class="col-xs-12">
+
+
+                <br /><br />
+
+
+                <div class="row">
+                    <div class="col-xs-12">
+
+                        <div class="app_upper_dash text-center">
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-6 col-lg-4">
+                                    <div class="stat_label">
+                                        <span>Issued</span>
+                                        <h3 id="invoice-issue">@invoiceIssued</h3>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-sm-6 col-lg-4">
+                                    <div class="stat_label">
+                                        <span>For</span>
+                                        <h3>
+                                            @{
+                                                if (Model.Sale != null && Model.Sale.Reference != null)
+                                                {
+                                                    invoiceFor = $"{Model.Sale.Reference.FullRef}";
+                                                }
+                                                else if (Model.Purchase != null)
+                                                {
+                                                    invoiceFor = $"{Model.Purchase.Reference.FullRef}";
+                                                }
+                                            }
+                                            @invoiceFor
+                                        </h3>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 col-lg-4">
+                                    <div class="stat_label" style="padding-bottom: 10px;">
+                                        <span>Due</span>
+                                        <h3>@Model.DueDate.ConvertTimeFromUtc(timeZone).ToString("dd.MM.yyyy")</h3>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <ul class="app_subnav">
+                                    <li class="active"><a href="#overview" data-toggle="tab">Overview</a></li>
+                                    <li><a href="#items" data-toggle="tab">Items &amp; Products</a></li>
+                                    <li class="@isDisplayPayment"><a href="#invoice-payments" data-toggle="tab" id="payment-tab">Payments</a></li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <br /><br />
+
+
+                        <div class="tab-content">
+
+                            <!-- Invoices -->
+                            <div class="tab-pane fade in active" id="overview">
+                                @if (Model.Status == TraderInvoiceStatusEnum.InvoiceApproved || Model.Status == TraderInvoiceStatusEnum.InvoiceIssued)
+                                {
+                                    <div class="activity-overview task" style="display: inline-block; padding: 20px;">
+                                        <div class="row">
+                                            <div class="col-xs-12">
+
+                                                <div class="flex-avatar">
+                                                    <div class="col-thumb" style="flex: 0 0 80px;">
+                                                        <img src="~/Content/DesignStyle/img/icon_file_pdf.png" class="img-circle img-responsive" />
+                                                    </div>
+
+                                                    <div class="col @isDisplayPayment">
+                                                        <h5 style="font-family: 'Roboto'; margin-top: 0;">Invoice options</h5>
+                                                        <button class="btn btn-success" onclick="AddInvoicePayment(@Model.Id, '@type')"><i class="fa fa-plus"></i> &nbsp; Add payment</button>
+                                                        <button onclick="javascript: void (IssueInvoice(@Model.Id));" class="btn btn-primary"><i class="fa fa-mail-forward"></i> &nbsp; Issue</button>
+                                                        <button id="download-2" onclick="javascript: void (DownloadInvoice(@Model.Id));" class="btn btn-info"><i class="fa fa-download"></i> &nbsp; Download</button>
+
+                                                    </div>
+
+
+                                                </div>
+
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <br />
+                                    <br />
+                                }
+
+                                <div class="row">
+                                    <div class="col-xs-12 col-md-8">
+                                        <div class="invoice" id="invoice-preview">
+
+
+                                            <div class="card">
+                                                <div class="card-body p-0" style="position: relative;">
+                                                    <div class="row p-5">
+                                                        <div class="col-md-6">
+                                                            <img id="invoice-image-top" src="@api@(imgTop)&size=M" style="width: 250px; height: auto;">
+                                                        </div>
+
+                                                        <div class="col-md-6 text-right">
+                                                            @if (Model.Reference != null)
+                                                            {
+                                                                <p class="font-weight-bold mb-1">@Model.Reference.FullRef</p>
+                                                            }
+                                                            <p class="text-muted">Due: @Model.DueDate.ConvertTimeFromUtc(timeZone).ToString("dd MM, yyyy")</p>
+
+                                                            <p class="text-muted" style="font-size: 12px;">
+                                                                @if (Model.InvoiceAddress != null)
+                                                                {
+                                                                    @Html.Raw(Model.InvoiceAddress.Replace(Environment.NewLine, "<br />").Replace("\n", "<br />"))
+                                                                }
+                                                            </p>
+                                                        </div>
+                                                    </div>
+
+                                                    <hr class="my-2">
+
+                                                    <div class="row pb-5 p-5">
+                                                        <div class="col-md-6">
+                                                            <p class="font-weight-bold mb-4">Client Information</p>
+                                                            @if (Model.Sale != null && Model.Sale.Purchaser != null)
+                                                            {
+                                                                <p class="mb-1">@Model.Sale.Purchaser.Name</p><br />
+                                                                <p>
+                                                                    @Html.Raw(Model.Sale?.Purchaser?.Address.ToAddress().Replace(",", "<br />"))
+                                                                </p>
+                                                            }
+                                                            else if (Model.Purchase != null && Model.Purchase.Vendor != null)
+                                                            {
+                                                                <p class="mb-1">@Model.Purchase.Vendor.Name</p><br />
+                                                                <p>
+                                                                    @Html.Raw(Model.Purchase?.Vendor.Address.ToAddress().Replace(",", "<br />"))
+                                                                </p>
+                                                            }
+                                                        </div>
+
+                                                        <div class="col-md-6 text-right">
+                                                            <p class="font-weight-bold mb-4">Payment Details</p>
+                                                            <p class="mb-1">
+                                                                @if (!string.IsNullOrEmpty(Model.PaymentDetails))
+                                                                {
+                                                                    @Html.Raw(Model.PaymentDetails.Replace(Environment.NewLine, "<br />").Replace("\n", "<br />"))
+                                                                }
+                                                            </p>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="row p-5">
+                                                        <div class="col-md-12">
+                                                            <div class="">
+                                                                <table class="table">
+                                                                    <thead>
+                                                                        <tr>
+                                                                            <th data-priority="1">Item</th>
+                                                                            <th data-priority="1">Invoice qty</th>
+                                                                            <th data-priority="1">Unit</th>
+                                                                            <th data-priority="1">Invoice discount (@currencySettings.CurrencySymbol)</th>
+                                                                            <th data-priority="1">Invoice tax <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                                                            <th data-priority="1">Invoice Total <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                                                        </tr>
+                                                                    </thead>
+                                                                    <tbody>
+                                                                        @foreach (var inv in Model.InvoiceItems)
+                                                                        {
+                                                                            string taxrateName = "(Tax free)";
+                                                                            var traderItem = inv.TransactionItem.TraderItem;
+                                                                            if (inv.TransactionItem.Taxes != null)
+                                                                            {
+                                                                                var priceIvi = (inv.TransactionItem.SalePricePerUnit * inv.InvoiceItemQuantity) - inv.InvoiceDiscountValue;
+                                                                                taxrateName = priceIvi.InvoiceTaxRatesHtml(inv.TransactionItem.Taxes, currencySettings);
+                                                                            }
+                                                                            <tr>
+                                                                                <td>@traderItem.Name</td>
+                                                                                <td>@inv.InvoiceItemQuantity.ToDecimalPlace(currencySettings)</td>
+                                                                                <td>@Html.Raw(inv.TransactionItem?.Unit?.Name)</td> @*unit*@
+                                                                                <td>@inv.InvoiceDiscountValue.ToDecimalPlace(currencySettings)</td> @*discount*@
+                                                                                <td>@Html.Raw(taxrateName)</td> @*tax*@
+                                                                                <td>@inv.InvoiceValue.ToDecimalPlace(currencySettings)</td>
+                                                                                @*total*@
+                                                                            </tr>
+                                                                        }
+                                                                    </tbody>
+                                                                </table>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="d-flex flex-row-reverse bg-dark text-white p-5">
+
+
+                                                        <div class="py-3 px-5 text-right">
+                                                            <div class="mb-2">Total</div>
+                                                            <div class="h2 font-weight-light">@invoiceTotal.ToCurrencySymbol(currencySettings)</div>
+                                                        </div>
+                                                        <div class="py-3 px-5 text-right">
+                                                            <div class="mb-2">Sales tax</div>
+                                                            <div class="h2 font-weight-light">@invoiceSaleTax.ToCurrencySymbol(currencySettings)</div>
+                                                        </div>
+                                                        <div class="py-3 px-5 text-right">
+                                                            <div class="mb-2">Subtotal</div>
+                                                            <div class="h2 font-weight-light">@subtotal.ToCurrencySymbol(currencySettings)</div>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="row p-5">
+                                                        <div class="col-md-6">
+                                                            <img id="invoice-image-bottom" src="@api@(imgBottom)&size=T" style="width: 80px; height: auto;">
+                                                        </div>
+
+                                                        <div class="col-md-6 text-right">
+                                                            <p class="text-muted">Powered by @HelperClass.GetFullNameOfUser(Model.CreatedBy)</p>
+
+                                                            <p class="text-muted" style="font-size: 12px;">
+                                                                Strapline information or copyright notices here
+                                                            </p>
+                                                        </div>
+                                                    </div>
+
+                                                </div>
+                                            </div>
+
+
+                                        </div> <!-- ./invoice -->
+                                    </div>
+                                    <div class="col-xs-12 col-sm-4">
+
+                                        <h5>History</h5>
+                                        <br />
+
+
+                                        <ul class="timeline">
+
+                                            @foreach (var date in timelineDate)
+                                            {
+                                                var dateStart = @HelperClass.DatetimeToOrdinal(date);
+                                                var dateStr = date.Date == today.Date ? "Today" : dateStart;
+
+                                                <li class="time-label">
+                                                    <span class="label label-lg label-primary">
+                                                        @dateStr
+                                                    </span>
+                                                </li>
+                                                foreach (var tl in timeline.Where(d => d.LogDate.Date == date.Date))
+                                                {
+                                                    <li>
+                                                        @*<i class="@tl.UserAvatar"></i>*@
+                                                        <div class="person" style="background-image: url('@api@tl.UserAvatar');"></div>
+                                                        <div class="timeline-item">
+                                                            <span class="time"><i class="fa fa-clock-o"></i> @tl.Time</span>
+                                                            <h4 class="timeline-header">@tl.Status</h4>
+                                                        </div>
+                                                    </li>
+                                                }
+                                                <br />
+                                            }
+
+                                        </ul>
+
+
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- END Invoices -->
+                            <!-- Items & Products -->
+                            <div class="tab-pane fade" id="items">
+
+                                <table class="datatable table-striped table-hover" style="width: 100%;" data-order='[[1, "asc"]]'>
+                                    <thead>
+                                        <tr>
+                                            <th data-priority="5" style="width: 60px;" data-orderable="false"></th>
+                                            <th data-priority="1">Item</th>
+                                            <th data-priority="1">Unit</th>
+                                            <th data-priority="1">Price per unit <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                            <th data-priority="2">Qty</th>
+                                            <th data-priority="3">Discount</th>
+                                            <th data-priority="2">Total item tax <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                            <th data-priority="2">Sale value <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                            <th data-priority="3">Invoice qty</th>
+                                            <th data-priority="3">Invoice tax <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                            <th data-priority="3">Invoice discount (@currencySettings.CurrencySymbol)</th>
+                                            <th data-priority="3">Invoice value <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @if (Model.InvoiceItems.Any())
+                                        {
+                                            foreach (var item in Model.InvoiceItems)
+                                            {
+                                                string taxrateName = "(Tax free)";
+                                                decimal taxRate = 0;
+                                                if (item.TransactionItem.Taxes != null)
+                                                {
+                                                    taxRate = item.TransactionItem.SumTaxRates();
+                                                    taxrateName = item.TransactionItem.HtmlTaxRates(currencySettings);
+
+                                                }
+                                                <tr>
+                                                    <td>
+                                                        <div class="table-avatar mini" style="background-image: url('@api@item.TransactionItem.TraderItem.ImageUri');">&nbsp;</div>
+                                                    </td>
+                                                    <td>@item.TransactionItem.TraderItem.Name</td>
+                                                    <td>
+                                                        @if (item.TransactionItem.Unit != null)
+                                                        {
+                                                            @item.TransactionItem.Unit.Name
+                                                        }
+                                                    </td>
+                                                    <td>@item.TransactionItem.SalePricePerUnit.ToDecimalPlace(currencySettings)</td>
+                                                    <td>@item.TransactionItem.Quantity.ToDecimalPlace(currencySettings)</td>
+                                                    <td>
+                                                        <span>@item.TransactionItem.Discount.ToDecimalPlace(currencySettings)</span>%
+                                                    </td>
+                                                    <td>
+                                                        <span hidden="" class="taxrate_value_@item.Id">@taxRate</span>
+                                                        @Html.Raw(taxrateName)
+                                                    </td>
+                                                    <td>
+                                                        <span>@item.TransactionItem.Price.ToDecimalPlace(currencySettings)</span>
+                                                    </td>
+                                                    <td>
+                                                        @item.InvoiceItemQuantity
+                                                    </td>
+                                                    <td>
+                                                        @(item.InvoiceTaxValue.HasValue ? (item.InvoiceTaxValue.Value * item.InvoiceItemQuantity).ToDecimalPlace(currencySettings) : ((decimal)0).ToDecimalPlace(currencySettings))
+                                                    </td>
+                                                    <td>@item.InvoiceDiscountValue.ToDecimalPlace(currencySettings)</td>
+                                                    <td>@item.InvoiceValue.ToDecimalPlace(currencySettings)</td>
+                                                </tr>
+                                            }
+                                        }
+                                    </tbody>
+                                </table>
+
+                            </div>
+                            <!-- END Items & Products -->
+                            <!-- Payment history -->
+                            <div class="tab-pane fade @isDisplayPayment" id="invoice-payments">
+
+                                @{Html.RenderAction("InvoicePaymentContent", "TraderPayments", new { id = Model.Id });}
+
+                            </div>
+                            <!-- END Payment history -->
+
+
+                        </div> <!-- ./tab-content -->
+                    </div>
+
+                </div>
+
+
+
+                <br /><br />
+
+                @* comment and media*@
+                @{
+                    if (Model.InvoiceApprovalProcess != null)
+                    {
+                        <div class="app_topnav entity_adds" style="background: #fff; padding: 0;">
+                            <ul class="nav nav-pills app_main_nav">
+                                <li role="presentation" class="active">
+                                    <a href="#tab1" data-toggle="tab">
+                                        <i class="fa fa-comments"></i>
+                                        Comments
+                                    </a>
+                                </li>
+                                <li role="presentation">
+                                    <a href="#tab2" data-toggle="tab">
+                                        <i class="fa fa-folder-open"></i>
+                                        Files
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+                        <br />
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <div class="tab-content">
+                                    <div class="tab-pane fade in active" id="tab1">
+                                        <div class="row">
+                                            <div class="col-xs-12">
+                                                <div class="well" style="max-width: 800px;">
+                                                    <div class="form-group">
+                                                        <label for="add-comment">Add a comment</label>
+                                                        <textarea id="txt-comment-approval" name="add-comment" class="form-control"></textarea>
+                                                    </div>
+                                                    <button onclick="addCommentForApproval('@(Model.InvoiceApprovalProcess?.Key ?? "")')" class="btn btn-success">Submit</button>
+                                                </div>
+                                                <br />
+                                            </div>
+                                        </div>
+                                        <div id="list-comments-approval">
+                                            @foreach (var post in Model.InvoiceApprovalProcess.Posts.OrderByDescending(x => x.StartedDate).Take(pageSize))
+                                            {
+
+                                                <!-- General post -->
+                                                var fullName = HelperClass.GetFullNameOfUser(post.CreatedBy, userId);
+                                                <article id="post-@post.Id" class="activity post">
+                                                    <img style="background-image: url('@api@(post.CreatedBy.ProfilePic)&size=T')" class="activity-avatar" />
+                                                    <div class="activity-detail">
+                                                        <div class="activity-meta">
+                                                            <h4>@fullName</h4>
+                                                            <small>@post.StartedDate.ConvertTimeFromUtc(timeZone).ToString(dateFormat + ", hh:mmtt")</small>
+                                                        </div>
+                                                        <div class="activity-overview media-comment">
+                                                            <p>
+                                                                @Html.Raw(post.Message.Replace(Environment.NewLine, "<br />"))
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    <div class="clearfix"></div>
+                                                </article>
+                                                <!-- END General post -->
+                                            }
+                                        </div>
+                                        @if (Model.InvoiceApprovalProcess.Posts.Count() > pageSize)
+                                        {
+                                            <button id="btnLoadPosts" onclick="LoadMorePosts('@Model.InvoiceApprovalProcess.Key', @pageSize,'list-comments-approval')" class="btn btn-info trigger_load">Load older posts</button>
+                                        }
+                                    </div>
+
+                                    <div class="tab-pane fade" id="tab2">
+                                        <br />
+                                        <a href="javascript:void(0)" class="btn btn-success" id="btnAddFile" data-toggle="modal" data-target="#create-media"><i class="fa fa-upload"></i> &nbsp; Upload a file</a>
+
+                                        <br /><br />
+                                        <div id="list-medias">
+                                            @if (Model.InvoiceApprovalProcess.SubActivities.Count > 0)
+                                            {
+                                                foreach (var item in Model.InvoiceApprovalProcess.SubActivities.OrderByDescending(x => x.Id).Take(pageSize))
+                                                {
+                                                    var media = (QbicleMedia)item;
+                                                    var createdByName = HelperClass.GetFullNameOfUser(media.StartedBy, userId);
+                                                    var createdDate = media.StartedDate.Date == DateTime.UtcNow.Date ? "Today, " + media.StartedDate.ConvertTimeFromUtc(timeZone).ToString("hh:mmtt").ToLower() : media.StartedDate.ConvertTimeFromUtc(timeZone).ToString(dateFormat + " hh:mmtt").ToLower();
+                                                    var mediaLastupdate = media.VersionedFiles.Where(e => !e.IsDeleted).OrderByDescending(x => x.UploadedDate).First() ?? null;
+                                                    var lastUpdateFile = mediaLastupdate != null ? (mediaLastupdate.UploadedDate.ConvertTimeFromUtc(timeZone).Date == DateTime.UtcNow.Date ? "Today, " + mediaLastupdate.UploadedDate.ConvertTimeFromUtc(timeZone).ToString("hh:mmtt").ToLower() : mediaLastupdate.UploadedDate.ConvertTimeFromUtc(timeZone).ToString(dateFormat + " hh:mmtt").ToLower()) : createdDate;
+                                                    //Media post
+                                                    <article class="activity media">
+                                                        <img style="background-image: url('@api@media.StartedBy.ProfilePic&size=T')" class="activity-avatar" />
+                                                        <div class="activity-detail">
+                                                            <div class="activity-meta">
+                                                                <h4>@createdByName</h4>
+                                                                <small>@createdDate</small>
+                                                                <br class="visible-xs">
+                                                            </div>
+                                                            <div class="activity-overview media">
+                                                                <div class="row">
+                                                                    <div class="col-xs-12 col-sm-5 col-md-6 col-lg-5">
+                                                                        <a href="javascript:void(0)" onclick="ShowMediaPage('@media.Key')">
+                                                                            @if (media.FileType.Type == "Image File")
+                                                                            {
+                                                                                <img id="media-@item.Id" class="img-responsive" src='@api@mediaLastupdate.Uri' />
+                                                                            }
+                                                                            else
+                                                                            {
+                                                                                <img src="@media.FileType.IconPath" class="img-responsive">
+                                                                            }
+                                                                        </a>
+                                                                    </div>
+                                                                    <div class="col-xs-12 col-sm-7 col-md-6 col-lg-7 description">
+                                                                        <h5>@media.Name</h5>
+                                                                        <p>
+                                                                            @media.Description
+                                                                        </p>
+                                                                        <small>@media.FileType.Type | Update @lastUpdateFile</small>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div class="clearfix"></div>
+                                                    </article>
+                                                    <!-- END Media post -->
+                                                }
+                                            }
+                                        </div>
+                                        @if (Model.InvoiceApprovalProcess.SubActivities.Count() > pageSize)
+                                        {
+                                            <button id="btnLoadMedias" onclick="LoadMoreMedias(@Model.InvoiceApprovalProcess.Id,@pageSize,'list-medias')" class="btn btn-info trigger_load">Load older medias</button>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                }
+
+
+
+
+
+
+            </div>
+        </div>
+    </section>
+    <!-- ./content -->
+
+</div>
+<!-- /.content-wrapper -->
+@{
+    Html.RenderAction("GenerateModalMedia", "Qbicles");
+}
+<!-- /.modal -->
+<div class="modal fade left" id="app-trader-invoice-payment" role="dialog" aria-labelledby="app-trader-invoice-payment">
+
+</div>
+
+<div class="modal fade left" id="app-trader-workgroup-preview" role="dialog" aria-labelledby="app-trader-workgroup-preview">
+
+</div><!-- /.modal -->
+
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+
+        <script src="~/Scripts/dev/trader.invoice.manage.js"></script>
+        <script src="~/Scripts/dev/trader.domain.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/trader.invoice.manage.min.js"></script>
+        <script src="~/Scripts/dev/trader.domain.min.js"></script>
+    }
+}

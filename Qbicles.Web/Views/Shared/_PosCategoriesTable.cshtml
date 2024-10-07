@@ -1,0 +1,109 @@
+﻿@using Qbicles.BusinessRules;
+@using Qbicles.Models.Trader.PoS;
+@using Qbicles.Models.Catalogs
+@model Catalog
+@{
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var status = "";
+    var menuStatus = Model.Devices.Count > 0;
+    if (menuStatus)
+    {
+        status = "Activated";
+    }
+    else
+    {
+        status = "Inactive";
+    }
+}
+<table class="datatable table-hover" id="item-list" style="width: 100%; background: #fff;" data-order='[[ 1, "asc" ]]'>
+    <thead>
+        <tr>
+            <th data-priority="3" data-orderable="false" style="width: 80px;"></th>
+            <th data-priority="1">Item name</th>
+            <th data-priority="2">SKU</th>
+            <th data-priority="1">Category</th>
+            <th data-priority="2">Price</th>
+            <th data-priority="1">In stock</th>
+            <th data-priority="1" data-orderable="false"></th>
+        </tr>
+    </thead>
+    <tbody>
+        @{
+            foreach (var category in Model.Categories)
+            {
+                foreach (var item in category.PosCategoryItems)
+                {
+                    <tr>
+                        <td>
+                            <a href="javascript:" data-toggle="tab" data-target="#item-detail">
+                                <div class="table-avatar mini" style="background-image: url('@api@item.ImageUri');">&nbsp;</div>
+                            </a>
+                        </td>
+                        <td>
+                            <a href="#item-detail-basic" onclick="ViewPoscategoryItemDetail('@item.Id')" data-toggle="tab">@item.Name</a>
+                        </td>
+                        @if (item.PosVariants.Count > 0)
+                        {
+                            <td>@item.PosVariants[0].TraderItem.SKU</td>
+                        }
+                        else
+                        {
+                            <td></td>
+                        }
+                        <td>@category.Name</td>
+                        @if (item.PosVariants.Count > 0)
+                        {
+                            <td>@item.PosVariants[0].Price</td>
+                            if (item.PosVariants[0].TraderItem.InventoryDetails.Count > 0)
+                            {
+                                var currentLevel = item.PosVariants[0].TraderItem.InventoryDetails[0].CurrentInventoryLevel;
+                                var minLevel = item.PosVariants[0].TraderItem.InventoryDetails[0].MinInventorylLevel;
+                                <td>
+                                    @currentLevel
+                                    @if (currentLevel <= minLevel)
+                                    {
+                                        <span class="label label-lg label-danger">Low stock</span>
+                                    }
+                                </td>
+                            }
+                            else
+                            {
+                                <td></td>
+                            }
+                        }
+                        else
+                        {
+                            <td></td>
+                            <td></td>
+                        }
+                        <td>
+                            <div class="btn-group options">
+                                <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                    <i class="fa fa-cog"></i> &nbsp; Options
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-right" style="right: 0;">
+                                    @if (status == "Inactive")
+                                    {
+                                        <li><a class="viewdetail_@item.Id" href="#item-detail-basic" onclick="ViewPoscategoryItemDetail('@item.Id')" data-toggle="tab">View &amp; edit</a></li>
+                                        <li>
+                                            <input hidden id="item-row-id-@item.Id" value="@HttpUtility.JavaScriptStringEncode(item.Name).Replace("'","Ⓞ")" />
+                                            <a href="#" data-toggle="modal" data-target="#menu-item-delete-confirm" onclick="ConfirmDeleteMenuItem('@item.Id')">Remove item</a>
+                                        </li>
+                                    }
+                                    else
+                                    {
+                                        <li><a class="viewdetail_@item.Id" href="#item-detail-basic" onclick="ViewPoscategoryItemDetail('@item.Id')" data-toggle="tab">View</a></li>
+                                    }
+                                </ul>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            }
+        }
+
+    </tbody>
+</table>
+<script>
+    $("#item-list").DataTable().draw();
+</script>

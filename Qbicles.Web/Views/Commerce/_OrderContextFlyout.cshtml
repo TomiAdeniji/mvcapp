@@ -1,0 +1,326 @@
+﻿
+
+@{
+
+}
+
+<div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content" style="background-color: rgb(244, 246, 249);">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <h5 class="modal-title"><span class="order-context-flyout-modal-title"></span></h5>
+        </div>
+        <div class="modal-body">
+
+
+            <div class="activity-overview plain rounded" style="padding: 20px 20px 5px 20px;">
+                <div class="row">
+                    <div class="col-xs-12 col-md-6">
+                        <div class="form-group">
+                            <label>Search</label>
+                            <input id="order-keyword" type="text" class="form-control" placeholder="Order reference">
+                        </div>
+                    </div>
+                    <div class="col-xs-12 col-md-6">
+                        <label>Filter by date</label><br />
+                        <div class="input-group" style="margin-bottom: 15px;">
+                            <input type="text" class="form-control daterange-order-filter">
+                            <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-xs-12 col-md-6">
+                        <div class="form-group">
+                            <label>Filter by status</label>
+                            <select id="order-status" class="form-control checkmulti checkmulti-status" multiple>
+                                <option value="0" selected>Draft</option>
+                                <option value="1" selected>Awaiting processing</option>
+                                <option value="2" selected>Processing</option>
+                                <option value="3" selected>Completed</option>
+                                <option value="4" selected>Completed with problems</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-xs-12 col-md-6">
+                        <div class="form-group">
+                            <label>Order by</label>
+                            <select id="order-by" class="form-control select2-modal" style="width: 100%;">
+                                <option value="0" selected>Latest activity</option>
+                                <option value="1">Date (recent first)</option>
+                                <option value="2">Date (oldest first)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <br />
+            
+            <table class="datatable table-striped no-footer dtr-inline dataTable" id="order-context-flyout-table" style="width: 100%;">
+                <thead style="display:none">
+                    <tr>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    
+                </tbody>
+            </table>
+
+        </div>
+    </div><!-- /.modal-content -->
+</div>
+
+
+
+<link href="~/Content/DesignStyle/css/bootstrap-multiselect.css" rel="stylesheet" />
+<script src="~/Content/DesignStyle/js/bootstrap-multiselect.js"></script>
+<link rel="stylesheet" href="~/Content/DesignStyle/css/daterangepicker.css">
+<script src="~/Content/DesignStyle/js/daterangepicker.js"></script>
+<script src="~/Content/DesignStyle/js/jquery.timer.js"></script>
+<script src="~/Content/DesignStyle/js/dataTables.checkboxes.js"></script>
+<link href="~/Content/DesignStyle/css/dataTables.checkboxes.min.css" rel="stylesheet" />
+
+<script>
+
+    function searchThrottle(f, delay) {
+        var timer = null;
+        return function () {
+            var context = this, args = arguments;
+            clearTimeout(timer);
+            timer = window.setTimeout(function () {
+                f.apply(context, args);
+            },
+                delay || 800);
+        };
+    }
+
+
+    $(document).ready(function () {
+        $(".checkmulti-status").multiselect({
+            includeSelectAllOption: true,
+            enableFiltering: true,
+            buttonWidth: '100%',
+            maxHeight: 400,
+            enableClickableOptGroups: true,
+            enableCaseInsensitiveFiltering: true
+        });
+        $(".select2-modal").select2();
+        GetOrderContextFlyout();
+
+        $('#DataTables_Table_1').DataTable();
+    });
+
+    $("#order-keyword").keyup(searchThrottle(function () {
+        $('#order-context-flyout-table').DataTable().ajax.reload();
+    }));
+    $("#order-status,#order-by").on('change', function () {
+        $('#order-context-flyout-table').DataTable().ajax.reload();
+    });
+    $('.daterange-order-filter').daterangepicker({
+        autoUpdateInput: false,
+        singleDatePicker: false,
+        timePicker: false,
+        showDropdowns: true,
+        cancelClass: "btn-danger",
+        opens: "left",
+        //startDate: moment().startOf('day').format($dateFormatByUser),
+        //endDate: moment().endOf('day').format($dateFormatByUser),
+        locale: {
+            cancelLabel: 'Clear',
+            dateFormat: $dateFormatByUser
+        }
+    });
+    $('.daterange-order-filter').on('apply.daterangepicker', function (ev, picker) {
+        $(this).val(picker.startDate.format($dateFormatByUser.toUpperCase()) + ' - ' + picker.endDate.format($dateFormatByUser.toUpperCase()));
+        $('#order-context-flyout-table').DataTable().ajax.reload();
+    });
+    $('.daterange-order-filter').on('cancel.daterangepicker', function (ev, picker) {
+        $(this).val('');
+        $('#order-context-flyout-table').DataTable().ajax.reload();
+    });
+
+
+    function GetOrderContextFlyout() {
+        $("#order-context-flyout-table").on('processing.dt', function (e, settings, processing) {
+            $('#processingIndicator').css('display', 'none');
+        }).DataTable({
+            "destroy": true,
+            "dom": '<"top"fl<"clear">>rt<"bottomtable"ip<"clear">>',
+            "language": {
+                "infoFiltered": ""
+            },
+            "serverSide": true,
+            "info": false,
+            "stateSave": false,
+            "bLengthChange": false,
+            "paging": true,
+            "searching": false,
+            "responsive": true,
+            "scrollX": false,
+            "autoWidth": true,
+            "lengthMenu": [[10, 20, 50, 100], [10, 20, 50, 100]],
+            "pageLength": 10,
+            "ajax": {
+                "url": '/Commerce/GetOrderContextFlyoutB2B',
+                "type": 'POST',
+                "dataType": 'json',
+                "data": function (d) {
+                    var $paramaters = {};
+                    var $keyword = $("#order-keyword").val();
+                    var $daterange = $(".daterange-order-filter").val();
+                    var $status = $("#order-status").val();
+                    var $orderBy = $("#order-by").val();
+
+                    $paramaters.qbicleKey = $('#hdfCurrentQbicleId').val();
+
+                    $paramaters.type = "B2B";
+
+                    if ($keyword.length > 0)
+                        $paramaters.keyword = $keyword;
+
+                    if ($daterange.length > 0)
+                        $paramaters.daterange = $daterange;
+
+                    if ($orderBy != null)
+                        $paramaters.orderBy = $orderBy;
+
+                    if ($status != null && $status.length > 0)
+                        $paramaters.status = $status;
+
+                    return $.extend({}, d, $paramaters);
+                }
+            },
+            "columns": [
+                {
+                    name: 'tableContent',
+                    data: 'tableContent',
+                    orderable: false,
+                    //render: function (value, type, row) {
+                    //    var strStatus = " <a href='my-contact-profile.php'>";
+                    //    //strStatus += "<div class='table-avatar mini pull-left' style='background-image: url(\"" + row.CreatorUri + "\");'></div>"
+                    //    //strStatus += "<div class='avatar-name pull-left' style='color: #333; line-height: 4; padding-left: 15px;'>" + row.User + "</div>";
+                    //    //strStatus += "<div class='clearfix'></div>";
+                    //    strStatus += "</a>";
+                    //    return strStatus;
+                    //}
+                }
+            ],
+            //"order": [[0, "desc"]]
+        });
+    }
+</script>
+
+<style>
+    td a:hover {
+        text-decoration: none !important;
+    }
+
+    .successpostmini {
+        text-align: center;
+    }
+
+        .successpostmini img {
+            width: 80px;
+            max-width: 100%;
+            height: auto;
+            margin-bottom: 20px;
+        }
+
+    .shoutout {
+        background-color: #eaf7fb;
+        border-radius: 10px;
+        margin-top: 10px 0 20px 0;
+        padding: 25px 20px;
+    }
+
+        .shoutout p {
+            font-size: 12px;
+        }
+
+    .flexit {
+        display: flex;
+        flex-direction: row;
+        align-content: center;
+        align-items: center;
+    }
+
+    .order--0 {
+        flex: 1;
+    }
+
+        .order--0 .label {
+            font-size: 11px !important;
+            font-weight: 500 !important;
+        }
+
+    .order--1 {
+        flex: 0 1 50%;
+    }
+
+    .order--detes {
+        font-size: 12px;
+        padding-top: 20px;
+        color: #333;
+    }
+
+    .flexitems {
+        display: flex;
+        flex-direction: row;
+        justify-content: flex-end;
+        align-content: center;
+        align-items: center;
+    }
+
+    .pimg {
+        flex: 0 0 50px;
+        justify-content: space-around;
+        border-radius: 5px;
+        width: 50px;
+        height: 50px;
+        margin-right: 5px;
+        background-size: cover;
+        background-position: center center;
+    }
+
+        .pimg.andmore {
+            background-color: darkturquoise;
+            font-size: 14px;
+            color: #fff;
+            line-height: 50px;
+            font-weight: 600;
+            text-align: center;
+        }
+
+    .order-summary {
+        transition: all 0.3s ease;
+        font-family: "Roboto", sans-serif;
+        padding: 30px 23px 20px 23px;
+        border-radius: 10px;
+        margin-bottom: 10px;
+        background: #fff;
+        box-shadow: 0px 0px 11px 0px rgba(50, 50, 50, 0.1);
+    }
+
+        .order-summary:hover {
+            box-shadow: 0px 0px 11px 0px rgba(50, 50, 50, 0.4);
+        }
+
+        .order-summary h1 {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin: 0;
+            padding: 0 0 10px 0;
+        }
+
+        .order-summary small {
+            font-size: 13px;
+            font-weight: 400;
+            color: rgba(0, 0, 0, 0.4);
+            display: inline-block;
+            margin: 0;
+            padding: 0 0 0 10px;
+        }
+</style>

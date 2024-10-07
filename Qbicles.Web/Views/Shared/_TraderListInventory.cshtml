@@ -1,0 +1,220 @@
+﻿@using Qbicles.Models.Trader;
+@using Qbicles.BusinessRules;
+@model List<InventoryDetail>
+@{
+    var api = (string)ViewBag.DocRetrievalUrl;
+    //var callBack = (bool)(ViewBag.CallBack ?? false);
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+}
+
+<div class="well custom" style="padding-bottom: 5px;">
+
+    <div class="row">
+        <div class="col-xs-12 col-sm-6 col-lg-3">
+            <div class="form-group">
+                <label for="search_dt">Search for something</label>
+                <input type="text" id="inventory_search_text" class="form-control" placeholder="Search for something">
+            </div>
+        </div>
+        <div class="col-xs-12 col-sm-6 col-lg-2">
+            <div class="form-group">
+                <label for="showvalues">Inventory total basis</label>
+                <select id="inventory-basis-select" class="form-control inventory-select2" style="width: 100%;">
+                    <option value="average" selected>Average cost (FIFO)</option>
+                    <option value="latest">Latest cost</option>
+                </select>
+            </div>
+        </div>
+        <div class="col-xs-12 col-sm-6 col-lg-2">
+            <div class="form-group">
+                <label for="showvalues">Days to last basis</label>
+                <select id="day-to-last-basis-select" class="form-control inventory-select2" style="width: 100%;">
+                    <option value="1">Last one week sales</option>
+                    <option value="2">Last one month sales</option>
+                    <option value="3" class="singledate">Custom range</option>
+                </select>
+            </div>
+        </div>
+        <div class="col-xs-12 col-sm-6 col-lg-1">
+            <div class="form-group">
+                <label for="maxdays">Max days to last</label>
+                <input id="max-day-to-last" type="number" min="0" value="12" name="maxdays" class="form-control">
+            </div>
+        </div>
+        <div class="col-xs-12 col-lg-4">
+            <label>Options</label>
+            <br />
+            <div class="form-group">
+
+                <div class="btn-group options">
+                    <button type="button" class="btn btn-success dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        Actions &nbsp; <i class="fa fa-angle-down"></i>
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a href="#" data-toggle="modal" data-target="#app-trader-inventory-count-add">Add an inventory count</a>
+                        <li><a href="#" data-toggle="modal" data-target="#app-trader-inventory-reorder">Reorder items</a>
+                    </ul>
+                </div>
+
+                <div class="btn-group options">
+                    <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        <i class="fa fa-sliders"></i> &nbsp; Manage display
+                    </button>
+                    <ul class="dropdown-menu primary manage-columns manage-inventory-columns">
+                        <li><label><input type="checkbox" data-column="0"> Icon</label></li>
+                        <li><label><input type="checkbox" data-column="1" checked> Item</label></li>
+                        <li><label><input type="checkbox" data-column="2"> Description</label></li>
+                        <li><label><input type="checkbox" data-column="3" checked> Unit</label></li>
+                        <li><label><input type="checkbox" data-column="4" checked> Average cost</label></li>
+                        <li><label><input type="checkbox" data-column="5" checked> Latest cost</label></li>
+                        <li><label><input type="checkbox" data-column="6" checked> Current inventory</label></li>
+                        <li><label><input type="checkbox" data-column="7" checked> Days to last</label></li>
+                        <li><label><input type="checkbox" data-column="8" checked> Min inventory</label></li>
+                        <li><label><input type="checkbox" data-column="9" checked> Max inventory</label></li>
+                        <li><label><input type="checkbox" data-column="10" checked> Inventory total</label></li>
+                        <li><label><input type="checkbox" data-column="11" checked> Associated</label></li>
+                    </ul>
+                </div>
+                <div class="activity-overview alert-detail animated bounce" style="display: none; padding: 20px;">
+                    <p>You have <strong>2</strong> inventory alerts requiring your attention</p>
+                    <button class="btn btn-warning" data-toggle="modal" data-target="#inventory-alert-show"><i class="fa fa-bell"></i> &nbsp; View alerts</button>
+                </div>
+                <button class="btn btn-warning animated bounce" data-toggle="modal" data-target="#inventory-alert-show"><i class="fa fa-bell"></i> &nbsp; 2 alerts</button>
+
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<br />
+<br />
+
+
+<table id="tb_inventories" class="datatable table-striped table-hover" style="width: 100%;" data-order='[[1, "asc"]]'>
+    <thead>
+        <tr>
+            <th data-priority="3" style="width: 90px;" data-orderable="false"></th>
+            <th data-priority="1">Item</th>
+            <th data-priority="3">Description</th>
+            <th data-priority="3">Unit</th>
+            <th data-priority="2">Average cost <strong>(@currencySettings.CurrencySymbol)</strong></th>
+            <th data-priority="2">Latest Cost</th>
+            <th data-priority="1">Current inventory</th>
+            <th data-priority="1">Days to last</th>
+            <th data-priority="2">Min inventory</th>
+            <th data-priority="2">Max inventory</th>
+            <th data-priority="2">Inventory total</th>
+            <th data-priority="4">Associated</th>
+            <th data-priority="1" data-orderable="false"></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>
+                    <div class="table-avatar" style="background-image: url('@api@item.Item.ImageUri');"></div>
+                </td> @*icon 6*@
+                <td>@item.Item.Name</td> @*name 7*@
+                <td>
+                    @Html.Raw(item.Item.Description.Replace(Environment.NewLine, "<br/>").Replace("\n", "<br/>"))
+                </td> @*description 8*@
+                <td>
+                    @{
+                        var unit = item.Item.Units?.FirstOrDefault(e => e.IsBase)?.Name ?? "";
+                    }
+                    @unit
+                </td> @*unit 9*@
+
+                <td>@item.AverageCost.ToDecimalPlace(currencySettings)</td> @*AverageCost 10*@
+                <td>Latest Cost  11</td>
+                <td>@item.CurrentInventoryLevel</td> @*Current inventory 12*@
+                <td>day to last  13</td>
+                <td>
+                    @item.MinInventorylLevel
+                </td> @*min inv level 14*@
+                <td>
+                    @item.MaxInventoryLevel
+                </td>
+                @*max inv level 15*@
+                <td>inv total  16</td>
+                <td>associate  17</td>
+                <td>
+                    <div class="btn-group options">
+                        <button type="button" class="btn btn-success dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            <i class="fa fa-cog"></i> &nbsp; Options
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-right" style="right: 0;">
+                            @if (item.Item.IsBought)
+                            {
+                                <li><a href="#" onclick="editTraderItem(1, @item.Item.Id,'inventory-tab')">Edit</a></li>
+                            }
+                            else
+                            {
+                                <li><a href="#" onclick="editTraderItem(2,@item.Item.Id, 'inventory-tab') ">Edit</a></li>
+                            }
+                            <li><a href="#">Delete</a></li>
+                        </ul>
+                    </div>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+
+
+<div class="modal fade" id="inventory-alert-show" role="dialog" aria-labelledby="inventory-alert-show">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Stock alerts</h5>
+            </div>
+            <div class="modal-body">
+                <div class="notifications_overview">
+
+                    <ul>
+                        <li>
+                            <div class="notify_avatar hidden-xs" style="background-image: url('dist/img/icon_inventory.png');"></div>
+                            <div class="notify_detail">
+                                <a href="#" class="seen"><i class="fa fa-trash"></i></a>
+                                <p>Low stock alert on <strong>Cardboard Box</strong>, SKU 3934893</p>
+                                <small>13 minutes ago</small>
+                            </div>
+                            <div class="clearfix"></div>
+                        </li>
+                        <li>
+                            <div class="notify_avatar hidden-xs" style="background-image: url('dist/img/icon_pizza.png');"></div>
+                            <div class="notify_detail">
+                                <a href="#" class="seen"><i class="fa fa-trash"></i></a>
+                                <p>Overstock alert on <strong>Pizza</strong>, SKU 4934893</p>
+                                <small>Yesterday</small>
+                            </div>
+                            <div class="clearfix"></div>
+                        </li>
+                    </ul>
+
+
+
+                </div>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+@*<script src="//cdn.datatables.net/v/bs/dt-1.10.16/r-2.2.1/datatables.min.js"></script>
+    <script src="//cdn.datatables.net/rowreorder/1.2.5/js/dataTables.rowReorder.min.js"></script>*@
+@{
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/trader.inventory.list.js"></script>
+    }
+    else
+    {
+        <script src="~/Scripts/dev/trader.inventory.list.min.js"></script>
+    }
+}
+
+

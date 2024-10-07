@@ -1,0 +1,151 @@
+﻿@using Qbicles.Models.Trader;
+@using Qbicles.BusinessRules;
+@model List<TraderPurchase>
+@{
+    var workGroups = (List<WorkGroup>)ViewBag.WorkGroups ?? (new List<WorkGroup>());
+    var workGroupsOfMember = (List<WorkGroup>)ViewBag.WorkGroupsOfMember ?? (new List<WorkGroup>());
+    var domainId = (int)ViewBag.CurrentDomainId;
+    var currentDomain = (Qbicles.Models.QbicleDomain)ViewBag.CurrentDomain;
+    var api = (string)ViewBag.DocRetrievalUrl;
+    var dateFormat = (string)ViewBag.CurrentDateFormat;
+    var userId = ViewBag.CurrentUserId;
+    //Export
+    var createdDate = DateTime.Now;
+    var timeZone = (string)ViewBag.CurrentTimeZone ?? "";
+    var user = (Qbicles.Models.ApplicationUser)ViewBag.CurrentUser;
+    var currencySettings = (Qbicles.Models.CurrencySetting)ViewBag.CurrencySettings;
+    var defaultLocation = (Qbicles.Models.Trader.TraderLocation)ViewBag.DefaultLocation;
+    var logoBase64 = (string)ViewBag.DomainLogoBase64;
+}
+<h5>Purchase records</h5>
+<div class="well custom" style="padding-bottom: 5px;">
+    <div class="row">
+        <div class="col-xs-6 col-sm-4">
+            <div class="form-group">
+                <label for="search_dt">Search for something</label>
+                <input type="text" name="search_dt" id="search_dt" class="form-control" placeholder="Search for something">
+            </div>
+        </div>
+        <div class="col-xs-6 col-sm-6 col-md-3">
+            <div class="form-group">
+                <label for="group">Filter Workgroup</label>
+                <select id="filterworkgroup" name="group" class="form-control select2" style="width: 100%;">
+                    <option value="0" selected>Show all</option>
+                    @foreach (var item in workGroups)
+                    {
+                        <option value="@item.Id">@item.Name</option>
+                    }
+                </select>
+            </div>
+        </div>
+        <div class="col-xs-12 col-sm-5">
+            <label>Table options</label>
+            <br />
+            @if (workGroupsOfMember.Any())
+            {
+                <button class="btn btn-success" onclick="addPurchase()" data-toggle="modal" data-target="#app-trader-purchase-add"><i class="fa fa-plus"></i> &nbsp; Add a purchase</button>
+            }
+            <button class="btn hidden btn-warning" data-toggle="modal" data-target="#app-trader-purchase-special-add"><i class="fa fa-plus"></i> &nbsp; Add a special purchase</button>
+            <div class="btn-group options">
+                <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    <i class="fa fa-sliders"></i> &nbsp; Manage display
+                </button>
+                <ul class="dropdown-menu primary manage-columns">
+                    <li><label><input type="checkbox" data-column="1" checked> Workgroup</label></li>
+                    <li><label><input type="checkbox" data-column="2" checked> Created date</label></li>
+                    <li><label><input type="checkbox" data-column="3" checked> Contact</label></li>
+                    <li><label><input type="checkbox" data-column="4" checked> Reporting filter</label></li>
+                    <li><label><input type="checkbox" data-column="5" checked> Total</label></li>
+                    <li><label><input type="checkbox" data-column="6" checked> Purchase status</label></li>
+                </ul>
+            </div>
+            <!-- Export -->
+            <div class="btn-group options">
+                <button type="button" class="btn btn-warning dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    <i class="fa fa-download"></i> &nbsp; Export
+                </button>
+                <div class="dropdown-menu" id="kt_datatable_example_export_menu" aria-labelledby="dropdownMenuButton" style="background-color: #a37a41;">
+                    <li>
+                        @*<a href="#" class="dropdown-item data-qb-excel" id="123" data-kt-export="excel">Excel</a>*@
+                        <a class="dropdown-item data-qb-excel" href="javascript:void(0)" onclick="GetDataTableContentExport()">Excel</a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item data-qb-csv" href="javascript:void(0)" onclick="GetDataTableContentExport(2)">CSV</a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item data-qb-pdf" href="javascript:void(0)" onclick="GetDataTableContentExport(3)">PDF</a>
+                    </li>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="visible-xs" style="width: 100%; height: 15px;">&nbsp;</div>
+</div>
+<!--begin::Hide default export buttons-->
+<div id="kt_datatable_example_buttons" style="display: none;"></div>
+<!--end::Hide default export buttons-->
+<br />
+<div id="table_show">
+    <table class="datatable table-striped table-hover" style="width: 100%;" id="community-list" data-order='[[2, "desc"]]'>
+        <thead>
+            <tr>
+                <th data-priority="1">#</th>
+                <th data-priority="2">Workgroup</th>
+                <th data-priority="2">Created date</th>
+                <th data-priority="1">Contact</th>
+                <th data-priority="3">Reporting filter</th>
+                <th data-priority="2">Total <strong>(@currencySettings.CurrencySymbol)</strong></th>
+                <th data-priority="1">Status</th>
+                <th data-priority="1" data-orderable="false">Options</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+</div>
+
+<script>
+    FilterDataByServerSide();
+    $("#filterworkgroup").select2();
+    $("#filterworkgroup").on("change",
+        function () {
+            CallBackFilterDataPurchaseServeSide();
+        });
+
+    $("#search_dt").keyup(delay(function () {
+        $("#community-list").DataTable().ajax.reload();
+    }, 1000));
+
+    //
+    function GetDataTableContentExport(exportType = 1) {
+        $.LoadingOverlay("show");
+
+        var params = $('#community-list').DataTable().ajax.params();
+        console.log(params, "params");
+
+            //init params
+            var _parameter = {
+                ...params,
+                "export": exportType
+            };
+
+            $.ajax({
+                type: 'POST',
+                url: '/Report/GetPurchaseOrderTableContentExport',
+                dataType: 'json',
+                data: _parameter,
+                success: function (response) {
+                    if (response.result == true) {
+                        console.log(response, 'response');
+                        window.location.href = response.Object;
+                        cleanBookNotification.success("Export downloaded successfully!", "Qbicles");
+                    }
+                    $.LoadingOverlay("hide");
+                },
+                error: function (err) {
+                    console.log(err, 'error');
+                    $.LoadingOverlay("hide");
+                }
+            });
+    }
+
+</script>

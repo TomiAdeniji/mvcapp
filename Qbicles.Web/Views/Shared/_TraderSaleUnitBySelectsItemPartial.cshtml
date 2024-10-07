@@ -1,0 +1,169 @@
+﻿@using Qbicles.BusinessRules
+@using Qbicles.Models.Trader;
+@model  List<UnitModel>
+@{
+    var table = (int)ViewBag.Table;
+    var isSale = (bool)(ViewBag.IsSale ?? false);
+    var isTraderItem = (bool)(ViewBag.IsTraderItem ?? false);
+    var traderItemId = (int)(ViewBag.TraderItemId ?? 0);
+    var saleitem = (TraderTransactionItem)ViewBag.ItemSale;
+    var valueUnit = (string)(ViewBag.ValueUnit ?? "");
+    var spotCount = (bool)(ViewBag.SpotCount ?? false);
+    var wasteReport = (bool)(ViewBag.WasteReport ?? false);
+    var selectId = Guid.NewGuid().ToString().Replace("-", "");
+}
+@if (wasteReport)
+{
+    <select id="@selectId" data-placeholder="Please select" class="form-control unit-select2" style="width: 100%;">
+
+        @foreach (var item in Model)
+        {
+            if (item.Id.ToString() == valueUnit)
+            {
+                <option selected value="@item.Id">@item.Name</option>
+            }
+            else
+            {
+                <option value="@item.Id">@item.Name</option>
+            }
+
+        }
+    </select>
+}
+else if (spotCount)
+{
+    <select id="@selectId" onchange="UpdateWasteReportProduct(@traderItemId,false)" data-placeholder="Please select" class="form-control unit-select2" style="width: 100%;">
+
+        @foreach (var item in Model)
+        {
+            if (item.Id.ToString() == valueUnit)
+            {
+                <option selected value="@item.Id">@item.Name</option>
+            }
+            else
+            {
+                <option value="@item.Id">@item.Name</option>
+            }
+
+        }
+    </select>
+}
+else if (isSale)
+{
+    decimal costBase = 0;
+    <label for="unit">Unit <span>*</span></label>
+    <select id="conversionsunitid" name="conversionsunit" data-placeholder="Please select" onchange="selectedUnit(this)" class="form-control select2 select_unit" style="width: 100%;">
+        <option></option>
+        @foreach (var item in Model)
+        {
+            if (item.IsBase)
+            {
+                costBase = item.Quantity;
+                <option selected value="@item.Group|@item.Id|@item.Name|@item.BaseUnitCost|@item.Quantity|@item.IsBase.ToString().ToLower()">@item.Name</option>
+            }
+            else
+            {
+                <option value="@item.Group|@item.Id|@item.Name|@item.BaseUnitCost|@item.Quantity|@item.IsBase.ToString().ToLower()">@item.Name</option>
+            }
+
+        }
+    </select>
+    <input type="hidden" class="costunitbase" value="@costBase" />
+}
+else if (table == 0)
+{
+    <label for="unit">Unit <span>*</span></label>
+    <select id="conversionsunitid" name="conversionsunit" data-placeholder="Please select" onchange="selectedUnit(this); quantityChange();" class="form-control select2 select_unit" style="width: 100%;">
+        <option></option>
+        @foreach (var item in Model)
+        {
+            if (item.Id.ToString() == valueUnit)
+            {
+                <option selected value="@item.Group|@item.Id|@item.Name|@item.QuantityOfBaseunit|@item.BaseUnitCost.ToString()">@item.Name</option>
+            }
+            else
+            {
+                <option value="@item.Group|@item.Id|@item.Name|@item.QuantityOfBaseunit|@item.BaseUnitCost.ToString()">@item.Name</option>
+            }
+
+        }
+    </select>
+
+    <script>
+        quantityChange();
+    </script>
+}
+else if (saleitem.Id == 0)
+{
+
+    <select name="unit" class="form-control select2 select_unit" onchange="rowUnitChange(0)" style="width: 100%;">
+        @foreach (var itemunit in Model)
+        {
+            if (valueUnit == itemunit.Id.ToString())
+            {
+                <option selected value="@itemunit.Group|@itemunit.Id|@itemunit.Name|@itemunit.QuantityOfBaseunit">@itemunit.Name</option>
+            }
+            else
+            {
+                <option value="@itemunit.Group|@itemunit.Id|@itemunit.Name|@itemunit.QuantityOfBaseunit">@itemunit.Name</option>
+            }
+
+        }
+    </select>
+
+}
+else if (isTraderItem)
+{
+    decimal costBase = 0;
+    <select name="unit" data-placeholder="Please select" class="form-control select2 select_unit" onchange="rowUnitChange(@traderItemId)" style="width: 100%;">
+
+        @foreach (var itemunit in Model)
+        {
+            if (itemunit.IsBase)
+            {
+                costBase = itemunit.Quantity;
+            }
+            if (itemunit.Id.ToString() == valueUnit)
+            {
+                <option selected value="@itemunit.Group|@itemunit.Id|@itemunit.Name|@itemunit.QuantityOfBaseunit|@itemunit.Quantity|@itemunit.IsBase.ToString().ToLower()">@itemunit.Name</option>
+            }
+            else
+            {
+                <option value="@itemunit.Group|@itemunit.Id|@itemunit.Name|@itemunit.QuantityOfBaseunit|@itemunit.Quantity|@itemunit.IsBase.ToString().ToLower()">@itemunit.Name</option>
+            }
+
+        }
+    </select>
+    <input type="hidden" class="costunitbase" value="@costBase" />
+}
+else
+{
+
+    decimal costBase = 0;
+    <select name="unit" data-placeholder="Please select" class="form-control select2 select_unit" onchange="rowUnitChange(@saleitem.Id)" style="width: 100%;">
+
+        @foreach (var itemunit in Model)
+        {
+            if (itemunit.IsBase)
+            {
+                costBase = itemunit.Quantity;
+            }
+            if (itemunit.Id.ToString() == valueUnit)
+            {
+                <option selected value="@itemunit.Group|@itemunit.Id|@itemunit.Name|@itemunit.QuantityOfBaseunit|@itemunit.Quantity|@itemunit.IsBase.ToString().ToLower()">@itemunit.Name</option>
+            }
+            else
+            {
+                <option value="@itemunit.Group|@itemunit.Id|@itemunit.Name|@itemunit.QuantityOfBaseunit|@itemunit.Quantity|@itemunit.IsBase.ToString().ToLower()">@itemunit.Name</option>
+            }
+
+        }
+    </select>
+    <input type="hidden" class="costunitbase" value="@costBase" />
+}
+<script>
+    $('.select_unit').not('.multi-select').select2();
+    if ('@valueUnit' !== "") {
+        $("#" + '@selectId').select2();
+    }
+</script>

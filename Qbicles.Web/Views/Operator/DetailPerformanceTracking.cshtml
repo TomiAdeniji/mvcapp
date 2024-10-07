@@ -1,0 +1,400 @@
+﻿@using Qbicles.Models.Operator;
+@using Qbicles.Models.Operator.Team;
+@using Qbicles.BusinessRules;
+@model PerformanceTracking
+@{
+    var currentUserId = (string)ViewBag.CurrentUserId;
+    var topics = (List<ItemTopic>)ViewBag.topics;
+    var fullname = HelperClass.GetFullNameOfUser(Model.Team.User, currentUserId);
+    ViewBag.Title = "Operator > Team > " + fullname + " Performance Tracking";
+}
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper qbicle-detail mdv2-wrapper" style="position: relative;">
+
+
+    <!-- Main content -->
+    <section class="mdv2 dash" data-tooltip-color="teal" data-tooltip-delay="300" data-tooltip-animate-function="spin" style="border-top: 1px solid #f1f1f1;">
+
+
+        <!-- App bar -->
+        <div class="mdv2-col-app" style="margin-bottom: 0;">
+
+            <div data-spy="affix" class="contained-sidebar">
+
+                <div class="activity-overview plain company-overview welcome-info" style="text-align: left !important; flex: none; margin: 0; padding-top: 30px; padding-bottom: 0;">
+
+                    <div class="pull-left" style="margin-bottom: 15px;">
+                        <a href="/Operator" class="btn btn-primary"><i class="fa fa-angle-left"></i> &nbsp; Team</a>
+                        <a href="#app-operator-performance-addedit" data-toggle="modal" class="btn btn-warning" onclick="LoadPerformanceTrackingModal(@Model.Id)"><i class="fa fa-pencil"></i> &nbsp; Edit</a>
+                    </div>
+                    <div class="clearfix"></div>
+
+                    <br /><br />
+                    <input type="hidden" id="performanceTrackingId" value="@Model.Id" />
+                    <h6 class="subhead">Operator &gt; Performance Management</h6>
+                    <h1 style="line-height: 1.2;">@fullname's Performance</h1>
+                    <br />
+
+                    <p style="color: rgba(0, 0, 0, 0.5);">@Model.Description</p>
+                    <br />
+
+                    <div class="activity-overview generic text-left" style="padding: 20px; margin-bottom: 15px;">
+                        <label for="search">Show progress in timeframe</label><br />
+                        <select id="slTimeframe" name="timeframe" class="form-control select2" style="width: 100%;"
+                                onchange="var opt = $(this).val(); if(opt == '2') { $('.customrange').fadeIn(); } else { $('.customrange').hide(); }">
+                            <option value="0" selected>Last 7 days</option>
+                            <option value="1">Last 30 days</option>
+                            <option value="2">Custom range</option>
+                        </select>
+
+                        <div class="customrange" style="margin-top: 15px; display: none;">
+                            <div class="input-group">
+                                <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                                <input type="text" id="txtCustomDate" name="customDate" class="form-control daterange">
+                            </div>
+                        </div>
+                    </div>
+
+                    <br />
+
+                </div>
+
+
+                <ul id="tabNavPerformance" class="subapps-nav" role="navigation" data-tooltip-stickto="bottom">
+                    <li class="active">
+                        <a href="#" data-toggle="tab" data-target="#performance-overview" data-tooltip="Overview" onclick="LoadPerfomanceMeasures(); $('.options-performance-sub').hide(); $('#overview-options').show();">
+                            <i class="fa fa-line-chart"></i>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" data-toggle="tab" data-target="#performance-measures" onclick="loadTabMeasuresContent(); $('.options-performance-sub').hide(); $('#measures-options').show();" data-tooltip="Measures">
+                            <i class="fa fa-ruler"></i>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" data-toggle="tab" data-target="#performance-resources" onclick="$('.options-performance-sub').hide(); $('#resources-options').show(); LoadMedias(@Model.Team.ResourceFolder.Qbicle.Id)" data-tooltip="Resources">
+                            <i class="fa fa-folder"></i>
+                        </a>
+                    </li>
+                </ul>
+
+
+                <div style="padding: 15px 30px 30px 30px;">
+
+
+                    <!-- Overview options -->
+                    <div class="options-performance-sub" id="overview-options">
+
+                        @if (Model.Discussion == null)
+                        {
+                            <a href="#" data-toggle="modal" data-target="#create-discussion" class="btn btn-info community-button new-discuss" style="margin-bottom: 5px;"><i class="fa fa-comments"></i> &nbsp; Open Discussion</a>
+                        }
+
+                        <a href="/Operator/DiscussionPerformance@(Model.Discussion != null ? "?disId=" + Model.Discussion.Id : "")" class="btn btn-primary community-button view-discuss" id="btnJoinDiscussion" style="display: @(Model.Discussion != null ? "block" : "none"); margin-bottom: 5px;"><i class="fa fa-comments"></i> &nbsp; Join Discussion</a>
+
+                    </div>
+                    <div class="well custom text-left options-performance-sub" id="measures-options" style="display: none; padding-bottom: 5px; margin-bottom: 0px">
+                        <div class="form-group">
+                            <label for="search">Search Measures</label>
+                            <input type="text" id="txtSearchMeasures" name="search" class="form-control">
+                        </div>
+                    </div>
+                    <!-- END Measures options -->
+                    <!-- Resources options -->
+                    <div class="options-performance-sub" id="resources-options" style="display: none;">
+
+                        <button class="btn btn-success community-button" data-toggle="modal" data-target="#create-resource" style="margin: 0 0 30px 0;">
+                            <i class="fa fa-upload"></i>
+                            &nbsp; Upload a file
+                        </button>
+
+                        <div class="well custom">
+                            <div class="row">
+                                <div class="col-xs-12">
+                                    <div class="form-group" style="margin: 0;">
+                                        <label for="folder">Limit by type</label>
+                                        <select name="folder" id="sl-media-type" onchange="LoadMedias(@Model.Team.ResourceFolder.Qbicle.Id)" class="form-control select2" style="width: 100%;">
+                                            <option></option>
+                                            <option value="All">Show all</option>
+                                            <option value="Documents">Documents</option>
+                                            <option value="Image File">Photos</option>
+                                            <option value="Video File">Videos</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+
+
+                    </div>
+                    <!-- END Resources options -->
+
+                </div>
+
+
+            </div>
+        </div>
+        <!-- END App bar -->
+        <!-- Main area -->
+        <div class="mdv2-col-dash">
+
+            <div class="tab-content" style="padding-bottom: 30px;">
+
+
+                <!-- Overview -->
+                <div class="tab-pane fade in active" id="performance-overview">
+
+                    <div class="spacing">
+
+                        <style>
+                            .stat {
+                                width: 100%;
+                            }
+
+                                .stat svg {
+                                    width: 100%;
+                                    height: auto;
+                                    max-width: 250px;
+                                }
+
+                            .circle-progress-value {
+                                stroke-width: 6px;
+                                stroke: hsl(116, 72%, 50%);
+                            }
+
+                            .circle-progress-circle {
+                                stroke-width: 6px;
+                                stroke: hsl(116, 20%, 90%);
+                            }
+
+                            .circle-progress-text {
+                                fill: #3ebe35;
+                            }
+
+                            .widget-contacts.shrunk li a .contact-avatar div {
+                                width: 45px;
+                                height: 45px;
+                            }
+                        </style>
+
+
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-6 col-lg-4 text-center">
+
+                                <h5>@fullname's overall efficiency</h5>
+                                <br />
+
+                                <div id="performanceChartProcess" class="stat" style="margin-bottom: 80px;" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div>
+
+                            </div>
+                            <div class="col-xs-12 col-sm-6 col-lg-8">
+
+                                <h5>Measures</h5>
+                                <br />
+
+                                <div class="records-h processes">
+                                </div>
+
+                                <div id="pagination-container" class="pagination pagination-sm pull-right"></div>
+                            </div>
+                        </div>
+
+
+                        <br />
+
+
+                        <div class="row">
+
+                            <div class="col-xs-12">
+
+                                <h5>Trend</h5>
+                                <br />
+
+                                <canvas id="myChart" style="width: 100%; height: 350px;"></canvas>
+
+                            </div>
+                        </div>
+
+
+
+                    </div>
+
+
+                </div>
+                <!-- END Activity -->
+                <!-- Measures -->
+                <div class="tab-pane fade" id="performance-measures">
+
+                    <div class="spacing">
+
+                        <h5>Progress (last 7 days)</h5>
+                        <br />
+
+                        <div class="flex-grid-thirds-lg qbicles-dash-grid marketing restyle" data-tooltip-color="slate" data-tooltip-stickto="right">
+
+                        </div>
+
+                    </div>
+
+                </div>
+                <!-- END Measures -->
+                <!-- Resources -->
+                <div class="tab-pane fade" id="performance-resources">
+
+                    <div class="spacing">
+
+                        <div class="flex-grid-thirds-lg">
+                           
+                        </div>
+
+                    </div>
+
+                </div>
+                <!-- END Resources -->
+
+            </div>
+
+
+        </div>
+
+
+
+    </section>
+    <!-- ./content -->
+
+</div>
+<div class="modal fade left" id="create-resource" role="dialog" aria-labelledby="create-resource">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h5 class="modal-title">Add a Resource</h5>
+            </div>
+            <div class="modal-body">
+                <form id="form_media_smresource" enctype="multipart/form-data">
+                    <input type="hidden" id="mediaFolderId" name="mediaFolderId" value="@Model.Team.ResourceFolder.Id">
+                    <input type="hidden" id="qbicleId" name="qbicleId" value="@Model.Team.ResourceFolder.Qbicle.Id">
+                    <div class="well custom">
+                        <div class="row">
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label for="media-title">Document name</label>
+                                    <input type="text" name="name" required class="form-control">
+                                </div>
+                            </div>
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label for="topic">Choose a topic</label>
+                                    <select name="topicId" class="form-control select2" style="width: 100%;">
+                                        @foreach (var item in topics)
+                                        {
+                                            <option value="@item.Id">@item.Name</option>
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label for="account_number">Choose a file</label>
+                                    <input type="file" class="form-control previewimgresource" id="performancetracking-resource-input" data-target='#preview'>
+
+                                    <input type="hidden" id="performancetracking-resource-object-key" name="mediaObjectKey" />
+                                    <input type="hidden" id="performancetracking-resource-object-name" name="mediaObjectName" />
+                                    <input type="hidden" id="performancetracking-resource-object-size" name="mediaObjectSize" />
+                                </div>
+
+                                <img id="preview" src="" alt="Your image" style="display: none; width: 100%; height: auto; margin-bottom: 30px;" />
+                            </div>
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label for="tags">Destination folder</label>
+                                    <select name="mediaFolder" class="form-control select2" style="width: 100%;" disabled>
+                                        <option value="@Model.Team.ResourceFolder.Id" selected>@Model.Team.ResourceFolder.Name</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-xs-12">
+                                <div class="form-group">
+                                    <label for="media-description">Add a description</label>
+                                    <textarea name="description" class="form-control" required style="height: 80px;"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <a href="#" class="btn btn-danger" data-dismiss="modal">Cancel</a>
+                    <button class="btn btn-success" type="submit">Add media</button>
+                </form>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+@if (Model.Discussion == null)
+{
+    <div class="modal fade left" id="create-discussion" role="dialog" aria-labelledby="create-discussion">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h5 class="modal-title">Start Discussing this Activity</h5>
+                </div>
+                <div class="modal-body">
+                    <form id="frm-create-discussion" method="post" action="/Discussions/SaveDiscussionForPerfomance">
+                        <div class="well custom">
+                            <div class="row">
+                                <div class="col-xs-12">
+                                    <div class="form-group">
+                                        <label for="event-title">Opening comment</label>
+                                        <textarea id="ds_openingmessage" name="openingmessage" class="form-control"></textarea>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12">
+                                    <label>Set an expiry date</label><br />
+                                    <div class="checkbox toggle" onclick="$('.setexpiry').toggle();">
+                                        <label>
+                                            <input data-toggle="toggle" data-onstyle="success" name="isexpiry" id="ds_isexpiry" type="checkbox">
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-xs-12 setexpiry" style="display: none;">
+                                    <div class="form-group" style="margin: 0;">
+                                        <label>Choose a date and time for expiration</label>
+                                        <input type="text" name="expirydate" id="ds_expirydate" class="form-control singledateandtime">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <a href="#" class="btn btn-danger" data-dismiss="modal">Cancel</a>
+                        <button type="submit" class="btn btn-success">Confirm</button>
+                    </form>
+
+                </div>
+            </div><!-- /.modal-content -->
+        </div><!-- /.modal-dialog -->
+    </div><!-- /.modal -->
+}
+
+<!-- /.content-wrapper -->
+<div class="modal fade left" id="app-operator-performance-addedit" role="dialog" aria-labelledby="app-operator-performance-addedit"></div>
+<div class="modal fade left" id="team-person-preview" role="dialog" aria-labelledby="team-person-preview"></div>
+@{
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@2.8.0"></script>
+    <script src="~/Content/DesignStyle/js/jquery.circle-progress.js"></script>
+    <link href="~/Content/DesignStyle/css/bootstrap-multiselect.css" rel="stylesheet" />
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+        <script src="~/Scripts/dev/operator.performancetracking.detail.js"></script>
+        <script src="~/Content/DesignStyle/js/bootstrap-multiselect.js"></script>
+        @*<script src="~/Content/DesignStyle/js/pagination.js"></script>
+        <link href="/Content/DesignStyle/css/pagination.css" rel="stylesheet">*@
+    }
+    else
+    {
+        <script src="~/Scripts/dev/operator.performancetracking.detail.js"></script>
+        <script src="~/Content/DesignStyle/js/bootstrap-multiselect.min.js"></script>
+        @*<script src="~/Content/DesignStyle/js/pagination.min.js"></script>
+        <link href="/Content/DesignStyle/css/pagination.min.css" rel="stylesheet">*@
+    }
+}
